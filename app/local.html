@@ -26,34 +26,30 @@ h2,h3{margin-top:0}
 button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
 .btn{background:#111;color:#fff}
 .btn-carrito{width:100%;padding:13px;margin-top:15px}
-.btn-add{background:#111;color:#fff}
-.btn-add:disabled{opacity:.6}
 .cantidad{display:flex;align-items:center;gap:8px;margin-top:8px}
 .cantidad button{background:#eee}
+.cantidad button:disabled{opacity:.4}
 .vacio{text-align:center;padding:30px;color:#666}
 #carritoBar{position:sticky;bottom:15px;z-index:10}
 #btnCarrito{display:none}
-.msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h2 id="nombreNegocio">Cargando...</h2>
-  <div id="nombreLocal"></div>
+<h2 id="nombreNegocio">Cargando...</h2>
+<div id="nombreLocal"></div>
 </header>
 
 <main>
 
-<div id="mensaje" class="msg"></div>
-
 <section class="card" id="contenido"></section>
 
 <div id="carritoBar">
-  <button class="btn btn-carrito" id="btnCarrito">
-    Ver mi pedido
-  </button>
+<button class="btn btn-carrito" id="btnCarrito">
+Ver mi pedido
+</button>
 </div>
 
 </main>
@@ -65,8 +61,7 @@ let negocioActual=null;
 let local=null;
 let productos=[];
 let pedidoId=null;
-let colaAgregar=[];
-let procesandoCola=false;
+let procesando=false;
 
 const cantidades={};
 
@@ -76,8 +71,10 @@ const localId=params.get("id");
 async function iniciar(){
 
   if(!localId){
+
     $("contenido").innerHTML=
       '<div class="vacio">No se especificó el local.</div>';
+
     return;
   }
 
@@ -89,8 +86,9 @@ async function iniciar(){
     $("nombreNegocio").textContent=negocio.nombre;
 
     await cargarLocal();
-
     await cargarProductos();
+
+    await cargarCarritoActivo();
 
   }catch(e){
 
@@ -174,6 +172,45 @@ async function cargarProductos(){
   renderProductos();
 }
 
+async function cargarCarritoActivo(){
+
+  const {data,error}=await supabaseClient.rpc(
+    "obtener_carrito_activo",
+    {
+      p_cliente_id:negocioActual.id
+    }
+  );
+
+  if(error) throw error;
+
+  pedidoId=data||null;
+
+  if(pedidoId){
+
+    const {data:items,error:e}=await supabaseClient.rpc(
+      "obtener_carrito",
+      {
+        p_pedido_id:pedidoId
+      }
+    );
+
+    if(e) throw e;
+
+    (items||[]).forEach(item=>{
+
+      if(item.local_id===local.id){
+        cantidades[item.producto_id]=
+          Number(item.cantidad);
+      }
+
+    });
+
+    renderProductos();
+    actualizarBotonCarrito();
+
+  }
+}
+
 function renderProductos(){
 
   if(!productos.length){
@@ -238,57 +275,99 @@ function renderProductos(){
     `;
 
   }).join("");
-
 }
 
 async function cambiarCantidad(productoId,nuevaCantidad){
 
+  if(procesando) return;
+
   if(nuevaCantidad<0) return;
 
-  const actual=cantidades[productoId]||0;
+  const anterior=cantidades[productoId]||0;
 
-  if(nuevaCantidad===actual) return;
+  if(nuevaCantidad===anterior) return;
 
   cantidades[productoId]=nuevaCantidad;
 
   renderProductos();
 
-  const diferencia=nuevaCantidad-actual;
-
-  if(diferencia!==0){
-
-    colaAgregar.push({
-      productoId,
-      cantidad:diferencia
-    });
-
-    procesarCola();
-
-  }
-}
-
-async function procesarCola(){
-
-  if(procesandoCola) return;
-
-  procesandoCola=true;
+  procesando=true;
 
   try{
 
-    while(colaAgregar.length){
+    await asegurarCarrito();
 
-      const item=colaAgregar.shift();
+    const diferencia=nuevaCantidad-anterior;
 
-      await agregarProducto(
-        item.productoId,
-        item.cantidad
+    if(diferencia>0){
+
+      const {error}=await supabaseClient.rpc(
+        "agregar_al_carrito",
+        {
+          p_pedido_id:pedidoId,
+          p_producto_id:productoId,
+          p_cantidad:diferencia
+        }
       );
 
+      if(error) throw error;
+
+    }else{
+
+      const {data,error}=await supabaseClient.rpc(
+        "obtener_carrito",
+        {
+          p_pedido_id:pedidoId
+        }
+      );
+
+      if(error) throw error;
+
+      const item=(data||[]).find(
+        x=>x.producto_id===productoId
+      );
+
+      if(!item) return;
+
+      const cantidadFinal=
+        Number(item.cantidad)+diferencia;
+
+      if(cantidadFinal<=0){
+
+        const {error:e}=await supabaseClient.rpc(
+          "eliminar_del_carrito",
+          {
+            p_detalle_id:item.detalle_id
+          }
+        );
+
+        if(e) throw e;
+
+      }else{
+
+        const {error:e}=await supabaseClient.rpc(
+          "actualizar_cantidad_carrito",
+          {
+            p_detalle_id:item.detalle_id,
+            p_cantidad:cantidadFinal
+          }
+        );
+
+        if(e) throw e;
+
+      }
+
     }
+
+    actualizarBotonCarrito();
 
   }catch(e){
 
     console.error(e);
+
+    cantidades[productoId]=anterior;
+
+    renderProductos();
 
     alert(
       e.message||
@@ -297,17 +376,17 @@ async function procesarCola(){
 
   }finally{
 
-    procesandoCola=false;
+    procesando=false;
 
   }
 }
 
-async function obtenerOCrearCarrito(){
+async function asegurarCarrito(){
 
-  if(pedidoId) return pedidoId;
+  if(pedidoId) return;
 
   const {data,error}=await supabaseClient.rpc(
-    "crear_carrito",
+    "obtener_carrito_activo",
     {
       p_cliente_id:negocioActual.id
     }
@@ -315,112 +394,23 @@ async function obtenerOCrearCarrito(){
 
   if(error) throw error;
 
-  pedidoId=data;
+  if(data){
 
-  return pedidoId;
-}
-
-async function agregarProducto(productoId,cantidad){
-
-  const id=await obtenerOCrearCarrito();
-
-  if(cantidad>0){
-
-    const {error}=await supabaseClient.rpc(
-      "agregar_al_carrito",
-      {
-        p_pedido_id:id,
-        p_producto_id:productoId,
-        p_cantidad:cantidad
-      }
-    );
-
-    if(error) throw error;
-
-  }else{
-
-    await sincronizarCantidadProducto(
-      id,
-      productoId
-    );
+    pedidoId=data;
+    return;
 
   }
 
-  actualizarBotonCarrito();
-}
-
-async function sincronizarCantidadProducto(
-  pedidoId,
-  productoId
-){
-
-  const {data,error}=await supabaseClient.rpc(
-    "obtener_carrito",
+  const {data:nuevo,error:e}=await supabaseClient.rpc(
+    "crear_carrito",
     {
-      p_pedido_id:pedidoId
+      p_cliente_id:negocioActual.id
     }
   );
 
-  if(error) throw error;
+  if(e) throw e;
 
-  const item=(data||[]).find(
-    x=>x.producto_id===productoId
-  );
-
-  if(!item) return;
-
-  const cantidadDeseada=
-    cantidades[productoId]||0;
-
-  const diferencia=
-    cantidadDeseada-Number(item.cantidad);
-
-  if(diferencia===0) return;
-
-  if(diferencia>0){
-
-    const {error:e}=await supabaseClient.rpc(
-      "agregar_al_carrito",
-      {
-        p_pedido_id:pedidoId,
-        p_producto_id:productoId,
-        p_cantidad:diferencia
-      }
-    );
-
-    if(e) throw e;
-
-  }else{
-
-    const nuevaCantidad=
-      Number(item.cantidad)+diferencia;
-
-    if(nuevaCantidad<=0){
-
-      const {error:e}=await supabaseClient.rpc(
-        "eliminar_del_carrito",
-        {
-          p_detalle_id:item.detalle_id
-        }
-      );
-
-      if(e) throw e;
-
-    }else{
-
-      const {error:e}=await supabaseClient.rpc(
-        "actualizar_cantidad_carrito",
-        {
-          p_detalle_id:item.detalle_id,
-          p_cantidad:nuevaCantidad
-        }
-      );
-
-      if(e) throw e;
-
-    }
-
-  }
+  pedidoId=nuevo;
 }
 
 function actualizarBotonCarrito(){
@@ -428,7 +418,9 @@ function actualizarBotonCarrito(){
   if(!pedidoId) return;
 
   $("btnCarrito").style.display="block";
-  $("btnCarrito").textContent="Ver mi pedido";
+
+  $("btnCarrito").textContent=
+    "Ver mi pedido";
 
 }
 
