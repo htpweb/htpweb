@@ -29,7 +29,15 @@ h1{margin:5px 0 15px}
 .total strong{font-size:20px}
 .vacio{background:#fff;padding:35px;text-align:center;border-radius:14px;color:#777}
 .btn{width:100%;border:0;border-radius:10px;padding:13px;margin-top:15px;background:#e53935;color:#fff;font-weight:bold;font-size:16px;cursor:pointer}
+.formulario{background:#fff;border-radius:14px;padding:18px;margin-top:15px}
+.formulario h2{margin:0 0 15px}
+.campo{margin-bottom:13px}
+.campo label{display:block;font-weight:bold;font-size:14px;margin-bottom:6px}
+.campo input,.campo textarea{width:100%;border:1px solid #ddd;border-radius:9px;padding:11px;font:inherit}
+.campo textarea{min-height:85px;resize:vertical}
 .error{background:#fff;padding:25px;border-radius:14px;text-align:center;color:#c62828}
+.exito{background:#fff;padding:30px;border-radius:14px;text-align:center}
+.exito h2{color:#2e7d32}
 @media(max-width:600px){
 .item{align-items:flex-start;flex-direction:column}
 .controles{width:100%}
@@ -62,7 +70,6 @@ let carrito=[];
 let pedidoId=null;
 
 const params=new URLSearchParams(location.search);
-
 pedidoId=params.get("pedido");
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
@@ -86,7 +93,7 @@ negocio=await cargarNegocio();
 $("logo").textContent=negocio.nombre;
 
 $("volver").href=
-`local.html?cliente=${encodeURIComponent(negocio.slug)}`;
+`index.html?cliente=${encodeURIComponent(negocio.slug)}`;
 
 await cargarCarrito();
 
@@ -95,9 +102,7 @@ await cargarCarrito();
 console.error(e);
 
 $("contenido").innerHTML=
-`<div class="error">
-${esc(e.message||"No se pudo cargar el carrito.")}
-</div>`;
+`<div class="error">${esc(e.message||"No se pudo cargar el carrito.")}</div>`;
 }
 }
 
@@ -108,9 +113,8 @@ async function cargarCarrito(){
 
 const {data,error}=await supabaseClient.rpc(
 "obtener_carrito",
-{
-p_pedido_id:pedidoId
-});
+{p_pedido_id:pedidoId}
+);
 
 if(error)
 throw error;
@@ -128,9 +132,7 @@ function pintar(){
 if(!carrito.length){
 
 $("contenido").innerHTML=
-`<div class="vacio">
-Tu carrito está vacío.
-</div>`;
+`<div class="vacio">Tu carrito está vacío.</div>`;
 
 return;
 }
@@ -146,10 +148,7 @@ return `
 <article class="item">
 
 <div>
-<div class="nombre">
-${esc(item.nombre)}
-</div>
-
+<div class="nombre">${esc(item.nombre)}</div>
 <div class="precio">
 $${Number(item.precio||0).toFixed(2)} c/u
 </div>
@@ -157,29 +156,17 @@ $${Number(item.precio||0).toFixed(2)} c/u
 
 <div class="controles">
 
-<button
-onclick="cambiarCantidad(
-'${item.detalle_id}',
-${Number(item.cantidad)-1}
-)">
+<button onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)-1})">
 −
 </button>
 
-<span class="cantidad">
-${item.cantidad}
-</span>
+<span class="cantidad">${item.cantidad}</span>
 
-<button
-onclick="cambiarCantidad(
-'${item.detalle_id}',
-${Number(item.cantidad)+1}
-)">
+<button onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)+1})">
 +
 </button>
 
-<button
-class="eliminar"
-onclick="eliminarProducto('${item.detalle_id}')">
+<button class="eliminar" onclick="eliminarProducto('${item.detalle_id}')">
 Eliminar
 </button>
 
@@ -197,9 +184,7 @@ Eliminar
 <strong>$${total.toFixed(2)}</strong>
 </div>
 
-<button
-class="btn"
-onclick="continuarPedido()">
+<button class="btn" onclick="mostrarFormulario()">
 Continuar pedido
 </button>
 
@@ -208,16 +193,14 @@ Continuar pedido
 }
 
 
-/* CAMBIAR CANTIDAD */
+/* CANTIDAD */
 
 async function cambiarCantidad(detalleId,cantidad){
 
 try{
 
 if(cantidad<=0){
-
 await eliminarProducto(detalleId);
-
 return;
 }
 
@@ -237,10 +220,7 @@ await cargarCarrito();
 
 console.error(e);
 
-alert(
-e.message||
-"No se pudo actualizar la cantidad."
-);
+alert(e.message||"No se pudo actualizar la cantidad.");
 }
 }
 
@@ -266,21 +246,156 @@ await cargarCarrito();
 
 console.error(e);
 
+alert(e.message||"No se pudo eliminar el producto.");
+}
+}
+
+
+/* FORMULARIO */
+
+function mostrarFormulario(){
+
+$("contenido").innerHTML=`
+
+<section class="formulario">
+
+<h2>Datos del pedido</h2>
+
+<div class="campo">
+<label for="nombre">Nombre</label>
+<input
+id="nombre"
+type="text"
+autocomplete="name"
+placeholder="Tu nombre">
+</div>
+
+<div class="campo">
+<label for="telefono">Teléfono</label>
+<input
+id="telefono"
+type="tel"
+autocomplete="tel"
+placeholder="0989351622">
+</div>
+
+<div class="campo">
+<label for="direccion">Dirección</label>
+<input
+id="direccion"
+type="text"
+autocomplete="street-address"
+placeholder="Dirección de entrega">
+</div>
+
+<div class="campo">
+<label for="observaciones">Observaciones</label>
+<textarea
+id="observaciones"
+placeholder="Ej.: entregar en la puerta, sin cebolla, etc."></textarea>
+</div>
+
+<button
+class="btn"
+id="confirmar"
+onclick="confirmarPedido()">
+Confirmar pedido
+</button>
+
+</section>
+`;
+}
+
+
+/* CONFIRMAR */
+
+async function confirmarPedido(){
+
+const nombre=$("nombre").value.trim();
+const telefono=$("telefono").value.trim();
+const direccion=$("direccion").value.trim();
+const observaciones=$("observaciones").value.trim();
+
+if(!nombre){
+alert("Ingrese su nombre.");
+return;
+}
+
+if(!telefono){
+alert("Ingrese su teléfono.");
+return;
+}
+
+if(!direccion){
+alert("Ingrese la dirección de entrega.");
+return;
+}
+
+const boton=$("confirmar");
+
+boton.disabled=true;
+boton.textContent="Confirmando...";
+
+try{
+
+const {data,error}=await supabaseClient.rpc(
+"confirmar_pedido",
+{
+p_pedido_id:pedidoId,
+p_nombre:nombre,
+p_telefono:telefono,
+p_direccion:direccion,
+p_observaciones:observaciones||null
+});
+
+if(error)
+throw error;
+
+$("contenido").innerHTML=`
+
+<section class="exito">
+
+<h2>¡Pedido recibido!</h2>
+
+<p>
+Tu pedido fue registrado correctamente.
+</p>
+
+<p>
+<strong>Número de pedido:</strong><br>
+${esc(data)}
+</p>
+
+<button
+class="btn"
+onclick="volverInicio()">
+Volver al inicio
+</button>
+
+</section>
+`;
+
+}catch(e){
+
+console.error(e);
+
+boton.disabled=false;
+boton.textContent="Confirmar pedido";
+
 alert(
 e.message||
-"No se pudo eliminar el producto."
+"No se pudo confirmar el pedido."
 );
 }
 }
 
 
-/* CONTINUAR */
+/* INICIO */
 
-function continuarPedido(){
+function volverInicio(){
 
-alert(
-"El siguiente paso será completar los datos del pedido."
-);
+location.href=
+`index.html?cliente=${encodeURIComponent(negocio.slug)}`;
 }
 
 
