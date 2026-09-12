@@ -6,7 +6,7 @@ async function cargarNegocio(){
 
   if(!slug) throw new Error("No se especificó el cliente.");
 
-  const {data,error}=await supabase
+  const {data,error}=await supabaseClient
     .from("clientes")
     .select("id,nombre,slug,logo_url,activo")
     .eq("slug",slug)
