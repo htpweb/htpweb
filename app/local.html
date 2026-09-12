@@ -11,524 +11,448 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f5f5f5;color:#222;font-family:Arial,sans-serif}
-header{position:sticky;top:0;z-index:10;background:#111;color:#fff;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:19px;font-weight:bold}
-.back{color:#fff;text-decoration:none;font-size:14px}
-.cart{color:#fff;text-decoration:none;background:#e53935;padding:8px 12px;border-radius:20px;font-weight:bold;font-size:14px}
-main{max-width:1100px;margin:auto;padding:15px}
-.banner{width:100%;height:220px;border-radius:16px;overflow:hidden;background:#ddd;margin-bottom:15px}
-.banner img{width:100%;height:100%;object-fit:cover}
-.info{background:#fff;border-radius:15px;padding:16px;margin-bottom:18px}
-.info h1{margin:0 0 7px;font-size:24px}
-.info p{margin:0;color:#666;line-height:1.4}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-.producto{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.producto-img{width:100%;height:170px;background:#eee;overflow:hidden}
-.producto-img img{width:100%;height:100%;object-fit:cover}
-.producto-body{padding:13px}
-.producto h3{margin:0 0 6px;font-size:17px}
-.descripcion{color:#777;font-size:13px;min-height:34px;margin-bottom:9px}
-.precio{font-size:18px;font-weight:bold;margin-bottom:10px}
-.btn-agregar{width:100%;border:0;border-radius:9px;padding:11px;background:#e53935;color:#fff;font-weight:bold;cursor:pointer;font-size:15px}
-.btn-agregar:active{transform:scale(.98)}
-.contador-producto{display:none;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
-.contador-producto button{width:36px;height:36px;border:0;border-radius:9px;background:#eee;font-size:20px;cursor:pointer}
-.contador-producto span{flex:1;text-align:center;font-weight:bold;font-size:17px}
-.estado{background:#fff;border-radius:14px;padding:30px;text-align:center;color:#777}
-.error{color:#c62828}
-
-@media(max-width:600px){
-.banner{height:170px}
-.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.producto-img{height:130px}
-.producto-body{padding:10px}
-.producto h3{font-size:15px}
-.descripcion{font-size:12px}
-.precio{font-size:16px}
-.btn-agregar{font-size:13px;padding:10px}
-}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
+header{background:#111;color:#fff;padding:16px;text-align:center}
+main{max-width:700px;margin:auto;padding:15px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
+.banner{width:100%;height:220px;object-fit:cover;border-radius:10px}
+h2,h3{margin-top:0}
+.producto{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #eee}
+.producto:last-child{border-bottom:0}
+.producto img{width:90px;height:90px;object-fit:cover;border-radius:10px;background:#eee}
+.info{flex:1}
+.precio{font-weight:bold;font-size:18px;margin:8px 0}
+.descripcion{font-size:14px;color:#666}
+button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
+.btn{background:#111;color:#fff}
+.btn-carrito{width:100%;padding:13px;margin-top:15px}
+.btn-add{background:#111;color:#fff}
+.btn-add:disabled{opacity:.6}
+.cantidad{display:flex;align-items:center;gap:8px;margin-top:8px}
+.cantidad button{background:#eee}
+.vacio{text-align:center;padding:30px;color:#666}
+#carritoBar{position:sticky;bottom:15px;z-index:10}
+#btnCarrito{display:none}
+.msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
 </style>
 </head>
 
 <body>
 
 <header>
-<a class="back" id="volver" href="#">← Volver</a>
-<div class="logo" id="logo">Cargando...</div>
-<a class="cart" id="carrito" href="#">🛒 <span id="cartCount">0</span></a>
+  <h2 id="nombreNegocio">Cargando...</h2>
+  <div id="nombreLocal"></div>
 </header>
 
 <main>
 
-<section id="banner" class="banner" style="display:none"></section>
+<div id="mensaje" class="msg"></div>
 
-<section id="info" class="info">
-<h1 id="nombreLocal">Cargando...</h1>
-<p id="descripcionLocal"></p>
-</section>
+<section class="card" id="contenido"></section>
 
-<section id="contenido">
-<div class="estado">Cargando productos...</div>
-</section>
+<div id="carritoBar">
+  <button class="btn btn-carrito" id="btnCarrito">
+    Ver mi pedido
+  </button>
+</div>
 
 </main>
 
 <script>
-
 const $=id=>document.getElementById(id);
 
+let negocioActual=null;
 let local=null;
 let productos=[];
 let pedidoId=null;
 let colaAgregar=[];
 let procesandoCola=false;
+
 const cantidades={};
 
 const params=new URLSearchParams(location.search);
 const localId=params.get("id");
 
-const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
-"&":"&amp;",
-"<":"&lt;",
-">":"&gt;",
-'"':"&quot;",
-"'":"&#039;"
-}[m]));
-
 async function iniciar(){
 
-try{
+  if(!localId){
+    $("contenido").innerHTML=
+      '<div class="vacio">No se especificó el local.</div>';
+    return;
+  }
 
-if(!localId)
-throw new Error("No se especificó el local.");
+  try{
 
-negocio=await cargarNegocio();
+    negocio=await cargarNegocio();
+    negocioActual=negocio;
 
-$("logo").textContent=negocio.nombre;
+    $("nombreNegocio").textContent=negocio.nombre;
 
-$("volver").href=
-`index.html?cliente=${encodeURIComponent(negocio.slug)}`;
+    await cargarLocal();
 
-await cargarLocal();
-await cargarProductos();
-await actualizarContador();
+    await cargarProductos();
 
-}catch(e){
+  }catch(e){
 
-console.error(e);
+    console.error(e);
 
-$("contenido").innerHTML=
-`<div class="estado error">${esc(e.message||"No se pudo cargar el local.")}</div>`;
+    $("contenido").innerHTML=
+      '<div class="vacio">No se pudo cargar el local.</div>';
+
+  }
 }
-}
-
-
-/* LOCAL */
 
 async function cargarLocal(){
 
-const {data,error}=await supabaseClient
-.from("locales")
-.select("id,nombre,categoria,descripcion,banner_url,activo")
-.eq("id",localId)
-.eq("cliente_id",negocio.id)
-.eq("activo",true)
-.single();
+  const {data,error}=await supabaseClient
+    .from("locales")
+    .select(`
+      id,
+      nombre,
+      categoria,
+      descripcion,
+      banner_url
+    `)
+    .eq("id",localId)
+    .eq("cliente_id",negocioActual.id)
+    .eq("activo",true)
+    .single();
 
-if(error||!data)
-throw new Error("Local no encontrado.");
+  if(error||!data)
+    throw new Error("Local no encontrado.");
 
-local=data;
+  local=data;
 
-$("nombreLocal").textContent=local.nombre;
-$("descripcionLocal").textContent=local.descripcion||"";
+  $("nombreLocal").textContent=local.nombre;
 
-if(local.banner_url){
+  $("contenido").innerHTML=`
 
-$("banner").innerHTML=
-`<img src="${esc(local.banner_url)}" alt="${esc(local.nombre)}">`;
+    ${local.banner_url
+      ?`<img class="banner"
+          src="${escapeHtml(local.banner_url)}"
+          alt="${escapeHtml(local.nombre)}">`
+      :""
+    }
 
-$("banner").style.display="block";
+    <h2>${escapeHtml(local.nombre)}</h2>
+
+    ${local.descripcion
+      ?`<p class="descripcion">
+          ${escapeHtml(local.descripcion)}
+        </p>`
+      :""
+    }
+
+    <div id="productos">
+      <div class="vacio">Cargando productos...</div>
+    </div>
+
+  `;
 }
-}
-
-
-/* PRODUCTOS */
 
 async function cargarProductos(){
 
-const {data,error}=await supabaseClient
-.from("productos")
-.select("id,nombre,descripcion,precio,imagen_url,activo")
-.eq("cliente_id",negocio.id)
-.eq("local_id",local.id)
-.eq("activo",true)
-.order("nombre");
+  const {data,error}=await supabaseClient
+    .from("productos")
+    .select(`
+      id,
+      nombre,
+      descripcion,
+      precio,
+      imagen_url,
+      activo
+    `)
+    .eq("cliente_id",negocioActual.id)
+    .eq("local_id",local.id)
+    .eq("activo",true)
+    .order("nombre");
 
-if(error)
-throw error;
+  if(error) throw error;
 
-productos=data||[];
+  productos=data||[];
 
-pintarProductos();
+  renderProductos();
 }
 
+function renderProductos(){
 
-function pintarProductos(){
+  if(!productos.length){
 
-if(!productos.length){
+    $("productos").innerHTML=
+      '<div class="vacio">Este local no tiene productos disponibles.</div>';
 
-$("contenido").innerHTML=
-`<div class="estado">Este local no tiene productos disponibles.</div>`;
+    return;
+  }
 
-return;
+  $("productos").innerHTML=productos.map(p=>{
+
+    const cantidad=cantidades[p.id]||0;
+
+    return `
+
+      <div class="producto">
+
+        ${p.imagen_url
+          ?`<img
+              src="${escapeHtml(p.imagen_url)}"
+              alt="${escapeHtml(p.nombre)}">`
+          :""
+        }
+
+        <div class="info">
+
+          <strong>${escapeHtml(p.nombre)}</strong>
+
+          ${p.descripcion
+            ?`<div class="descripcion">
+                ${escapeHtml(p.descripcion)}
+              </div>`
+            :""
+          }
+
+          <div class="precio">
+            $${Number(p.precio).toFixed(2)}
+          </div>
+
+          <div class="cantidad">
+
+            <button
+              onclick="cambiarCantidad('${p.id}',${cantidad-1})"
+              ${cantidad<=0?"disabled":""}>
+              −
+            </button>
+
+            <strong>${cantidad}</strong>
+
+            <button
+              onclick="cambiarCantidad('${p.id}',${cantidad+1})">
+              +
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join("");
+
 }
 
-$("contenido").innerHTML=
-`<div class="grid">${productos.map(p=>productoHTML(p)).join("")}</div>`;
+async function cambiarCantidad(productoId,nuevaCantidad){
+
+  if(nuevaCantidad<0) return;
+
+  const actual=cantidades[productoId]||0;
+
+  if(nuevaCantidad===actual) return;
+
+  cantidades[productoId]=nuevaCantidad;
+
+  renderProductos();
+
+  const diferencia=nuevaCantidad-actual;
+
+  if(diferencia!==0){
+
+    colaAgregar.push({
+      productoId,
+      cantidad:diferencia
+    });
+
+    procesarCola();
+
+  }
 }
-
-
-function productoHTML(p){
-
-const cantidad=cantidades[p.id]||0;
-
-return `
-<article class="producto">
-
-<div class="producto-img">
-${p.imagen_url
-?`<img src="${esc(p.imagen_url)}" alt="${esc(p.nombre)}">`
-:""}
-</div>
-
-<div class="producto-body">
-
-<h3>${esc(p.nombre)}</h3>
-
-<div class="descripcion">
-${esc(p.descripcion||"")}
-</div>
-
-<div class="precio">
-$${Number(p.precio||0).toFixed(2)}
-</div>
-
-<button
-class="btn-agregar"
-id="agregar-${p.id}"
-onclick="agregarProducto('${p.id}')"
-${cantidad>0?'style="display:none"':''}>
-Agregar
-</button>
-
-<div
-class="contador-producto"
-id="contador-${p.id}"
-style="${cantidad>0?'display:flex':'display:none'}">
-
-<button onclick="quitarProducto('${p.id}')">−</button>
-
-<span id="cantidad-${p.id}">${cantidad}</span>
-
-<button onclick="agregarProducto('${p.id}')">+</button>
-
-</div>
-
-</div>
-</article>`;
-}
-
-
-/* CREAR CARRITO */
-
-async function crearCarrito(){
-
-if(pedidoId)
-return pedidoId;
-
-const {data,error}=await supabaseClient.rpc(
-"crear_carrito",
-{
-p_cliente_id:negocio.id,
-p_local_id:local.id
-});
-
-if(error)
-throw error;
-
-pedidoId=data;
-
-actualizarEnlaceCarrito();
-
-return pedidoId;
-}
-
-
-/* AGREGAR */
-
-function agregarProducto(productoId){
-
-cantidades[productoId]=
-(cantidades[productoId]||0)+1;
-
-actualizarVistaProducto(productoId);
-actualizarContadorVisual();
-
-colaAgregar.push(productoId);
-
-procesarCola();
-}
-
-
-/* PROCESAR CLICS */
 
 async function procesarCola(){
 
-if(procesandoCola)
-return;
+  if(procesandoCola) return;
 
-procesandoCola=true;
+  procesandoCola=true;
 
-try{
+  try{
 
-while(colaAgregar.length){
+    while(colaAgregar.length){
 
-const productoId=colaAgregar.shift();
+      const item=colaAgregar.shift();
 
-const id=await crearCarrito();
+      await agregarProducto(
+        item.productoId,
+        item.cantidad
+      );
 
-const {error}=await supabaseClient.rpc(
-"agregar_al_carrito",
-{
-p_pedido_id:id,
-p_producto_id:productoId,
-p_cantidad:1
-});
+    }
 
-if(error)
-throw error;
+  }catch(e){
+
+    console.error(e);
+
+    alert(
+      e.message||
+      "No se pudo actualizar el pedido."
+    );
+
+  }finally{
+
+    procesandoCola=false;
+
+  }
 }
 
-}catch(e){
+async function obtenerOCrearCarrito(){
 
-console.error(e);
+  if(pedidoId) return pedidoId;
 
-alert(
-e.message||
-"No se pudo agregar el producto."
-);
+  const {data,error}=await supabaseClient.rpc(
+    "crear_carrito",
+    {
+      p_cliente_id:negocioActual.id
+    }
+  );
 
-await sincronizarCarrito();
+  if(error) throw error;
 
-}finally{
+  pedidoId=data;
 
-procesandoCola=false;
-}
-}
-
-
-/* QUITAR */
-
-async function quitarProducto(productoId){
-
-const cantidadActual=cantidades[productoId]||0;
-
-if(cantidadActual<=0)
-return;
-
-cantidades[productoId]=cantidadActual-1;
-
-actualizarVistaProducto(productoId);
-actualizarContadorVisual();
-
-try{
-
-if(!pedidoId)
-return;
-
-const {data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{p_pedido_id:pedidoId}
-);
-
-if(error)
-throw error;
-
-const detalle=(data||[]).find(
-x=>x.producto_id===productoId
-);
-
-if(!detalle)
-return;
-
-if(detalle.cantidad<=1){
-
-const {error:err}=await supabaseClient.rpc(
-"eliminar_del_carrito",
-{
-p_detalle_id:detalle.detalle_id
-});
-
-if(err)
-throw err;
-
-}else{
-
-const {error:err}=await supabaseClient.rpc(
-"actualizar_cantidad_carrito",
-{
-p_detalle_id:detalle.detalle_id,
-p_cantidad:detalle.cantidad-1
-});
-
-if(err)
-throw err;
+  return pedidoId;
 }
 
-}catch(e){
+async function agregarProducto(productoId,cantidad){
 
-console.error(e);
+  const id=await obtenerOCrearCarrito();
 
-await sincronizarCarrito();
+  if(cantidad>0){
 
-alert(
-e.message||
-"No se pudo actualizar el carrito."
-);
-}
-}
+    const {error}=await supabaseClient.rpc(
+      "agregar_al_carrito",
+      {
+        p_pedido_id:id,
+        p_producto_id:productoId,
+        p_cantidad:cantidad
+      }
+    );
 
+    if(error) throw error;
 
-/* ACTUALIZAR VISTA */
+  }else{
 
-function actualizarVistaProducto(productoId){
+    await sincronizarCantidadProducto(
+      id,
+      productoId
+    );
 
-const cantidad=cantidades[productoId]||0;
+  }
 
-const boton=$(`agregar-${productoId}`);
-const contador=$(`contador-${productoId}`);
-const texto=$(`cantidad-${productoId}`);
-
-if(!boton||!contador||!texto)
-return;
-
-texto.textContent=cantidad;
-
-if(cantidad>0){
-
-boton.style.display="none";
-contador.style.display="flex";
-
-}else{
-
-boton.style.display="block";
-contador.style.display="none";
-}
+  actualizarBotonCarrito();
 }
 
+async function sincronizarCantidadProducto(
+  pedidoId,
+  productoId
+){
 
-/* CONTADOR */
+  const {data,error}=await supabaseClient.rpc(
+    "obtener_carrito",
+    {
+      p_pedido_id:pedidoId
+    }
+  );
 
-function actualizarContadorVisual(){
+  if(error) throw error;
 
-let total=0;
+  const item=(data||[]).find(
+    x=>x.producto_id===productoId
+  );
 
-Object.values(cantidades).forEach(c=>{
-total+=Number(c)||0;
-});
+  if(!item) return;
 
-$("cartCount").textContent=total;
+  const cantidadDeseada=
+    cantidades[productoId]||0;
 
-actualizarEnlaceCarrito();
+  const diferencia=
+    cantidadDeseada-Number(item.cantidad);
+
+  if(diferencia===0) return;
+
+  if(diferencia>0){
+
+    const {error:e}=await supabaseClient.rpc(
+      "agregar_al_carrito",
+      {
+        p_pedido_id:pedidoId,
+        p_producto_id:productoId,
+        p_cantidad:diferencia
+      }
+    );
+
+    if(e) throw e;
+
+  }else{
+
+    const nuevaCantidad=
+      Number(item.cantidad)+diferencia;
+
+    if(nuevaCantidad<=0){
+
+      const {error:e}=await supabaseClient.rpc(
+        "eliminar_del_carrito",
+        {
+          p_detalle_id:item.detalle_id
+        }
+      );
+
+      if(e) throw e;
+
+    }else{
+
+      const {error:e}=await supabaseClient.rpc(
+        "actualizar_cantidad_carrito",
+        {
+          p_detalle_id:item.detalle_id,
+          p_cantidad:nuevaCantidad
+        }
+      );
+
+      if(e) throw e;
+
+    }
+
+  }
 }
 
+function actualizarBotonCarrito(){
 
-async function actualizarContador(){
+  if(!pedidoId) return;
 
-if(!pedidoId){
+  $("btnCarrito").style.display="block";
+  $("btnCarrito").textContent="Ver mi pedido";
 
-actualizarContadorVisual();
-
-return;
 }
 
-await sincronizarCarrito();
+$("btnCarrito").onclick=()=>{
+
+  if(!pedidoId) return;
+
+  location.href=
+    `carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+
+};
+
+function escapeHtml(text){
+
+  return String(text??"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
 }
-
-
-async function sincronizarCarrito(){
-
-if(!pedidoId)
-return;
-
-const {data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{p_pedido_id:pedidoId}
-);
-
-if(error)
-throw error;
-
-Object.keys(cantidades).forEach(
-id=>delete cantidades[id]
-);
-
-(data||[]).forEach(item=>{
-
-cantidades[item.producto_id]=
-Number(item.cantidad)||0;
-
-});
-
-actualizarContadorVisual();
-
-productos.forEach(p=>{
-actualizarVistaProducto(p.id);
-});
-}
-
-
-/* ENLACE */
-
-function actualizarEnlaceCarrito(){
-
-if(!pedidoId){
-
-$("carrito").href="#";
-
-return;
-}
-
-$("carrito").href=
-`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocio.slug)}`;
-}
-
-
-/* CARRITO */
-
-$("carrito").addEventListener(
-"click",
-e=>{
-
-e.preventDefault();
-
-if(!pedidoId){
-
-alert("Tu carrito está vacío.");
-
-return;
-}
-
-location.href=
-`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocio.slug)}`;
-
-});
-
 
 iniciar();
-
 </script>
 
 </body>
