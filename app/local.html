@@ -5,26 +5,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cargando...</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f5f5f5;color:#222;font-family:Arial,sans-serif}
 header{background:#111;color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
-.logo{font-size:20px;font-weight:bold}.logo span{color:#e53935}
-.back{color:#fff;text-decoration:none}.cart{background:#e53935;color:#fff;text-decoration:none;padding:9px 13px;border-radius:9px;font-weight:bold}
+.logo{font-size:20px;font-weight:bold}
+.logo span{color:#e53935}
+.back{color:#fff;text-decoration:none}
+.cart{background:#e53935;color:#fff;text-decoration:none;padding:9px 13px;border-radius:9px;font-weight:bold}
 main{max-width:900px;margin:auto;padding:15px}
 .banner{height:240px;background:#ddd;border-radius:16px;overflow:hidden}
 .banner img{width:100%;height:100%;object-fit:cover}
 .info{background:#fff;margin-top:12px;padding:18px;border-radius:15px}
 .categoria{color:#e53935;font-size:13px;font-weight:bold}
-.info h1{margin:5px 0}.desc{color:#666}
+.info h1{margin:5px 0}
+.desc{color:#666}
 .productos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:15px}
 .producto{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 2px 8px #0001}
 .prodimg{height:150px;background:#eee}
 .prodimg img{width:100%;height:100%;object-fit:cover}
-.pinfo{padding:14px}.pinfo h3{margin:0 0 5px}
+.pinfo{padding:14px}
+.pinfo h3{margin:0 0 5px}
 .pdesc{font-size:14px;color:#666;min-height:34px}
 .precio{font-size:18px;font-weight:bold;margin:10px 0}
 .btn{width:100%;border:0;border-radius:9px;padding:11px;background:#e53935;color:#fff;font-weight:bold;cursor:pointer}
@@ -32,7 +38,8 @@ main{max-width:900px;margin:auto;padding:15px}
 .vacio{text-align:center;background:#fff;padding:25px;border-radius:14px;color:#777}
 .error{max-width:600px;margin:60px auto;padding:25px;background:#fff;border-radius:15px;text-align:center}
 @media(max-width:600px){
- main{padding:12px}.banner{height:200px}
+ main{padding:12px}
+ .banner{height:200px}
 }
 </style>
 </head>
@@ -40,9 +47,19 @@ main{max-width:900px;margin:auto;padding:15px}
 <body>
 
 <header>
-<a class="back" id="volver" href="#">← Volver</a>
-<div class="logo" id="logo">Cargando...</div>
-<a class="cart" id="carrito" href="#">🛒 <span id="cartCount">0</span></a>
+
+<a class="back" id="volver" href="#">
+← Volver
+</a>
+
+<div class="logo" id="logo">
+Cargando...
+</div>
+
+<a class="cart" id="carrito" href="#">
+🛒 <span id="cartCount">0</span>
+</a>
+
 </header>
 
 <main id="app">
@@ -50,6 +67,7 @@ main{max-width:900px;margin:auto;padding:15px}
 </main>
 
 <script>
+
 const $=id=>document.getElementById(id);
 
 let local=null;
@@ -67,41 +85,52 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
 "'":"&#039;"
 }[m]));
 
+
 async function cargarLocal(){
 
  try{
 
-  if(!localId)throw Error("Local no válido.");
+  if(!localId)
+    throw Error("Local no válido.");
 
   const negocioActual=await cargarNegocio();
 
   $("logo").textContent=negocioActual.nombre;
+
   document.title=`Local | ${negocioActual.nombre}`;
 
   $("volver").href=
     `index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
+
   const localRes=await supabaseClient
     .from("locales")
-    .select("id,cliente_id,nombre,categoria,descripcion,banner_url,activo")
+    .select(
+      "id,cliente_id,nombre,categoria,descripcion,banner_url,activo"
+    )
     .eq("id",localId)
     .eq("cliente_id",negocioActual.id)
     .eq("activo",true)
     .single();
 
-  if(localRes.error)throw localRes.error;
+  if(localRes.error)
+    throw localRes.error;
 
   local=localRes.data;
 
+
   const productosRes=await supabaseClient
     .from("productos")
-    .select("id,cliente_id,local_id,categoria_id,nombre,descripcion,precio,imagen_url,activo")
+    .select(
+      "id,cliente_id,local_id,categoria_id,nombre,descripcion,precio,imagen_url,activo"
+    )
     .eq("cliente_id",negocioActual.id)
     .eq("local_id",local.id)
     .eq("activo",true)
     .order("nombre");
 
-  if(productosRes.error)throw productosRes.error;
+  if(productosRes.error)
+    throw productosRes.error;
 
   productos=productosRes.data||[];
 
@@ -112,47 +141,73 @@ async function cargarLocal(){
   console.error(e);
 
   $("app").innerHTML=
-    `<div class="error">${esc(e.message||"No se pudo cargar el local.")}</div>`;
+    `<div class="error">${esc(
+      e.message||"No se pudo cargar el local."
+    )}</div>`;
  }
 }
+
 
 function pintar(){
 
  $("app").innerHTML=`
 
  <div class="banner">
+
    ${
     local.banner_url
-    ?`<img src="${esc(local.banner_url)}?v=${Date.now()}" alt="${esc(local.nombre)}">`
+    ?`
+      <img
+        src="${esc(local.banner_url)}?v=${Date.now()}"
+        alt="${esc(local.nombre)}">
+     `
     :""
    }
+
  </div>
+
 
  <section class="info">
 
    ${
     local.categoria
-    ?`<div class="categoria">${esc(local.categoria)}</div>`
+    ?`
+      <div class="categoria">
+        ${esc(local.categoria)}
+      </div>
+     `
     :""
    }
 
-   <h1>${esc(local.nombre)}</h1>
+   <h1>
+     ${esc(local.nombre)}
+   </h1>
 
    ${
     local.descripcion
-    ?`<div class="desc">${esc(local.descripcion)}</div>`
+    ?`
+      <div class="desc">
+        ${esc(local.descripcion)}
+      </div>
+     `
     :""
    }
 
  </section>
 
+
  <h2>Productos</h2>
 
- <section id="productos" class="productos"></section>
+ <section
+   id="productos"
+   class="productos">
+ </section>
+
  `;
 
  pintarProductos();
 }
+
 
 function pintarProductos(){
 
@@ -163,16 +218,25 @@ function pintarProductos(){
  <article class="producto">
 
    <div class="prodimg">
+
      ${
       p.imagen_url
-      ?`<img src="${esc(p.imagen_url)}?v=${Date.now()}" alt="${esc(p.nombre)}">`
+      ?`
+        <img
+          src="${esc(p.imagen_url)}?v=${Date.now()}"
+          alt="${esc(p.nombre)}">
+       `
       :""
      }
+
    </div>
+
 
    <div class="pinfo">
 
-     <h3>${esc(p.nombre)}</h3>
+     <h3>
+       ${esc(p.nombre)}
+     </h3>
 
      <div class="pdesc">
        ${esc(p.descripcion||"")}
@@ -186,7 +250,9 @@ function pintarProductos(){
        class="btn"
        id="btn-${p.id}"
        onclick="agregarProducto('${p.id}')">
+
        Agregar
+
      </button>
 
    </div>
@@ -195,12 +261,18 @@ function pintarProductos(){
 
  `).join("")
 
- :'<div class="vacio">Este local no tiene productos disponibles.</div>';
+ :`
+   <div class="vacio">
+     Este local no tiene productos disponibles.
+   </div>
+ `;
 }
+
 
 async function crearCarrito(){
 
- if(pedidoId)return pedidoId;
+ if(pedidoId)
+   return pedidoId;
 
  const negocioActual=negocio;
 
@@ -212,18 +284,39 @@ async function crearCarrito(){
    }
  );
 
- if(error)throw error;
+ if(error)
+   throw error;
 
  pedidoId=data;
+
+ actualizarEnlaceCarrito();
 
  return pedidoId;
 }
 
+
+function actualizarEnlaceCarrito(){
+
+ if(!pedidoId){
+
+   $("carrito").href="#";
+
+   return;
+ }
+
+ $("carrito").href=
+   `carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocio.slug)}`;
+}
+
+
 async function agregarProducto(id){
 
- const producto=productos.find(p=>p.id===id);
+ const producto=productos.find(
+   p=>p.id===id
+ );
 
- if(!producto)return;
+ if(!producto)
+   return;
 
  const btn=$(`btn-${id}`);
 
@@ -232,7 +325,9 @@ async function agregarProducto(id){
   btn.disabled=true;
   btn.textContent="Agregando...";
 
+
   const carritoId=await crearCarrito();
+
 
   const {error}=await supabaseClient.rpc(
     "agregar_al_carrito",
@@ -243,16 +338,24 @@ async function agregarProducto(id){
     }
   );
 
-  if(error)throw error;
+
+  if(error)
+    throw error;
+
 
   await actualizarContador();
 
+
   btn.textContent="Agregado ✓";
 
+
   setTimeout(()=>{
+
     btn.disabled=false;
     btn.textContent="Agregar";
+
   },700);
+
 
  }catch(e){
 
@@ -261,46 +364,76 @@ async function agregarProducto(id){
   btn.disabled=false;
   btn.textContent="Agregar";
 
-  alert(e.message||"No se pudo agregar el producto.");
+  alert(
+    e.message||
+    "No se pudo agregar el producto."
+  );
  }
 }
+
 
 async function actualizarContador(){
 
  if(!pedidoId){
+
    $("cartCount").textContent="0";
+
+   actualizarEnlaceCarrito();
+
    return;
  }
+
 
  const {data,error}=await supabaseClient.rpc(
    "obtener_carrito",
-   {p_pedido_id:pedidoId}
+   {
+     p_pedido_id:pedidoId
+   }
  );
+
 
  if(error){
+
    console.error(error);
+
    return;
  }
+
 
  const cantidad=(data||[]).reduce(
-   (total,item)=>total+Number(item.cantidad||0),0
+   (total,item)=>
+     total+Number(item.cantidad||0),
+   0
  );
 
+
  $("cartCount").textContent=cantidad;
+
+ actualizarEnlaceCarrito();
 }
 
-$("carrito").addEventListener("click",e=>{
- e.preventDefault();
 
- if(!pedidoId){
-   alert("Tu carrito está vacío.");
-   return;
+$("carrito").addEventListener(
+ "click",
+ e=>{
+
+  if(!pedidoId){
+
+    e.preventDefault();
+
+    alert("Tu carrito está vacío.");
+
+    return;
+  }
+
+  actualizarEnlaceCarrito();
+
  }
+);
 
- alert("Carrito creado correctamente. La pantalla del carrito será el siguiente paso.");
-});
 
 cargarLocal();
+
 </script>
 
 </body>
