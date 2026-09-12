@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -27,11 +28,11 @@ main{max-width:900px;margin:auto;padding:15px}
 .pdesc{font-size:14px;color:#666;min-height:34px}
 .precio{font-size:18px;font-weight:bold;margin:10px 0}
 .btn{width:100%;border:0;border-radius:9px;padding:11px;background:#e53935;color:#fff;font-weight:bold;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:wait}
 .vacio{text-align:center;background:#fff;padding:25px;border-radius:14px;color:#777}
 .error{max-width:600px;margin:60px auto;padding:25px;background:#fff;border-radius:15px;text-align:center}
 @media(max-width:600px){
- main{padding:12px}
- .banner{height:200px}
+ main{padding:12px}.banner{height:200px}
 }
 </style>
 </head>
@@ -53,6 +54,7 @@ const $=id=>document.getElementById(id);
 
 let local=null;
 let productos=[];
+let pedidoId=null;
 
 const params=new URLSearchParams(location.search);
 const localId=params.get("id");
@@ -161,13 +163,11 @@ function pintarProductos(){
  <article class="producto">
 
    <div class="prodimg">
-
      ${
       p.imagen_url
       ?`<img src="${esc(p.imagen_url)}?v=${Date.now()}" alt="${esc(p.nombre)}">`
       :""
      }
-
    </div>
 
    <div class="pinfo">
@@ -182,7 +182,10 @@ function pintarProductos(){
        $${Number(p.precio||0).toFixed(2)}
      </div>
 
-     <button class="btn" onclick="agregarProducto('${p.id}')">
+     <button
+       class="btn"
+       id="btn-${p.id}"
+       onclick="agregarProducto('${p.id}')">
        Agregar
      </button>
 
@@ -195,17 +198,111 @@ function pintarProductos(){
  :'<div class="vacio">Este local no tiene productos disponibles.</div>';
 }
 
-function agregarProducto(id){
+async function crearCarrito(){
+
+ if(pedidoId)return pedidoId;
+
+ const negocioActual=negocio;
+
+ const {data,error}=await supabaseClient.rpc(
+   "crear_carrito",
+   {
+     p_cliente_id:negocioActual.id,
+     p_local_id:local.id
+   }
+ );
+
+ if(error)throw error;
+
+ pedidoId=data;
+
+ return pedidoId;
+}
+
+async function agregarProducto(id){
 
  const producto=productos.find(p=>p.id===id);
 
  if(!producto)return;
 
- alert(`${producto.nombre} seleccionado. El carrito se configurará en el siguiente paso.`);
+ const btn=$(`btn-${id}`);
+
+ try{
+
+  btn.disabled=true;
+  btn.textContent="Agregando...";
+
+  const carritoId=await crearCarrito();
+
+  const {error}=await supabaseClient.rpc(
+    "agregar_al_carrito",
+    {
+      p_pedido_id:carritoId,
+      p_producto_id:id,
+      p_cantidad:1
+    }
+  );
+
+  if(error)throw error;
+
+  await actualizarContador();
+
+  btn.textContent="Agregado ✓";
+
+  setTimeout(()=>{
+    btn.disabled=false;
+    btn.textContent="Agregar";
+  },700);
+
+ }catch(e){
+
+  console.error(e);
+
+  btn.disabled=false;
+  btn.textContent="Agregar";
+
+  alert(e.message||"No se pudo agregar el producto.");
+ }
 }
+
+async function actualizarContador(){
+
+ if(!pedidoId){
+   $("cartCount").textContent="0";
+   return;
+ }
+
+ const {data,error}=await supabaseClient.rpc(
+   "obtener_carrito",
+   {p_pedido_id:pedidoId}
+ );
+
+ if(error){
+   console.error(error);
+   return;
+ }
+
+ const cantidad=(data||[]).reduce(
+   (total,item)=>total+Number(item.cantidad||0),0
+ );
+
+ $("cartCount").textContent=cantidad;
+}
+
+$("carrito").addEventListener("click",e=>{
+ e.preventDefault();
+
+ if(!pedidoId){
+   alert("Tu carrito está vacío.");
+   return;
+ }
+
+ alert("Carrito creado correctamente. La pantalla del carrito será el siguiente paso.");
+});
 
 cargarLocal();
 </script>
 
 </body>
 </html>
+```
