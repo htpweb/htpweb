@@ -1,10 +1,10 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Carrito</title>
+<title>Mi carrito</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
@@ -30,6 +30,10 @@ h1{margin:5px 0 15px}
 .vacio{background:#fff;padding:35px;text-align:center;border-radius:14px;color:#777}
 .btn{width:100%;border:0;border-radius:10px;padding:13px;margin-top:15px;background:#e53935;color:#fff;font-weight:bold;font-size:16px;cursor:pointer}
 .error{background:#fff;padding:25px;border-radius:14px;text-align:center;color:#c62828}
+@media(max-width:600px){
+.item{align-items:flex-start;flex-direction:column}
+.controles{width:100%}
+}
 </style>
 </head>
 
@@ -51,13 +55,14 @@ h1{margin:5px 0 15px}
 </main>
 
 <script>
+
 const $=id=>document.getElementById(id);
 
-let negocio=null;
 let carrito=[];
 let pedidoId=null;
 
 const params=new URLSearchParams(location.search);
+
 pedidoId=params.get("pedido");
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
@@ -68,169 +73,220 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
 "'":"&#039;"
 }[m]));
 
+
 async function iniciar(){
 
- try{
+try{
 
-  if(!pedidoId)
-    throw Error("No se especificó el carrito.");
+if(!pedidoId)
+throw new Error("No se especificó el carrito.");
 
-  negocio=await cargarNegocio();
+negocio=await cargarNegocio();
 
-  $("logo").textContent=negocio.nombre;
+$("logo").textContent=negocio.nombre;
 
-  $("volver").href=
-    `index.html?cliente=${encodeURIComponent(negocio.slug)}`;
+$("volver").href=
+`local.html?cliente=${encodeURIComponent(negocio.slug)}`;
 
-  await cargarCarrito();
+await cargarCarrito();
 
- }catch(e){
+}catch(e){
 
-  console.error(e);
+console.error(e);
 
-  $("contenido").innerHTML=
-    `<div class="error">${esc(e.message||"No se pudo cargar el carrito.")}</div>`;
- }
+$("contenido").innerHTML=
+`<div class="error">
+${esc(e.message||"No se pudo cargar el carrito.")}
+</div>`;
 }
+}
+
+
+/* CARGAR CARRITO */
 
 async function cargarCarrito(){
 
- const {data,error}=await supabaseClient.rpc(
-   "obtener_carrito",
-   {p_pedido_id:pedidoId}
- );
+const {data,error}=await supabaseClient.rpc(
+"obtener_carrito",
+{
+p_pedido_id:pedidoId
+});
 
- if(error)throw error;
+if(error)
+throw error;
 
- carrito=data||[];
+carrito=data||[];
 
- pintar();
+pintar();
 }
+
+
+/* PINTAR */
 
 function pintar(){
 
- if(!carrito.length){
+if(!carrito.length){
 
-  $("contenido").innerHTML=
-    `<div class="vacio">
-      Tu carrito está vacío.
-    </div>`;
+$("contenido").innerHTML=
+`<div class="vacio">
+Tu carrito está vacío.
+</div>`;
 
-  return;
- }
-
- let total=0;
-
- $("contenido").innerHTML=carrito.map(item=>{
-
-   total+=Number(item.subtotal||0);
-
-   return `
-   <article class="item">
-
-    <div>
-      <div class="nombre">${esc(item.nombre)}</div>
-      <div class="precio">
-        $${Number(item.precio||0).toFixed(2)} c/u
-      </div>
-    </div>
-
-    <div class="controles">
-
-      <button onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)-1})">
-        −
-      </button>
-
-      <span class="cantidad">${item.cantidad}</span>
-
-      <button onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)+1})">
-        +
-      </button>
-
-      <button
-        class="eliminar"
-        onclick="eliminarProducto('${item.detalle_id}')">
-        Eliminar
-      </button>
-
-    </div>
-
-   </article>
-   `;
- }).join("")+
-
- `<section class="total">
-
-   <div>
-     <span>Subtotal</span>
-     <strong>$${total.toFixed(2)}</strong>
-   </div>
-
-   <button class="btn" onclick="continuarPedido()">
-     Continuar pedido
-   </button>
-
- </section>`;
+return;
 }
+
+let total=0;
+
+$("contenido").innerHTML=
+carrito.map(item=>{
+
+total+=Number(item.subtotal||0);
+
+return `
+<article class="item">
+
+<div>
+<div class="nombre">
+${esc(item.nombre)}
+</div>
+
+<div class="precio">
+$${Number(item.precio||0).toFixed(2)} c/u
+</div>
+</div>
+
+<div class="controles">
+
+<button
+onclick="cambiarCantidad(
+'${item.detalle_id}',
+${Number(item.cantidad)-1}
+)">
+−
+</button>
+
+<span class="cantidad">
+${item.cantidad}
+</span>
+
+<button
+onclick="cambiarCantidad(
+'${item.detalle_id}',
+${Number(item.cantidad)+1}
+)">
++
+</button>
+
+<button
+class="eliminar"
+onclick="eliminarProducto('${item.detalle_id}')">
+Eliminar
+</button>
+
+</div>
+
+</article>`;
+
+}).join("")+
+
+`
+<section class="total">
+
+<div>
+<span>Subtotal</span>
+<strong>$${total.toFixed(2)}</strong>
+</div>
+
+<button
+class="btn"
+onclick="continuarPedido()">
+Continuar pedido
+</button>
+
+</section>
+`;
+}
+
+
+/* CAMBIAR CANTIDAD */
 
 async function cambiarCantidad(detalleId,cantidad){
 
- try{
+try{
 
-  if(cantidad<=0){
-    await eliminarProducto(detalleId);
-    return;
-  }
+if(cantidad<=0){
 
-  const {error}=await supabaseClient.rpc(
-    "actualizar_cantidad_carrito",
-    {
-      p_detalle_id:detalleId,
-      p_cantidad:cantidad
-    }
-  );
+await eliminarProducto(detalleId);
 
-  if(error)throw error;
-
-  await cargarCarrito();
-
- }catch(e){
-
-  console.error(e);
-  alert(e.message||"No se pudo actualizar la cantidad.");
- }
+return;
 }
+
+const {error}=await supabaseClient.rpc(
+"actualizar_cantidad_carrito",
+{
+p_detalle_id:detalleId,
+p_cantidad:cantidad
+});
+
+if(error)
+throw error;
+
+await cargarCarrito();
+
+}catch(e){
+
+console.error(e);
+
+alert(
+e.message||
+"No se pudo actualizar la cantidad."
+);
+}
+}
+
+
+/* ELIMINAR */
 
 async function eliminarProducto(detalleId){
 
- try{
+try{
 
-  const {error}=await supabaseClient.rpc(
-    "eliminar_del_carrito",
-    {
-      p_detalle_id:detalleId
-    }
-  );
+const {error}=await supabaseClient.rpc(
+"eliminar_del_carrito",
+{
+p_detalle_id:detalleId
+});
 
-  if(error)throw error;
+if(error)
+throw error;
 
-  await cargarCarrito();
+await cargarCarrito();
 
- }catch(e){
+}catch(e){
 
-  console.error(e);
-  alert(e.message||"No se pudo eliminar el producto.");
- }
+console.error(e);
+
+alert(
+e.message||
+"No se pudo eliminar el producto."
+);
 }
+}
+
+
+/* CONTINUAR */
 
 function continuarPedido(){
 
- alert("El siguiente paso será completar los datos del pedido.");
+alert(
+"El siguiente paso será completar los datos del pedido."
+);
 }
 
+
 iniciar();
+
 </script>
 
 </body>
 </html>
-```
