@@ -20,6 +20,9 @@ header{background:#111;color:#fff;padding:16px;text-align:center}
 main{max-width:700px;margin:auto;padding:15px}
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
 h2,h3{margin-top:0}
+.local{border:1px solid #eee;border-radius:10px;margin-bottom:15px;padding:12px}
+.local:last-child{margin-bottom:0}
+.local-titulo{font-size:17px;font-weight:bold;margin-bottom:8px}
 .item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
 .item:last-child{border-bottom:0}
 .item-info{flex:1}
@@ -29,9 +32,14 @@ button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bo
 .btn{background:#111;color:#fff;width:100%;padding:13px}
 .btn-sec{background:#eee}
 .btn-danger{background:#e53935;color:#fff}
+.btn-aceptar{background:#2e7d32;color:#fff;width:100%;margin-top:8px}
+button:disabled{opacity:.6;cursor:not-allowed}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;margin-top:6px;margin-bottom:12px;font-size:15px}
 textarea{resize:vertical}
 label{font-weight:bold;font-size:14px}
+.subtotal-local{text-align:right;font-weight:bold;margin-top:10px}
+.resumen{border-top:1px solid #eee;padding-top:12px;margin-top:10px}
+.resumen-line{display:flex;justify-content:space-between;margin:6px 0}
 .total{font-size:20px;font-weight:bold;text-align:right;margin-top:15px}
 #formulario{display:none}
 #map{height:280px;border-radius:10px;margin-bottom:10px}
@@ -41,6 +49,8 @@ label{font-weight:bold;font-size:14px}
 .check input{width:auto;margin:0}
 .msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
 .vacio{text-align:center;padding:30px}
+.aviso{font-size:13px;color:#666;margin:8px 0 0}
+.estado-ubicacion{font-weight:bold;margin-bottom:8px}
 </style>
 </head>
 
@@ -53,83 +63,87 @@ label{font-weight:bold;font-size:14px}
 
 <main>
 
-  <div id="mensaje" class="msg"></div>
+<div id="mensaje" class="msg"></div>
 
-  <section class="card">
-    <div id="lista"></div>
-    <div id="total" class="total"></div>
-  </section>
+<section class="card">
+  <div id="lista"></div>
+  <div id="resumen"></div>
+</section>
 
-  <section class="card" id="acciones">
-    <button class="btn" id="continuar">Continuar pedido</button>
-  </section>
+<section class="card" id="acciones">
+  <button class="btn" id="continuar">Continuar pedido</button>
+</section>
 
-  <section class="card" id="formulario">
+<section class="card" id="formulario">
 
-    <h3>Datos del pedido</h3>
+<h3>Datos del pedido</h3>
 
-    <label>Nombre</label>
-    <input id="nombre" type="text" placeholder="Tu nombre">
+<label>Nombre</label>
+<input id="nombre" type="text" placeholder="Tu nombre">
 
-    <label>Teléfono</label>
-    <input id="telefono" type="tel" placeholder="0981234567">
+<label>Teléfono</label>
+<input id="telefono" type="tel" placeholder="0981234567">
 
-    <h3>Ubicación de entrega</h3>
+<h3>Ubicación de entrega</h3>
 
-    <button type="button" class="btn-sec" id="ubicacionActual">
-      📍 Usar mi ubicación actual
-    </button>
+<button type="button" class="btn-sec" id="ubicacionActual">
+📍 Usar mi ubicación actual
+</button>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <div class="ubicacion-info" id="ubicacionInfo">
-      Puedes mover el marcador para ajustar la ubicación.
-    </div>
+<div class="ubicacion-info" id="ubicacionInfo">
+Selecciona tu ubicación en el mapa o usa tu ubicación actual.
+</div>
 
-    <label>Dirección</label>
-    <input id="direccion" type="text" placeholder="Calle, número, sector">
+<button type="button" class="btn-aceptar" id="aceptarUbicacion" style="display:none">
+Aceptar y guardar ubicación
+</button>
 
-    <label>Referencia</label>
-    <input id="referencia" type="text"
-           placeholder="Ej.: casa de dos pisos junto a la farmacia">
+<label>Dirección</label>
+<input id="direccion" type="text" placeholder="Calle, número, sector">
 
-    <label>Observaciones</label>
-    <textarea id="observaciones" rows="3"
-      placeholder="Indicaciones adicionales para el delivery"></textarea>
+<label>Referencia</label>
+<input id="referencia" type="text"
+placeholder="Ej.: casa de dos pisos junto a la farmacia">
 
-    <div class="factura-box">
+<label>Observaciones</label>
+<textarea id="observaciones" rows="3"
+placeholder="Indicaciones adicionales para el delivery"></textarea>
 
-      <label class="check">
-        <input type="checkbox" id="requiereFactura">
-        Necesito factura
-      </label>
+<div class="factura-box">
 
-      <div id="datosFactura" style="display:none;margin-top:15px">
+<label class="check">
+<input type="checkbox" id="requiereFactura">
+Necesito factura
+</label>
 
-        <label>Tipo de documento</label>
-        <select id="tipoDocumento">
-          <option value="">Seleccione</option>
-          <option value="cedula">Cédula</option>
-          <option value="ruc">RUC</option>
-          <option value="pasaporte">Pasaporte</option>
-        </select>
+<div id="datosFactura" style="display:none;margin-top:15px">
 
-        <label>Número de documento</label>
-        <input id="numeroDocumento" type="text"
-               placeholder="Número de documento">
+<label>Tipo de documento</label>
+<select id="tipoDocumento">
+<option value="">Seleccione</option>
+<option value="cedula">Cédula</option>
+<option value="ruc">RUC</option>
+<option value="pasaporte">Pasaporte</option>
+</select>
 
-        <label>Correo para la factura</label>
-        <input id="correoFactura" type="email"
-               placeholder="correo@ejemplo.com">
+<label>Número de documento</label>
+<input id="numeroDocumento" type="text"
+placeholder="Número de documento">
 
-      </div>
-    </div>
+<label>Correo para la factura</label>
+<input id="correoFactura" type="email"
+placeholder="correo@ejemplo.com">
 
-    <button class="btn" id="confirmar">
-      Confirmar pedido
-    </button>
+</div>
+</div>
 
-  </section>
+<button class="btn" id="confirmar">
+Confirmar pedido
+</button>
+
+</section>
 
 </main>
 
@@ -144,6 +158,7 @@ let mapa=null;
 let marcador=null;
 let lat=null;
 let lng=null;
+let ubicacionAceptada=false;
 
 const params=new URLSearchParams(location.search);
 pedidoId=params.get("pedido");
@@ -151,8 +166,7 @@ pedidoId=params.get("pedido");
 async function iniciar(){
 
   if(!pedidoId){
-    $("lista").innerHTML=
-      '<div class="vacio">No se encontró el pedido.</div>';
+    $("lista").innerHTML='<div class="vacio">No se encontró el pedido.</div>';
     $("acciones").style.display="none";
     return;
   }
@@ -197,49 +211,114 @@ function renderCarrito(){
     $("lista").innerHTML=
       '<div class="vacio">Tu carrito está vacío.</div>';
 
-    $("total").textContent="";
+    $("resumen").innerHTML="";
     $("acciones").style.display="none";
 
     return;
   }
 
+  const locales={};
   let total=0;
 
-  $("lista").innerHTML=carrito.map(item=>{
+  carrito.forEach(item=>{
 
-    total+=Number(item.subtotal);
+    const localId=item.local_id||"sin-local";
 
-    return `
-      <div class="item">
-        <div class="item-info">
-          <strong>${escapeHtml(item.nombre)}</strong>
-          <div>$${Number(item.precio).toFixed(2)}</div>
-        </div>
+    if(!locales[localId]){
+      locales[localId]={
+        nombre:item.local_nombre||"Local",
+        items:[],
+        subtotal:0
+      };
+    }
 
-        <div class="controles">
-          <button class="btn-sec"
-            onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad-1})">
-            −
-          </button>
+    locales[localId].items.push(item);
+    locales[localId].subtotal+=Number(item.subtotal||0);
+    total+=Number(item.subtotal||0);
+  });
 
-          <strong>${item.cantidad}</strong>
+  $("lista").innerHTML=Object.values(locales).map(local=>`
 
-          <button class="btn-sec"
-            onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad+1})">
-            +
-          </button>
+    <div class="local">
 
-          <button class="btn-danger"
-            onclick="eliminar('${item.detalle_id}')">
-            ×
-          </button>
-        </div>
+      <div class="local-titulo">
+        ${escapeHtml(local.nombre)}
       </div>
-    `;
 
-  }).join("");
+      ${local.items.map(item=>`
 
-  $("total").textContent="Total: $"+total.toFixed(2);
+        <div class="item">
+
+          <div class="item-info">
+            <strong>${escapeHtml(item.nombre)}</strong>
+            <div>$${Number(item.precio).toFixed(2)}</div>
+          </div>
+
+          <div class="controles">
+
+            <button class="btn-sec"
+              onclick="cambiarCantidad(
+                '${item.detalle_id}',
+                ${item.cantidad-1}
+              )">
+              −
+            </button>
+
+            <strong>${item.cantidad}</strong>
+
+            <button class="btn-sec"
+              onclick="cambiarCantidad(
+                '${item.detalle_id}',
+                ${item.cantidad+1}
+              )">
+              +
+            </button>
+
+            <button class="btn-danger"
+              onclick="eliminar('${item.detalle_id}')">
+              ×
+            </button>
+
+          </div>
+
+        </div>
+
+      `).join("")}
+
+      <div class="subtotal-local">
+        Subtotal: $${local.subtotal.toFixed(2)}
+      </div>
+
+    </div>
+
+  `).join("");
+
+  $("resumen").innerHTML=`
+
+    <div class="resumen">
+
+      <div class="resumen-line">
+        <span>Productos</span>
+        <strong>$${total.toFixed(2)}</strong>
+      </div>
+
+      <div class="resumen-line">
+        <span>Delivery</span>
+        <span>Se calcula al confirmar</span>
+      </div>
+
+      <div class="total">
+        Subtotal: $${total.toFixed(2)}
+      </div>
+
+      <div class="aviso">
+        El costo de delivery depende de la distancia real entre
+        tu ubicación y cada local.
+      </div>
+
+    </div>
+
+  `;
 }
 
 async function cambiarCantidad(detalleId,cantidad){
@@ -264,7 +343,9 @@ async function cambiarCantidad(detalleId,cantidad){
     await cargarCarrito();
 
   }catch(e){
+
     alert(e.message||"No se pudo actualizar.");
+
   }
 }
 
@@ -282,7 +363,9 @@ async function eliminar(detalleId){
     await cargarCarrito();
 
   }catch(e){
+
     alert(e.message||"No se pudo eliminar.");
+
   }
 }
 
@@ -292,6 +375,10 @@ $("continuar").onclick=()=>{
   $("formulario").style.display="block";
 
   iniciarMapa();
+
+  setTimeout(()=>{
+    mapa.invalidateSize();
+  },100);
 
   window.scrollTo({
     top:$("formulario").offsetTop-10,
@@ -315,8 +402,7 @@ function iniciarMapa(){
   mapa.on("click",e=>{
     establecerUbicacion(
       e.latlng.lat,
-      e.latlng.lng,
-      true
+      e.latlng.lng
     );
   });
 }
@@ -324,10 +410,13 @@ function iniciarMapa(){
 $("ubicacionActual").onclick=()=>{
 
   if(!navigator.geolocation){
+
     alert("Tu navegador no permite obtener la ubicación.");
     return;
+
   }
 
+  $("ubicacionActual").disabled=true;
   $("ubicacionActual").textContent="Obteniendo ubicación...";
 
   navigator.geolocation.getCurrentPosition(
@@ -336,10 +425,10 @@ $("ubicacionActual").onclick=()=>{
 
       establecerUbicacion(
         pos.coords.latitude,
-        pos.coords.longitude,
-        true
+        pos.coords.longitude
       );
 
+      $("ubicacionActual").disabled=false;
       $("ubicacionActual").textContent=
         "📍 Ubicación obtenida";
 
@@ -349,6 +438,7 @@ $("ubicacionActual").onclick=()=>{
 
       console.error(err);
 
+      $("ubicacionActual").disabled=false;
       $("ubicacionActual").textContent=
         "📍 Usar mi ubicación actual";
 
@@ -367,22 +457,30 @@ $("ubicacionActual").onclick=()=>{
   );
 };
 
-async function establecerUbicacion(
-  nuevaLat,
-  nuevaLng,
-  obtenerDireccion
-){
+async function establecerUbicacion(nuevaLat,nuevaLng){
 
   lat=Number(nuevaLat);
   lng=Number(nuevaLng);
+
+  ubicacionAceptada=false;
+
+  $("aceptarUbicacion").style.display="block";
+
+  $("ubicacionInfo").textContent=
+    `Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
+
+  $("direccion").value="";
 
   if(!mapa) iniciarMapa();
 
   mapa.setView([lat,lng],17);
 
   if(marcador){
+
     marcador.setLatLng([lat,lng]);
+
   }else{
+
     marcador=L.marker([lat,lng],{
       draggable:true
     }).addTo(mapa);
@@ -393,20 +491,60 @@ async function establecerUbicacion(
 
       await establecerUbicacion(
         p.lat,
-        p.lng,
-        true
+        p.lng
       );
 
     });
-  }
 
-  $("ubicacionInfo").textContent=
-    `Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
-  if(obtenerDireccion){
-    await obtenerDireccionDesdeMapa(lat,lng);
   }
 }
+
+$("aceptarUbicacion").onclick=async()=>{
+
+  if(lat===null||lng===null){
+
+    alert("Primero selecciona una ubicación.");
+    return;
+
+  }
+
+  const boton=$("aceptarUbicacion");
+
+  boton.disabled=true;
+  boton.textContent="Guardando ubicación...";
+
+  try{
+
+    const direccion=await obtenerDireccionDesdeMapa(lat,lng);
+
+    if(direccion){
+      $("direccion").value=direccion;
+    }
+
+    ubicacionAceptada=true;
+
+    $("ubicacionInfo").textContent=
+      `✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    boton.textContent="✓ Ubicación guardada";
+
+  }catch(e){
+
+    console.error(e);
+
+    ubicacionAceptada=true;
+
+    $("ubicacionInfo").textContent=
+      `✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    boton.textContent="✓ Ubicación guardada";
+
+  }finally{
+
+    boton.disabled=false;
+
+  }
+};
 
 async function obtenerDireccionDesdeMapa(lat,lng){
 
@@ -421,13 +559,11 @@ async function obtenerDireccionDesdeMapa(lat,lng){
       }
     });
 
-    if(!res.ok) return;
+    if(!res.ok) return "";
 
     const data=await res.json();
 
-    if(data.display_name && !$("direccion").value.trim()){
-      $("direccion").value=data.display_name;
-    }
+    return data.display_name||"";
 
   }catch(e){
 
@@ -436,6 +572,8 @@ async function obtenerDireccionDesdeMapa(lat,lng){
       e
     );
 
+    return "";
+
   }
 }
 
@@ -443,8 +581,8 @@ $("requiereFactura").onchange=()=>{
 
   $("datosFactura").style.display=
     $("requiereFactura").checked
-      ? "block"
-      : "none";
+      ?"block"
+      :"none";
 
 };
 
@@ -471,91 +609,134 @@ async function confirmarPedido(){
     $("correoFactura").value.trim();
 
   if(!nombre){
+
     alert("Ingresa tu nombre.");
     $("nombre").focus();
     return;
+
   }
 
   if(!telefono){
+
     alert("Ingresa tu teléfono.");
     $("telefono").focus();
     return;
+
+  }
+
+  if(lat===null||lng===null||!ubicacionAceptada){
+
+    alert(
+      "Debes seleccionar tu ubicación en el mapa " +
+      "y pulsar «Aceptar y guardar ubicación»."
+    );
+
+    return;
+
   }
 
   if(!direccion){
-    alert("Ingresa la dirección de entrega.");
-    $("direccion").focus();
-    return;
-  }
 
-  if(lat===null || lng===null){
-
-    const continuarSinMapa=confirm(
-      "No has seleccionado una ubicación en el mapa.\n\n" +
-      "¿Deseas continuar solamente con la dirección?"
+    alert(
+      "Ingresa o verifica la dirección de entrega."
     );
 
-    if(!continuarSinMapa) return;
+    $("direccion").focus();
+    return;
+
   }
 
   if(requiereFactura){
 
     if(!tipoDocumento){
+
       alert("Selecciona el tipo de documento.");
       $("tipoDocumento").focus();
       return;
+
     }
 
     if(!numeroDocumento){
+
       alert("Ingresa el número de documento.");
       $("numeroDocumento").focus();
       return;
+
     }
 
     if(!correoFactura){
+
       alert("Ingresa el correo para la factura.");
       $("correoFactura").focus();
       return;
+
     }
 
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFactura)){
+
       alert("Ingresa un correo válido.");
       $("correoFactura").focus();
       return;
+
     }
 
   }
 
   $("confirmar").disabled=true;
-  $("confirmar").textContent="Enviando pedido...";
+  $("confirmar").textContent="Calculando delivery...";
 
   try{
 
-    const {data,error}=await supabaseClient.rpc(
-      "confirmar_pedido",
+    const {data,error}=await supabaseClient.functions.invoke(
+      "confirmar-pedido",
       {
-        p_pedido_id:pedidoId,
-        p_nombre:nombre,
-        p_telefono:telefono,
-        p_direccion:direccion,
-        p_lat:lat,
-        p_lng:lng,
-        p_referencia:referencia,
-        p_requiere_factura:requiereFactura,
-        p_tipo_documento:requiereFactura
-          ? tipoDocumento
-          : null,
-        p_numero_documento:requiereFactura
-          ? numeroDocumento
-          : null,
-        p_correo_factura:requiereFactura
-          ? correoFactura
-          : null,
-        p_observaciones:observaciones
+        body:{
+          p_pedido_id:pedidoId,
+          p_nombre:nombre,
+          p_telefono:telefono,
+          p_direccion:direccion,
+          p_lat:lat,
+          p_lng:lng,
+          p_referencia:referencia,
+          p_requiere_factura:requiereFactura,
+          p_tipo_documento:
+            requiereFactura
+              ?tipoDocumento
+              :null,
+          p_numero_documento:
+            requiereFactura
+              ?numeroDocumento
+              :null,
+          p_correo_factura:
+            requiereFactura
+              ?correoFactura
+              :null,
+          p_observaciones:observaciones
+        }
       }
     );
 
-    if(error) throw error;
+    if(error){
+
+      let mensaje=error.message||
+        "No se pudo confirmar el pedido.";
+
+      if(data?.error){
+        mensaje=data.error;
+      }
+
+      throw new Error(mensaje);
+
+    }
+
+    if(!data?.ok){
+
+      throw new Error(
+        data?.error||
+        "No se pudo confirmar el pedido."
+      );
+
+    }
 
     mostrarExito(data);
 
@@ -569,28 +750,63 @@ async function confirmarPedido(){
     );
 
     $("confirmar").disabled=false;
-    $("confirmar").textContent="Confirmar pedido";
+    $("confirmar").textContent=
+      "Confirmar pedido";
+
   }
 }
 
-function mostrarExito(id){
+function mostrarExito(data){
 
   $("formulario").style.display="none";
   $("acciones").style.display="none";
 
   $("lista").innerHTML=`
+
     <div class="vacio">
+
       <h2>✅ Pedido enviado</h2>
-      <p>Tu pedido fue registrado correctamente.</p>
-      <p><strong>Pedido:</strong> ${escapeHtml(id)}</p>
+
+      <p>
+        Tu pedido fue registrado correctamente.
+      </p>
+
+      <p>
+        <strong>Pedido:</strong>
+        ${escapeHtml(data.pedido_id)}
+      </p>
+
+      <p>
+        <strong>Productos:</strong>
+        $${Number(data.total_productos||0).toFixed(2)}
+      </p>
+
+      <p>
+        <strong>Delivery:</strong>
+        $${Number(data.costo_delivery||0).toFixed(2)}
+      </p>
+
+      <p>
+        <strong>Distancia:</strong>
+        ${Number(data.distancia_km||0).toFixed(2)} km
+      </p>
+
+      <p>
+        <strong>Total:</strong>
+        $${Number(data.total||0).toFixed(2)}
+      </p>
+
       <button class="btn"
         onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
         Volver al inicio
       </button>
+
     </div>
+
   `;
 
-  $("total").textContent="";
+  $("resumen").innerHTML="";
+
   $("mensaje").style.display="none";
 
   window.scrollTo({
@@ -607,6 +823,7 @@ function escapeHtml(text){
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;")
     .replace(/'/g,"&#039;");
+
 }
 
 iniciar();
@@ -614,4 +831,3 @@ iniciar();
 
 </body>
 </html>
-<title>Mi pedido | VERSION NUEVA 2026</title>
