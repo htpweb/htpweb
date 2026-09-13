@@ -33,6 +33,7 @@ button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bo
 .btn-sec{background:#eee}
 .btn-danger{background:#e53935;color:#fff}
 .btn-aceptar{background:#2e7d32;color:#fff;width:100%;margin-top:8px}
+.btn-vaciar{background:#b71c1c;color:#fff;width:100%;margin-top:8px}
 button:disabled{opacity:.6;cursor:not-allowed}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;margin-top:6px;margin-bottom:12px;font-size:15px}
 textarea{resize:vertical}
@@ -74,6 +75,10 @@ label{font-weight:bold;font-size:14px}
 
 <button class="btn" id="seguirComprando">
 ➕ Seguir comprando
+</button>
+
+<button class="btn-vaciar" id="vaciar">
+🗑️ Vaciar carrito
 </button>
 
 <button class="btn" id="continuar" style="margin-top:8px">
@@ -214,11 +219,22 @@ function renderCarrito(){
 
 if(!carrito.length){
 
-$("lista").innerHTML='<div class="vacio">Tu carrito está vacío.</div>';
+$("lista").innerHTML=
+'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para continuar.</p></div>';
+
 $("resumen").innerHTML="";
-$("acciones").style.display="none";
+
+$("acciones").style.display="block";
+
+$("continuar").style.display="none";
+
+$("vaciar").style.display="none";
+
 return;
 }
+
+$("continuar").style.display="block";
+$("vaciar").style.display="block";
 
 const locales={};
 let total=0;
@@ -236,7 +252,9 @@ subtotal:0
 }
 
 locales[localId].items.push(item);
+
 locales[localId].subtotal+=Number(item.subtotal||0);
+
 total+=Number(item.subtotal||0);
 
 });
@@ -254,8 +272,11 @@ ${local.items.map(item=>`
 <div class="item">
 
 <div class="item-info">
+
 <strong>${escapeHtml(item.nombre)}</strong>
+
 <div>$${Number(item.precio).toFixed(2)}</div>
+
 </div>
 
 <div class="controles">
@@ -371,6 +392,51 @@ alert(e.message||"No se pudo eliminar.");
 }
 }
 
+$("vaciar").onclick=async()=>{
+
+if(!carrito.length)return;
+
+const confirmar=window.confirm(
+"¿Seguro que quieres vaciar todo el carrito?"
+);
+
+if(!confirmar)return;
+
+const boton=$("vaciar");
+
+boton.disabled=true;
+boton.textContent="Vaciando...";
+
+try{
+
+const{error}=await supabaseClient.rpc(
+"vaciar_carrito",
+{p_pedido_id:pedidoId}
+);
+
+if(error)throw error;
+
+carrito=[];
+
+renderCarrito();
+
+$("mensaje").textContent="Carrito vaciado correctamente.";
+$("mensaje").style.display="block";
+
+}catch(e){
+
+console.error(e);
+
+alert(e.message||"No se pudo vaciar el carrito.");
+
+}finally{
+
+boton.disabled=false;
+boton.textContent="🗑️ Vaciar carrito";
+
+}
+};
+
 $("seguirComprando").onclick=()=>{
 
 location.href=
@@ -379,6 +445,8 @@ location.href=
 };
 
 $("continuar").onclick=()=>{
+
+if(!carrito.length)return;
 
 $("acciones").style.display="none";
 $("formulario").style.display="block";
@@ -573,13 +641,14 @@ e
 );
 
 return "";
-
 }
 }
 
 $("requiereFactura").onchange=()=>{
+
 $("datosFactura").style.display=
 $("requiereFactura").checked?"block":"none";
+
 };
 
 $("confirmar").onclick=confirmarPedido;
@@ -777,3 +846,38 @@ iniciar();
 </body>
 </html>
 ```
+
+### Ahora el flujo queda así
+
+```text
+INDEX
+ ↓
+LOCAL
+ ↓
+Agregar productos
+ ↓
+🛒 Mi pedido
+ ↓
+CARRITO
+ ├── ➕ Seguir comprando
+ │      ↓
+ │   INDEX conservando pedidoId
+ │
+ ├── − / +
+ │
+ ├── × eliminar producto
+ │
+ ├── 🗑️ Vaciar carrito
+ │      ↓
+ │   carrito queda vacío
+ │
+ └── Continuar pedido
+        ↓
+      Datos
+        ↓
+      Confirmar
+```
+
+Y **vaciar carrito no elimina el `pedidoId`**, por lo que el usuario puede vaciarlo y luego seguir comprando en el mismo carrito.
+
+**Importante:** como la nueva función es `SECURITY DEFINER`, conviene mantenerla estrictamente limitada al `pedidoId` recibido y con `search_path` fijado, que es precisamente una de las precauciones que recomienda Supabase para este tipo de funciones.
