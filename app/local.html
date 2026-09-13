@@ -67,17 +67,55 @@ let local=null;
 let productos=[];
 let pedidoId=null;
 let procesando=false;
+
 const cantidades={};
 
 const params=new URLSearchParams(location.search);
 const localId=params.get("id");
-const pedidoUrl=params.get("pedido");
+const clienteSlug=params.get("cliente");
+
+function claveCarrito(){
+return clienteSlug?`htpweb_pedido_${clienteSlug}`:"htpweb_pedido";
+}
+
+function obtenerPedido(){
+
+try{
+
+return sessionStorage.getItem(claveCarrito())||null;
+
+}catch(e){
+
+console.warn("No se pudo acceder a sessionStorage.",e);
+return null;
+
+}
+
+}
+
+function guardarPedido(id){
+
+try{
+
+sessionStorage.setItem(claveCarrito(),id);
+
+}catch(e){
+
+console.warn("No se pudo guardar el pedido en sessionStorage.",e);
+
+}
+
+}
 
 async function iniciar(){
 
 if(!localId){
-$("contenido").innerHTML='<div class="vacio">No se especificó el local.</div>';
+
+$("contenido").innerHTML=
+'<div class="vacio">No se especificó el local.</div>';
+
 return;
+
 }
 
 try{
@@ -87,11 +125,12 @@ negocioActual=negocio;
 
 $("nombreNegocio").textContent=negocio.nombre;
 
+pedidoId=obtenerPedido();
+
 await cargarLocal();
 await cargarProductos();
 
-if(pedidoUrl){
-pedidoId=pedidoUrl;
+if(pedidoId){
 await cargarItemsPedido();
 }
 
@@ -105,6 +144,7 @@ $("contenido").innerHTML=
 '<div class="vacio">No se pudo cargar el local.</div>';
 
 }
+
 }
 
 async function cargarLocal(){
@@ -127,13 +167,17 @@ $("contenido").innerHTML=`
 ${local.banner_url
 ?`<img class="banner" src="${escapeHtml(local.banner_url)}" alt="${escapeHtml(local.nombre)}">`
 :""}
+
 <h2>${escapeHtml(local.nombre)}</h2>
+
 ${local.descripcion
 ?`<p class="descripcion">${escapeHtml(local.descripcion)}</p>`
 :""}
+
 <div id="productos">
 <div class="vacio">Cargando productos...</div>
 </div>`;
+
 }
 
 async function cargarProductos(){
@@ -149,7 +193,9 @@ const{data,error}=await supabaseClient
 if(error)throw error;
 
 productos=data||[];
+
 renderProductos();
+
 }
 
 async function cargarItemsPedido(){
@@ -164,20 +210,26 @@ if(error)throw error;
 Object.keys(cantidades).forEach(k=>delete cantidades[k]);
 
 (data||[]).forEach(item=>{
+
 if(item.local_id===local.id){
 cantidades[item.producto_id]=Number(item.cantidad);
 }
+
 });
 
 renderProductos();
+
 }
 
 function renderProductos(){
 
 if(!productos.length){
+
 $("productos").innerHTML=
 '<div class="vacio">Este local no tiene productos disponibles.</div>';
+
 return;
+
 }
 
 $("productos").innerHTML=productos.map(p=>{
@@ -185,6 +237,7 @@ $("productos").innerHTML=productos.map(p=>{
 const cantidad=cantidades[p.id]||0;
 
 return`
+
 <div class="producto">
 
 ${p.imagen_url
@@ -222,7 +275,9 @@ onclick="cambiarCantidad('${p.id}',${cantidad+1})">
 
 </div>
 </div>`;
+
 }).join("");
+
 }
 
 async function cambiarCantidad(productoId,nuevaCantidad){
@@ -234,6 +289,7 @@ const anterior=cantidades[productoId]||0;
 if(nuevaCantidad===anterior)return;
 
 cantidades[productoId]=nuevaCantidad;
+
 renderProductos();
 
 procesando=true;
@@ -272,7 +328,8 @@ x=>x.producto_id===productoId
 
 if(!item)return;
 
-const cantidadFinal=Number(item.cantidad)+diferencia;
+const cantidadFinal=
+Number(item.cantidad)+diferencia;
 
 if(cantidadFinal<=0){
 
@@ -296,6 +353,7 @@ p_cantidad:cantidadFinal
 if(e)throw e;
 
 }
+
 }
 
 actualizarNavegacion();
@@ -305,6 +363,7 @@ actualizarNavegacion();
 console.error(e);
 
 cantidades[productoId]=anterior;
+
 renderProductos();
 
 alert(e.message||"No se pudo actualizar el pedido.");
@@ -314,6 +373,7 @@ alert(e.message||"No se pudo actualizar el pedido.");
 procesando=false;
 
 }
+
 }
 
 async function asegurarCarrito(){
@@ -328,35 +388,27 @@ const{data,error}=await supabaseClient.rpc(
 if(error)throw error;
 
 pedidoId=data;
+
+guardarPedido(pedidoId);
+
 actualizarNavegacion();
+
 }
 
 function actualizarNavegacion(){
 
-let url=
+$("volverLocales").onclick=()=>{
+
+location.href=
 `index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-if(pedidoId){
-url+=`&pedido=${encodeURIComponent(pedidoId)}`;
-}
-
-$("volverLocales").onclick=()=>{
-location.href=url;
 };
 
 $("irCarrito").onclick=()=>{
 
-if(pedidoId){
-
-location.href=
-`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
-
-}else{
-
 location.href=
 `carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-}
 };
 
 if(pedidoId){
@@ -366,7 +418,7 @@ $("btnCarrito").style.display="block";
 $("btnCarrito").onclick=()=>{
 
 location.href=
-`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
 };
 
@@ -375,15 +427,18 @@ location.href=
 $("btnCarrito").style.display="none";
 
 }
+
 }
 
 function escapeHtml(text){
+
 return String(text??"")
 .replace(/&/g,"&amp;")
 .replace(/</g,"&lt;")
 .replace(/>/g,"&gt;")
 .replace(/"/g,"&quot;")
 .replace(/'/g,"&#039;");
+
 }
 
 iniciar();
