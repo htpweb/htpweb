@@ -37,7 +37,6 @@ h2{font-size:20px;margin:18px 0 12px}
 </head>
 
 <body>
-
 <header>
 <div class="logo" id="logo">Cargando...</div>
 <a class="cart" id="carrito" href="#">🛒 <span id="cartCount">0</span></a>
@@ -61,32 +60,64 @@ h2{font-size:20px;margin:18px 0 12px}
 
 <script>
 const $=id=>document.getElementById(id);
-
 let locales=[],categorias=[],productos=[],categoriaActual="",negocioActual=null,pedidoId=null;
 
 const params=new URLSearchParams(location.search);
 const clienteSlug=params.get("cliente");
-
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 
-function claveCarrito(){
-return clienteSlug?`htpweb_pedido_${clienteSlug}`:"htpweb_pedido";
+const cartKey=()=>`htpweb_pedido_${clienteSlug}`;
+const tabKey="htpweb_tab_id";
+const instanceId=crypto.randomUUID();
+const startedAt=Date.now();
+
+function iniciarIdentidadPestana(){
+let id=sessionStorage.getItem(tabKey);
+
+if(!id){
+id=crypto.randomUUID();
+sessionStorage.setItem(tabKey,id);
+return;
+}
+
+const ch=new BroadcastChannel("htpweb_tabs");
+
+ch.onmessage=e=>{
+if(e.data?.type==="HELLO"&&e.data.tabId===id&&e.data.startedAt<startedAt){
+ch.postMessage({type:"ACK",tabId:id,instance:e.data.instance});
+}
+if(e.data?.type==="ACK"&&e.data.instance===instanceId){
+sessionStorage.setItem(tabKey,crypto.randomUUID());
+sessionStorage.removeItem(cartKey());
+pedidoId=null;
+}
+};
+
+ch.postMessage({
+type:"HELLO",
+tabId:id,
+instance:instanceId,
+startedAt
+});
+
+setTimeout(()=>ch.close(),500);
 }
 
 function obtenerPedido(){
 try{
-return sessionStorage.getItem(claveCarrito())||null;
+return sessionStorage.getItem(cartKey())||null;
 }catch(e){
-console.warn("No se pudo acceder a sessionStorage.",e);
 return null;
+}
 }
 
 async function cargar(){
 try{
 
+iniciarIdentidadPestana();
+
 negocio=await cargarNegocio();
 negocioActual=negocio;
-
 pedidoId=obtenerPedido();
 
 document.title=negocio.nombre;
@@ -111,7 +142,6 @@ productos=productosRes.data||[];
 actualizarEnlaceCarrito();
 renderCategorias();
 renderLocales();
-
 $("contenido").style.display="block";
 
 }catch(e){
@@ -125,8 +155,7 @@ $("error").textContent=e.message||"No se pudo cargar el negocio.";
 
 function actualizarEnlaceCarrito(){
 
-$("carrito").href=
-`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+$("carrito").href=`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
 if(!pedidoId){
 $("cartCount").textContent="0";
@@ -134,23 +163,17 @@ return;
 }
 
 supabaseClient.rpc("obtener_carrito",{p_pedido_id:pedidoId}).then(({data,error})=>{
-
 if(error)return;
-
-$("cartCount").textContent=
-(data||[]).reduce((s,i)=>s+Number(i.cantidad||0),0);
-
+$("cartCount").textContent=(data||[]).reduce((s,i)=>s+Number(i.cantidad||0),0);
 });
 
 }
 
 function seleccionarCategoria(c){
-
 categoriaActual=c;
 $("busqueda").value="";
 renderCategorias();
 renderLocales();
-
 }
 
 function renderCategorias(){
@@ -217,10 +240,7 @@ renderCategorias();
 }
 
 function abrirLocal(id){
-
-location.href=
-`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
-
+location.href=`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
 }
 
 $("busqueda").addEventListener("input",()=>{
@@ -230,7 +250,6 @@ renderLocales();
 
 cargar();
 </script>
-
 </body>
 </html>
 ```
