@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -31,28 +30,34 @@ button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bo
 .btn-vaciar{background:#b71c1c;color:#fff;width:100%;margin-top:8px}
 button:disabled{opacity:.6;cursor:not-allowed}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;margin-top:6px;margin-bottom:12px;font-size:15px}
-textarea{resize:vertical}label{font-weight:bold;font-size:14px}
+textarea{resize:vertical}
+label{font-weight:bold;font-size:14px}
 .subtotal-local{text-align:right;font-weight:bold;margin-top:10px}
 .delivery-local{text-align:right;color:#555;font-size:14px;margin-top:5px}
 .resumen{border-top:1px solid #eee;padding-top:12px;margin-top:10px}
 .resumen-line{display:flex;justify-content:space-between;margin:6px 0}
 .total{font-size:20px;font-weight:bold;text-align:right;margin-top:15px}
-#formulario{display:none}#map{height:280px;border-radius:10px;margin-bottom:10px}
+#formulario{display:none}
+#map{height:280px;border-radius:10px;margin-bottom:10px}
 .ubicacion-info{font-size:13px;color:#555;margin-bottom:12px}
 .factura-box{background:#f8f8f8;padding:12px;border-radius:10px;margin-bottom:15px}
-.check{display:flex;align-items:center;gap:8px;font-weight:bold}.check input{width:auto;margin:0}
+.check{display:flex;align-items:center;gap:8px;font-weight:bold}
+.check input{width:auto;margin:0}
 .msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
-.vacio{text-align:center;padding:30px}.aviso{font-size:13px;color:#666;margin:8px 0 0}
+.vacio{text-align:center;padding:30px}
+.aviso{font-size:13px;color:#666;margin:8px 0 0}
 </style>
 </head>
 
 <body>
+
 <header>
 <h2>Mi pedido</h2>
 <div id="negocio"></div>
 </header>
 
 <main>
+
 <div id="mensaje" class="msg"></div>
 
 <section class="card">
@@ -67,6 +72,7 @@ textarea{resize:vertical}label{font-weight:bold;font-size:14px}
 </section>
 
 <section class="card" id="formulario">
+
 <h3>Datos del pedido</h3>
 
 <label>Nombre</label>
@@ -77,7 +83,10 @@ textarea{resize:vertical}label{font-weight:bold;font-size:14px}
 
 <h3>Ubicación de entrega</h3>
 
-<button type="button" class="btn-sec" id="ubicacionActual">📍 Usar mi ubicación actual</button>
+<button type="button" class="btn-sec" id="ubicacionActual">
+📍 Usar mi ubicación actual
+</button>
+
 <div id="map"></div>
 
 <div class="ubicacion-info" id="ubicacionInfo">
@@ -98,12 +107,14 @@ Aceptar y guardar ubicación
 <textarea id="observaciones" rows="3" placeholder="Indicaciones adicionales para el delivery"></textarea>
 
 <div class="factura-box">
+
 <label class="check">
 <input type="checkbox" id="requiereFactura">
 Necesito factura
 </label>
 
 <div id="datosFactura" style="display:none;margin-top:15px">
+
 <label>Tipo de documento</label>
 <select id="tipoDocumento">
 <option value="">Seleccione</option>
@@ -117,106 +128,229 @@ Necesito factura
 
 <label>Correo para la factura</label>
 <input id="correoFactura" type="email" placeholder="correo@ejemplo.com">
+
 </div>
 </div>
 
 <button class="btn" id="confirmar">Confirmar pedido</button>
+
 </section>
 </main>
 
 <script>
 const $=id=>document.getElementById(id);
-let carrito=[],pedidoId=null,negocioActual=null,mapa=null,marcador=null,lat=null,lng=null,ubicacionAceptada=false;
+
+let carrito=[],pedidoId=null,negocioActual=null;
+let mapa=null,marcador=null,lat=null,lng=null,ubicacionAceptada=false;
 
 const params=new URLSearchParams(location.search);
 const clienteSlug=params.get("cliente");
-const cartKey=()=>`htpweb_pedido_${clienteSlug}`;
-const tabKey="htpweb_tab_id";
-const instanceId=crypto.randomUUID();
-const startedAt=Date.now();
 
-function iniciarIdentidadPestana(){
-let id=sessionStorage.getItem(tabKey);
-if(!id){
-id=crypto.randomUUID();
-sessionStorage.setItem(tabKey,id);
-return;
-}
+const CART_PREFIX="HTPWEB_CART:";
 
-const ch=new BroadcastChannel("htpweb_tabs");
+/* =========================================================
+   IDENTIDAD DEL CARRITO EN LA PESTAÑA
+   Supabase mantiene el carrito real.
+   window.name solo identifica el pedido de esta pestaña.
+========================================================= */
 
-ch.onmessage=e=>{
-if(e.data?.type==="HELLO"&&e.data.tabId===id&&e.data.startedAt<startedAt){
-ch.postMessage({type:"ACK",tabId:id,instance:e.data.instance});
-}
-if(e.data?.type==="ACK"&&e.data.instance===instanceId){
-sessionStorage.setItem(tabKey,crypto.randomUUID());
-sessionStorage.removeItem(cartKey());
-pedidoId=null;
-}
-};
+function obtenerPedidoTab(){
 
-ch.postMessage({type:"HELLO",tabId:id,instance:instanceId,startedAt});
-setTimeout(()=>ch.close(),500);
-}
-
-function obtenerPedido(){
-try{return sessionStorage.getItem(cartKey())||null}catch(e){return null}
-}
-
-function eliminarPedidoSesion(){
-try{sessionStorage.removeItem(cartKey())}catch(e){}
-}
-
-async function iniciar(){
 try{
 
-iniciarIdentidadPestana();
+const raw=window.name||"";
 
-negocio=await cargarNegocio();
-negocioActual=negocio;
-$("negocio").textContent=negocio.nombre;
-pedidoId=obtenerPedido();
+if(!raw.startsWith(CART_PREFIX))return null;
 
-if(!pedidoId){
-$("lista").innerHTML='<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
-$("acciones").style.display="none";
-return;
+const data=JSON.parse(raw.substring(CART_PREFIX.length));
+
+if(!data?.cliente||!data?.pedido)return null;
+
+if(data.cliente!==clienteSlug){
+
+window.name="";
+return null;
+
 }
 
+return data.pedido;
+
+}catch(e){
+
+return null;
+
+}
+
+}
+
+function guardarPedidoTab(id){
+
+try{
+
+window.name=CART_PREFIX+JSON.stringify({
+cliente:clienteSlug,
+pedido:String(id)
+});
+
+}catch(e){
+
+console.warn("No se pudo guardar el contexto de la pestaña.",e);
+
+}
+
+}
+
+function limpiarPedidoTab(){
+
+try{
+
+if((window.name||"").startsWith(CART_PREFIX)){
+window.name="";
+}
+
+}catch(e){}
+
+}
+
+function sincronizarUrlPedido(){
+
+const url=new URL(location.href);
+
+if(pedidoId){
+url.searchParams.set("pedido",pedidoId);
+}else{
+url.searchParams.delete("pedido");
+}
+
+history.replaceState(null,"",url.toString());
+
+}
+
+function urlInicio(){
+
+let url=`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+
+if(pedidoId){
+url+=`&pedido=${encodeURIComponent(pedidoId)}`;
+}
+
+return url;
+
+}
+
+/* =========================================================
+   INICIO
+========================================================= */
+
+async function iniciar(){
+
+try{
+
+negocioActual=await cargarNegocio();
+
+$("negocio").textContent=negocioActual.nombre;
+
+/*
+   IMPORTANTE:
+   No tomamos pedidoId desde la URL.
+   Solo desde window.name.
+
+   Por eso una URL copiada a otra pestaña
+   comienza con carrito vacío.
+*/
+pedidoId=obtenerPedidoTab();
+
+if(pedidoId){
+
+sincronizarUrlPedido();
+
 await cargarCarrito();
+
+}else{
+
+sincronizarUrlPedido();
+
+mostrarCarritoVacio();
+
+}
 
 }catch(e){
 
 console.error(e);
-$("lista").innerHTML='<div class="vacio">No se pudo cargar el pedido.</div>';
+
+$("lista").innerHTML=
+'<div class="vacio">No se pudo cargar el pedido.</div>';
 
 }
+
 }
+
+/* =========================================================
+   CARGAR CARRITO DESDE SUPABASE
+========================================================= */
 
 async function cargarCarrito(){
 
-const{data,error}=await supabaseClient.rpc("obtener_carrito",{p_pedido_id:pedidoId});
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito",
+{p_pedido_id:pedidoId}
+);
+
 if(error)throw error;
 
 carrito=data||[];
+
+/*
+   Si el pedido existe pero ya no tiene detalles,
+   se considera un carrito nuevo.
+*/
+if(!carrito.length){
+
+limpiarPedidoTab();
+pedidoId=null;
+sincronizarUrlPedido();
+mostrarCarritoVacio();
+return;
+
+}
+
 renderCarrito();
 
 }
+
+/* =========================================================
+   CARRITO VACÍO
+========================================================= */
+
+function mostrarCarritoVacio(){
+
+$("lista").innerHTML=
+'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
+
+$("resumen").innerHTML="";
+
+$("acciones").style.display="block";
+
+$("continuar").style.display="none";
+
+$("vaciar").style.display="none";
+
+}
+
+/* =========================================================
+   RENDER CARRITO
+========================================================= */
 
 function renderCarrito(){
 
 if(!carrito.length){
 
-$("lista").innerHTML='<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para continuar.</p></div>';
-$("resumen").innerHTML="";
-$("acciones").style.display="block";
-$("continuar").style.display="none";
-$("vaciar").style.display="none";
+mostrarCarritoVacio();
 return;
 
 }
 
+$("acciones").style.display="block";
 $("continuar").style.display="block";
 $("vaciar").style.display="block";
 
@@ -227,10 +361,20 @@ carrito.forEach(item=>{
 
 const id=item.local_id||"sin-local";
 
-if(!locales[id])locales[id]={nombre:item.local_nombre||"Local",items:[],subtotal:0};
+if(!locales[id]){
+
+locales[id]={
+nombre:item.local_nombre||"Local",
+items:[],
+subtotal:0
+};
+
+}
 
 locales[id].items.push(item);
+
 locales[id].subtotal+=Number(item.subtotal||0);
+
 total+=Number(item.subtotal||0);
 
 });
@@ -238,58 +382,119 @@ total+=Number(item.subtotal||0);
 $("lista").innerHTML=Object.values(locales).map(local=>`
 
 <div class="local">
-<div class="local-titulo">${escapeHtml(local.nombre)}</div>
+
+<div class="local-titulo">
+${escapeHtml(local.nombre)}
+</div>
 
 ${local.items.map(item=>`
 
 <div class="item">
+
 <div class="item-info">
+
 <strong>${escapeHtml(item.nombre)}</strong>
-<div>$${Number(item.precio).toFixed(2)}</div>
+
+<div>
+$${Number(item.precio||0).toFixed(2)}
+</div>
+
 </div>
 
 <div class="controles">
-<button class="btn-sec" onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad-1})">−</button>
+
+<button class="btn-sec"
+onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)-1})">
+−
+</button>
+
 <strong>${item.cantidad}</strong>
-<button class="btn-sec" onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad+1})">+</button>
-<button class="btn-danger" onclick="eliminar('${item.detalle_id}')">×</button>
+
+<button class="btn-sec"
+onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)+1})">
++
+</button>
+
+<button class="btn-danger"
+onclick="eliminar('${item.detalle_id}')">
+×
+</button>
+
 </div>
+
 </div>
 
 `).join("")}
 
-<div class="subtotal-local">Subtotal productos: $${local.subtotal.toFixed(2)}</div>
-<div class="delivery-local">Delivery: se calcula al confirmar</div>
+<div class="subtotal-local">
+Subtotal productos: $${local.subtotal.toFixed(2)}
+</div>
+
+<div class="delivery-local">
+Delivery: se calcula al confirmar
+</div>
+
 </div>
 
 `).join("");
 
 $("resumen").innerHTML=`
+
 <div class="resumen">
-<div class="resumen-line"><span>Productos</span><strong>$${total.toFixed(2)}</strong></div>
-<div class="resumen-line"><span>Delivery</span><span>Se calcula al confirmar</span></div>
-<div class="total">Subtotal: $${total.toFixed(2)}</div>
-<div class="aviso">El delivery se calcula individualmente para cada local según la distancia real por carretera.</div>
+
+<div class="resumen-line">
+<span>Productos</span>
+<strong>$${total.toFixed(2)}</strong>
+</div>
+
+<div class="resumen-line">
+<span>Delivery</span>
+<span>Se calcula al confirmar</span>
+</div>
+
+<div class="total">
+Subtotal: $${total.toFixed(2)}
+</div>
+
+<div class="aviso">
+El delivery se calcula individualmente para cada local según la distancia real por carretera.
+</div>
+
 </div>`;
 
 }
+
+/* =========================================================
+   CANTIDADES
+========================================================= */
 
 async function cambiarCantidad(detalleId,cantidad){
 
 try{
 
 if(cantidad<=0){
+
 await eliminar(detalleId);
 return;
+
 }
 
-const{error}=await supabaseClient.rpc("actualizar_cantidad_carrito",{p_detalle_id:detalleId,p_cantidad:cantidad});
+const{error}=await supabaseClient.rpc(
+"actualizar_cantidad_carrito",
+{
+p_detalle_id:detalleId,
+p_cantidad:cantidad
+}
+);
+
 if(error)throw error;
 
 await cargarCarrito();
 
 }catch(e){
+
 alert(e.message||"No se pudo actualizar.");
+
 }
 
 }
@@ -298,33 +503,65 @@ async function eliminar(detalleId){
 
 try{
 
-const{error}=await supabaseClient.rpc("eliminar_del_carrito",{p_detalle_id:detalleId});
+const{error}=await supabaseClient.rpc(
+"eliminar_del_carrito",
+{
+p_detalle_id:detalleId
+}
+);
+
 if(error)throw error;
 
 await cargarCarrito();
 
 }catch(e){
+
 alert(e.message||"No se pudo eliminar.");
+
 }
 
 }
+
+/* =========================================================
+   VACIAR
+========================================================= */
 
 $("vaciar").onclick=async()=>{
 
 if(!carrito.length)return;
-if(!window.confirm("¿Seguro que quieres vaciar todo el carrito?"))return;
+
+if(!window.confirm("¿Seguro que quieres vaciar todo el carrito?"))
+return;
 
 const boton=$("vaciar");
+
 boton.disabled=true;
 boton.textContent="Vaciando...";
 
 try{
 
-const{error}=await supabaseClient.rpc("vaciar_carrito",{p_pedido_id:pedidoId});
+const{error}=await supabaseClient.rpc(
+"vaciar_carrito",
+{
+p_pedido_id:pedidoId
+}
+);
+
 if(error)throw error;
 
+/*
+   Un carrito vacío ya no debe seguir siendo
+   el carrito activo de esta pestaña.
+*/
+limpiarPedidoTab();
+
+pedidoId=null;
+
+sincronizarUrlPedido();
+
 carrito=[];
-renderCarrito();
+
+mostrarCarritoVacio();
 
 $("mensaje").textContent="Carrito vaciado correctamente.";
 $("mensaje").style.display="block";
@@ -339,26 +576,60 @@ boton.disabled=false;
 boton.textContent="🗑️ Vaciar carrito";
 
 }
+
 };
 
+/* =========================================================
+   SEGUIR COMPRANDO
+========================================================= */
+
 $("seguirComprando").onclick=()=>{
-location.href=`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+
+/*
+   Si todavía existen productos, conservamos el pedido.
+   Si está vacío, iniciamos una compra nueva.
+*/
+if(!carrito.length){
+
+limpiarPedidoTab();
+pedidoId=null;
+
+}
+
+location.href=urlInicio();
+
 };
+
+/* =========================================================
+   CONTINUAR PEDIDO
+========================================================= */
 
 $("continuar").onclick=()=>{
 
 if(!carrito.length)return;
 
 $("acciones").style.display="none";
+
 $("formulario").style.display="block";
 
 iniciarMapa();
 
-setTimeout(()=>mapa.invalidateSize(),100);
+setTimeout(()=>{
 
-window.scrollTo({top:$("formulario").offsetTop-10,behavior:"smooth"});
+if(mapa)mapa.invalidateSize();
+
+},100);
+
+window.scrollTo({
+top:$("formulario").offsetTop-10,
+behavior:"smooth"
+});
 
 };
+
+/* =========================================================
+   MAPA
+========================================================= */
 
 function iniciarMapa(){
 
@@ -366,30 +637,46 @@ if(mapa)return;
 
 mapa=L.map("map").setView([0,0],2);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(mapa);
+L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{attribution:"© OpenStreetMap"}
+).addTo(mapa);
 
-mapa.on("click",e=>establecerUbicacion(e.latlng.lat,e.latlng.lng));
+mapa.on("click",e=>
+establecerUbicacion(
+e.latlng.lat,
+e.latlng.lng
+)
+);
 
 }
 
 $("ubicacionActual").onclick=()=>{
 
 if(!navigator.geolocation){
+
 alert("Tu navegador no permite obtener la ubicación.");
 return;
+
 }
 
 $("ubicacionActual").disabled=true;
+
 $("ubicacionActual").textContent="Obteniendo ubicación...";
 
 navigator.geolocation.getCurrentPosition(
 
 pos=>{
 
-establecerUbicacion(pos.coords.latitude,pos.coords.longitude);
+establecerUbicacion(
+pos.coords.latitude,
+pos.coords.longitude
+);
 
 $("ubicacionActual").disabled=false;
-$("ubicacionActual").textContent="📍 Ubicación obtenida";
+
+$("ubicacionActual").textContent=
+"📍 Ubicación obtenida";
 
 },
 
@@ -398,13 +685,21 @@ err=>{
 console.error(err);
 
 $("ubicacionActual").disabled=false;
-$("ubicacionActual").textContent="📍 Usar mi ubicación actual";
 
-alert("No fue posible obtener tu ubicación. También puedes seleccionar el punto directamente en el mapa.");
+$("ubicacionActual").textContent=
+"📍 Usar mi ubicación actual";
+
+alert(
+"No fue posible obtener tu ubicación. También puedes seleccionar el punto directamente en el mapa."
+);
 
 },
 
-{enableHighAccuracy:true,timeout:10000,maximumAge:0}
+{
+enableHighAccuracy:true,
+timeout:10000,
+maximumAge:0
+}
 
 );
 
@@ -414,11 +709,14 @@ async function establecerUbicacion(nuevaLat,nuevaLng){
 
 lat=Number(nuevaLat);
 lng=Number(nuevaLng);
+
 ubicacionAceptada=false;
 
 $("aceptarUbicacion").style.display="block";
 
-$("ubicacionInfo").textContent=`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
+$("ubicacionInfo").textContent=
+`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
+
 $("direccion").value="";
 
 if(!mapa)iniciarMapa();
@@ -431,11 +729,20 @@ marcador.setLatLng([lat,lng]);
 
 }else{
 
-marcador=L.marker([lat,lng],{draggable:true}).addTo(mapa);
+marcador=L.marker(
+[lat,lng],
+{draggable:true}
+).addTo(mapa);
 
 marcador.on("dragend",async e=>{
+
 const p=e.target.getLatLng();
-await establecerUbicacion(p.lat,p.lng);
+
+await establecerUbicacion(
+p.lat,
+p.lng
+);
+
 });
 
 }
@@ -445,31 +752,44 @@ await establecerUbicacion(p.lat,p.lng);
 $("aceptarUbicacion").onclick=async()=>{
 
 if(lat===null||lng===null){
+
 alert("Primero selecciona una ubicación.");
 return;
+
 }
 
 const boton=$("aceptarUbicacion");
+
 boton.disabled=true;
 boton.textContent="Guardando ubicación...";
 
 try{
 
 const direccion=await obtenerDireccionDesdeMapa(lat,lng);
-if(direccion)$("direccion").value=direccion;
+
+if(direccion)
+$("direccion").value=direccion;
 
 ubicacionAceptada=true;
-$("ubicacionInfo").textContent=`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+$("ubicacionInfo").textContent=
+`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
 boton.textContent="✓ Ubicación guardada";
 
 }catch(e){
 
 ubicacionAceptada=true;
-$("ubicacionInfo").textContent=`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+$("ubicacionInfo").textContent=
+`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
 boton.textContent="✓ Ubicación guardada";
 
 }finally{
+
 boton.disabled=false;
+
 }
 
 };
@@ -478,26 +798,49 @@ async function obtenerDireccionDesdeMapa(lat,lng){
 
 try{
 
-const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+const url=
+`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
 
-const res=await fetch(url,{headers:{Accept:"application/json"}});
-if(!res.ok)return "";
+const res=await fetch(
+url,
+{headers:{Accept:"application/json"}}
+);
+
+if(!res.ok)return"";
 
 const data=await res.json();
+
 return data.display_name||"";
 
 }catch(e){
 
-console.warn("No se pudo obtener la dirección automáticamente.",e);
-return "";
+console.warn(
+"No se pudo obtener la dirección automáticamente.",
+e
+);
+
+return"";
 
 }
 
 }
+
+/* =========================================================
+   FACTURA
+========================================================= */
 
 $("requiereFactura").onchange=()=>{
-$("datosFactura").style.display=$("requiereFactura").checked?"block":"none";
+
+$("datosFactura").style.display=
+$("requiereFactura").checked
+?"block"
+:"none";
+
 };
+
+/* =========================================================
+   CONFIRMAR
+========================================================= */
 
 $("confirmar").onclick=confirmarPedido;
 
@@ -515,52 +858,71 @@ const numeroDocumento=$("numeroDocumento").value.trim();
 const correoFactura=$("correoFactura").value.trim();
 
 if(!nombre){
+
 alert("Ingresa tu nombre.");
 $("nombre").focus();
 return;
+
 }
 
 if(!telefono){
+
 alert("Ingresa tu teléfono.");
 $("telefono").focus();
 return;
+
 }
 
 if(lat===null||lng===null||!ubicacionAceptada){
-alert("Debes seleccionar tu ubicación en el mapa y pulsar «Aceptar y guardar ubicación».");
+
+alert(
+"Debes seleccionar tu ubicación en el mapa y pulsar «Aceptar y guardar ubicación»."
+);
+
 return;
+
 }
 
 if(!direccion){
+
 alert("Ingresa o verifica la dirección de entrega.");
 $("direccion").focus();
 return;
+
 }
 
 if(requiereFactura){
 
 if(!tipoDocumento){
+
 alert("Selecciona el tipo de documento.");
 $("tipoDocumento").focus();
 return;
+
 }
 
 if(!numeroDocumento){
+
 alert("Ingresa el número de documento.");
 $("numeroDocumento").focus();
 return;
+
 }
 
 if(!correoFactura){
+
 alert("Ingresa el correo para la factura.");
 $("correoFactura").focus();
 return;
+
 }
 
 if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFactura)){
+
 alert("Ingresa un correo válido.");
 $("correoFactura").focus();
 return;
+
 }
 
 }
@@ -570,7 +932,9 @@ $("confirmar").textContent="Calculando delivery...";
 
 try{
 
-const{data,error}=await supabaseClient.functions.invoke("confirmar-pedido",{
+const{data,error}=await supabaseClient.functions.invoke(
+"confirmar-pedido",
+{
 body:{
 p_pedido_id:pedidoId,
 p_nombre:nombre,
@@ -585,31 +949,57 @@ p_numero_documento:requiereFactura?numeroDocumento:null,
 p_correo_factura:requiereFactura?correoFactura:null,
 p_observaciones:observaciones
 }
-});
+}
+);
 
 if(error){
 
-let mensaje=error.message||"No se pudo confirmar el pedido.";
-if(data?.error)mensaje=data.error;
+let mensaje=
+error.message||
+"No se pudo confirmar el pedido.";
+
+if(data?.error)
+mensaje=data.error;
+
 throw new Error(mensaje);
 
 }
 
-if(!data?.ok)throw new Error(data?.error||"No se pudo confirmar el pedido.");
+if(!data?.ok)
+throw new Error(
+data?.error||
+"No se pudo confirmar el pedido."
+);
 
-eliminarPedidoSesion();
+/*
+   Pedido confirmado.
+   La pestaña queda disponible para una nueva compra.
+*/
+limpiarPedidoTab();
+
+pedidoId=null;
+
 mostrarExito(data);
 
 }catch(e){
 
 console.error(e);
-alert(e.message||"No se pudo confirmar el pedido.");
+
+alert(
+e.message||
+"No se pudo confirmar el pedido."
+);
+
 $("confirmar").disabled=false;
 $("confirmar").textContent="Confirmar pedido";
 
 }
 
 }
+
+/* =========================================================
+   ÉXITO
+========================================================= */
 
 function mostrarExito(data){
 
@@ -621,15 +1011,36 @@ $("lista").innerHTML=`
 <div class="vacio">
 
 <h2>✅ Pedido enviado</h2>
+
 <p>Tu pedido fue registrado correctamente.</p>
 
-<p><strong>Pedido:</strong> ${escapeHtml(data.pedido_id)}</p>
-<p><strong>Productos:</strong> $${Number(data.total_productos||0).toFixed(2)}</p>
-<p><strong>Delivery:</strong> $${Number(data.costo_delivery||0).toFixed(2)}</p>
-<p><strong>Distancia:</strong> ${Number(data.distancia_km||0).toFixed(2)} km</p>
-<p><strong>Total:</strong> $${Number(data.total||0).toFixed(2)}</p>
+<p>
+<strong>Pedido:</strong>
+${escapeHtml(data.pedido_id)}
+</p>
 
-<button class="btn" onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
+<p>
+<strong>Productos:</strong>
+$${Number(data.total_productos||0).toFixed(2)}
+</p>
+
+<p>
+<strong>Delivery:</strong>
+$${Number(data.costo_delivery||0).toFixed(2)}
+</p>
+
+<p>
+<strong>Distancia:</strong>
+${Number(data.distancia_km||0).toFixed(2)} km
+</p>
+
+<p>
+<strong>Total:</strong>
+$${Number(data.total||0).toFixed(2)}
+</p>
+
+<button class="btn"
+onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
 Volver al inicio
 </button>
 
@@ -638,16 +1049,32 @@ Volver al inicio
 $("resumen").innerHTML="";
 $("mensaje").style.display="none";
 
-window.scrollTo({top:0,behavior:"smooth"});
+sincronizarUrlPedido();
+
+window.scrollTo({
+top:0,
+behavior:"smooth"
+});
 
 }
 
+/* =========================================================
+   SEGURIDAD HTML
+========================================================= */
+
 function escapeHtml(text){
-return String(text??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
 }
 
 iniciar();
 </script>
+
 </body>
 </html>
-```
