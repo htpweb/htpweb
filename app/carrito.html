@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,8 +10,7 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
 
-<link rel="stylesheet"
- href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
@@ -38,6 +38,7 @@ input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radiu
 textarea{resize:vertical}
 label{font-weight:bold;font-size:14px}
 .subtotal-local{text-align:right;font-weight:bold;margin-top:10px}
+.delivery-local{text-align:right;color:#555;font-size:14px;margin-top:5px}
 .resumen{border-top:1px solid #eee;padding-top:12px;margin-top:10px}
 .resumen-line{display:flex;justify-content:space-between;margin:6px 0}
 .total{font-size:20px;font-weight:bold;text-align:right;margin-top:15px}
@@ -50,15 +51,14 @@ label{font-weight:bold;font-size:14px}
 .msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
 .vacio{text-align:center;padding:30px}
 .aviso{font-size:13px;color:#666;margin:8px 0 0}
-.estado-ubicacion{font-weight:bold;margin-bottom:8px}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h2>Mi pedido</h2>
-  <div id="negocio"></div>
+<h2>Mi pedido</h2>
+<div id="negocio"></div>
 </header>
 
 <main>
@@ -66,12 +66,20 @@ label{font-weight:bold;font-size:14px}
 <div id="mensaje" class="msg"></div>
 
 <section class="card">
-  <div id="lista"></div>
-  <div id="resumen"></div>
+<div id="lista"></div>
+<div id="resumen"></div>
 </section>
 
 <section class="card" id="acciones">
-  <button class="btn" id="continuar">Continuar pedido</button>
+
+<button class="btn" id="seguirComprando">
+➕ Seguir comprando
+</button>
+
+<button class="btn" id="continuar" style="margin-top:8px">
+Continuar pedido
+</button>
+
 </section>
 
 <section class="card" id="formulario">
@@ -129,12 +137,10 @@ Necesito factura
 </select>
 
 <label>Número de documento</label>
-<input id="numeroDocumento" type="text"
-placeholder="Número de documento">
+<input id="numeroDocumento" type="text" placeholder="Número de documento">
 
 <label>Correo para la factura</label>
-<input id="correoFactura" type="email"
-placeholder="correo@ejemplo.com">
+<input id="correoFactura" type="email" placeholder="correo@ejemplo.com">
 
 </div>
 </div>
@@ -165,664 +171,603 @@ pedidoId=params.get("pedido");
 
 async function iniciar(){
 
-  if(!pedidoId){
-    $("lista").innerHTML='<div class="vacio">No se encontró el pedido.</div>';
-    $("acciones").style.display="none";
-    return;
-  }
+if(!pedidoId){
+$("lista").innerHTML='<div class="vacio">No se encontró el pedido.</div>';
+$("acciones").style.display="none";
+return;
+}
 
-  try{
+try{
 
-    negocio=await cargarNegocio();
-    negocioActual=negocio;
+negocio=await cargarNegocio();
+negocioActual=negocio;
 
-    $("negocio").textContent=negocio.nombre;
+$("negocio").textContent=negocio.nombre;
 
-    await cargarCarrito();
+await cargarCarrito();
 
-  }catch(e){
+}catch(e){
 
-    console.error(e);
+console.error(e);
 
-    $("lista").innerHTML=
-      '<div class="vacio">No se pudo cargar el pedido.</div>';
+$("lista").innerHTML=
+'<div class="vacio">No se pudo cargar el pedido.</div>';
 
-  }
+}
 }
 
 async function cargarCarrito(){
 
-  const {data,error}=await supabaseClient.rpc(
-    "obtener_carrito",
-    {p_pedido_id:pedidoId}
-  );
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito",
+{p_pedido_id:pedidoId}
+);
 
-  if(error) throw error;
+if(error)throw error;
 
-  carrito=data||[];
+carrito=data||[];
 
-  renderCarrito();
+renderCarrito();
 }
 
 function renderCarrito(){
 
-  if(!carrito.length){
+if(!carrito.length){
 
-    $("lista").innerHTML=
-      '<div class="vacio">Tu carrito está vacío.</div>';
+$("lista").innerHTML='<div class="vacio">Tu carrito está vacío.</div>';
+$("resumen").innerHTML="";
+$("acciones").style.display="none";
+return;
+}
 
-    $("resumen").innerHTML="";
-    $("acciones").style.display="none";
+const locales={};
+let total=0;
 
-    return;
-  }
+carrito.forEach(item=>{
 
-  const locales={};
-  let total=0;
+const localId=item.local_id||"sin-local";
 
-  carrito.forEach(item=>{
+if(!locales[localId]){
+locales[localId]={
+nombre:item.local_nombre||"Local",
+items:[],
+subtotal:0
+};
+}
 
-    const localId=item.local_id||"sin-local";
+locales[localId].items.push(item);
+locales[localId].subtotal+=Number(item.subtotal||0);
+total+=Number(item.subtotal||0);
 
-    if(!locales[localId]){
-      locales[localId]={
-        nombre:item.local_nombre||"Local",
-        items:[],
-        subtotal:0
-      };
-    }
+});
 
-    locales[localId].items.push(item);
-    locales[localId].subtotal+=Number(item.subtotal||0);
-    total+=Number(item.subtotal||0);
-  });
+$("lista").innerHTML=Object.values(locales).map(local=>`
 
-  $("lista").innerHTML=Object.values(locales).map(local=>`
+<div class="local">
 
-    <div class="local">
+<div class="local-titulo">
+${escapeHtml(local.nombre)}
+</div>
 
-      <div class="local-titulo">
-        ${escapeHtml(local.nombre)}
-      </div>
+${local.items.map(item=>`
 
-      ${local.items.map(item=>`
+<div class="item">
 
-        <div class="item">
+<div class="item-info">
+<strong>${escapeHtml(item.nombre)}</strong>
+<div>$${Number(item.precio).toFixed(2)}</div>
+</div>
 
-          <div class="item-info">
-            <strong>${escapeHtml(item.nombre)}</strong>
-            <div>$${Number(item.precio).toFixed(2)}</div>
-          </div>
+<div class="controles">
 
-          <div class="controles">
+<button class="btn-sec"
+onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad-1})">
+−
+</button>
 
-            <button class="btn-sec"
-              onclick="cambiarCantidad(
-                '${item.detalle_id}',
-                ${item.cantidad-1}
-              )">
-              −
-            </button>
+<strong>${item.cantidad}</strong>
 
-            <strong>${item.cantidad}</strong>
+<button class="btn-sec"
+onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad+1})">
++
+</button>
 
-            <button class="btn-sec"
-              onclick="cambiarCantidad(
-                '${item.detalle_id}',
-                ${item.cantidad+1}
-              )">
-              +
-            </button>
+<button class="btn-danger"
+onclick="eliminar('${item.detalle_id}')">
+×
+</button>
 
-            <button class="btn-danger"
-              onclick="eliminar('${item.detalle_id}')">
-              ×
-            </button>
+</div>
 
-          </div>
+</div>
 
-        </div>
+`).join("")}
 
-      `).join("")}
+<div class="subtotal-local">
+Subtotal productos: $${local.subtotal.toFixed(2)}
+</div>
 
-      <div class="subtotal-local">
-        Subtotal: $${local.subtotal.toFixed(2)}
-      </div>
+<div class="delivery-local">
+Delivery: se calcula al confirmar
+</div>
 
-    </div>
+</div>
 
-  `).join("");
+`).join("");
 
-  $("resumen").innerHTML=`
+$("resumen").innerHTML=`
 
-    <div class="resumen">
+<div class="resumen">
 
-      <div class="resumen-line">
-        <span>Productos</span>
-        <strong>$${total.toFixed(2)}</strong>
-      </div>
+<div class="resumen-line">
+<span>Productos</span>
+<strong>$${total.toFixed(2)}</strong>
+</div>
 
-      <div class="resumen-line">
-        <span>Delivery</span>
-        <span>Se calcula al confirmar</span>
-      </div>
+<div class="resumen-line">
+<span>Delivery</span>
+<span>Se calcula al confirmar</span>
+</div>
 
-      <div class="total">
-        Subtotal: $${total.toFixed(2)}
-      </div>
+<div class="total">
+Subtotal: $${total.toFixed(2)}
+</div>
 
-      <div class="aviso">
-        El costo de delivery depende de la distancia real entre
-        tu ubicación y cada local.
-      </div>
+<div class="aviso">
+El delivery se calcula individualmente para cada local
+según la distancia real por carretera.
+</div>
 
-    </div>
+</div>
 
-  `;
+`;
 }
 
 async function cambiarCantidad(detalleId,cantidad){
 
-  try{
+try{
 
-    if(cantidad<=0){
-      await eliminar(detalleId);
-      return;
-    }
+if(cantidad<=0){
+await eliminar(detalleId);
+return;
+}
 
-    const {error}=await supabaseClient.rpc(
-      "actualizar_cantidad_carrito",
-      {
-        p_detalle_id:detalleId,
-        p_cantidad:cantidad
-      }
-    );
+const{error}=await supabaseClient.rpc(
+"actualizar_cantidad_carrito",
+{
+p_detalle_id:detalleId,
+p_cantidad:cantidad
+}
+);
 
-    if(error) throw error;
+if(error)throw error;
 
-    await cargarCarrito();
+await cargarCarrito();
 
-  }catch(e){
+}catch(e){
 
-    alert(e.message||"No se pudo actualizar.");
+alert(e.message||"No se pudo actualizar.");
 
-  }
+}
 }
 
 async function eliminar(detalleId){
 
-  try{
+try{
 
-    const {error}=await supabaseClient.rpc(
-      "eliminar_del_carrito",
-      {p_detalle_id:detalleId}
-    );
+const{error}=await supabaseClient.rpc(
+"eliminar_del_carrito",
+{p_detalle_id:detalleId}
+);
 
-    if(error) throw error;
+if(error)throw error;
 
-    await cargarCarrito();
+await cargarCarrito();
 
-  }catch(e){
+}catch(e){
 
-    alert(e.message||"No se pudo eliminar.");
+alert(e.message||"No se pudo eliminar.");
 
-  }
 }
+}
+
+$("seguirComprando").onclick=()=>{
+
+location.href=
+`index.html?cliente=${encodeURIComponent(negocioActual.slug)}&pedido=${encodeURIComponent(pedidoId)}`;
+
+};
 
 $("continuar").onclick=()=>{
 
-  $("acciones").style.display="none";
-  $("formulario").style.display="block";
+$("acciones").style.display="none";
+$("formulario").style.display="block";
 
-  iniciarMapa();
+iniciarMapa();
 
-  setTimeout(()=>{
-    mapa.invalidateSize();
-  },100);
+setTimeout(()=>{
+mapa.invalidateSize();
+},100);
 
-  window.scrollTo({
-    top:$("formulario").offsetTop-10,
-    behavior:"smooth"
-  });
+window.scrollTo({
+top:$("formulario").offsetTop-10,
+behavior:"smooth"
+});
+
 };
 
 function iniciarMapa(){
 
-  if(mapa) return;
+if(mapa)return;
 
-  mapa=L.map("map").setView([0,0],2);
+mapa=L.map("map").setView([0,0],2);
 
-  L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-      attribution:"© OpenStreetMap"
-    }
-  ).addTo(mapa);
+L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{attribution:"© OpenStreetMap"}
+).addTo(mapa);
 
-  mapa.on("click",e=>{
-    establecerUbicacion(
-      e.latlng.lat,
-      e.latlng.lng
-    );
-  });
+mapa.on("click",e=>{
+establecerUbicacion(
+e.latlng.lat,
+e.latlng.lng
+);
+});
 }
 
 $("ubicacionActual").onclick=()=>{
 
-  if(!navigator.geolocation){
+if(!navigator.geolocation){
+alert("Tu navegador no permite obtener la ubicación.");
+return;
+}
 
-    alert("Tu navegador no permite obtener la ubicación.");
-    return;
+$("ubicacionActual").disabled=true;
+$("ubicacionActual").textContent="Obteniendo ubicación...";
 
-  }
+navigator.geolocation.getCurrentPosition(
 
-  $("ubicacionActual").disabled=true;
-  $("ubicacionActual").textContent="Obteniendo ubicación...";
+pos=>{
 
-  navigator.geolocation.getCurrentPosition(
+establecerUbicacion(
+pos.coords.latitude,
+pos.coords.longitude
+);
 
-    pos=>{
+$("ubicacionActual").disabled=false;
+$("ubicacionActual").textContent="📍 Ubicación obtenida";
 
-      establecerUbicacion(
-        pos.coords.latitude,
-        pos.coords.longitude
-      );
+},
 
-      $("ubicacionActual").disabled=false;
-      $("ubicacionActual").textContent=
-        "📍 Ubicación obtenida";
+err=>{
 
-    },
+console.error(err);
 
-    err=>{
+$("ubicacionActual").disabled=false;
+$("ubicacionActual").textContent="📍 Usar mi ubicación actual";
 
-      console.error(err);
+alert(
+"No fue posible obtener tu ubicación. "+
+"También puedes seleccionar el punto directamente en el mapa."
+);
 
-      $("ubicacionActual").disabled=false;
-      $("ubicacionActual").textContent=
-        "📍 Usar mi ubicación actual";
+},
 
-      alert(
-        "No fue posible obtener tu ubicación. " +
-        "También puedes seleccionar el punto directamente en el mapa."
-      );
-
-    },
-
-    {
-      enableHighAccuracy:true,
-      timeout:10000,
-      maximumAge:0
-    }
-  );
+{
+enableHighAccuracy:true,
+timeout:10000,
+maximumAge:0
+}
+);
 };
 
 async function establecerUbicacion(nuevaLat,nuevaLng){
 
-  lat=Number(nuevaLat);
-  lng=Number(nuevaLng);
+lat=Number(nuevaLat);
+lng=Number(nuevaLng);
 
-  ubicacionAceptada=false;
+ubicacionAceptada=false;
 
-  $("aceptarUbicacion").style.display="block";
+$("aceptarUbicacion").style.display="block";
 
-  $("ubicacionInfo").textContent=
-    `Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
+$("ubicacionInfo").textContent=
+`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
 
-  $("direccion").value="";
+$("direccion").value="";
 
-  if(!mapa) iniciarMapa();
+if(!mapa)iniciarMapa();
 
-  mapa.setView([lat,lng],17);
+mapa.setView([lat,lng],17);
 
-  if(marcador){
+if(marcador){
 
-    marcador.setLatLng([lat,lng]);
+marcador.setLatLng([lat,lng]);
 
-  }else{
+}else{
 
-    marcador=L.marker([lat,lng],{
-      draggable:true
-    }).addTo(mapa);
+marcador=L.marker([lat,lng],{
+draggable:true
+}).addTo(mapa);
 
-    marcador.on("dragend",async e=>{
+marcador.on("dragend",async e=>{
 
-      const p=e.target.getLatLng();
+const p=e.target.getLatLng();
 
-      await establecerUbicacion(
-        p.lat,
-        p.lng
-      );
+await establecerUbicacion(
+p.lat,
+p.lng
+);
 
-    });
+});
 
-  }
+}
 }
 
 $("aceptarUbicacion").onclick=async()=>{
 
-  if(lat===null||lng===null){
+if(lat===null||lng===null){
+alert("Primero selecciona una ubicación.");
+return;
+}
 
-    alert("Primero selecciona una ubicación.");
-    return;
+const boton=$("aceptarUbicacion");
 
-  }
+boton.disabled=true;
+boton.textContent="Guardando ubicación...";
 
-  const boton=$("aceptarUbicacion");
+try{
 
-  boton.disabled=true;
-  boton.textContent="Guardando ubicación...";
+const direccion=await obtenerDireccionDesdeMapa(lat,lng);
 
-  try{
+if(direccion)$("direccion").value=direccion;
 
-    const direccion=await obtenerDireccionDesdeMapa(lat,lng);
+ubicacionAceptada=true;
 
-    if(direccion){
-      $("direccion").value=direccion;
-    }
+$("ubicacionInfo").textContent=
+`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-    ubicacionAceptada=true;
+boton.textContent="✓ Ubicación guardada";
 
-    $("ubicacionInfo").textContent=
-      `✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}catch(e){
 
-    boton.textContent="✓ Ubicación guardada";
+console.error(e);
 
-  }catch(e){
+ubicacionAceptada=true;
 
-    console.error(e);
+$("ubicacionInfo").textContent=
+`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-    ubicacionAceptada=true;
+boton.textContent="✓ Ubicación guardada";
 
-    $("ubicacionInfo").textContent=
-      `✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}finally{
 
-    boton.textContent="✓ Ubicación guardada";
+boton.disabled=false;
 
-  }finally{
-
-    boton.disabled=false;
-
-  }
+}
 };
 
 async function obtenerDireccionDesdeMapa(lat,lng){
 
-  try{
+try{
 
-    const url=
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+const url=
+`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
 
-    const res=await fetch(url,{
-      headers:{
-        "Accept":"application/json"
-      }
-    });
+const res=await fetch(url,{
+headers:{
+"Accept":"application/json"
+}
+});
 
-    if(!res.ok) return "";
+if(!res.ok)return "";
 
-    const data=await res.json();
+const data=await res.json();
 
-    return data.display_name||"";
+return data.display_name||"";
 
-  }catch(e){
+}catch(e){
 
-    console.warn(
-      "No se pudo obtener la dirección automáticamente.",
-      e
-    );
+console.warn(
+"No se pudo obtener la dirección automáticamente.",
+e
+);
 
-    return "";
+return "";
 
-  }
+}
 }
 
 $("requiereFactura").onchange=()=>{
-
-  $("datosFactura").style.display=
-    $("requiereFactura").checked
-      ?"block"
-      :"none";
-
+$("datosFactura").style.display=
+$("requiereFactura").checked?"block":"none";
 };
 
 $("confirmar").onclick=confirmarPedido;
 
 async function confirmarPedido(){
 
-  const nombre=$("nombre").value.trim();
-  const telefono=$("telefono").value.trim();
-  const direccion=$("direccion").value.trim();
-  const referencia=$("referencia").value.trim();
-  const observaciones=$("observaciones").value.trim();
+const nombre=$("nombre").value.trim();
+const telefono=$("telefono").value.trim();
+const direccion=$("direccion").value.trim();
+const referencia=$("referencia").value.trim();
+const observaciones=$("observaciones").value.trim();
 
-  const requiereFactura=
-    $("requiereFactura").checked;
+const requiereFactura=$("requiereFactura").checked;
+const tipoDocumento=$("tipoDocumento").value.trim();
+const numeroDocumento=$("numeroDocumento").value.trim();
+const correoFactura=$("correoFactura").value.trim();
 
-  const tipoDocumento=
-    $("tipoDocumento").value.trim();
+if(!nombre){
+alert("Ingresa tu nombre.");
+$("nombre").focus();
+return;
+}
 
-  const numeroDocumento=
-    $("numeroDocumento").value.trim();
+if(!telefono){
+alert("Ingresa tu teléfono.");
+$("telefono").focus();
+return;
+}
 
-  const correoFactura=
-    $("correoFactura").value.trim();
+if(lat===null||lng===null||!ubicacionAceptada){
+alert(
+"Debes seleccionar tu ubicación en el mapa "+
+"y pulsar «Aceptar y guardar ubicación»."
+);
+return;
+}
 
-  if(!nombre){
+if(!direccion){
+alert("Ingresa o verifica la dirección de entrega.");
+$("direccion").focus();
+return;
+}
 
-    alert("Ingresa tu nombre.");
-    $("nombre").focus();
-    return;
+if(requiereFactura){
 
-  }
+if(!tipoDocumento){
+alert("Selecciona el tipo de documento.");
+$("tipoDocumento").focus();
+return;
+}
 
-  if(!telefono){
+if(!numeroDocumento){
+alert("Ingresa el número de documento.");
+$("numeroDocumento").focus();
+return;
+}
 
-    alert("Ingresa tu teléfono.");
-    $("telefono").focus();
-    return;
+if(!correoFactura){
+alert("Ingresa el correo para la factura.");
+$("correoFactura").focus();
+return;
+}
 
-  }
+if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFactura)){
+alert("Ingresa un correo válido.");
+$("correoFactura").focus();
+return;
+}
 
-  if(lat===null||lng===null||!ubicacionAceptada){
+}
 
-    alert(
-      "Debes seleccionar tu ubicación en el mapa " +
-      "y pulsar «Aceptar y guardar ubicación»."
-    );
+$("confirmar").disabled=true;
+$("confirmar").textContent="Calculando delivery...";
 
-    return;
+try{
 
-  }
+const{data,error}=await supabaseClient.functions.invoke(
+"confirmar-pedido",
+{
+body:{
+p_pedido_id:pedidoId,
+p_nombre:nombre,
+p_telefono:telefono,
+p_direccion:direccion,
+p_lat:lat,
+p_lng:lng,
+p_referencia:referencia,
+p_requiere_factura:requiereFactura,
+p_tipo_documento:requiereFactura?tipoDocumento:null,
+p_numero_documento:requiereFactura?numeroDocumento:null,
+p_correo_factura:requiereFactura?correoFactura:null,
+p_observaciones:observaciones
+}
+}
+);
 
-  if(!direccion){
+if(error){
 
-    alert(
-      "Ingresa o verifica la dirección de entrega."
-    );
+let mensaje=error.message||"No se pudo confirmar el pedido.";
 
-    $("direccion").focus();
-    return;
+if(data?.error)mensaje=data.error;
 
-  }
+throw new Error(mensaje);
+}
 
-  if(requiereFactura){
+if(!data?.ok){
+throw new Error(
+data?.error||"No se pudo confirmar el pedido."
+);
+}
 
-    if(!tipoDocumento){
+mostrarExito(data);
 
-      alert("Selecciona el tipo de documento.");
-      $("tipoDocumento").focus();
-      return;
+}catch(e){
 
-    }
+console.error(e);
 
-    if(!numeroDocumento){
+alert(e.message||"No se pudo confirmar el pedido.");
 
-      alert("Ingresa el número de documento.");
-      $("numeroDocumento").focus();
-      return;
+$("confirmar").disabled=false;
+$("confirmar").textContent="Confirmar pedido";
 
-    }
-
-    if(!correoFactura){
-
-      alert("Ingresa el correo para la factura.");
-      $("correoFactura").focus();
-      return;
-
-    }
-
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFactura)){
-
-      alert("Ingresa un correo válido.");
-      $("correoFactura").focus();
-      return;
-
-    }
-
-  }
-
-  $("confirmar").disabled=true;
-  $("confirmar").textContent="Calculando delivery...";
-
-  try{
-
-    const {data,error}=await supabaseClient.functions.invoke(
-      "confirmar-pedido",
-      {
-        body:{
-          p_pedido_id:pedidoId,
-          p_nombre:nombre,
-          p_telefono:telefono,
-          p_direccion:direccion,
-          p_lat:lat,
-          p_lng:lng,
-          p_referencia:referencia,
-          p_requiere_factura:requiereFactura,
-          p_tipo_documento:
-            requiereFactura
-              ?tipoDocumento
-              :null,
-          p_numero_documento:
-            requiereFactura
-              ?numeroDocumento
-              :null,
-          p_correo_factura:
-            requiereFactura
-              ?correoFactura
-              :null,
-          p_observaciones:observaciones
-        }
-      }
-    );
-
-    if(error){
-
-      let mensaje=error.message||
-        "No se pudo confirmar el pedido.";
-
-      if(data?.error){
-        mensaje=data.error;
-      }
-
-      throw new Error(mensaje);
-
-    }
-
-    if(!data?.ok){
-
-      throw new Error(
-        data?.error||
-        "No se pudo confirmar el pedido."
-      );
-
-    }
-
-    mostrarExito(data);
-
-  }catch(e){
-
-    console.error(e);
-
-    alert(
-      e.message||
-      "No se pudo confirmar el pedido."
-    );
-
-    $("confirmar").disabled=false;
-    $("confirmar").textContent=
-      "Confirmar pedido";
-
-  }
+}
 }
 
 function mostrarExito(data){
 
-  $("formulario").style.display="none";
-  $("acciones").style.display="none";
+$("formulario").style.display="none";
+$("acciones").style.display="none";
 
-  $("lista").innerHTML=`
+$("lista").innerHTML=`
 
-    <div class="vacio">
+<div class="vacio">
 
-      <h2>✅ Pedido enviado</h2>
+<h2>✅ Pedido enviado</h2>
 
-      <p>
-        Tu pedido fue registrado correctamente.
-      </p>
+<p>Tu pedido fue registrado correctamente.</p>
 
-      <p>
-        <strong>Pedido:</strong>
-        ${escapeHtml(data.pedido_id)}
-      </p>
+<p>
+<strong>Pedido:</strong>
+${escapeHtml(data.pedido_id)}
+</p>
 
-      <p>
-        <strong>Productos:</strong>
-        $${Number(data.total_productos||0).toFixed(2)}
-      </p>
+<p>
+<strong>Productos:</strong>
+$${Number(data.total_productos||0).toFixed(2)}
+</p>
 
-      <p>
-        <strong>Delivery:</strong>
-        $${Number(data.costo_delivery||0).toFixed(2)}
-      </p>
+<p>
+<strong>Delivery:</strong>
+$${Number(data.costo_delivery||0).toFixed(2)}
+</p>
 
-      <p>
-        <strong>Distancia:</strong>
-        ${Number(data.distancia_km||0).toFixed(2)} km
-      </p>
+<p>
+<strong>Distancia:</strong>
+${Number(data.distancia_km||0).toFixed(2)} km
+</p>
 
-      <p>
-        <strong>Total:</strong>
-        $${Number(data.total||0).toFixed(2)}
-      </p>
+<p>
+<strong>Total:</strong>
+$${Number(data.total||0).toFixed(2)}
+</p>
 
-      <button class="btn"
-        onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
-        Volver al inicio
-      </button>
+<button class="btn"
+onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
+Volver al inicio
+</button>
 
-    </div>
+</div>
+`;
 
-  `;
+$("resumen").innerHTML="";
+$("mensaje").style.display="none";
 
-  $("resumen").innerHTML="";
-
-  $("mensaje").style.display="none";
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
+window.scrollTo({
+top:0,
+behavior:"smooth"
+});
 }
 
 function escapeHtml(text){
 
-  return String(text??"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
 
 }
 
@@ -831,3 +776,4 @@ iniciar();
 
 </body>
 </html>
+```
