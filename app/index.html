@@ -65,14 +65,29 @@ const $=id=>document.getElementById(id);
 let locales=[],categorias=[],productos=[],categoriaActual="",negocioActual=null,pedidoId=null;
 
 const params=new URLSearchParams(location.search);
-pedidoId=params.get("pedido");
+const clienteSlug=params.get("cliente");
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 
+function claveCarrito(){
+return clienteSlug?`htpweb_pedido_${clienteSlug}`:"htpweb_pedido";
+}
+
+function obtenerPedido(){
+try{
+return sessionStorage.getItem(claveCarrito())||null;
+}catch(e){
+console.warn("No se pudo acceder a sessionStorage.",e);
+return null;
+}
+
 async function cargar(){
 try{
+
 negocio=await cargarNegocio();
 negocioActual=negocio;
+
+pedidoId=obtenerPedido();
 
 document.title=negocio.nombre;
 $("logo").textContent=negocio.nombre;
@@ -98,18 +113,20 @@ renderCategorias();
 renderLocales();
 
 $("contenido").style.display="block";
+
 }catch(e){
+
 console.error(e);
 $("error").style.display="block";
 $("error").textContent=e.message||"No se pudo cargar el negocio.";
+
 }
 }
 
 function actualizarEnlaceCarrito(){
 
-$("carrito").href=pedidoId
-?`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`
-:`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+$("carrito").href=
+`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
 if(!pedidoId){
 $("cartCount").textContent="0";
@@ -117,16 +134,23 @@ return;
 }
 
 supabaseClient.rpc("obtener_carrito",{p_pedido_id:pedidoId}).then(({data,error})=>{
+
 if(error)return;
-$("cartCount").textContent=(data||[]).reduce((s,i)=>s+Number(i.cantidad||0),0);
+
+$("cartCount").textContent=
+(data||[]).reduce((s,i)=>s+Number(i.cantidad||0),0);
+
 });
+
 }
 
 function seleccionarCategoria(c){
+
 categoriaActual=c;
 $("busqueda").value="";
 renderCategorias();
 renderLocales();
+
 }
 
 function renderCategorias(){
@@ -138,6 +162,7 @@ $("categorias").innerHTML=
 categorias.map(c=>
 `<button class="cat ${categoriaActual===c.nombre&&!q?"activa":""}" onclick="seleccionarCategoria('${esc(c.nombre).replace(/'/g,"\\'")}')">${esc(c.nombre)}</button>`
 ).join("");
+
 }
 
 function renderLocales(){
@@ -145,6 +170,7 @@ function renderLocales(){
 const q=$("busqueda").value.trim().toLowerCase();
 
 let lista=locales.filter(l=>{
+
 const ps=productos.filter(p=>p.local_id===l.id);
 
 if(q)return(
@@ -155,6 +181,7 @@ ps.some(p=>(p.nombre+" "+(p.descripcion||"")).toLowerCase().includes(q))
 );
 
 return !categoriaActual||l.categoria===categoriaActual;
+
 });
 
 $("locales").innerHTML=lista.length
@@ -186,15 +213,14 @@ ${ps.map(p=>`
 :'<div class="vacio">No encontramos resultados.</div>';
 
 renderCategorias();
+
 }
 
 function abrirLocal(id){
 
-let url=`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+location.href=
+`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-if(pedidoId)url+=`&pedido=${encodeURIComponent(pedidoId)}`;
-
-location.href=url;
 }
 
 $("busqueda").addEventListener("input",()=>{
