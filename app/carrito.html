@@ -117,12 +117,10 @@ Aceptar y guardar ubicación
 <input id="direccion" type="text" placeholder="Calle, número, sector">
 
 <label>Referencia</label>
-<input id="referencia" type="text"
-placeholder="Ej.: casa de dos pisos junto a la farmacia">
+<input id="referencia" type="text" placeholder="Ej.: casa de dos pisos junto a la farmacia">
 
 <label>Observaciones</label>
-<textarea id="observaciones" rows="3"
-placeholder="Indicaciones adicionales para el delivery"></textarea>
+<textarea id="observaciones" rows="3" placeholder="Indicaciones adicionales para el delivery"></textarea>
 
 <div class="factura-box">
 
@@ -172,15 +170,37 @@ let lng=null;
 let ubicacionAceptada=false;
 
 const params=new URLSearchParams(location.search);
-pedidoId=params.get("pedido");
+const clienteSlug=params.get("cliente");
+
+function claveCarrito(){
+return clienteSlug?`htpweb_pedido_${clienteSlug}`:"htpweb_pedido";
+}
+
+function obtenerPedido(){
+try{
+return sessionStorage.getItem(claveCarrito())||null;
+}catch(e){
+console.warn("No se pudo acceder a sessionStorage.",e);
+return null;
+}
+
+function guardarPedido(id){
+try{
+sessionStorage.setItem(claveCarrito(),id);
+}catch(e){
+console.warn("No se pudo guardar el pedido en sessionStorage.",e);
+}
+}
+
+function eliminarPedidoSesion(){
+try{
+sessionStorage.removeItem(claveCarrito());
+}catch(e){
+console.warn("No se pudo limpiar sessionStorage.",e);
+}
+}
 
 async function iniciar(){
-
-if(!pedidoId){
-$("lista").innerHTML='<div class="vacio">No se encontró el pedido.</div>';
-$("acciones").style.display="none";
-return;
-}
 
 try{
 
@@ -188,6 +208,18 @@ negocio=await cargarNegocio();
 negocioActual=negocio;
 
 $("negocio").textContent=negocio.nombre;
+
+pedidoId=obtenerPedido();
+
+if(!pedidoId){
+
+$("lista").innerHTML=
+'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
+
+$("acciones").style.display="none";
+return;
+
+}
 
 await cargarCarrito();
 
@@ -252,9 +284,7 @@ subtotal:0
 }
 
 locales[localId].items.push(item);
-
 locales[localId].subtotal+=Number(item.subtotal||0);
-
 total+=Number(item.subtotal||0);
 
 });
@@ -272,11 +302,8 @@ ${local.items.map(item=>`
 <div class="item">
 
 <div class="item-info">
-
 <strong>${escapeHtml(item.nombre)}</strong>
-
 <div>$${Number(item.precio).toFixed(2)}</div>
-
 </div>
 
 <div class="controles">
@@ -396,11 +423,7 @@ $("vaciar").onclick=async()=>{
 
 if(!carrito.length)return;
 
-const confirmar=window.confirm(
-"¿Seguro que quieres vaciar todo el carrito?"
-);
-
-if(!confirmar)return;
+if(!window.confirm("¿Seguro que quieres vaciar todo el carrito?"))return;
 
 const boton=$("vaciar");
 
@@ -426,7 +449,6 @@ $("mensaje").style.display="block";
 }catch(e){
 
 console.error(e);
-
 alert(e.message||"No se pudo vaciar el carrito.");
 
 }finally{
@@ -440,7 +462,7 @@ boton.textContent="🗑️ Vaciar carrito";
 $("seguirComprando").onclick=()=>{
 
 location.href=
-`index.html?cliente=${encodeURIComponent(negocioActual.slug)}&pedido=${encodeURIComponent(pedidoId)}`;
+`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
 };
 
@@ -476,11 +498,9 @@ L.tileLayer(
 ).addTo(mapa);
 
 mapa.on("click",e=>{
-establecerUbicacion(
-e.latlng.lat,
-e.latlng.lng
-);
+establecerUbicacion(e.latlng.lat,e.latlng.lng);
 });
+
 }
 
 $("ubicacionActual").onclick=()=>{
@@ -527,6 +547,7 @@ timeout:10000,
 maximumAge:0
 }
 );
+
 };
 
 async function establecerUbicacion(nuevaLat,nuevaLng){
@@ -553,18 +574,13 @@ marcador.setLatLng([lat,lng]);
 
 }else{
 
-marcador=L.marker([lat,lng],{
-draggable:true
-}).addTo(mapa);
+marcador=L.marker([lat,lng],{draggable:true}).addTo(mapa);
 
 marcador.on("dragend",async e=>{
 
 const p=e.target.getLatLng();
 
-await establecerUbicacion(
-p.lat,
-p.lng
-);
+await establecerUbicacion(p.lat,p.lng);
 
 });
 
@@ -622,9 +638,7 @@ const url=
 `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
 
 const res=await fetch(url,{
-headers:{
-"Accept":"application/json"
-}
+headers:{Accept:"application/json"}
 });
 
 if(!res.ok)return "";
@@ -635,12 +649,10 @@ return data.display_name||"";
 
 }catch(e){
 
-console.warn(
-"No se pudo obtener la dirección automáticamente.",
-e
-);
+console.warn("No se pudo obtener la dirección automáticamente.",e);
 
 return "";
+
 }
 }
 
@@ -752,13 +764,18 @@ let mensaje=error.message||"No se pudo confirmar el pedido.";
 if(data?.error)mensaje=data.error;
 
 throw new Error(mensaje);
+
 }
 
 if(!data?.ok){
+
 throw new Error(
 data?.error||"No se pudo confirmar el pedido."
 );
+
 }
+
+eliminarPedidoSesion();
 
 mostrarExito(data);
 
@@ -827,6 +844,7 @@ window.scrollTo({
 top:0,
 behavior:"smooth"
 });
+
 }
 
 function escapeHtml(text){
