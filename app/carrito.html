@@ -5,14 +5,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mi pedido</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
@@ -25,45 +22,37 @@ h2,h3{margin-top:0}
 .local-titulo{font-size:17px;font-weight:bold;margin-bottom:8px}
 .item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
 .item:last-child{border-bottom:0}
-.item-info{flex:1}
-.precio{font-weight:bold}
+.item-info{flex:1}.precio{font-weight:bold}
 .controles{display:flex;align-items:center;gap:8px}
 button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
 .btn{background:#111;color:#fff;width:100%;padding:13px}
-.btn-sec{background:#eee}
-.btn-danger{background:#e53935;color:#fff}
+.btn-sec{background:#eee}.btn-danger{background:#e53935;color:#fff}
 .btn-aceptar{background:#2e7d32;color:#fff;width:100%;margin-top:8px}
 .btn-vaciar{background:#b71c1c;color:#fff;width:100%;margin-top:8px}
 button:disabled{opacity:.6;cursor:not-allowed}
 input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;margin-top:6px;margin-bottom:12px;font-size:15px}
-textarea{resize:vertical}
-label{font-weight:bold;font-size:14px}
+textarea{resize:vertical}label{font-weight:bold;font-size:14px}
 .subtotal-local{text-align:right;font-weight:bold;margin-top:10px}
 .delivery-local{text-align:right;color:#555;font-size:14px;margin-top:5px}
 .resumen{border-top:1px solid #eee;padding-top:12px;margin-top:10px}
 .resumen-line{display:flex;justify-content:space-between;margin:6px 0}
 .total{font-size:20px;font-weight:bold;text-align:right;margin-top:15px}
-#formulario{display:none}
-#map{height:280px;border-radius:10px;margin-bottom:10px}
+#formulario{display:none}#map{height:280px;border-radius:10px;margin-bottom:10px}
 .ubicacion-info{font-size:13px;color:#555;margin-bottom:12px}
 .factura-box{background:#f8f8f8;padding:12px;border-radius:10px;margin-bottom:15px}
-.check{display:flex;align-items:center;gap:8px;font-weight:bold}
-.check input{width:auto;margin:0}
+.check{display:flex;align-items:center;gap:8px;font-weight:bold}.check input{width:auto;margin:0}
 .msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
-.vacio{text-align:center;padding:30px}
-.aviso{font-size:13px;color:#666;margin:8px 0 0}
+.vacio{text-align:center;padding:30px}.aviso{font-size:13px;color:#666;margin:8px 0 0}
 </style>
 </head>
 
 <body>
-
 <header>
 <h2>Mi pedido</h2>
 <div id="negocio"></div>
 </header>
 
 <main>
-
 <div id="mensaje" class="msg"></div>
 
 <section class="card">
@@ -72,23 +61,12 @@ label{font-weight:bold;font-size:14px}
 </section>
 
 <section class="card" id="acciones">
-
-<button class="btn" id="seguirComprando">
-➕ Seguir comprando
-</button>
-
-<button class="btn-vaciar" id="vaciar">
-🗑️ Vaciar carrito
-</button>
-
-<button class="btn" id="continuar" style="margin-top:8px">
-Continuar pedido
-</button>
-
+<button class="btn" id="seguirComprando">➕ Seguir comprando</button>
+<button class="btn-vaciar" id="vaciar">🗑️ Vaciar carrito</button>
+<button class="btn" id="continuar" style="margin-top:8px">Continuar pedido</button>
 </section>
 
 <section class="card" id="formulario">
-
 <h3>Datos del pedido</h3>
 
 <label>Nombre</label>
@@ -99,10 +77,7 @@ Continuar pedido
 
 <h3>Ubicación de entrega</h3>
 
-<button type="button" class="btn-sec" id="ubicacionActual">
-📍 Usar mi ubicación actual
-</button>
-
+<button type="button" class="btn-sec" id="ubicacionActual">📍 Usar mi ubicación actual</button>
 <div id="map"></div>
 
 <div class="ubicacion-info" id="ubicacionInfo">
@@ -123,14 +98,12 @@ Aceptar y guardar ubicación
 <textarea id="observaciones" rows="3" placeholder="Indicaciones adicionales para el delivery"></textarea>
 
 <div class="factura-box">
-
 <label class="check">
 <input type="checkbox" id="requiereFactura">
 Necesito factura
 </label>
 
 <div id="datosFactura" style="display:none;margin-top:15px">
-
 <label>Tipo de documento</label>
 <select id="tipoDocumento">
 <option value="">Seleccione</option>
@@ -144,81 +117,71 @@ Necesito factura
 
 <label>Correo para la factura</label>
 <input id="correoFactura" type="email" placeholder="correo@ejemplo.com">
-
 </div>
 </div>
 
-<button class="btn" id="confirmar">
-Confirmar pedido
-</button>
-
+<button class="btn" id="confirmar">Confirmar pedido</button>
 </section>
-
 </main>
 
 <script>
 const $=id=>document.getElementById(id);
-
-let carrito=[];
-let pedidoId=null;
-let negocioActual=null;
-
-let mapa=null;
-let marcador=null;
-let lat=null;
-let lng=null;
-let ubicacionAceptada=false;
+let carrito=[],pedidoId=null,negocioActual=null,mapa=null,marcador=null,lat=null,lng=null,ubicacionAceptada=false;
 
 const params=new URLSearchParams(location.search);
 const clienteSlug=params.get("cliente");
+const cartKey=()=>`htpweb_pedido_${clienteSlug}`;
+const tabKey="htpweb_tab_id";
+const instanceId=crypto.randomUUID();
+const startedAt=Date.now();
 
-function claveCarrito(){
-return clienteSlug?`htpweb_pedido_${clienteSlug}`:"htpweb_pedido";
+function iniciarIdentidadPestana(){
+let id=sessionStorage.getItem(tabKey);
+if(!id){
+id=crypto.randomUUID();
+sessionStorage.setItem(tabKey,id);
+return;
+}
+
+const ch=new BroadcastChannel("htpweb_tabs");
+
+ch.onmessage=e=>{
+if(e.data?.type==="HELLO"&&e.data.tabId===id&&e.data.startedAt<startedAt){
+ch.postMessage({type:"ACK",tabId:id,instance:e.data.instance});
+}
+if(e.data?.type==="ACK"&&e.data.instance===instanceId){
+sessionStorage.setItem(tabKey,crypto.randomUUID());
+sessionStorage.removeItem(cartKey());
+pedidoId=null;
+}
+};
+
+ch.postMessage({type:"HELLO",tabId:id,instance:instanceId,startedAt});
+setTimeout(()=>ch.close(),500);
 }
 
 function obtenerPedido(){
-try{
-return sessionStorage.getItem(claveCarrito())||null;
-}catch(e){
-console.warn("No se pudo acceder a sessionStorage.",e);
-return null;
-}
-
-function guardarPedido(id){
-try{
-sessionStorage.setItem(claveCarrito(),id);
-}catch(e){
-console.warn("No se pudo guardar el pedido en sessionStorage.",e);
-}
+try{return sessionStorage.getItem(cartKey())||null}catch(e){return null}
 }
 
 function eliminarPedidoSesion(){
-try{
-sessionStorage.removeItem(claveCarrito());
-}catch(e){
-console.warn("No se pudo limpiar sessionStorage.",e);
-}
+try{sessionStorage.removeItem(cartKey())}catch(e){}
 }
 
 async function iniciar(){
-
 try{
+
+iniciarIdentidadPestana();
 
 negocio=await cargarNegocio();
 negocioActual=negocio;
-
 $("negocio").textContent=negocio.nombre;
-
 pedidoId=obtenerPedido();
 
 if(!pedidoId){
-
-$("lista").innerHTML=
-'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
-
+$("lista").innerHTML='<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
 $("acciones").style.display="none";
 return;
-
 }
 
 await cargarCarrito();
@@ -226,43 +189,32 @@ await cargarCarrito();
 }catch(e){
 
 console.error(e);
-
-$("lista").innerHTML=
-'<div class="vacio">No se pudo cargar el pedido.</div>';
+$("lista").innerHTML='<div class="vacio">No se pudo cargar el pedido.</div>';
 
 }
 }
 
 async function cargarCarrito(){
 
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{p_pedido_id:pedidoId}
-);
-
+const{data,error}=await supabaseClient.rpc("obtener_carrito",{p_pedido_id:pedidoId});
 if(error)throw error;
 
 carrito=data||[];
-
 renderCarrito();
+
 }
 
 function renderCarrito(){
 
 if(!carrito.length){
 
-$("lista").innerHTML=
-'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para continuar.</p></div>';
-
+$("lista").innerHTML='<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para continuar.</p></div>';
 $("resumen").innerHTML="";
-
 $("acciones").style.display="block";
-
 $("continuar").style.display="none";
-
 $("vaciar").style.display="none";
-
 return;
+
 }
 
 $("continuar").style.display="block";
@@ -273,18 +225,12 @@ let total=0;
 
 carrito.forEach(item=>{
 
-const localId=item.local_id||"sin-local";
+const id=item.local_id||"sin-local";
 
-if(!locales[localId]){
-locales[localId]={
-nombre:item.local_nombre||"Local",
-items:[],
-subtotal:0
-};
-}
+if(!locales[id])locales[id]={nombre:item.local_nombre||"Local",items:[],subtotal:0};
 
-locales[localId].items.push(item);
-locales[localId].subtotal+=Number(item.subtotal||0);
+locales[id].items.push(item);
+locales[id].subtotal+=Number(item.subtotal||0);
 total+=Number(item.subtotal||0);
 
 });
@@ -292,83 +238,40 @@ total+=Number(item.subtotal||0);
 $("lista").innerHTML=Object.values(locales).map(local=>`
 
 <div class="local">
-
-<div class="local-titulo">
-${escapeHtml(local.nombre)}
-</div>
+<div class="local-titulo">${escapeHtml(local.nombre)}</div>
 
 ${local.items.map(item=>`
 
 <div class="item">
-
 <div class="item-info">
 <strong>${escapeHtml(item.nombre)}</strong>
 <div>$${Number(item.precio).toFixed(2)}</div>
 </div>
 
 <div class="controles">
-
-<button class="btn-sec"
-onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad-1})">
-−
-</button>
-
+<button class="btn-sec" onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad-1})">−</button>
 <strong>${item.cantidad}</strong>
-
-<button class="btn-sec"
-onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad+1})">
-+
-</button>
-
-<button class="btn-danger"
-onclick="eliminar('${item.detalle_id}')">
-×
-</button>
-
+<button class="btn-sec" onclick="cambiarCantidad('${item.detalle_id}',${item.cantidad+1})">+</button>
+<button class="btn-danger" onclick="eliminar('${item.detalle_id}')">×</button>
 </div>
-
 </div>
 
 `).join("")}
 
-<div class="subtotal-local">
-Subtotal productos: $${local.subtotal.toFixed(2)}
-</div>
-
-<div class="delivery-local">
-Delivery: se calcula al confirmar
-</div>
-
+<div class="subtotal-local">Subtotal productos: $${local.subtotal.toFixed(2)}</div>
+<div class="delivery-local">Delivery: se calcula al confirmar</div>
 </div>
 
 `).join("");
 
 $("resumen").innerHTML=`
-
 <div class="resumen">
+<div class="resumen-line"><span>Productos</span><strong>$${total.toFixed(2)}</strong></div>
+<div class="resumen-line"><span>Delivery</span><span>Se calcula al confirmar</span></div>
+<div class="total">Subtotal: $${total.toFixed(2)}</div>
+<div class="aviso">El delivery se calcula individualmente para cada local según la distancia real por carretera.</div>
+</div>`;
 
-<div class="resumen-line">
-<span>Productos</span>
-<strong>$${total.toFixed(2)}</strong>
-</div>
-
-<div class="resumen-line">
-<span>Delivery</span>
-<span>Se calcula al confirmar</span>
-</div>
-
-<div class="total">
-Subtotal: $${total.toFixed(2)}
-</div>
-
-<div class="aviso">
-El delivery se calcula individualmente para cada local
-según la distancia real por carretera.
-</div>
-
-</div>
-
-`;
 }
 
 async function cambiarCantidad(detalleId,cantidad){
@@ -380,67 +283,47 @@ await eliminar(detalleId);
 return;
 }
 
-const{error}=await supabaseClient.rpc(
-"actualizar_cantidad_carrito",
-{
-p_detalle_id:detalleId,
-p_cantidad:cantidad
-}
-);
-
+const{error}=await supabaseClient.rpc("actualizar_cantidad_carrito",{p_detalle_id:detalleId,p_cantidad:cantidad});
 if(error)throw error;
 
 await cargarCarrito();
 
 }catch(e){
-
 alert(e.message||"No se pudo actualizar.");
-
 }
+
 }
 
 async function eliminar(detalleId){
 
 try{
 
-const{error}=await supabaseClient.rpc(
-"eliminar_del_carrito",
-{p_detalle_id:detalleId}
-);
-
+const{error}=await supabaseClient.rpc("eliminar_del_carrito",{p_detalle_id:detalleId});
 if(error)throw error;
 
 await cargarCarrito();
 
 }catch(e){
-
 alert(e.message||"No se pudo eliminar.");
-
 }
+
 }
 
 $("vaciar").onclick=async()=>{
 
 if(!carrito.length)return;
-
 if(!window.confirm("¿Seguro que quieres vaciar todo el carrito?"))return;
 
 const boton=$("vaciar");
-
 boton.disabled=true;
 boton.textContent="Vaciando...";
 
 try{
 
-const{error}=await supabaseClient.rpc(
-"vaciar_carrito",
-{p_pedido_id:pedidoId}
-);
-
+const{error}=await supabaseClient.rpc("vaciar_carrito",{p_pedido_id:pedidoId});
 if(error)throw error;
 
 carrito=[];
-
 renderCarrito();
 
 $("mensaje").textContent="Carrito vaciado correctamente.";
@@ -448,7 +331,6 @@ $("mensaje").style.display="block";
 
 }catch(e){
 
-console.error(e);
 alert(e.message||"No se pudo vaciar el carrito.");
 
 }finally{
@@ -460,10 +342,7 @@ boton.textContent="🗑️ Vaciar carrito";
 };
 
 $("seguirComprando").onclick=()=>{
-
-location.href=
-`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
-
+location.href=`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 };
 
 $("continuar").onclick=()=>{
@@ -475,14 +354,9 @@ $("formulario").style.display="block";
 
 iniciarMapa();
 
-setTimeout(()=>{
-mapa.invalidateSize();
-},100);
+setTimeout(()=>mapa.invalidateSize(),100);
 
-window.scrollTo({
-top:$("formulario").offsetTop-10,
-behavior:"smooth"
-});
+window.scrollTo({top:$("formulario").offsetTop-10,behavior:"smooth"});
 
 };
 
@@ -492,14 +366,9 @@ if(mapa)return;
 
 mapa=L.map("map").setView([0,0],2);
 
-L.tileLayer(
-"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-{attribution:"© OpenStreetMap"}
-).addTo(mapa);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(mapa);
 
-mapa.on("click",e=>{
-establecerUbicacion(e.latlng.lat,e.latlng.lng);
-});
+mapa.on("click",e=>establecerUbicacion(e.latlng.lat,e.latlng.lng));
 
 }
 
@@ -517,10 +386,7 @@ navigator.geolocation.getCurrentPosition(
 
 pos=>{
 
-establecerUbicacion(
-pos.coords.latitude,
-pos.coords.longitude
-);
+establecerUbicacion(pos.coords.latitude,pos.coords.longitude);
 
 $("ubicacionActual").disabled=false;
 $("ubicacionActual").textContent="📍 Ubicación obtenida";
@@ -534,18 +400,12 @@ console.error(err);
 $("ubicacionActual").disabled=false;
 $("ubicacionActual").textContent="📍 Usar mi ubicación actual";
 
-alert(
-"No fue posible obtener tu ubicación. "+
-"También puedes seleccionar el punto directamente en el mapa."
-);
+alert("No fue posible obtener tu ubicación. También puedes seleccionar el punto directamente en el mapa.");
 
 },
 
-{
-enableHighAccuracy:true,
-timeout:10000,
-maximumAge:0
-}
+{enableHighAccuracy:true,timeout:10000,maximumAge:0}
+
 );
 
 };
@@ -554,14 +414,11 @@ async function establecerUbicacion(nuevaLat,nuevaLng){
 
 lat=Number(nuevaLat);
 lng=Number(nuevaLng);
-
 ubicacionAceptada=false;
 
 $("aceptarUbicacion").style.display="block";
 
-$("ubicacionInfo").textContent=
-`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
-
+$("ubicacionInfo").textContent=`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
 $("direccion").value="";
 
 if(!mapa)iniciarMapa();
@@ -577,14 +434,12 @@ marcador.setLatLng([lat,lng]);
 marcador=L.marker([lat,lng],{draggable:true}).addTo(mapa);
 
 marcador.on("dragend",async e=>{
-
 const p=e.target.getLatLng();
-
 await establecerUbicacion(p.lat,p.lng);
-
 });
 
 }
+
 }
 
 $("aceptarUbicacion").onclick=async()=>{
@@ -595,72 +450,53 @@ return;
 }
 
 const boton=$("aceptarUbicacion");
-
 boton.disabled=true;
 boton.textContent="Guardando ubicación...";
 
 try{
 
 const direccion=await obtenerDireccionDesdeMapa(lat,lng);
-
 if(direccion)$("direccion").value=direccion;
 
 ubicacionAceptada=true;
-
-$("ubicacionInfo").textContent=
-`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
+$("ubicacionInfo").textContent=`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 boton.textContent="✓ Ubicación guardada";
 
 }catch(e){
 
-console.error(e);
-
 ubicacionAceptada=true;
-
-$("ubicacionInfo").textContent=
-`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
+$("ubicacionInfo").textContent=`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 boton.textContent="✓ Ubicación guardada";
 
 }finally{
-
 boton.disabled=false;
-
 }
+
 };
 
 async function obtenerDireccionDesdeMapa(lat,lng){
 
 try{
 
-const url=
-`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
 
-const res=await fetch(url,{
-headers:{Accept:"application/json"}
-});
-
+const res=await fetch(url,{headers:{Accept:"application/json"}});
 if(!res.ok)return "";
 
 const data=await res.json();
-
 return data.display_name||"";
 
 }catch(e){
 
 console.warn("No se pudo obtener la dirección automáticamente.",e);
-
 return "";
 
 }
+
 }
 
 $("requiereFactura").onchange=()=>{
-
-$("datosFactura").style.display=
-$("requiereFactura").checked?"block":"none";
-
+$("datosFactura").style.display=$("requiereFactura").checked?"block":"none";
 };
 
 $("confirmar").onclick=confirmarPedido;
@@ -691,10 +527,7 @@ return;
 }
 
 if(lat===null||lng===null||!ubicacionAceptada){
-alert(
-"Debes seleccionar tu ubicación en el mapa "+
-"y pulsar «Aceptar y guardar ubicación»."
-);
+alert("Debes seleccionar tu ubicación en el mapa y pulsar «Aceptar y guardar ubicación».");
 return;
 }
 
@@ -737,9 +570,7 @@ $("confirmar").textContent="Calculando delivery...";
 
 try{
 
-const{data,error}=await supabaseClient.functions.invoke(
-"confirmar-pedido",
-{
+const{data,error}=await supabaseClient.functions.invoke("confirmar-pedido",{
 body:{
 p_pedido_id:pedidoId,
 p_nombre:nombre,
@@ -754,41 +585,30 @@ p_numero_documento:requiereFactura?numeroDocumento:null,
 p_correo_factura:requiereFactura?correoFactura:null,
 p_observaciones:observaciones
 }
-}
-);
+});
 
 if(error){
 
 let mensaje=error.message||"No se pudo confirmar el pedido.";
-
 if(data?.error)mensaje=data.error;
-
 throw new Error(mensaje);
 
 }
 
-if(!data?.ok){
-
-throw new Error(
-data?.error||"No se pudo confirmar el pedido."
-);
-
-}
+if(!data?.ok)throw new Error(data?.error||"No se pudo confirmar el pedido.");
 
 eliminarPedidoSesion();
-
 mostrarExito(data);
 
 }catch(e){
 
 console.error(e);
-
 alert(e.message||"No se pudo confirmar el pedido.");
-
 $("confirmar").disabled=false;
 $("confirmar").textContent="Confirmar pedido";
 
 }
+
 }
 
 function mostrarExito(data){
@@ -801,66 +621,33 @@ $("lista").innerHTML=`
 <div class="vacio">
 
 <h2>✅ Pedido enviado</h2>
-
 <p>Tu pedido fue registrado correctamente.</p>
 
-<p>
-<strong>Pedido:</strong>
-${escapeHtml(data.pedido_id)}
-</p>
+<p><strong>Pedido:</strong> ${escapeHtml(data.pedido_id)}</p>
+<p><strong>Productos:</strong> $${Number(data.total_productos||0).toFixed(2)}</p>
+<p><strong>Delivery:</strong> $${Number(data.costo_delivery||0).toFixed(2)}</p>
+<p><strong>Distancia:</strong> ${Number(data.distancia_km||0).toFixed(2)} km</p>
+<p><strong>Total:</strong> $${Number(data.total||0).toFixed(2)}</p>
 
-<p>
-<strong>Productos:</strong>
-$${Number(data.total_productos||0).toFixed(2)}
-</p>
-
-<p>
-<strong>Delivery:</strong>
-$${Number(data.costo_delivery||0).toFixed(2)}
-</p>
-
-<p>
-<strong>Distancia:</strong>
-${Number(data.distancia_km||0).toFixed(2)} km
-</p>
-
-<p>
-<strong>Total:</strong>
-$${Number(data.total||0).toFixed(2)}
-</p>
-
-<button class="btn"
-onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
+<button class="btn" onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
 Volver al inicio
 </button>
 
-</div>
-`;
+</div>`;
 
 $("resumen").innerHTML="";
 $("mensaje").style.display="none";
 
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
+window.scrollTo({top:0,behavior:"smooth"});
 
 }
 
 function escapeHtml(text){
-
-return String(text??"")
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
-.replace(/"/g,"&quot;")
-.replace(/'/g,"&#039;");
-
+return String(text??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 
 iniciar();
 </script>
-
 </body>
 </html>
 ```
