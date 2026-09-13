@@ -54,9 +54,7 @@ button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bo
 <section class="card" id="contenido"></section>
 
 <div id="carritoBar">
-<button class="btn btn-carrito" id="btnCarrito">
-Ver mi pedido
-</button>
+<button class="btn btn-carrito" id="btnCarrito">Ver mi pedido</button>
 </div>
 
 </main>
@@ -95,8 +93,6 @@ await cargarProductos();
 if(pedidoUrl){
 pedidoId=pedidoUrl;
 await cargarItemsPedido();
-}else{
-await cargarCarritoActivo();
 }
 
 actualizarNavegacion();
@@ -124,6 +120,7 @@ const{data,error}=await supabaseClient
 if(error||!data)throw new Error("Local no encontrado.");
 
 local=data;
+
 $("nombreLocal").textContent=local.nombre;
 
 $("contenido").innerHTML=`
@@ -153,20 +150,6 @@ if(error)throw error;
 
 productos=data||[];
 renderProductos();
-}
-
-async function cargarCarritoActivo(){
-
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito_activo",
-{p_cliente_id:negocioActual.id}
-);
-
-if(error)throw error;
-
-pedidoId=data||null;
-
-if(pedidoId)await cargarItemsPedido();
 }
 
 async function cargarItemsPedido(){
@@ -338,25 +321,14 @@ async function asegurarCarrito(){
 if(pedidoId)return;
 
 const{data,error}=await supabaseClient.rpc(
-"obtener_carrito_activo",
+"crear_carrito",
 {p_cliente_id:negocioActual.id}
 );
 
 if(error)throw error;
 
-if(data){
 pedidoId=data;
-return;
-}
-
-const{data:nuevo,error:e}=await supabaseClient.rpc(
-"crear_carrito",
-{p_cliente_id:negocioActual.id}
-);
-
-if(e)throw e;
-
-pedidoId=nuevo;
+actualizarNavegacion();
 }
 
 function actualizarNavegacion(){
@@ -364,30 +336,45 @@ function actualizarNavegacion(){
 let url=
 `index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-if(pedidoId)url+=`&pedido=${encodeURIComponent(pedidoId)}`;
+if(pedidoId){
+url+=`&pedido=${encodeURIComponent(pedidoId)}`;
+}
 
 $("volverLocales").onclick=()=>{
 location.href=url;
 };
 
 $("irCarrito").onclick=()=>{
+
 if(pedidoId){
+
 location.href=
 `carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+
 }else{
+
 location.href=
 `carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+
 }
 };
 
 if(pedidoId){
+
 $("btnCarrito").style.display="block";
+
 $("btnCarrito").onclick=()=>{
+
 location.href=
 `carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
-};
-}
 
+};
+
+}else{
+
+$("btnCarrito").style.display="none";
+
+}
 }
 
 function escapeHtml(text){
