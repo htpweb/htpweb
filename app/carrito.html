@@ -846,38 +846,3 @@ iniciar();
 </body>
 </html>
 ```
-
-### Ahora el flujo queda así
-
-```text
-INDEX
- ↓
-LOCAL
- ↓
-Agregar productos
- ↓
-🛒 Mi pedido
- ↓
-CARRITO
- ├── ➕ Seguir comprando
- │      ↓
- │   INDEX conservando pedidoId
- │
- ├── − / +
- │
- ├── × eliminar producto
- │
- ├── 🗑️ Vaciar carrito
- │      ↓
- │   carrito queda vacío
- │
- └── Continuar pedido
-        ↓
-      Datos
-        ↓
-      Confirmar
-```
-
-Y **vaciar carrito no elimina el `pedidoId`**, por lo que el usuario puede vaciarlo y luego seguir comprando en el mismo carrito.
-
-**Importante:** como la nueva función es `SECURITY DEFINER`, conviene mantenerla estrictamente limitada al `pedidoId` recibido y con `search_path` fijado, que es precisamente una de las precauciones que recomienda Supabase para este tipo de funciones.
