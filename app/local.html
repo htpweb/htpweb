@@ -1,18 +1,19 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Local</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
-header{background:#111;color:#fff;padding:16px;text-align:center}
+header{background:#111;color:#fff;padding:14px 16px;text-align:center}
+nav{display:flex;gap:8px;margin-bottom:15px}
+nav button{flex:1}
 main{max-width:700px;margin:auto;padding:15px}
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
 .banner{width:100%;height:220px;object-fit:cover;border-radius:10px}
@@ -25,13 +26,14 @@ h2,h3{margin-top:0}
 .descripcion{font-size:14px;color:#666}
 button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
 .btn{background:#111;color:#fff}
+.btn-sec{background:#eee}
 .btn-carrito{width:100%;padding:13px;margin-top:15px}
 .cantidad{display:flex;align-items:center;gap:8px;margin-top:8px}
 .cantidad button{background:#eee}
 .cantidad button:disabled{opacity:.4}
 .vacio{text-align:center;padding:30px;color:#666}
 #carritoBar{position:sticky;bottom:15px;z-index:10}
-#btnCarrito{display:none}
+#btnCarrito{display:none;width:100%}
 </style>
 </head>
 
@@ -43,6 +45,11 @@ button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bo
 </header>
 
 <main>
+
+<nav>
+<button class="btn-sec" id="volverLocales">← Ver locales</button>
+<button class="btn-sec" id="irCarrito">🛒 Mi pedido</button>
+</nav>
 
 <section class="card" id="contenido"></section>
 
@@ -62,386 +69,334 @@ let local=null;
 let productos=[];
 let pedidoId=null;
 let procesando=false;
-
 const cantidades={};
 
 const params=new URLSearchParams(location.search);
 const localId=params.get("id");
+const pedidoUrl=params.get("pedido");
 
 async function iniciar(){
 
-  if(!localId){
+if(!localId){
+$("contenido").innerHTML='<div class="vacio">No se especificó el local.</div>';
+return;
+}
 
-    $("contenido").innerHTML=
-      '<div class="vacio">No se especificó el local.</div>';
+try{
 
-    return;
-  }
+negocio=await cargarNegocio();
+negocioActual=negocio;
 
-  try{
+$("nombreNegocio").textContent=negocio.nombre;
 
-    negocio=await cargarNegocio();
-    negocioActual=negocio;
+await cargarLocal();
+await cargarProductos();
 
-    $("nombreNegocio").textContent=negocio.nombre;
+if(pedidoUrl){
+pedidoId=pedidoUrl;
+await cargarItemsPedido();
+}else{
+await cargarCarritoActivo();
+}
 
-    await cargarLocal();
-    await cargarProductos();
+actualizarNavegacion();
 
-    await cargarCarritoActivo();
+}catch(e){
 
-  }catch(e){
+console.error(e);
 
-    console.error(e);
+$("contenido").innerHTML=
+'<div class="vacio">No se pudo cargar el local.</div>';
 
-    $("contenido").innerHTML=
-      '<div class="vacio">No se pudo cargar el local.</div>';
-
-  }
+}
 }
 
 async function cargarLocal(){
 
-  const {data,error}=await supabaseClient
-    .from("locales")
-    .select(`
-      id,
-      nombre,
-      categoria,
-      descripcion,
-      banner_url
-    `)
-    .eq("id",localId)
-    .eq("cliente_id",negocioActual.id)
-    .eq("activo",true)
-    .single();
+const{data,error}=await supabaseClient
+.from("locales")
+.select("id,nombre,categoria,descripcion,banner_url")
+.eq("id",localId)
+.eq("cliente_id",negocioActual.id)
+.eq("activo",true)
+.single();
 
-  if(error||!data)
-    throw new Error("Local no encontrado.");
+if(error||!data)throw new Error("Local no encontrado.");
 
-  local=data;
+local=data;
+$("nombreLocal").textContent=local.nombre;
 
-  $("nombreLocal").textContent=local.nombre;
-
-  $("contenido").innerHTML=`
-
-    ${local.banner_url
-      ?`<img class="banner"
-          src="${escapeHtml(local.banner_url)}"
-          alt="${escapeHtml(local.nombre)}">`
-      :""
-    }
-
-    <h2>${escapeHtml(local.nombre)}</h2>
-
-    ${local.descripcion
-      ?`<p class="descripcion">
-          ${escapeHtml(local.descripcion)}
-        </p>`
-      :""
-    }
-
-    <div id="productos">
-      <div class="vacio">Cargando productos...</div>
-    </div>
-
-  `;
+$("contenido").innerHTML=`
+${local.banner_url
+?`<img class="banner" src="${escapeHtml(local.banner_url)}" alt="${escapeHtml(local.nombre)}">`
+:""}
+<h2>${escapeHtml(local.nombre)}</h2>
+${local.descripcion
+?`<p class="descripcion">${escapeHtml(local.descripcion)}</p>`
+:""}
+<div id="productos">
+<div class="vacio">Cargando productos...</div>
+</div>`;
 }
 
 async function cargarProductos(){
 
-  const {data,error}=await supabaseClient
-    .from("productos")
-    .select(`
-      id,
-      nombre,
-      descripcion,
-      precio,
-      imagen_url,
-      activo
-    `)
-    .eq("cliente_id",negocioActual.id)
-    .eq("local_id",local.id)
-    .eq("activo",true)
-    .order("nombre");
+const{data,error}=await supabaseClient
+.from("productos")
+.select("id,nombre,descripcion,precio,imagen_url,activo")
+.eq("cliente_id",negocioActual.id)
+.eq("local_id",local.id)
+.eq("activo",true)
+.order("nombre");
 
-  if(error) throw error;
+if(error)throw error;
 
-  productos=data||[];
-
-  renderProductos();
+productos=data||[];
+renderProductos();
 }
 
 async function cargarCarritoActivo(){
 
-  const {data,error}=await supabaseClient.rpc(
-    "obtener_carrito_activo",
-    {
-      p_cliente_id:negocioActual.id
-    }
-  );
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito_activo",
+{p_cliente_id:negocioActual.id}
+);
 
-  if(error) throw error;
+if(error)throw error;
 
-  pedidoId=data||null;
+pedidoId=data||null;
 
-  if(pedidoId){
+if(pedidoId)await cargarItemsPedido();
+}
 
-    const {data:items,error:e}=await supabaseClient.rpc(
-      "obtener_carrito",
-      {
-        p_pedido_id:pedidoId
-      }
-    );
+async function cargarItemsPedido(){
 
-    if(e) throw e;
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito",
+{p_pedido_id:pedidoId}
+);
 
-    (items||[]).forEach(item=>{
+if(error)throw error;
 
-      if(item.local_id===local.id){
-        cantidades[item.producto_id]=
-          Number(item.cantidad);
-      }
+Object.keys(cantidades).forEach(k=>delete cantidades[k]);
 
-    });
+(data||[]).forEach(item=>{
+if(item.local_id===local.id){
+cantidades[item.producto_id]=Number(item.cantidad);
+}
+});
 
-    renderProductos();
-    actualizarBotonCarrito();
-
-  }
+renderProductos();
 }
 
 function renderProductos(){
 
-  if(!productos.length){
+if(!productos.length){
+$("productos").innerHTML=
+'<div class="vacio">Este local no tiene productos disponibles.</div>';
+return;
+}
 
-    $("productos").innerHTML=
-      '<div class="vacio">Este local no tiene productos disponibles.</div>';
+$("productos").innerHTML=productos.map(p=>{
 
-    return;
-  }
+const cantidad=cantidades[p.id]||0;
 
-  $("productos").innerHTML=productos.map(p=>{
+return`
+<div class="producto">
 
-    const cantidad=cantidades[p.id]||0;
+${p.imagen_url
+?`<img src="${escapeHtml(p.imagen_url)}" alt="${escapeHtml(p.nombre)}">`
+:""}
 
-    return `
+<div class="info">
 
-      <div class="producto">
+<strong>${escapeHtml(p.nombre)}</strong>
 
-        ${p.imagen_url
-          ?`<img
-              src="${escapeHtml(p.imagen_url)}"
-              alt="${escapeHtml(p.nombre)}">`
-          :""
-        }
+${p.descripcion
+?`<div class="descripcion">${escapeHtml(p.descripcion)}</div>`
+:""}
 
-        <div class="info">
+<div class="precio">
+$${Number(p.precio).toFixed(2)}
+</div>
 
-          <strong>${escapeHtml(p.nombre)}</strong>
+<div class="cantidad">
 
-          ${p.descripcion
-            ?`<div class="descripcion">
-                ${escapeHtml(p.descripcion)}
-              </div>`
-            :""
-          }
+<button
+onclick="cambiarCantidad('${p.id}',${cantidad-1})"
+${cantidad<=0?"disabled":""}>
+−
+</button>
 
-          <div class="precio">
-            $${Number(p.precio).toFixed(2)}
-          </div>
+<strong>${cantidad}</strong>
 
-          <div class="cantidad">
+<button
+onclick="cambiarCantidad('${p.id}',${cantidad+1})">
++
+</button>
 
-            <button
-              onclick="cambiarCantidad('${p.id}',${cantidad-1})"
-              ${cantidad<=0?"disabled":""}>
-              −
-            </button>
+</div>
 
-            <strong>${cantidad}</strong>
-
-            <button
-              onclick="cambiarCantidad('${p.id}',${cantidad+1})">
-              +
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    `;
-
-  }).join("");
+</div>
+</div>`;
+}).join("");
 }
 
 async function cambiarCantidad(productoId,nuevaCantidad){
 
-  if(procesando) return;
+if(procesando||nuevaCantidad<0)return;
 
-  if(nuevaCantidad<0) return;
+const anterior=cantidades[productoId]||0;
 
-  const anterior=cantidades[productoId]||0;
+if(nuevaCantidad===anterior)return;
 
-  if(nuevaCantidad===anterior) return;
+cantidades[productoId]=nuevaCantidad;
+renderProductos();
 
-  cantidades[productoId]=nuevaCantidad;
+procesando=true;
 
-  renderProductos();
+try{
 
-  procesando=true;
+await asegurarCarrito();
 
-  try{
+const diferencia=nuevaCantidad-anterior;
 
-    await asegurarCarrito();
+if(diferencia>0){
 
-    const diferencia=nuevaCantidad-anterior;
+const{error}=await supabaseClient.rpc(
+"agregar_al_carrito",
+{
+p_pedido_id:pedidoId,
+p_producto_id:productoId,
+p_cantidad:diferencia
+}
+);
 
-    if(diferencia>0){
+if(error)throw error;
 
-      const {error}=await supabaseClient.rpc(
-        "agregar_al_carrito",
-        {
-          p_pedido_id:pedidoId,
-          p_producto_id:productoId,
-          p_cantidad:diferencia
-        }
-      );
+}else{
 
-      if(error) throw error;
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito",
+{p_pedido_id:pedidoId}
+);
 
-    }else{
+if(error)throw error;
 
-      const {data,error}=await supabaseClient.rpc(
-        "obtener_carrito",
-        {
-          p_pedido_id:pedidoId
-        }
-      );
+const item=(data||[]).find(
+x=>x.producto_id===productoId
+);
 
-      if(error) throw error;
+if(!item)return;
 
-      const item=(data||[]).find(
-        x=>x.producto_id===productoId
-      );
+const cantidadFinal=Number(item.cantidad)+diferencia;
 
-      if(!item) return;
+if(cantidadFinal<=0){
 
-      const cantidadFinal=
-        Number(item.cantidad)+diferencia;
+const{error:e}=await supabaseClient.rpc(
+"eliminar_del_carrito",
+{p_detalle_id:item.detalle_id}
+);
 
-      if(cantidadFinal<=0){
+if(e)throw e;
 
-        const {error:e}=await supabaseClient.rpc(
-          "eliminar_del_carrito",
-          {
-            p_detalle_id:item.detalle_id
-          }
-        );
+}else{
 
-        if(e) throw e;
+const{error:e}=await supabaseClient.rpc(
+"actualizar_cantidad_carrito",
+{
+p_detalle_id:item.detalle_id,
+p_cantidad:cantidadFinal
+}
+);
 
-      }else{
+if(e)throw e;
 
-        const {error:e}=await supabaseClient.rpc(
-          "actualizar_cantidad_carrito",
-          {
-            p_detalle_id:item.detalle_id,
-            p_cantidad:cantidadFinal
-          }
-        );
+}
+}
 
-        if(e) throw e;
+actualizarNavegacion();
 
-      }
+}catch(e){
 
-    }
+console.error(e);
 
-    actualizarBotonCarrito();
+cantidades[productoId]=anterior;
+renderProductos();
 
-  }catch(e){
+alert(e.message||"No se pudo actualizar el pedido.");
 
-    console.error(e);
+}finally{
 
-    cantidades[productoId]=anterior;
+procesando=false;
 
-    renderProductos();
-
-    alert(
-      e.message||
-      "No se pudo actualizar el pedido."
-    );
-
-  }finally{
-
-    procesando=false;
-
-  }
+}
 }
 
 async function asegurarCarrito(){
 
-  if(pedidoId) return;
+if(pedidoId)return;
 
-  const {data,error}=await supabaseClient.rpc(
-    "obtener_carrito_activo",
-    {
-      p_cliente_id:negocioActual.id
-    }
-  );
+const{data,error}=await supabaseClient.rpc(
+"obtener_carrito_activo",
+{p_cliente_id:negocioActual.id}
+);
 
-  if(error) throw error;
+if(error)throw error;
 
-  if(data){
-
-    pedidoId=data;
-    return;
-
-  }
-
-  const {data:nuevo,error:e}=await supabaseClient.rpc(
-    "crear_carrito",
-    {
-      p_cliente_id:negocioActual.id
-    }
-  );
-
-  if(e) throw e;
-
-  pedidoId=nuevo;
+if(data){
+pedidoId=data;
+return;
 }
 
-function actualizarBotonCarrito(){
+const{data:nuevo,error:e}=await supabaseClient.rpc(
+"crear_carrito",
+{p_cliente_id:negocioActual.id}
+);
 
-  if(!pedidoId) return;
+if(e)throw e;
 
-  $("btnCarrito").style.display="block";
-
-  $("btnCarrito").textContent=
-    "Ver mi pedido";
-
+pedidoId=nuevo;
 }
 
-$("btnCarrito").onclick=()=>{
+function actualizarNavegacion(){
 
-  if(!pedidoId) return;
+let url=
+`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-  location.href=
-    `carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+if(pedidoId)url+=`&pedido=${encodeURIComponent(pedidoId)}`;
 
+$("volverLocales").onclick=()=>{
+location.href=url;
 };
 
+$("irCarrito").onclick=()=>{
+if(pedidoId){
+location.href=
+`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+}else{
+location.href=
+`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+}
+};
+
+if(pedidoId){
+$("btnCarrito").style.display="block";
+$("btnCarrito").onclick=()=>{
+location.href=
+`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+};
+}
+
+}
+
 function escapeHtml(text){
-
-  return String(text??"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
-
+return String(text??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
 }
 
 iniciar();
@@ -449,3 +404,4 @@ iniciar();
 
 </body>
 </html>
+```
