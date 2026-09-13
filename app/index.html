@@ -25,17 +25,14 @@ h2{font-size:20px;margin:18px 0 12px}
 .local{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 2px 9px #0001;cursor:pointer}
 .banner{height:150px;background:#ddd;position:relative}
 .banner img{width:100%;height:100%;object-fit:cover}
-.info{padding:14px}
-.info h3{margin:0 0 5px}
+.info{padding:14px}.info h3{margin:0 0 5px}
 .categoria{font-size:12px;color:#e53935;font-weight:bold}
 .desc{color:#666;font-size:14px;margin:7px 0}
 .prod{display:flex;justify-content:space-between;border-top:1px solid #eee;padding:8px 0;font-size:13px}
 .prod b{color:#111}
 .vacio{text-align:center;background:#fff;padding:30px;border-radius:14px;color:#777}
 .error{max-width:600px;margin:60px auto;padding:25px;background:#fff;border-radius:15px;text-align:center}
-@media(max-width:600px){
-main{padding:12px}.hero{padding:19px}.hero h1{font-size:24px}
-}
+@media(max-width:600px){main{padding:12px}.hero{padding:19px}.hero h1{font-size:24px}}
 </style>
 </head>
 
@@ -47,7 +44,6 @@ main{padding:12px}.hero{padding:19px}.hero h1{font-size:24px}
 </header>
 
 <main id="contenido" style="display:none">
-
 <section class="hero">
 <h1 id="titulo">¿Qué quieres pedir?</h1>
 <p id="subtitulo">Encuentra locales y productos.</p>
@@ -59,7 +55,6 @@ main{padding:12px}.hero{padding:19px}.hero h1{font-size:24px}
 
 <h2>Locales</h2>
 <div id="locales" class="locales"></div>
-
 </main>
 
 <div id="error" class="error" style="display:none"></div>
@@ -67,19 +62,12 @@ main{padding:12px}.hero{padding:19px}.hero h1{font-size:24px}
 <script>
 const $=id=>document.getElementById(id);
 
-let locales=[];
-let categorias=[];
-let productos=[];
-let categoriaActual="";
-let negocioActual=null;
-let pedidoId=null;
+let locales=[],categorias=[],productos=[],categoriaActual="",negocioActual=null,pedidoId=null;
 
 const params=new URLSearchParams(location.search);
 pedidoId=params.get("pedido");
 
-const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({
-"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-}[m]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 
 async function cargar(){
 try{
@@ -92,27 +80,9 @@ $("titulo").textContent="¿Qué quieres pedir?";
 $("subtitulo").textContent=`Encuentra locales y productos de ${negocio.nombre}.`;
 
 const[localesRes,categoriasRes,productosRes]=await Promise.all([
-
-supabaseClient
-.from("locales")
-.select("id,cliente_id,nombre,categoria,descripcion,banner_url,activo")
-.eq("cliente_id",negocio.id)
-.eq("activo",true)
-.order("nombre"),
-
-supabaseClient
-.from("categorias")
-.select("id,cliente_id,nombre,imagen_url,activo")
-.eq("cliente_id",negocio.id)
-.eq("activo",true)
-.order("nombre"),
-
-supabaseClient
-.from("productos")
-.select("id,cliente_id,local_id,categoria_id,nombre,descripcion,precio,imagen_url,activo")
-.eq("cliente_id",negocio.id)
-.eq("activo",true)
-.order("nombre")
+supabaseClient.from("locales").select("id,cliente_id,nombre,categoria,descripcion,banner_url,activo").eq("cliente_id",negocio.id).eq("activo",true).order("nombre"),
+supabaseClient.from("categorias").select("id,cliente_id,nombre,imagen_url,activo").eq("cliente_id",negocio.id).eq("activo",true).order("nombre"),
+supabaseClient.from("productos").select("id,cliente_id,local_id,categoria_id,nombre,descripcion,precio,imagen_url,activo").eq("cliente_id",negocio.id).eq("activo",true).order("nombre")
 ]);
 
 if(localesRes.error)throw localesRes.error;
@@ -123,13 +93,11 @@ locales=localesRes.data||[];
 categorias=categoriasRes.data||[];
 productos=productosRes.data||[];
 
-await prepararCarrito();
-
+actualizarEnlaceCarrito();
 renderCategorias();
 renderLocales();
 
 $("contenido").style.display="block";
-
 }catch(e){
 console.error(e);
 $("error").style.display="block";
@@ -137,25 +105,9 @@ $("error").textContent=e.message||"No se pudo cargar el negocio.";
 }
 }
 
-async function prepararCarrito(){
-
-if(!pedidoId){
-
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito_activo",
-{p_cliente_id:negocioActual.id}
-);
-
-if(!error&&data)pedidoId=data;
-}
-
-actualizarEnlaceCarrito();
-}
-
 function actualizarEnlaceCarrito(){
 
-$("carrito").href=
-pedidoId
+$("carrito").href=pedidoId
 ?`carrito.html?pedido=${encodeURIComponent(pedidoId)}&cliente=${encodeURIComponent(negocioActual.slug)}`
 :`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
 
@@ -164,19 +116,9 @@ $("cartCount").textContent="0";
 return;
 }
 
-supabaseClient.rpc(
-"obtener_carrito",
-{p_pedido_id:pedidoId}
-).then(({data,error})=>{
-
+supabaseClient.rpc("obtener_carrito",{p_pedido_id:pedidoId}).then(({data,error})=>{
 if(error)return;
-
-const cantidad=(data||[]).reduce(
-(s,i)=>s+Number(i.cantidad||0),0
-);
-
-$("cartCount").textContent=cantidad;
-
+$("cartCount").textContent=(data||[]).reduce((s,i)=>s+Number(i.cantidad||0),0);
 });
 }
 
@@ -192,13 +134,9 @@ function renderCategorias(){
 const q=$("busqueda").value.trim();
 
 $("categorias").innerHTML=
-`<button class="cat ${!categoriaActual&&!q?"activa":""}"
-onclick="seleccionarCategoria('')">Todos</button>`+
+`<button class="cat ${!categoriaActual&&!q?"activa":""}" onclick="seleccionarCategoria('')">Todos</button>`+
 categorias.map(c=>
-`<button class="cat ${categoriaActual===c.nombre&&!q?"activa":""}"
-onclick="seleccionarCategoria('${esc(c.nombre).replace(/'/g,"\\'")}')">
-${esc(c.nombre)}
-</button>`
+`<button class="cat ${categoriaActual===c.nombre&&!q?"activa":""}" onclick="seleccionarCategoria('${esc(c.nombre).replace(/'/g,"\\'")}')">${esc(c.nombre)}</button>`
 ).join("");
 }
 
@@ -207,20 +145,14 @@ function renderLocales(){
 const q=$("busqueda").value.trim().toLowerCase();
 
 let lista=locales.filter(l=>{
-
 const ps=productos.filter(p=>p.local_id===l.id);
 
-if(q){
-return(
+if(q)return(
 l.nombre.toLowerCase().includes(q)||
 (l.categoria||"").toLowerCase().includes(q)||
 (l.descripcion||"").toLowerCase().includes(q)||
-ps.some(p=>
-(p.nombre+" "+(p.descripcion||""))
-.toLowerCase().includes(q)
-)
+ps.some(p=>(p.nombre+" "+(p.descripcion||"")).toLowerCase().includes(q))
 );
-}
 
 return !categoriaActual||l.categoria===categoriaActual;
 });
@@ -230,42 +162,23 @@ $("locales").innerHTML=lista.length
 
 const ps=productos.filter(p=>{
 if(p.local_id!==l.id)return false;
-return(
-!q||
-p.nombre.toLowerCase().includes(q)||
-(p.descripcion||"").toLowerCase().includes(q)
-);
+return !q||p.nombre.toLowerCase().includes(q)||(p.descripcion||"").toLowerCase().includes(q);
 }).slice(0,3);
 
 return`
-<article class="local"
-onclick="abrirLocal('${encodeURIComponent(l.id)}')">
-
+<article class="local" onclick="abrirLocal('${encodeURIComponent(l.id)}')">
 <div class="banner">
-${l.banner_url
-?`<img src="${esc(l.banner_url)}" alt="${esc(l.nombre)}">`
-:""}
+${l.banner_url?`<img src="${esc(l.banner_url)}" alt="${esc(l.nombre)}">`:""}
 </div>
-
 <div class="info">
-
-${l.categoria
-?`<div class="categoria">${esc(l.categoria)}</div>`
-:""}
-
+${l.categoria?`<div class="categoria">${esc(l.categoria)}</div>`:""}
 <h3>${esc(l.nombre)}</h3>
-
-<div class="desc">
-${esc(l.descripcion||"")}
-</div>
-
+<div class="desc">${esc(l.descripcion||"")}</div>
 ${ps.map(p=>`
 <div class="prod">
 <span>${esc(p.nombre)}</span>
 <b>$${Number(p.precio||0).toFixed(2)}</b>
-</div>
-`).join("")}
-
+</div>`).join("")}
 </div>
 </article>`;
 
@@ -277,12 +190,9 @@ renderCategorias();
 
 function abrirLocal(id){
 
-let url=
-`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
+let url=`local.html?id=${id}&cliente=${encodeURIComponent(negocioActual.slug)}`;
 
-if(pedidoId){
-url+=`&pedido=${encodeURIComponent(pedidoId)}`;
-}
+if(pedidoId)url+=`&pedido=${encodeURIComponent(pedidoId)}`;
 
 location.href=url;
 }
