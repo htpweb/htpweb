@@ -8,6 +8,7 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
 <script src="../config/auth.js"></script>
+<script src="../config/addresses.js"></script>
 <link rel="stylesheet" href="../assets/app.css">
 </head>
 <body>
@@ -56,6 +57,16 @@
       <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
       <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
+    </div>
+
+    <div id="addressesCard" class="hidden" style="margin-top:22px">
+      <hr style="border:0;border-top:1px solid #e5e7eb;margin:20px 0">
+      <h2>Mis direcciones</h2>
+      <p class="muted">
+        Aquí puedes revisar, marcar como predeterminada o desactivar una dirección.
+        Las nuevas direcciones se guardan desde el checkout usando el punto exacto del mapa.
+      </p>
+      <div id="addressesList"></div>
     </div>
   </section>
 </main>
@@ -111,9 +122,87 @@ async function init() {
       if (role && role !== "CLIENT") {
         $("adminBtn").classList.remove("hidden");
       }
+
+      if (role === "CLIENT") {
+        $("addressesCard").classList.remove("hidden");
+        await loadAccountAddresses();
+      }
     } catch (e) {
       console.warn(e);
     }
+  }
+}
+
+let accountAddresses = [];
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[ch]));
+}
+
+async function loadAccountAddresses() {
+  try {
+    accountAddresses = await listarMisDireccionesCliente({ soloActivas: true });
+
+    $("addressesList").innerHTML = accountAddresses.length
+      ? accountAddresses.map(address => `
+          <div class="address-card">
+            <div>
+              <div class="row">
+                <strong>${esc(address.label)}</strong>
+                ${address.is_default ? '<span class="availability-badge availability-open">Predeterminada</span>' : ""}
+              </div>
+              <div>${esc(address.address)}</div>
+              ${address.reference ? `<div class="muted">${esc(address.reference)}</div>` : ""}
+            </div>
+            <div class="row">
+              ${address.is_default ? "" : `<button class="btn btn-muted" onclick="setDefaultAddress('${address.id}')">Predeterminada</button>`}
+              <button class="btn btn-danger" onclick="deactivateAccountAddress('${address.id}')">Desactivar</button>
+            </div>
+          </div>
+        `).join("")
+      : '<div class="empty">Todavía no tienes direcciones guardadas.</div>';
+  } catch (e) {
+    $("addressesList").innerHTML = `<div class="error">${esc(e.message || "No se pudieron cargar las direcciones.")}</div>`;
+  }
+}
+
+async function setDefaultAddress(addressId) {
+  const address = accountAddresses.find(item => item.id === addressId);
+  if (!address) return;
+
+  try {
+    await guardarMiDireccionCliente({
+      id: address.id,
+      label: address.label,
+      address: address.address,
+      reference: address.reference,
+      latitude: address.latitude,
+      longitude: address.longitude,
+      isDefault: true,
+      active: true
+    });
+
+    showMessage("Dirección predeterminada actualizada.", "success");
+    await loadAccountAddresses();
+  } catch (e) {
+    showMessage(e.message || "No se pudo actualizar la dirección.");
+  }
+}
+
+async function deactivateAccountAddress(addressId) {
+  const address = accountAddresses.find(item => item.id === addressId);
+  if (!address) return;
+
+  if (!confirm(`¿Desactivar la dirección "${address.label}"?`)) return;
+
+  try {
+    await desactivarMiDireccionCliente(address);
+    showMessage("Dirección desactivada.", "success");
+    await loadAccountAddresses();
+  } catch (e) {
+    showMessage(e.message || "No se pudo desactivar la dirección.");
   }
 }
 
