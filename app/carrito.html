@@ -3,1078 +3,483 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mi pedido</title>
+<title>Mi carrito | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
+<script src="../config/auth.js"></script>
+<script src="../config/cart.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
-header{background:#111;color:#fff;padding:16px;text-align:center}
-main{max-width:700px;margin:auto;padding:15px}
-.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
-h2,h3{margin-top:0}
-.local{border:1px solid #eee;border-radius:10px;margin-bottom:15px;padding:12px}
-.local:last-child{margin-bottom:0}
-.local-titulo{font-size:17px;font-weight:bold;margin-bottom:8px}
-.item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
-.item:last-child{border-bottom:0}
-.item-info{flex:1}.precio{font-weight:bold}
-.controles{display:flex;align-items:center;gap:8px}
-button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
-.btn{background:#111;color:#fff;width:100%;padding:13px}
-.btn-sec{background:#eee}.btn-danger{background:#e53935;color:#fff}
-.btn-aceptar{background:#2e7d32;color:#fff;width:100%;margin-top:8px}
-.btn-vaciar{background:#b71c1c;color:#fff;width:100%;margin-top:8px}
-button:disabled{opacity:.6;cursor:not-allowed}
-input,select,textarea{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;margin-top:6px;margin-bottom:12px;font-size:15px}
-textarea{resize:vertical}
-label{font-weight:bold;font-size:14px}
-.subtotal-local{text-align:right;font-weight:bold;margin-top:10px}
-.delivery-local{text-align:right;color:#555;font-size:14px;margin-top:5px}
-.resumen{border-top:1px solid #eee;padding-top:12px;margin-top:10px}
-.resumen-line{display:flex;justify-content:space-between;margin:6px 0}
-.total{font-size:20px;font-weight:bold;text-align:right;margin-top:15px}
-#formulario{display:none}
-#map{height:280px;border-radius:10px;margin-bottom:10px}
-.ubicacion-info{font-size:13px;color:#555;margin-bottom:12px}
-.factura-box{background:#f8f8f8;padding:12px;border-radius:10px;margin-bottom:15px}
-.check{display:flex;align-items:center;gap:8px;font-weight:bold}
-.check input{width:auto;margin:0}
-.msg{padding:12px;border-radius:8px;background:#e8f5e9;color:#1b5e20;margin-bottom:15px;display:none}
-.vacio{text-align:center;padding:30px}
-.aviso{font-size:13px;color:#666;margin:8px 0 0}
-</style>
 </head>
-
 <body>
-
 <header>
-<h2>Mi pedido</h2>
-<div id="negocio"></div>
+  <div class="header-row">
+    <div>
+      <div class="brand">Mi carrito</div>
+      <small id="deliveryName"></small>
+    </div>
+    <button class="btn btn-light" id="backBtn">← Seguir comprando</button>
+  </div>
 </header>
 
 <main>
+  <div id="message" class="hidden"></div>
 
-<div id="mensaje" class="msg"></div>
+  <section class="card">
+    <div id="cartList"></div>
+    <div id="summary"></div>
+  </section>
 
-<section class="card">
-<div id="lista"></div>
-<div id="resumen"></div>
-</section>
+  <section id="checkoutCard" class="card hidden">
+    <h2>Datos de entrega</h2>
 
-<section class="card" id="acciones">
-<button class="btn" id="seguirComprando">➕ Seguir comprando</button>
-<button class="btn-vaciar" id="vaciar">🗑️ Vaciar carrito</button>
-<button class="btn" id="continuar" style="margin-top:8px">Continuar pedido</button>
-</section>
+    <label>Nombre</label>
+    <input id="name" autocomplete="name">
 
-<section class="card" id="formulario">
+    <label>Teléfono</label>
+    <input id="phone" type="tel" autocomplete="tel">
 
-<h3>Datos del pedido</h3>
+    <h3>Ubicación</h3>
+    <button class="btn btn-muted" id="geoBtn" type="button">📍 Usar mi ubicación</button>
+    <div id="map"></div>
+    <small class="note" id="locationInfo">Selecciona un punto en el mapa y confírmalo.</small>
+    <button class="btn btn-success hidden" id="acceptLocation" type="button">Aceptar ubicación</button>
 
-<label>Nombre</label>
-<input id="nombre" type="text" placeholder="Tu nombre">
+    <label>Dirección</label>
+    <input id="address" placeholder="Calle, número, sector">
 
-<label>Teléfono</label>
-<input id="telefono" type="tel" placeholder="0981234567">
+    <label>Referencia</label>
+    <input id="reference" placeholder="Casa, edificio, punto de referencia">
 
-<h3>Ubicación de entrega</h3>
+    <label>Observaciones</label>
+    <textarea id="notes" rows="3"></textarea>
 
-<button type="button" class="btn-sec" id="ubicacionActual">
-📍 Usar mi ubicación actual
-</button>
+    <label class="row">
+      <input id="requiresInvoice" type="checkbox" style="width:auto">
+      Necesito factura
+    </label>
 
-<div id="map"></div>
+    <div id="invoiceFields" class="hidden">
+      <label>Tipo de documento</label>
+      <select id="documentType">
+        <option value="">Seleccione</option>
+        <option value="cedula">Cédula</option>
+        <option value="ruc">RUC</option>
+        <option value="pasaporte">Pasaporte</option>
+      </select>
 
-<div class="ubicacion-info" id="ubicacionInfo">
-Selecciona tu ubicación en el mapa o usa tu ubicación actual.
-</div>
+      <label>Número de documento</label>
+      <input id="documentNumber">
 
-<button type="button" class="btn-aceptar" id="aceptarUbicacion" style="display:none">
-Aceptar y guardar ubicación
-</button>
+      <label>Correo para factura</label>
+      <input id="invoiceEmail" type="email">
+    </div>
 
-<label>Dirección</label>
-<input id="direccion" type="text" placeholder="Calle, número, sector">
+    <button class="btn btn-primary" style="width:100%;margin-top:14px" id="confirmBtn">
+      Confirmar pedido
+    </button>
+  </section>
 
-<label>Referencia</label>
-<input id="referencia" type="text" placeholder="Ej.: casa de dos pisos junto a la farmacia">
-
-<label>Observaciones</label>
-<textarea id="observaciones" rows="3" placeholder="Indicaciones adicionales para el delivery"></textarea>
-
-<div class="factura-box">
-
-<label class="check">
-<input type="checkbox" id="requiereFactura">
-Necesito factura
-</label>
-
-<div id="datosFactura" style="display:none;margin-top:15px">
-
-<label>Tipo de documento</label>
-<select id="tipoDocumento">
-<option value="">Seleccione</option>
-<option value="cedula">Cédula</option>
-<option value="ruc">RUC</option>
-<option value="pasaporte">Pasaporte</option>
-</select>
-
-<label>Número de documento</label>
-<input id="numeroDocumento" type="text" placeholder="Número de documento">
-
-<label>Correo para la factura</label>
-<input id="correoFactura" type="email" placeholder="correo@ejemplo.com">
-
-</div>
-</div>
-
-<button class="btn" id="confirmar">Confirmar pedido</button>
-
-</section>
+  <section id="successCard" class="card hidden"></section>
 </main>
 
 <script>
-const $=id=>document.getElementById(id);
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+}[ch]));
 
-let carrito=[],pedidoId=null,negocioActual=null;
-let mapa=null,marcador=null,lat=null,lng=null,ubicacionAceptada=false;
+let negocioActual = null;
+let items = [];
+let productMap = new Map();
+let variantMap = new Map();
+let localMap = new Map();
 
-const params=new URLSearchParams(location.search);
-const clienteSlug=params.get("cliente");
+let map = null;
+let marker = null;
+let latitude = null;
+let longitude = null;
+let locationAccepted = false;
 
-const CART_PREFIX="HTPWEB_CART:";
+async function init() {
+  try {
+    negocioActual = await cargarNegocio();
+    $("deliveryName").textContent = negocioActual.name;
+    $("backBtn").onclick = () => location.href = urlDelivery("index.html");
 
-/* =========================================================
-   IDENTIDAD DEL CARRITO EN LA PESTAÑA
-   Supabase mantiene el carrito real.
-   window.name solo identifica el pedido de esta pestaña.
-========================================================= */
+    await reloadCart();
 
-function obtenerPedidoTab(){
+    const user = await obtenerUsuarioActual();
+    if (user) {
+      $("invoiceEmail").value = user.email || "";
+      const { data } = await supabaseClient
+        .from("customers")
+        .select("name,phone,email")
+        .eq("profile_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
 
-try{
-
-const raw=window.name||"";
-
-if(!raw.startsWith(CART_PREFIX))return null;
-
-const data=JSON.parse(raw.substring(CART_PREFIX.length));
-
-if(!data?.cliente||!data?.pedido)return null;
-
-if(data.cliente!==clienteSlug){
-
-window.name="";
-return null;
-
+      if (data) {
+        $("name").value = data.name || "";
+        $("phone").value = data.phone || "";
+        if (data.email) $("invoiceEmail").value = data.email;
+      }
+    }
+  } catch (e) {
+    showMessage(e.message || "No se pudo cargar el carrito.");
+  }
 }
 
-return data.pedido;
-
-}catch(e){
-
-return null;
-
+function showMessage(text, type = "error") {
+  $("message").textContent = text;
+  $("message").className = type === "success" ? "success" : "error";
 }
 
+async function reloadCart() {
+  items = carritoObtener(negocioActual.slug);
+  productMap = new Map();
+  variantMap = new Map();
+  localMap = new Map();
+
+  if (!items.length) {
+    renderCart();
+    return;
+  }
+
+  const productIds = [...new Set(items.map(x => x.product_id))];
+  const variantIds = [...new Set(items.map(x => x.variant_id).filter(Boolean))];
+  const localIds = [...new Set(items.map(x => x.local_id))];
+
+  const calls = [
+    supabaseClient
+      .from("products")
+      .select("id,local_id,name,price,image_url,active")
+      .in("id", productIds)
+      .eq("active", true),
+
+    supabaseClient
+      .from("locals")
+      .select("id,name,active")
+      .in("id", localIds)
+      .eq("active", true)
+  ];
+
+  if (variantIds.length) {
+    calls.push(
+      supabaseClient
+        .from("product_variants")
+        .select("id,product_id,name,price,active")
+        .in("id", variantIds)
+        .eq("active", true)
+    );
+  }
+
+  const results = await Promise.all(calls);
+  if (results[0].error) throw results[0].error;
+  if (results[1].error) throw results[1].error;
+  if (results[2]?.error) throw results[2].error;
+
+  (results[0].data || []).forEach(x => productMap.set(x.id, x));
+  (results[1].data || []).forEach(x => localMap.set(x.id, x));
+  (results[2]?.data || []).forEach(x => variantMap.set(x.id, x));
+
+  items = items.filter(item => {
+    const product = productMap.get(item.product_id);
+    if (!product || product.local_id !== item.local_id) return false;
+    if (item.variant_id) {
+      const variant = variantMap.get(item.variant_id);
+      if (!variant || variant.product_id !== item.product_id) return false;
+    }
+    return true;
+  });
+
+  carritoGuardar(negocioActual.slug, items);
+  renderCart();
 }
 
-function guardarPedidoTab(id){
-
-try{
-
-window.name=CART_PREFIX+JSON.stringify({
-cliente:clienteSlug,
-pedido:String(id)
-});
-
-}catch(e){
-
-console.warn("No se pudo guardar el contexto de la pestaña.",e);
-
+function itemPrice(item) {
+  const variant = item.variant_id ? variantMap.get(item.variant_id) : null;
+  const product = productMap.get(item.product_id);
+  return Number(variant?.price ?? product?.price ?? 0);
 }
 
+function renderCart() {
+  if (!items.length) {
+    $("cartList").innerHTML = '<div class="empty"><h2>Tu carrito está vacío</h2><p>Agrega productos para continuar.</p></div>';
+    $("summary").innerHTML = "";
+    $("checkoutCard").classList.add("hidden");
+    return;
+  }
+
+  const grouped = new Map();
+  items.forEach(item => {
+    if (!grouped.has(item.local_id)) grouped.set(item.local_id, []);
+    grouped.get(item.local_id).push(item);
+  });
+
+  let subtotal = 0;
+
+  $("cartList").innerHTML = [...grouped.entries()].map(([localId, group]) => {
+    const local = localMap.get(localId);
+    let localSubtotal = 0;
+
+    const body = group.map(item => {
+      const product = productMap.get(item.product_id);
+      const variant = item.variant_id ? variantMap.get(item.variant_id) : null;
+      const price = itemPrice(item);
+      const line = price * item.quantity;
+      localSubtotal += line;
+      subtotal += line;
+
+      return `
+        <div class="cart-item">
+          <div>
+            <strong>${esc(product?.name || "Producto")}</strong>
+            ${variant ? `<div class="muted">${esc(variant.name)}</div>` : ""}
+            <div>$${price.toFixed(2)} × ${item.quantity}</div>
+          </div>
+          <div class="qty">
+            <button class="btn btn-muted" onclick="changeQty('${item.local_id}','${item.product_id}','${item.variant_id || ""}',${item.quantity - 1})">−</button>
+            <strong>${item.quantity}</strong>
+            <button class="btn btn-muted" onclick="changeQty('${item.local_id}','${item.product_id}','${item.variant_id || ""}',${item.quantity + 1})">+</button>
+            <button class="btn btn-danger" onclick="removeItem('${item.local_id}','${item.product_id}','${item.variant_id || ""}')">×</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="cart-group">
+        <h3>${esc(local?.name || "Local")}</h3>
+        ${body}
+        <div class="summary-line"><span>Subtotal referencial</span><strong>$${localSubtotal.toFixed(2)}</strong></div>
+      </div>
+    `;
+  }).join("");
+
+  $("summary").innerHTML = `
+    <div class="summary-line"><span>Productos (referencial)</span><strong>$${subtotal.toFixed(2)}</strong></div>
+    <div class="summary-line"><span>Delivery</span><span>Se calcula en el servidor</span></div>
+    <small class="note">Los precios, distancias, tarifa y total definitivos se vuelven a validar al confirmar.</small>
+    <button class="btn btn-dark" style="width:100%;margin-top:14px" onclick="openCheckout()">Continuar</button>
+    <button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="emptyCart()">Vaciar carrito</button>
+  `;
 }
 
-function limpiarPedidoTab(){
-
-try{
-
-if((window.name||"").startsWith(CART_PREFIX)){
-window.name="";
+function matcher(localId, productId, variantId) {
+  return {
+    local_id: localId,
+    product_id: productId,
+    variant_id: variantId || null
+  };
 }
 
-}catch(e){}
-
+function changeQty(localId, productId, variantId, quantity) {
+  if (quantity <= 0) return removeItem(localId, productId, variantId);
+  carritoCambiarCantidad(negocioActual.slug, matcher(localId, productId, variantId), quantity);
+  reloadCart();
 }
 
-function sincronizarUrlPedido(){
-
-const url=new URL(location.href);
-
-if(pedidoId){
-url.searchParams.set("pedido",pedidoId);
-}else{
-url.searchParams.delete("pedido");
+function removeItem(localId, productId, variantId) {
+  carritoEliminar(negocioActual.slug, matcher(localId, productId, variantId));
+  reloadCart();
 }
 
-history.replaceState(null,"",url.toString());
-
+function emptyCart() {
+  if (!confirm("¿Vaciar todo el carrito?")) return;
+  carritoVaciar(negocioActual.slug);
+  reloadCart();
 }
 
-function urlInicio(){
+async function openCheckout() {
+  if (!items.length) return;
 
-let url=`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
+  const user = await obtenerUsuarioActual();
+  if (!user) {
+    irAAcceso(rutaActualRelativa());
+    return;
+  }
 
-if(pedidoId){
-url+=`&pedido=${encodeURIComponent(pedidoId)}`;
+  $("checkoutCard").classList.remove("hidden");
+  if (!map) initMap();
+  setTimeout(() => map?.invalidateSize(), 100);
+  $("checkoutCard").scrollIntoView({ behavior: "smooth" });
 }
 
-return url;
+function initMap() {
+  map = L.map("map").setView([0.95, -79.65], 13);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap"
+  }).addTo(map);
 
+  map.on("click", e => setLocation(e.latlng.lat, e.latlng.lng));
 }
 
-/* =========================================================
-   INICIO
-========================================================= */
+function setLocation(lat, lng) {
+  latitude = Number(lat);
+  longitude = Number(lng);
+  locationAccepted = false;
 
-async function iniciar(){
+  if (marker) marker.setLatLng([latitude, longitude]);
+  else {
+    marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+    marker.on("dragend", e => {
+      const p = e.target.getLatLng();
+      setLocation(p.lat, p.lng);
+    });
+  }
 
-try{
-
-negocioActual=await cargarNegocio();
-
-$("negocio").textContent=negocioActual.nombre;
-
-/*
-   IMPORTANTE:
-   No tomamos pedidoId desde la URL.
-   Solo desde window.name.
-
-   Por eso una URL copiada a otra pestaña
-   comienza con carrito vacío.
-*/
-pedidoId=obtenerPedidoTab();
-
-if(pedidoId){
-
-sincronizarUrlPedido();
-
-await cargarCarrito();
-
-}else{
-
-sincronizarUrlPedido();
-
-mostrarCarritoVacio();
-
+  map.setView([latitude, longitude], 17);
+  $("locationInfo").textContent = `Ubicación seleccionada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  $("acceptLocation").classList.remove("hidden");
 }
 
-}catch(e){
+$("geoBtn").onclick = () => {
+  if (!navigator.geolocation) {
+    return showMessage("Tu navegador no permite geolocalización.");
+  }
 
-console.error(e);
-
-$("lista").innerHTML=
-'<div class="vacio">No se pudo cargar el pedido.</div>';
-
-}
-
-}
-
-/* =========================================================
-   CARGAR CARRITO DESDE SUPABASE
-========================================================= */
-
-async function cargarCarrito(){
-
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{p_pedido_id:pedidoId}
-);
-
-if(error)throw error;
-
-carrito=data||[];
-
-/*
-   Si el pedido existe pero ya no tiene detalles,
-   se considera un carrito nuevo.
-*/
-if(!carrito.length){
-
-limpiarPedidoTab();
-pedidoId=null;
-sincronizarUrlPedido();
-mostrarCarritoVacio();
-return;
-
-}
-
-renderCarrito();
-
-}
-
-/* =========================================================
-   CARRITO VACÍO
-========================================================= */
-
-function mostrarCarritoVacio(){
-
-$("lista").innerHTML=
-'<div class="vacio"><h3>Tu carrito está vacío</h3><p>Agrega productos para comenzar.</p></div>';
-
-$("resumen").innerHTML="";
-
-$("acciones").style.display="block";
-
-$("continuar").style.display="none";
-
-$("vaciar").style.display="none";
-
-}
-
-/* =========================================================
-   RENDER CARRITO
-========================================================= */
-
-function renderCarrito(){
-
-if(!carrito.length){
-
-mostrarCarritoVacio();
-return;
-
-}
-
-$("acciones").style.display="block";
-$("continuar").style.display="block";
-$("vaciar").style.display="block";
-
-const locales={};
-let total=0;
-
-carrito.forEach(item=>{
-
-const id=item.local_id||"sin-local";
-
-if(!locales[id]){
-
-locales[id]={
-nombre:item.local_nombre||"Local",
-items:[],
-subtotal:0
+  navigator.geolocation.getCurrentPosition(
+    pos => setLocation(pos.coords.latitude, pos.coords.longitude),
+    () => showMessage("No fue posible obtener tu ubicación. Puedes marcarla en el mapa."),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 };
 
-}
-
-locales[id].items.push(item);
-
-locales[id].subtotal+=Number(item.subtotal||0);
-
-total+=Number(item.subtotal||0);
-
-});
-
-$("lista").innerHTML=Object.values(locales).map(local=>`
-
-<div class="local">
-
-<div class="local-titulo">
-${escapeHtml(local.nombre)}
-</div>
-
-${local.items.map(item=>`
-
-<div class="item">
-
-<div class="item-info">
-
-<strong>${escapeHtml(item.nombre)}</strong>
-
-<div>
-$${Number(item.precio||0).toFixed(2)}
-</div>
-
-</div>
-
-<div class="controles">
-
-<button class="btn-sec"
-onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)-1})">
-−
-</button>
-
-<strong>${item.cantidad}</strong>
-
-<button class="btn-sec"
-onclick="cambiarCantidad('${item.detalle_id}',${Number(item.cantidad)+1})">
-+
-</button>
-
-<button class="btn-danger"
-onclick="eliminar('${item.detalle_id}')">
-×
-</button>
-
-</div>
-
-</div>
-
-`).join("")}
-
-<div class="subtotal-local">
-Subtotal productos: $${local.subtotal.toFixed(2)}
-</div>
-
-<div class="delivery-local">
-Delivery: se calcula al confirmar
-</div>
-
-</div>
-
-`).join("");
-
-$("resumen").innerHTML=`
-
-<div class="resumen">
-
-<div class="resumen-line">
-<span>Productos</span>
-<strong>$${total.toFixed(2)}</strong>
-</div>
-
-<div class="resumen-line">
-<span>Delivery</span>
-<span>Se calcula al confirmar</span>
-</div>
-
-<div class="total">
-Subtotal: $${total.toFixed(2)}
-</div>
-
-<div class="aviso">
-El delivery se calcula individualmente para cada local según la distancia real por carretera.
-</div>
-
-</div>`;
-
-}
-
-/* =========================================================
-   CANTIDADES
-========================================================= */
-
-async function cambiarCantidad(detalleId,cantidad){
-
-try{
-
-if(cantidad<=0){
-
-await eliminar(detalleId);
-return;
-
-}
-
-const{error}=await supabaseClient.rpc(
-"actualizar_cantidad_carrito",
-{
-p_detalle_id:detalleId,
-p_cantidad:cantidad
-}
-);
-
-if(error)throw error;
-
-await cargarCarrito();
-
-}catch(e){
-
-alert(e.message||"No se pudo actualizar.");
-
-}
-
-}
-
-async function eliminar(detalleId){
-
-try{
-
-const{error}=await supabaseClient.rpc(
-"eliminar_del_carrito",
-{
-p_detalle_id:detalleId
-}
-);
-
-if(error)throw error;
-
-await cargarCarrito();
-
-}catch(e){
-
-alert(e.message||"No se pudo eliminar.");
-
-}
-
-}
-
-/* =========================================================
-   VACIAR
-========================================================= */
-
-$("vaciar").onclick=async()=>{
-
-if(!carrito.length)return;
-
-if(!window.confirm("¿Seguro que quieres vaciar todo el carrito?"))
-return;
-
-const boton=$("vaciar");
-
-boton.disabled=true;
-boton.textContent="Vaciando...";
-
-try{
-
-const{error}=await supabaseClient.rpc(
-"vaciar_carrito",
-{
-p_pedido_id:pedidoId
-}
-);
-
-if(error)throw error;
-
-/*
-   Un carrito vacío ya no debe seguir siendo
-   el carrito activo de esta pestaña.
-*/
-limpiarPedidoTab();
-
-pedidoId=null;
-
-sincronizarUrlPedido();
-
-carrito=[];
-
-mostrarCarritoVacio();
-
-$("mensaje").textContent="Carrito vaciado correctamente.";
-$("mensaje").style.display="block";
-
-}catch(e){
-
-alert(e.message||"No se pudo vaciar el carrito.");
-
-}finally{
-
-boton.disabled=false;
-boton.textContent="🗑️ Vaciar carrito";
-
-}
-
+$("acceptLocation").onclick = async () => {
+  if (latitude === null || longitude === null) return;
+
+  locationAccepted = true;
+  $("locationInfo").textContent = `✓ Ubicación aceptada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  $("acceptLocation").classList.add("hidden");
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1`;
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.display_name && !$("address").value.trim()) {
+        $("address").value = data.display_name;
+      }
+    }
+  } catch (e) {
+    console.warn(e);
+  }
 };
 
-/* =========================================================
-   SEGUIR COMPRANDO
-========================================================= */
-
-$("seguirComprando").onclick=()=>{
-
-/*
-   Si todavía existen productos, conservamos el pedido.
-   Si está vacío, iniciamos una compra nueva.
-*/
-if(!carrito.length){
-
-limpiarPedidoTab();
-pedidoId=null;
-
-}
-
-location.href=urlInicio();
-
+$("requiresInvoice").onchange = () => {
+  $("invoiceFields").classList.toggle("hidden", !$("requiresInvoice").checked);
 };
 
-/* =========================================================
-   CONTINUAR PEDIDO
-========================================================= */
+$("confirmBtn").onclick = confirmOrder;
 
-$("continuar").onclick=()=>{
+async function confirmOrder() {
+  const button = $("confirmBtn");
 
-if(!carrito.length)return;
+  try {
+    if (!items.length) throw new Error("El carrito está vacío.");
 
-$("acciones").style.display="none";
+    const user = await obtenerUsuarioActual();
+    if (!user) {
+      irAAcceso(rutaActualRelativa());
+      return;
+    }
 
-$("formulario").style.display="block";
+    const name = $("name").value.trim();
+    const phone = $("phone").value.trim();
+    const address = $("address").value.trim();
 
-iniciarMapa();
+    if (!name) throw new Error("Ingresa tu nombre.");
+    if (!phone) throw new Error("Ingresa tu teléfono.");
+    if (!address) throw new Error("Ingresa la dirección.");
+    if (!locationAccepted || latitude === null || longitude === null) {
+      throw new Error("Selecciona y acepta la ubicación de entrega.");
+    }
 
-setTimeout(()=>{
+    const requiresInvoice = $("requiresInvoice").checked;
+    const documentType = $("documentType").value.trim();
+    const documentNumber = $("documentNumber").value.trim();
+    const invoiceEmail = $("invoiceEmail").value.trim();
 
-if(mapa)mapa.invalidateSize();
+    if (requiresInvoice && (!documentType || !documentNumber || !invoiceEmail)) {
+      throw new Error("Completa los datos de facturación.");
+    }
 
-},100);
+    button.disabled = true;
+    button.textContent = "Confirmando pedido...";
 
-window.scrollTo({
-top:$("formulario").offsetTop-10,
-behavior:"smooth"
-});
+    await asegurarCustomerActual({
+      name,
+      phone,
+      email: user.email || invoiceEmail || ""
+    });
 
-};
+    const locals = [...new Set(items.map(item => item.local_id))]
+      .map(local_id => ({ local_id }));
 
-/* =========================================================
-   MAPA
-========================================================= */
+    const orderItems = items.map(item => ({
+      local_id: item.local_id,
+      product_id: item.product_id,
+      variant_id: item.variant_id || null,
+      quantity: item.quantity
+    }));
 
-function iniciarMapa(){
+    const { data, error } = await supabaseClient.functions.invoke("crear-pedido", {
+      body: {
+        delivery_id: negocioActual.id,
+        delivery_address: address,
+        latitude,
+        longitude,
+        address_reference: $("reference").value.trim() || null,
+        requires_invoice: requiresInvoice,
+        document_type: requiresInvoice ? documentType : null,
+        document_number: requiresInvoice ? documentNumber : null,
+        invoice_email: requiresInvoice ? invoiceEmail : null,
+        notes: $("notes").value.trim() || null,
+        locals,
+        items: orderItems
+      }
+    });
 
-if(mapa)return;
+    if (error) {
+      const detail = data?.error || error.message || "No se pudo crear el pedido.";
+      throw new Error(detail);
+    }
 
-mapa=L.map("map").setView([0,0],2);
+    if (!data?.ok || !data?.order?.id) {
+      throw new Error(data?.error || "El servidor no devolvió un pedido válido.");
+    }
 
-L.tileLayer(
-"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-{attribution:"© OpenStreetMap"}
-).addTo(mapa);
+    carritoVaciar(negocioActual.slug);
+    items = [];
+    $("checkoutCard").classList.add("hidden");
+    $("cartList").innerHTML = "";
+    $("summary").innerHTML = "";
 
-mapa.on("click",e=>
-establecerUbicacion(
-e.latlng.lat,
-e.latlng.lng
-)
-);
-
+    $("successCard").innerHTML = `
+      <div class="success">
+        <h2>✅ Pedido creado</h2>
+        <p><strong>ID:</strong> ${esc(data.order.id)}</p>
+        <p><strong>Subtotal:</strong> $${Number(data.order.subtotal || 0).toFixed(2)}</p>
+        <p><strong>Delivery:</strong> $${Number(data.order.delivery_fee || 0).toFixed(2)}</p>
+        <p class="total"><strong>Total:</strong> $${Number(data.order.total || 0).toFixed(2)}</p>
+      </div>
+      <button class="btn btn-dark" onclick="location.href=urlDelivery('index.html')">Volver a comprar</button>
+    `;
+    $("successCard").classList.remove("hidden");
+    showMessage("Pedido registrado correctamente.", "success");
+  } catch (e) {
+    console.error(e);
+    showMessage(e.message || "No se pudo confirmar el pedido.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Confirmar pedido";
+  }
 }
 
-$("ubicacionActual").onclick=()=>{
-
-if(!navigator.geolocation){
-
-alert("Tu navegador no permite obtener la ubicación.");
-return;
-
-}
-
-$("ubicacionActual").disabled=true;
-
-$("ubicacionActual").textContent="Obteniendo ubicación...";
-
-navigator.geolocation.getCurrentPosition(
-
-pos=>{
-
-establecerUbicacion(
-pos.coords.latitude,
-pos.coords.longitude
-);
-
-$("ubicacionActual").disabled=false;
-
-$("ubicacionActual").textContent=
-"📍 Ubicación obtenida";
-
-},
-
-err=>{
-
-console.error(err);
-
-$("ubicacionActual").disabled=false;
-
-$("ubicacionActual").textContent=
-"📍 Usar mi ubicación actual";
-
-alert(
-"No fue posible obtener tu ubicación. También puedes seleccionar el punto directamente en el mapa."
-);
-
-},
-
-{
-enableHighAccuracy:true,
-timeout:10000,
-maximumAge:0
-}
-
-);
-
-};
-
-async function establecerUbicacion(nuevaLat,nuevaLng){
-
-lat=Number(nuevaLat);
-lng=Number(nuevaLng);
-
-ubicacionAceptada=false;
-
-$("aceptarUbicacion").style.display="block";
-
-$("ubicacionInfo").textContent=
-`Ubicación seleccionada: ${lat.toFixed(6)}, ${lng.toFixed(6)}. Debes aceptarla.`;
-
-$("direccion").value="";
-
-if(!mapa)iniciarMapa();
-
-mapa.setView([lat,lng],17);
-
-if(marcador){
-
-marcador.setLatLng([lat,lng]);
-
-}else{
-
-marcador=L.marker(
-[lat,lng],
-{draggable:true}
-).addTo(mapa);
-
-marcador.on("dragend",async e=>{
-
-const p=e.target.getLatLng();
-
-await establecerUbicacion(
-p.lat,
-p.lng
-);
-
-});
-
-}
-
-}
-
-$("aceptarUbicacion").onclick=async()=>{
-
-if(lat===null||lng===null){
-
-alert("Primero selecciona una ubicación.");
-return;
-
-}
-
-const boton=$("aceptarUbicacion");
-
-boton.disabled=true;
-boton.textContent="Guardando ubicación...";
-
-try{
-
-const direccion=await obtenerDireccionDesdeMapa(lat,lng);
-
-if(direccion)
-$("direccion").value=direccion;
-
-ubicacionAceptada=true;
-
-$("ubicacionInfo").textContent=
-`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
-boton.textContent="✓ Ubicación guardada";
-
-}catch(e){
-
-ubicacionAceptada=true;
-
-$("ubicacionInfo").textContent=
-`✓ Ubicación aceptada: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
-boton.textContent="✓ Ubicación guardada";
-
-}finally{
-
-boton.disabled=false;
-
-}
-
-};
-
-async function obtenerDireccionDesdeMapa(lat,lng){
-
-try{
-
-const url=
-`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
-
-const res=await fetch(
-url,
-{headers:{Accept:"application/json"}}
-);
-
-if(!res.ok)return"";
-
-const data=await res.json();
-
-return data.display_name||"";
-
-}catch(e){
-
-console.warn(
-"No se pudo obtener la dirección automáticamente.",
-e
-);
-
-return"";
-
-}
-
-}
-
-/* =========================================================
-   FACTURA
-========================================================= */
-
-$("requiereFactura").onchange=()=>{
-
-$("datosFactura").style.display=
-$("requiereFactura").checked
-?"block"
-:"none";
-
-};
-
-/* =========================================================
-   CONFIRMAR
-========================================================= */
-
-$("confirmar").onclick=confirmarPedido;
-
-async function confirmarPedido(){
-
-const nombre=$("nombre").value.trim();
-const telefono=$("telefono").value.trim();
-const direccion=$("direccion").value.trim();
-const referencia=$("referencia").value.trim();
-const observaciones=$("observaciones").value.trim();
-
-const requiereFactura=$("requiereFactura").checked;
-const tipoDocumento=$("tipoDocumento").value.trim();
-const numeroDocumento=$("numeroDocumento").value.trim();
-const correoFactura=$("correoFactura").value.trim();
-
-if(!nombre){
-
-alert("Ingresa tu nombre.");
-$("nombre").focus();
-return;
-
-}
-
-if(!telefono){
-
-alert("Ingresa tu teléfono.");
-$("telefono").focus();
-return;
-
-}
-
-if(lat===null||lng===null||!ubicacionAceptada){
-
-alert(
-"Debes seleccionar tu ubicación en el mapa y pulsar «Aceptar y guardar ubicación»."
-);
-
-return;
-
-}
-
-if(!direccion){
-
-alert("Ingresa o verifica la dirección de entrega.");
-$("direccion").focus();
-return;
-
-}
-
-if(requiereFactura){
-
-if(!tipoDocumento){
-
-alert("Selecciona el tipo de documento.");
-$("tipoDocumento").focus();
-return;
-
-}
-
-if(!numeroDocumento){
-
-alert("Ingresa el número de documento.");
-$("numeroDocumento").focus();
-return;
-
-}
-
-if(!correoFactura){
-
-alert("Ingresa el correo para la factura.");
-$("correoFactura").focus();
-return;
-
-}
-
-if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFactura)){
-
-alert("Ingresa un correo válido.");
-$("correoFactura").focus();
-return;
-
-}
-
-}
-
-$("confirmar").disabled=true;
-$("confirmar").textContent="Calculando delivery...";
-
-try{
-
-const{data,error}=await supabaseClient.functions.invoke(
-"confirmar-pedido",
-{
-body:{
-p_pedido_id:pedidoId,
-p_nombre:nombre,
-p_telefono:telefono,
-p_direccion:direccion,
-p_lat:lat,
-p_lng:lng,
-p_referencia:referencia,
-p_requiere_factura:requiereFactura,
-p_tipo_documento:requiereFactura?tipoDocumento:null,
-p_numero_documento:requiereFactura?numeroDocumento:null,
-p_correo_factura:requiereFactura?correoFactura:null,
-p_observaciones:observaciones
-}
-}
-);
-
-if(error){
-
-let mensaje=
-error.message||
-"No se pudo confirmar el pedido.";
-
-if(data?.error)
-mensaje=data.error;
-
-throw new Error(mensaje);
-
-}
-
-if(!data?.ok)
-throw new Error(
-data?.error||
-"No se pudo confirmar el pedido."
-);
-
-/*
-   Pedido confirmado.
-   La pestaña queda disponible para una nueva compra.
-*/
-limpiarPedidoTab();
-
-pedidoId=null;
-
-mostrarExito(data);
-
-}catch(e){
-
-console.error(e);
-
-alert(
-e.message||
-"No se pudo confirmar el pedido."
-);
-
-$("confirmar").disabled=false;
-$("confirmar").textContent="Confirmar pedido";
-
-}
-
-}
-
-/* =========================================================
-   ÉXITO
-========================================================= */
-
-function mostrarExito(data){
-
-$("formulario").style.display="none";
-$("acciones").style.display="none";
-
-$("lista").innerHTML=`
-
-<div class="vacio">
-
-<h2>✅ Pedido enviado</h2>
-
-<p>Tu pedido fue registrado correctamente.</p>
-
-<p>
-<strong>Pedido:</strong>
-${escapeHtml(data.pedido_id)}
-</p>
-
-<p>
-<strong>Productos:</strong>
-$${Number(data.total_productos||0).toFixed(2)}
-</p>
-
-<p>
-<strong>Delivery:</strong>
-$${Number(data.costo_delivery||0).toFixed(2)}
-</p>
-
-<p>
-<strong>Distancia:</strong>
-${Number(data.distancia_km||0).toFixed(2)} km
-</p>
-
-<p>
-<strong>Total:</strong>
-$${Number(data.total||0).toFixed(2)}
-</p>
-
-<button class="btn"
-onclick="location.href='index.html?cliente=${encodeURIComponent(negocioActual.slug)}'">
-Volver al inicio
-</button>
-
-</div>`;
-
-$("resumen").innerHTML="";
-$("mensaje").style.display="none";
-
-sincronizarUrlPedido();
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
-
-}
-
-/* =========================================================
-   SEGURIDAD HTML
-========================================================= */
-
-function escapeHtml(text){
-
-return String(text??"")
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
-.replace(/"/g,"&quot;")
-.replace(/'/g,"&#039;");
-
-}
-
-iniciar();
+init();
 </script>
-
 </body>
 </html>

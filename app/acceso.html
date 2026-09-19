@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Acceso | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/negocio.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<main class="auth-wrap">
+  <section class="card">
+    <h1 id="brand">HTPWEB</h1>
+    <p class="muted">Inicia sesión o crea tu cuenta para confirmar pedidos.</p>
+
+    <div id="sessionBox" class="success hidden"></div>
+    <div id="message" class="hidden"></div>
+
+    <div id="authForms">
+      <div class="tabs">
+        <button id="loginTab" class="btn btn-dark">Iniciar sesión</button>
+        <button id="registerTab" class="btn btn-muted">Crear cuenta</button>
+      </div>
+
+      <form id="loginForm">
+        <label>Correo</label>
+        <input id="loginEmail" type="email" autocomplete="email" required>
+
+        <label>Contraseña</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+
+        <button class="btn btn-primary" style="width:100%" type="submit">Entrar</button>
+      </form>
+
+      <form id="registerForm" class="hidden">
+        <label>Nombre completo</label>
+        <input id="registerName" required>
+
+        <label>Teléfono</label>
+        <input id="registerPhone" type="tel" required>
+
+        <label>Correo</label>
+        <input id="registerEmail" type="email" autocomplete="email" required>
+
+        <label>Contraseña</label>
+        <input id="registerPassword" type="password" minlength="6" autocomplete="new-password" required>
+
+        <button class="btn btn-primary" style="width:100%" type="submit">Crear cuenta</button>
+      </form>
+    </div>
+
+    <div class="stack" style="margin-top:14px">
+      <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
+      <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
+      <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const requestedReturn = retornoSeguro(params.get("return"), urlDelivery("index.html"));
+
+function showMessage(text, type = "error") {
+  const box = $("message");
+  box.textContent = text;
+  box.className = type === "success" ? "success" : "error";
+}
+
+function showLogin() {
+  $("loginForm").classList.remove("hidden");
+  $("registerForm").classList.add("hidden");
+  $("loginTab").className = "btn btn-dark";
+  $("registerTab").className = "btn btn-muted";
+}
+
+function showRegister() {
+  $("loginForm").classList.add("hidden");
+  $("registerForm").classList.remove("hidden");
+  $("loginTab").className = "btn btn-muted";
+  $("registerTab").className = "btn btn-dark";
+}
+
+async function init() {
+  try {
+    const slug = obtenerDeliverySlug();
+    if (slug) {
+      const delivery = await cargarNegocio();
+      $("brand").textContent = delivery.name;
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+
+  const user = await obtenerUsuarioActual();
+
+  if (user) {
+    $("sessionBox").textContent = `Sesión iniciada como ${user.email || "usuario"}.`;
+    $("sessionBox").classList.remove("hidden");
+    $("authForms").classList.add("hidden");
+    $("continueBtn").classList.remove("hidden");
+    $("logoutBtn").classList.remove("hidden");
+
+    try {
+      const { data: role } = await supabaseClient.rpc("current_role_code");
+      if (role && role !== "CLIENT") {
+        $("adminBtn").classList.remove("hidden");
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+}
+
+$("loginTab").onclick = showLogin;
+$("registerTab").onclick = showRegister;
+
+$("loginForm").onsubmit = async event => {
+  event.preventDefault();
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: $("loginEmail").value.trim(),
+      password: $("loginPassword").value
+    });
+    if (error) throw error;
+    location.href = requestedReturn;
+  } catch (e) {
+    showMessage(e.message || "No se pudo iniciar sesión.");
+  }
+};
+
+$("registerForm").onsubmit = async event => {
+  event.preventDefault();
+
+  const name = $("registerName").value.trim();
+  const phone = $("registerPhone").value.trim();
+  const email = $("registerEmail").value.trim();
+
+  try {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password: $("registerPassword").value,
+      options: {
+        data: {
+          full_name: name,
+          phone
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    if (data.session) {
+      await supabaseClient.rpc("update_my_profile", {
+        p_full_name: name,
+        p_phone: phone
+      });
+
+      await asegurarCustomerActual({ name, phone, email });
+      location.href = requestedReturn;
+      return;
+    }
+
+    showMessage("Cuenta creada. Revisa tu correo para confirmar el acceso y luego inicia sesión.", "success");
+    showLogin();
+    $("loginEmail").value = email;
+  } catch (e) {
+    showMessage(e.message || "No se pudo crear la cuenta.");
+  }
+};
+
+$("continueBtn").onclick = () => location.href = requestedReturn;
+$("adminBtn").onclick = () => location.href = "../admin/index.html";
+
+$("logoutBtn").onclick = async () => {
+  try {
+    await cerrarSesion();
+    location.reload();
+  } catch (e) {
+    showMessage(e.message || "No se pudo cerrar sesión.");
+  }
+};
+
+init();
+</script>
+</body>
+</html>
