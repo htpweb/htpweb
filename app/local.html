@@ -44,6 +44,7 @@ const localId = params.get("local") || params.get("id");
 
 let negocioActual = null;
 let localActual = null;
+let availability = null;
 let products = [];
 let variants = [];
 
@@ -78,6 +79,19 @@ async function init() {
     if (localRes.error || !localRes.data) throw new Error("Local no encontrado.");
     localActual = localRes.data;
 
+    try {
+      const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
+        "public_locals_order_availability",
+        { p_local_ids: [localId] }
+      );
+
+      if (availabilityError) throw availabilityError;
+      availability = Array.isArray(availabilityData) ? availabilityData[0] || null : null;
+    } catch (availabilityError) {
+      console.warn("No se pudo cargar la disponibilidad del local:", availabilityError);
+      availability = null;
+    }
+
     const productRes = await supabaseClient
       .from("products")
       .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
@@ -110,13 +124,64 @@ async function init() {
   }
 }
 
+function availabilityMessage() {
+  if (!availability) return null;
+
+  if (availability.is_open === true) {
+    if (availability.reason === "NO_SCHEDULE_CONFIGURED") {
+      return {
+        text: "Disponible para pedidos",
+        className: "availability-open"
+      };
+    }
+
+    return {
+      text: availability.closing_time
+        ? `Abierto ahora · cierra a las ${availability.closing_time}`
+        : "Abierto ahora",
+      className: "availability-open"
+    };
+  }
+
+  if (availability.reason === "BEFORE_OPENING" && availability.opening_time) {
+    return {
+      text: `Cerrado ahora · abre a las ${availability.opening_time}`,
+      className: "availability-closed"
+    };
+  }
+
+  if (availability.reason === "CLOSED_TODAY") {
+    return {
+      text: "Cerrado hoy",
+      className: "availability-closed"
+    };
+  }
+
+  if (availability.reason === "AFTER_CLOSING") {
+    return {
+      text: "Cerrado por hoy",
+      className: "availability-closed"
+    };
+  }
+
+  return {
+    text: "No disponible para pedidos en este momento",
+    className: "availability-closed"
+  };
+}
+
 function render() {
   document.title = `${localActual.name} | ${negocioActual.name}`;
   $("localName").textContent = localActual.name;
 
+  const currentAvailability = availabilityMessage();
+
   $("localCard").innerHTML = `
     ${localActual.banner_url ? `<img src="${esc(localActual.banner_url)}" alt="${esc(localActual.name)}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">` : ""}
-    <h1>${esc(localActual.name)}</h1>
+    <div class="row between" style="margin-top:12px">
+      <h1 style="margin:0">${esc(localActual.name)}</h1>
+      ${currentAvailability ? `<span class="availability-badge ${currentAvailability.className}">${esc(currentAvailability.text)}</span>` : ""}
+    </div>
     <p class="muted">${esc(localActual.description || "")}</p>
     ${localActual.address ? `<p><strong>Dirección:</strong> ${esc(localActual.address)}</p>` : ""}
   `;
@@ -142,7 +207,13 @@ function render() {
 
           <div class="row">
             <input id="qty-${product.id}" type="number" min="1" value="1" style="max-width:90px">
-            <button class="btn btn-primary" onclick="addProduct('${product.id}')">Agregar</button>
+            <button
+              class="btn btn-primary"
+              onclick="addProduct('${product.id}')"
+              ${availability && availability.is_open !== true ? "disabled" : ""}
+            >
+              ${availability && availability.is_open !== true ? "Local cerrado" : "Agregar"}
+            </button>
           </div>
         </div>
       </div>
@@ -160,6 +231,15 @@ function syncVariantPrice(productId) {
 function addProduct(productId) {
   const product = products.find(p => p.id === productId);
   if (!product) return;
+
+  if (availability && availability.is_open !== true) {
+    const info = availabilityMessage();
+    $("error").textContent = info?.text || "Este local no está disponible para pedidos en este momento.";
+    $("error").classList.remove("hidden");
+    return;
+  }
+
+  $("error").classList.add("hidden");
 
   const qty = Math.max(1, Number.parseInt($("qty-" + productId).value, 10) || 1);
   const select = document.getElementById("variant-" + productId);
