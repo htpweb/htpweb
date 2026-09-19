@@ -18,6 +18,7 @@
     <nav class="nav" id="nav">
       <button data-section="overview">Resumen</button>
       <button data-section="mydelivery">Mi Delivery</button>
+      <button data-section="share">Compartir</button>
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
@@ -99,6 +100,55 @@
           El nombre y el slug requieren intervención de HTPWEB. La edición de información necesita la capability
           <code>delivery.info.manage</code>.
         </p>
+      </div>
+    </section>
+
+    <section id="section-share" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Compartir desde el DELIVERY</h2>
+            <p class="muted">
+              Comparte LOCAL y productos en redes sociales manteniendo siempre el contexto del DELIVERY.
+              Quien abra el enlace entra a la tienda pública de ese DELIVERY y puede seguir navegando por sus otros LOCAL vinculados.
+            </p>
+          </div>
+          <select id="shareDelivery" style="max-width:340px"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Compartir LOCAL</h3>
+        <div class="form-grid">
+          <div>
+            <label>LOCAL vinculado</label>
+            <select id="shareLocal"></select>
+          </div>
+        </div>
+        <div class="share-link-box" id="shareLocalUrl">Selecciona un LOCAL.</div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="shareLocalNativeBtn">Compartir</button>
+          <button class="btn-muted" id="shareLocalWhatsappBtn">WhatsApp</button>
+          <button class="btn-muted" id="shareLocalFacebookBtn">Facebook</button>
+          <button class="btn-muted" id="copyLocalLinkBtn">Copiar enlace</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Compartir PRODUCTO</h3>
+        <div class="form-grid">
+          <div>
+            <label>Producto del LOCAL seleccionado</label>
+            <select id="shareProduct"></select>
+          </div>
+        </div>
+        <div class="share-link-box" id="shareProductUrl">Selecciona un producto.</div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="shareProductNativeBtn">Compartir</button>
+          <button class="btn-muted" id="shareProductWhatsappBtn">WhatsApp</button>
+          <button class="btn-muted" id="shareProductFacebookBtn">Facebook</button>
+          <button class="btn-muted" id="copyProductLinkBtn">Copiar enlace</button>
+        </div>
       </div>
     </section>
 
