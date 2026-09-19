@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTPWEB Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/admin.css">
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand">HTPWEB ADMIN</div>
+    <div class="role" id="roleText">Cargando rol...</div>
+
+    <nav class="nav" id="nav">
+      <button data-section="overview">Resumen</button>
+      <button data-section="orders">Pedidos</button>
+      <button data-section="requests">Solicitudes</button>
+      <button data-section="deliveries">Deliveries</button>
+      <button data-section="catalog">Catálogo</button>
+      <button data-section="storage">Storage</button>
+      <button data-section="analytics">Analytics</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="public-link" href="../app/index.html">Ir al sitio público</a>
+      <button class="logout" id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Resumen</h1>
+        <div class="user-mail" id="userMail"></div>
+      </div>
+      <button class="btn-muted" id="refreshBtn">Actualizar</button>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <section id="section-overview" class="section active">
+      <div id="metrics" class="grid"></div>
+      <div class="card">
+        <h2>Ámbito actual</h2>
+        <div id="scopeInfo" class="muted">Cargando...</div>
+      </div>
+    </section>
+
+    <section id="section-orders" class="section">
+      <div class="card">
+        <div class="row between">
+          <h2>Pedidos</h2>
+          <select id="orderScope" style="max-width:320px"></select>
+        </div>
+        <div id="ordersList"></div>
+      </div>
+    </section>
+
+    <section id="section-requests" class="section">
+      <div class="card" id="requestCreateCard">
+        <h2>Nueva solicitud de LOCAL</h2>
+        <div class="form-grid">
+          <div>
+            <label>Delivery</label>
+            <select id="requestDelivery"></select>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="requestType">
+              <option value="CREATE_LOCAL">CREATE_LOCAL</option>
+              <option value="LINK_EXISTING">LINK_EXISTING</option>
+              <option value="SUGGEST_CHANGE">SUGGEST_CHANGE</option>
+            </select>
+          </div>
+          <div>
+            <label>Local ID (cuando aplique)</label>
+            <input id="requestLocalId" placeholder="UUID">
+          </div>
+        </div>
+        <label>Payload JSON</label>
+        <textarea id="requestPayload" rows="6">{}</textarea>
+        <button class="btn-primary" id="submitRequestBtn">Enviar solicitud</button>
+      </div>
+
+      <div class="card">
+        <h2>Solicitudes</h2>
+        <div id="requestsList"></div>
+      </div>
+    </section>
+
+    <section id="section-deliveries" class="section">
+      <div class="card">
+        <h2>Crear ciudad</h2>
+        <div class="form-grid">
+          <div><label>Nombre</label><input id="cityName"></div>
+          <div><label>Provincia</label><input id="cityProvince"></div>
+          <div><label>País</label><input id="cityCountry" value="Ecuador"></div>
+        </div>
+        <button class="btn-primary" id="saveCityBtn">Crear ciudad</button>
+      </div>
+
+      <div class="card">
+        <h2>Crear delivery</h2>
+        <div class="form-grid">
+          <div><label>Nombre</label><input id="deliveryName"></div>
+          <div><label>Slug</label><input id="deliverySlug"></div>
+          <div><label>Ciudad</label><select id="deliveryCity"></select></div>
+          <div><label>Teléfono</label><input id="deliveryPhone"></div>
+          <div><label>WhatsApp</label><input id="deliveryWhatsapp"></div>
+        </div>
+        <label>Descripción</label>
+        <textarea id="deliveryDescription" rows="3"></textarea>
+        <button class="btn-primary" id="saveDeliveryBtn">Crear delivery</button>
+      </div>
+
+      <div class="card">
+        <h2>Deliveries registrados</h2>
+        <div id="deliveriesList"></div>
+      </div>
+    </section>
+
+    <section id="section-catalog" class="section">
+      <div class="card">
+        <div class="row between">
+          <h2>Catálogo del LOCAL</h2>
+          <select id="catalogLocal" style="max-width:320px"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nueva categoría</h3>
+        <div class="form-grid">
+          <div><label>Nombre</label><input id="categoryName"></div>
+          <div><label>Orden</label><input id="categoryOrder" type="number" min="0" value="0"></div>
+        </div>
+        <label>Descripción</label>
+        <textarea id="categoryDescription" rows="2"></textarea>
+        <button class="btn-primary" id="saveCategoryBtn">Crear categoría</button>
+      </div>
+
+      <div class="card">
+        <h3>Nuevo producto</h3>
+        <div class="form-grid">
+          <div><label>Nombre</label><input id="productName"></div>
+          <div><label>Precio</label><input id="productPrice" type="number" min="0" step="0.01"></div>
+          <div><label>Categoría</label><select id="productCategory"></select></div>
+          <div><label>Orden</label><input id="productOrder" type="number" min="0" value="0"></div>
+        </div>
+        <label>Descripción</label>
+        <textarea id="productDescription" rows="2"></textarea>
+        <button class="btn-primary" id="saveProductBtn">Crear producto</button>
+      </div>
+
+      <div class="card">
+        <h3>Productos</h3>
+        <div id="catalogProducts"></div>
+      </div>
+    </section>
+
+
+    <section id="section-storage" class="section">
+      <div class="card">
+        <h2>Imágenes y Storage</h2>
+        <p class="muted">Bucket público: <code>htpweb-media</code>. Solo se sube una imagen cuando seleccionas un archivo nuevo.</p>
+      </div>
+
+      <div class="card" id="storageDeliveryCard">
+        <div class="row between">
+          <h3>Logo de DELIVERY</h3>
+          <select id="storageDelivery" style="max-width:340px"></select>
+        </div>
+        <div class="media-editor">
+          <div class="media-preview"><img id="deliveryLogoPreview" alt=""></div>
+          <div class="stack">
+            <input id="deliveryLogoFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="row">
+              <button class="btn-primary" id="uploadDeliveryLogoBtn">Subir / reemplazar logo</button>
+              <button class="btn-danger" id="deleteDeliveryLogoBtn">Eliminar logo</button>
+              <button class="btn-muted master-only" id="enableDeliveryMediaBtn">Habilitar gestión visual</button>
+            </div>
+            <small class="muted">DELIVERY_ADMIN requiere <code>images.manage</code> + <code>delivery.info.manage</code>.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="storageLocalCard">
+        <div class="row between">
+          <h3>Imágenes de LOCAL</h3>
+          <select id="storageLocal" style="max-width:340px"></select>
+        </div>
+        <div class="media-grid">
+          <div class="media-editor">
+            <div>
+              <strong>Logo</strong>
+              <div class="media-preview"><img id="localLogoPreview" alt=""></div>
+            </div>
+            <div class="stack">
+              <input id="localLogoFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <div class="row">
+                <button class="btn-primary" id="uploadLocalLogoBtn">Subir / reemplazar</button>
+                <button class="btn-danger" id="deleteLocalLogoBtn">Eliminar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="media-editor">
+            <div>
+              <strong>Banner</strong>
+              <div class="media-preview media-preview-wide"><img id="localBannerPreview" alt=""></div>
+            </div>
+            <div class="stack">
+              <input id="localBannerFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <div class="row">
+                <button class="btn-primary" id="uploadLocalBannerBtn">Subir / reemplazar</button>
+                <button class="btn-danger" id="deleteLocalBannerBtn">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión visual del LOCAL</button>
+        <small class="muted">LOCAL_ADMIN requiere <code>images.manage</code> + <code>local.info.manage</code>.</small>
+      </div>
+
+      <div class="card" id="storageProductCard">
+        <div class="row between">
+          <h3>Imagen de PRODUCTO</h3>
+          <select id="storageProduct" style="max-width:420px"></select>
+        </div>
+        <div class="media-editor">
+          <div class="media-preview"><img id="productImagePreview" alt=""></div>
+          <div class="stack">
+            <input id="productImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="row">
+              <button class="btn-primary" id="uploadProductImageBtn">Subir / reemplazar imagen</button>
+              <button class="btn-danger" id="deleteProductImageBtn">Eliminar imagen</button>
+            </div>
+            <small class="muted">El PRODUCTO se actualiza por RPC; el navegador no obtiene UPDATE directo.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-analytics" class="section">
+      <div class="card">
+        <div class="row between">
+          <h2>Analytics</h2>
+          <select id="analyticsScope" style="max-width:320px"></select>
+        </div>
+        <pre id="analyticsResult" class="json">{}</pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="../config/storage.js"></script>
+<script src="./admin.js"></script>
+</body>
+</html>

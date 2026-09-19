@@ -3,661 +3,190 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Local</title>
-
+<title>Local | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
-
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5f5f5;color:#222}
-header{background:#111;color:#fff;padding:14px 16px;text-align:center}
-nav{display:flex;gap:8px;margin-bottom:15px}
-nav button{flex:1}
-main{max-width:700px;margin:auto;padding:15px}
-.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
-.banner{width:100%;height:220px;object-fit:cover;border-radius:10px}
-h2,h3{margin-top:0}
-.producto{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #eee}
-.producto:last-child{border-bottom:0}
-.producto img{width:90px;height:90px;object-fit:cover;border-radius:10px;background:#eee}
-.info{flex:1}
-.precio{font-weight:bold;font-size:18px;margin:8px 0}
-.descripcion{font-size:14px;color:#666}
-button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:bold}
-.btn{background:#111;color:#fff}
-.btn-sec{background:#eee}
-.btn-carrito{width:100%;padding:13px;margin-top:15px}
-.cantidad{display:flex;align-items:center;gap:8px;margin-top:8px}
-.cantidad button{background:#eee}
-.cantidad button:disabled{opacity:.4}
-.vacio{text-align:center;padding:30px;color:#666}
-#carritoBar{position:sticky;bottom:15px;z-index:10}
-#btnCarrito{display:none;width:100%}
-</style>
+<script src="../config/cart.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
 </head>
-
 <body>
-
 <header>
-
-<h2 id="nombreNegocio">
-Cargando...
-</h2>
-
-<div id="nombreLocal"></div>
-
+  <div class="header-row">
+    <div>
+      <div class="brand" id="deliveryName">HTPWEB</div>
+      <small id="localName"></small>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-light" id="backBtn">← Locales</button>
+      <button class="btn btn-primary" id="cartBtn">🛒 <span id="cartCount">0</span></button>
+    </div>
+  </div>
 </header>
 
 <main>
-
-<nav>
-
-<button class="btn-sec" id="volverLocales">
-← Ver locales
-</button>
-
-<button class="btn-sec" id="irCarrito">
-🛒 Mi pedido
-</button>
-
-</nav>
-
-<section class="card" id="contenido"></section>
-
-<div id="carritoBar">
-
-<button class="btn btn-carrito" id="btnCarrito">
-Ver mi pedido
-</button>
-
-</div>
-
+  <section id="localCard" class="card"></section>
+  <section class="card">
+    <h2>Productos</h2>
+    <div id="products"></div>
+  </section>
+  <div id="error" class="error hidden"></div>
 </main>
 
 <script>
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+}[ch]));
 
-const $=id=>document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const localId = params.get("local") || params.get("id");
 
-let negocioActual=null;
-let local=null;
-let productos=[];
-let pedidoId=null;
-let procesando=false;
+let negocioActual = null;
+let localActual = null;
+let products = [];
+let variants = [];
 
-const cantidades={};
+async function init() {
+  try {
+    if (!localId) throw new Error("No se especificó el local.");
 
-const params=new URLSearchParams(
-location.search
-);
+    negocioActual = await cargarNegocio();
+    $("deliveryName").textContent = negocioActual.name;
+    $("backBtn").onclick = () => location.href = urlDelivery("index.html");
+    $("cartBtn").onclick = () => location.href = urlDelivery("carrito.html");
+    updateCartCount();
 
-const localId=params.get("id");
-const clienteSlug=params.get("cliente");
+    const { data: relation, error: relError } = await supabaseClient
+      .from("local_deliveries")
+      .select("local_id")
+      .eq("delivery_id", negocioActual.id)
+      .eq("local_id", localId)
+      .eq("active", true)
+      .maybeSingle();
 
-const CART_PREFIX="HTPWEB_CART:";
+    if (relError) throw relError;
+    if (!relation) throw new Error("Este local no está disponible en el delivery seleccionado.");
 
-/* =========================================================
-   CARRITO DE LA PESTAÑA
-========================================================= */
+    const localRes = await supabaseClient
+      .from("locals")
+      .select("id,name,description,banner_url,logo_url,address,phone,whatsapp,active")
+      .eq("id", localId)
+      .eq("active", true)
+      .single();
 
-function obtenerPedidoTab(){
+    if (localRes.error || !localRes.data) throw new Error("Local no encontrado.");
+    localActual = localRes.data;
 
-try{
+    const productRes = await supabaseClient
+      .from("products")
+      .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
+      .eq("local_id", localId)
+      .eq("active", true)
+      .order("display_order")
+      .order("name");
 
-const raw=window.name||"";
+    if (productRes.error) throw productRes.error;
+    products = productRes.data || [];
 
-if(!raw.startsWith(CART_PREFIX))
-return null;
+    if (products.length) {
+      const variantRes = await supabaseClient
+        .from("product_variants")
+        .select("id,product_id,name,price,display_order,active")
+        .in("product_id", products.map(p => p.id))
+        .eq("active", true)
+        .order("display_order")
+        .order("name");
 
-const data=JSON.parse(
-raw.substring(CART_PREFIX.length)
-);
+      if (variantRes.error) throw variantRes.error;
+      variants = variantRes.data || [];
+    }
 
-if(!data?.cliente||!data?.pedido)
-return null;
-
-if(data.cliente!==clienteSlug){
-
-window.name="";
-return null;
-
+    render();
+  } catch (error) {
+    console.error(error);
+    $("error").textContent = error.message || "No se pudo cargar el local.";
+    $("error").classList.remove("hidden");
+  }
 }
 
-return data.pedido;
+function render() {
+  document.title = `${localActual.name} | ${negocioActual.name}`;
+  $("localName").textContent = localActual.name;
 
-}catch(e){
+  $("localCard").innerHTML = `
+    ${localActual.banner_url ? `<img src="${esc(localActual.banner_url)}" alt="${esc(localActual.name)}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">` : ""}
+    <h1>${esc(localActual.name)}</h1>
+    <p class="muted">${esc(localActual.description || "")}</p>
+    ${localActual.address ? `<p><strong>Dirección:</strong> ${esc(localActual.address)}</p>` : ""}
+  `;
 
-return null;
+  $("products").innerHTML = products.length ? products.map(product => {
+    const vs = variants.filter(v => v.product_id === product.id);
+    const minPrice = vs.length ? Math.min(...vs.map(v => Number(v.price))) : Number(product.price || 0);
 
+    return `
+      <div class="product-row">
+        <div>${product.image_url ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}">` : ""}</div>
+        <div>
+          <strong>${esc(product.name)}</strong>
+          <div class="muted">${esc(product.description || "")}</div>
+          <div class="price" id="price-${product.id}">$ ${minPrice.toFixed(2)}</div>
+
+          ${vs.length ? `
+            <label>Variante</label>
+            <select id="variant-${product.id}" onchange="syncVariantPrice('${product.id}')">
+              ${vs.map(v => `<option value="${v.id}" data-price="${Number(v.price)}">${esc(v.name)} — $${Number(v.price).toFixed(2)}</option>`).join("")}
+            </select>
+          ` : ""}
+
+          <div class="row">
+            <input id="qty-${product.id}" type="number" min="1" value="1" style="max-width:90px">
+            <button class="btn btn-primary" onclick="addProduct('${product.id}')">Agregar</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("") : '<div class="empty">Este local todavía no tiene productos disponibles.</div>';
 }
 
+function syncVariantPrice(productId) {
+  const select = document.getElementById("variant-" + productId);
+  if (!select) return;
+  const option = select.selectedOptions[0];
+  $("price-" + productId).textContent = "$ " + Number(option.dataset.price || 0).toFixed(2);
 }
 
-function guardarPedidoTab(id){
+function addProduct(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
 
-try{
+  const qty = Math.max(1, Number.parseInt($("qty-" + productId).value, 10) || 1);
+  const select = document.getElementById("variant-" + productId);
+  const variant = select ? variants.find(v => v.id === select.value) : null;
 
-window.name=CART_PREFIX+JSON.stringify({
+  carritoAgregar(negocioActual.slug, {
+    local_id: localActual.id,
+    product_id: product.id,
+    variant_id: variant?.id || null,
+    snapshot: {
+      local_name: localActual.name,
+      product_name: product.name,
+      variant_name: variant?.name || null
+    }
+  }, qty);
 
-cliente:clienteSlug,
-pedido:String(id)
-
-});
-
-}catch(e){
-
-console.warn(
-"No se pudo guardar el contexto de la pestaña.",
-e
-);
-
+  updateCartCount();
+  $("qty-" + productId).value = 1;
 }
 
+function updateCartCount() {
+  if (!negocioActual) return;
+  $("cartCount").textContent = carritoCantidad(negocioActual.slug);
 }
 
-function limpiarPedidoTab(){
-
-try{
-
-if((window.name||"").startsWith(CART_PREFIX))
-window.name="";
-
-}catch(e){}
-
-}
-
-function sincronizarUrlPedido(){
-
-const url=new URL(location.href);
-
-if(pedidoId){
-
-url.searchParams.set(
-"pedido",
-pedidoId
-);
-
-}else{
-
-url.searchParams.delete("pedido");
-
-}
-
-history.replaceState(
-null,
-"",
-url.toString()
-);
-
-}
-
-/* =========================================================
-   INICIO
-========================================================= */
-
-async function iniciar(){
-
-if(!localId){
-
-$("contenido").innerHTML=
-'<div class="vacio">No se especificó el local.</div>';
-
-return;
-
-}
-
-try{
-
-negocioActual=await cargarNegocio();
-
-$("nombreNegocio").textContent=
-negocioActual.nombre;
-
-/*
-   La URL puede tener pedido, pero solo
-   window.name determina el carrito activo.
-*/
-pedidoId=obtenerPedidoTab();
-
-sincronizarUrlPedido();
-
-await cargarLocal();
-
-await cargarProductos();
-
-if(pedidoId)
-await cargarItemsPedido();
-
-actualizarNavegacion();
-
-}catch(e){
-
-console.error(e);
-
-$("contenido").innerHTML=
-'<div class="vacio">No se pudo cargar el local.</div>';
-
-}
-
-}
-
-/* =========================================================
-   LOCAL
-========================================================= */
-
-async function cargarLocal(){
-
-const{data,error}=await supabaseClient
-.from("locales")
-.select(
-"id,nombre,categoria,descripcion,banner_url"
-)
-.eq("id",localId)
-.eq("cliente_id",negocioActual.id)
-.eq("activo",true)
-.single();
-
-if(error||!data)
-throw new Error("Local no encontrado.");
-
-local=data;
-
-$("nombreLocal").textContent=
-local.nombre;
-
-$("contenido").innerHTML=`
-
-${
-local.banner_url
-?
-`<img class="banner"
-src="${escapeHtml(local.banner_url)}"
-alt="${escapeHtml(local.nombre)}">`
-:""
-}
-
-<h2>
-${escapeHtml(local.nombre)}
-</h2>
-
-${
-local.descripcion
-?
-`<p class="descripcion">
-${escapeHtml(local.descripcion)}
-</p>`
-:""
-}
-
-<div id="productos">
-
-<div class="vacio">
-Cargando productos...
-</div>
-
-</div>`;
-
-}
-
-/* =========================================================
-   PRODUCTOS
-========================================================= */
-
-async function cargarProductos(){
-
-const{data,error}=await supabaseClient
-.from("productos")
-.select(
-"id,nombre,descripcion,precio,imagen_url,activo"
-)
-.eq("cliente_id",negocioActual.id)
-.eq("local_id",local.id)
-.eq("activo",true)
-.order("nombre");
-
-if(error)throw error;
-
-productos=data||[];
-
-renderProductos();
-
-}
-
-/* =========================================================
-   RECUPERAR PRODUCTOS DEL PEDIDO
-========================================================= */
-
-async function cargarItemsPedido(){
-
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{
-p_pedido_id:pedidoId
-}
-);
-
-if(error)throw error;
-
-Object.keys(cantidades).forEach(
-k=>delete cantidades[k]
-);
-
-(data||[]).forEach(item=>{
-
-if(String(item.local_id)===String(local.id)){
-
-cantidades[item.producto_id]=
-Number(item.cantidad);
-
-}
-
-});
-
-renderProductos();
-
-}
-
-/* =========================================================
-   RENDER PRODUCTOS
-========================================================= */
-
-function renderProductos(){
-
-if(!productos.length){
-
-$("productos").innerHTML=
-'<div class="vacio">Este local no tiene productos disponibles.</div>';
-
-return;
-
-}
-
-$("productos").innerHTML=
-productos.map(p=>{
-
-const cantidad=
-cantidades[p.id]||0;
-
-return`
-
-<div class="producto">
-
-${
-p.imagen_url
-?
-`<img
-src="${escapeHtml(p.imagen_url)}"
-alt="${escapeHtml(p.nombre)}">`
-:""
-}
-
-<div class="info">
-
-<strong>
-${escapeHtml(p.nombre)}
-</strong>
-
-${
-p.descripcion
-?
-`<div class="descripcion">
-${escapeHtml(p.descripcion)}
-</div>`
-:""
-}
-
-<div class="precio">
-$${Number(p.precio||0).toFixed(2)}
-</div>
-
-<div class="cantidad">
-
-<button
-onclick="cambiarCantidad('${p.id}',${cantidad-1})"
-${cantidad<=0?"disabled":""}>
-−
-</button>
-
-<strong>
-${cantidad}
-</strong>
-
-<button
-onclick="cambiarCantidad('${p.id}',${cantidad+1})">
-+
-</button>
-
-</div>
-
-</div>
-
-</div>`;
-
-}).join("");
-
-}
-
-/* =========================================================
-   CAMBIAR CANTIDAD
-========================================================= */
-
-async function cambiarCantidad(
-productoId,
-nuevaCantidad
-){
-
-if(procesando||nuevaCantidad<0)
-return;
-
-const anterior=
-cantidades[productoId]||0;
-
-if(nuevaCantidad===anterior)
-return;
-
-cantidades[productoId]=nuevaCantidad;
-
-renderProductos();
-
-procesando=true;
-
-try{
-
-/*
-   Si todavía no existe carrito,
-   se crea uno en Supabase.
-*/
-await asegurarCarrito();
-
-const diferencia=
-nuevaCantidad-anterior;
-
-if(diferencia>0){
-
-const{error}=await supabaseClient.rpc(
-"agregar_al_carrito",
-{
-p_pedido_id:pedidoId,
-p_producto_id:productoId,
-p_cantidad:diferencia
-}
-);
-
-if(error)throw error;
-
-}else{
-
-const{data,error}=await supabaseClient.rpc(
-"obtener_carrito",
-{
-p_pedido_id:pedidoId
-}
-);
-
-if(error)throw error;
-
-const item=(data||[]).find(
-x=>String(x.producto_id)===String(productoId)
-);
-
-if(!item)return;
-
-const cantidadFinal=
-Number(item.cantidad)+diferencia;
-
-if(cantidadFinal<=0){
-
-const{error:e}=await supabaseClient.rpc(
-"eliminar_del_carrito",
-{
-p_detalle_id:item.detalle_id
-}
-);
-
-if(e)throw e;
-
-}else{
-
-const{error:e}=await supabaseClient.rpc(
-"actualizar_cantidad_carrito",
-{
-p_detalle_id:item.detalle_id,
-p_cantidad:cantidadFinal
-}
-);
-
-if(e)throw e;
-
-}
-
-}
-
-actualizarNavegacion();
-
-}catch(e){
-
-console.error(e);
-
-cantidades[productoId]=anterior;
-
-renderProductos();
-
-alert(
-e.message||
-"No se pudo actualizar el pedido."
-);
-
-}finally{
-
-procesando=false;
-
-}
-
-}
-
-/* =========================================================
-   CREAR CARRITO
-========================================================= */
-
-async function asegurarCarrito(){
-
-if(pedidoId)
-return;
-
-const{data,error}=await supabaseClient.rpc(
-"crear_carrito",
-{
-p_cliente_id:negocioActual.id
-}
-);
-
-if(error)throw error;
-
-pedidoId=data;
-
-/*
-   Guardamos únicamente el identificador
-   del carrito en la pestaña.
-*/
-guardarPedidoTab(pedidoId);
-
-/*
-   Actualizamos inmediatamente la URL.
-   Si el usuario refresca esta página,
-   la pestaña conserva el pedido mediante
-   window.name.
-*/
-sincronizarUrlPedido();
-
-actualizarNavegacion();
-
-}
-
-/* =========================================================
-   NAVEGACIÓN
-========================================================= */
-
-function actualizarNavegacion(){
-
-let urlLocales=
-`index.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
-
-let urlCarrito=
-`carrito.html?cliente=${encodeURIComponent(negocioActual.slug)}`;
-
-if(pedidoId){
-
-urlLocales+=
-`&pedido=${encodeURIComponent(pedidoId)}`;
-
-urlCarrito+=
-`&pedido=${encodeURIComponent(pedidoId)}`;
-
-}
-
-$("volverLocales").onclick=()=>{
-location.href=urlLocales;
-};
-
-$("irCarrito").onclick=()=>{
-location.href=urlCarrito;
-};
-
-if(pedidoId){
-
-$("btnCarrito").style.display="block";
-
-$("btnCarrito").onclick=()=>{
-location.href=urlCarrito;
-};
-
-}else{
-
-$("btnCarrito").style.display="none";
-
-}
-
-}
-
-/* =========================================================
-   HTML
-========================================================= */
-
-function escapeHtml(text){
-
-return String(text??"")
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
-.replace(/"/g,"&quot;")
-.replace(/'/g,"&#039;");
-
-}
-
-iniciar();
-
+window.addEventListener("htpweb:cart", updateCartCount);
+init();
 </script>
-
 </body>
 </html>

@@ -1,0 +1,68 @@
+name: HTPWEB Frontend Check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check JavaScript files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in config/*.js admin/*.js; do
+            [ -f "$file" ] || continue
+            echo "Checking $file"
+            node --check "$file"
+          done
+
+      - name: Check inline JavaScript in HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          html_files = list(Path("app").glob("*.html")) + list(Path("admin").glob("*.html"))
+          pattern = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</script>", re.I)
+
+          checked = 0
+          for html in html_files:
+              text = html.read_text(encoding="utf-8")
+              for idx, match in enumerate(pattern.finditer(text), 1):
+                  attrs = match.group("attrs") or ""
+                  if re.search(r"\bsrc\s*=", attrs, re.I):
+                      continue
+                  body = match.group("body").strip()
+                  if not body:
+                      continue
+                  with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+                      tmp.write(body)
+                      tmp_path = tmp.name
+                  print(f"Checking inline script {html} #{idx}")
+                  subprocess.run(["node", "--check", tmp_path], check=True)
+                  Path(tmp_path).unlink(missing_ok=True)
+                  checked += 1
+
+          print(f"Inline scripts checked: {checked}")
+          PY
+
+      - name: Reject conflict markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E '^(<<<<<<<|=======|>>>>>>>)' app admin config assets; then
+            echo "Conflict markers found."
+            exit 1
+          fi
+          echo "No conflict markers found."
