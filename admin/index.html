@@ -62,28 +62,84 @@
 
     <section id="section-requests" class="section">
       <div class="card" id="requestCreateCard">
-        <h2>Nueva solicitud de LOCAL</h2>
+        <h2>Gestión de LOCAL</h2>
+        <p class="muted">Solicita un LOCAL nuevo, vincula uno que ya existe o propone cambios. HTPWEB conserva la aprobación final.</p>
+
         <div class="form-grid">
           <div>
             <label>Delivery</label>
             <select id="requestDelivery"></select>
           </div>
           <div>
-            <label>Tipo</label>
+            <label>Acción</label>
             <select id="requestType">
-              <option value="CREATE_LOCAL">CREATE_LOCAL</option>
-              <option value="LINK_EXISTING">LINK_EXISTING</option>
-              <option value="SUGGEST_CHANGE">SUGGEST_CHANGE</option>
+              <option value="CREATE_LOCAL">Solicitar un LOCAL nuevo</option>
+              <option value="LINK_EXISTING">Vincular un LOCAL existente</option>
+              <option value="SUGGEST_CHANGE">Sugerir cambios de un LOCAL vinculado</option>
             </select>
           </div>
+        </div>
+
+        <div id="requestCreateFields" class="stack" style="margin-top:14px">
+          <div class="form-grid">
+            <div>
+              <label>Nombre del LOCAL *</label>
+              <input id="requestName" maxlength="160" placeholder="Ej. Restaurante Central">
+            </div>
+            <div>
+              <label>Dirección</label>
+              <input id="requestAddress" maxlength="240" placeholder="Dirección del negocio">
+            </div>
+            <div>
+              <label>Teléfono</label>
+              <input id="requestPhone" maxlength="40" placeholder="Teléfono">
+            </div>
+            <div>
+              <label>WhatsApp</label>
+              <input id="requestWhatsapp" maxlength="40" placeholder="WhatsApp">
+            </div>
+          </div>
           <div>
-            <label>Local ID (cuando aplique)</label>
-            <input id="requestLocalId" placeholder="UUID">
+            <label>Descripción</label>
+            <textarea id="requestDescription" rows="3" maxlength="1000" placeholder="Breve descripción del negocio"></textarea>
           </div>
         </div>
-        <label>Payload JSON</label>
-        <textarea id="requestPayload" rows="6">{}</textarea>
-        <button class="btn-primary" id="submitRequestBtn">Enviar solicitud</button>
+
+        <div id="requestExistingFields" class="stack hidden" style="margin-top:14px">
+          <div>
+            <label id="requestLocalSelectLabel">LOCAL</label>
+            <select id="requestLocalSelect"></select>
+            <small class="muted" id="requestLocalHelp"></small>
+          </div>
+        </div>
+
+        <div id="requestSuggestFields" class="stack hidden" style="margin-top:14px">
+          <p class="muted">Completa únicamente los datos que deseas sugerir. Debe existir al menos un cambio.</p>
+          <div class="form-grid">
+            <div>
+              <label>Nombre propuesto</label>
+              <input id="requestSuggestName" maxlength="160" placeholder="Dejar vacío si no cambia">
+            </div>
+            <div>
+              <label>Dirección propuesta</label>
+              <input id="requestSuggestAddress" maxlength="240" placeholder="Dejar vacío si no cambia">
+            </div>
+            <div>
+              <label>Teléfono propuesto</label>
+              <input id="requestSuggestPhone" maxlength="40" placeholder="Dejar vacío si no cambia">
+            </div>
+            <div>
+              <label>WhatsApp propuesto</label>
+              <input id="requestSuggestWhatsapp" maxlength="40" placeholder="Dejar vacío si no cambia">
+            </div>
+          </div>
+          <div>
+            <label>Descripción propuesta</label>
+            <textarea id="requestSuggestDescription" rows="3" maxlength="1000" placeholder="Dejar vacío si no cambia"></textarea>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="submitRequestBtn" style="margin-top:14px">Enviar solicitud</button>
       </div>
 
       <div class="card">
