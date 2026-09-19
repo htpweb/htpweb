@@ -181,9 +181,10 @@ revoke all on function public.save_delivery_distance_rate(uuid,text,numeric,bool
 grant execute on function public.save_delivery_distance_rate(uuid,text,numeric,boolean) to authenticated;
 
 
-create or replace function public.calculate_delivery_fee(
+create or replace function public.calculate_delivery_fee_at(
   p_delivery_id uuid,
-  p_distance_km numeric
+  p_distance_km numeric,
+  p_at timestamptz
 )
 returns numeric
 language plpgsql
@@ -205,6 +206,10 @@ begin
 
   if p_distance_km is null or p_distance_km < 0 then
     raise exception 'La distancia debe ser mayor o igual a 0 km';
+  end if;
+
+  if p_at is null then
+    raise exception 'La fecha/hora de cálculo es obligatoria';
   end if;
 
   select
@@ -232,7 +237,7 @@ begin
   end if;
 
   if v_mode = 'DISTANCE' then
-    v_now_ecuador := (now() at time zone 'America/Guayaquil')::time;
+    v_now_ecuador := (p_at at time zone 'America/Guayaquil')::time;
 
     v_period := case
       when v_now_ecuador >= v_day_start
@@ -264,6 +269,28 @@ begin
 end;
 $function$;
 
+revoke all on function public.calculate_delivery_fee_at(uuid,numeric,timestamptz) from public;
+revoke all on function public.calculate_delivery_fee_at(uuid,numeric,timestamptz) from anon;
+revoke all on function public.calculate_delivery_fee_at(uuid,numeric,timestamptz) from authenticated;
+grant execute on function public.calculate_delivery_fee_at(uuid,numeric,timestamptz) to service_role;
+
+
+create or replace function public.calculate_delivery_fee(
+  p_delivery_id uuid,
+  p_distance_km numeric
+)
+returns numeric
+language sql
+security definer
+set search_path = ''
+as $function$
+  select public.calculate_delivery_fee_at(
+    p_delivery_id,
+    p_distance_km,
+    now()
+  );
+$function$;
+
 comment on table public.delivery_fee_rates is
   'Costo por km de cada DELIVERY separado por periodo DAY/NIGHT.';
 
@@ -273,5 +300,8 @@ comment on column public.delivery_fee_configs.day_start_time is
 comment on column public.delivery_fee_configs.night_start_time is
   'Hora desde la que aplica NIGHT. Zona horaria actual de cálculo: America/Guayaquil.';
 
+comment on function public.calculate_delivery_fee_at(uuid,numeric,timestamptz) is
+  'Función interna determinista: FIXED devuelve fixed_fee; DISTANCE calcula km × tarifa DAY/NIGHT usando America/Guayaquil.';
+
 comment on function public.calculate_delivery_fee(uuid,numeric) is
-  'FIXED devuelve fixed_fee. DISTANCE calcula distancia_km × rate_per_km DAY/NIGHT según hora del servidor en America/Guayaquil.';
+  'Cálculo productivo. Usa la hora actual del servidor y delega en calculate_delivery_fee_at.';
