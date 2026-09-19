@@ -343,11 +343,10 @@ async function openCheckout() {
   }
 
   $("checkoutCard").classList.remove("hidden");
-  if (!map) initMap();
-
-  const selected = $("savedAddressSelect")?.value || "";
-  if (selected) {
-    applySavedAddress(selected);
+  if (!map) {
+    initMap();
+    const selected = $("savedAddressSelect")?.value || "";
+    if (selected) applySavedAddress(selected);
   }
 
   setTimeout(() => map?.invalidateSize(), 100);
@@ -479,6 +478,7 @@ async function deactivateSelectedAddress() {
 
   try {
     await desactivarMiDireccionCliente(current);
+    resetCheckoutAddress();
     await loadSavedAddresses();
     $("savedAddressSelect").value = "";
     syncSavedAddressButtons();
@@ -516,13 +516,8 @@ function setLocation(lat, lng) {
   $("acceptLocation").classList.remove("hidden");
 }
 
-$("savedAddressSelect").onchange = () => {
-  const id = $("savedAddressSelect").value;
-  if (id) {
-    applySavedAddress(id);
-    return;
-  }
-
+function resetCheckoutAddress() {
+  $("savedAddressSelect").value = "";
   $("address").value = "";
   $("reference").value = "";
   $("addressLabel").value = "";
@@ -539,6 +534,12 @@ $("savedAddressSelect").onchange = () => {
   $("locationInfo").textContent = "Selecciona un punto en el mapa y confírmalo.";
   $("acceptLocation").classList.add("hidden");
   syncSavedAddressButtons();
+}
+
+$("savedAddressSelect").onchange = () => {
+  const id = $("savedAddressSelect").value;
+  if (id) applySavedAddress(id);
+  else resetCheckoutAddress();
 };
 
 $("saveAddressBtn").onclick = saveCurrentAddress;
@@ -559,6 +560,9 @@ $("geoBtn").onclick = () => {
 $("acceptLocation").onclick = async () => {
   if (latitude === null || longitude === null) return;
 
+  const acceptedLatitude = latitude;
+  const acceptedLongitude = longitude;
+  const selectedAddressId = $("savedAddressSelect").value;
   locationAccepted = true;
   $("locationInfo").textContent = `✓ Ubicación aceptada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   $("acceptLocation").classList.add("hidden");
@@ -568,7 +572,10 @@ $("acceptLocation").onclick = async () => {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (response.ok) {
       const data = await response.json();
-      if (data.display_name && !$("address").value.trim()) {
+      if (data.display_name && !$("address").value.trim() &&
+          locationAccepted && latitude === acceptedLatitude &&
+          longitude === acceptedLongitude &&
+          $("savedAddressSelect").value === selectedAddressId) {
         $("address").value = data.display_name;
       }
     }
