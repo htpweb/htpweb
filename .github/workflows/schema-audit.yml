@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Read order functions
+      - name: Verify ADMIN RPC surface
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -35,13 +35,52 @@ jobs:
           env = os.environ.copy()
           env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
 
-          sql = """
-          select 'FUNC_BEGIN|' || p.proname || E'\\n' || pg_get_functiondef(p.oid) || E'\\nFUNC_END|' || p.proname
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public'
-            and p.proname in ('create_order_transaction','calculate_delivery_fee')
-          order by p.proname;
+          names = [
+            "analytics_delivery_summary",
+            "analytics_local_summary",
+            "analytics_master_summary",
+            "current_role_code",
+            "master_apply_local_request",
+            "master_review_local_request",
+            "master_save_city",
+            "master_save_delivery",
+            "master_set_delivery_capability",
+            "master_set_local_capability",
+            "save_local_category",
+            "save_local_product",
+            "set_local_order_status",
+            "set_order_status",
+            "submit_local_request",
+            "update_my_delivery_content",
+            "update_my_local_content"
+          ]
+
+          values = ",".join("'" + x + "'" for x in names)
+          sql = f"""
+          with expected(name) as (
+            select unnest(array[{values}]::text[])
+          ),
+          actual as (
+            select distinct p.proname as name
+            from pg_proc p
+            join pg_namespace n on n.oid=p.pronamespace
+            where n.nspname='public'
+          )
+          select 'RPC|' || e.name || '|' ||
+                 case when a.name is null then 'MISSING' else 'OK' end
+          from expected e
+          left join actual a using(name)
+          order by e.name;
+
+          select 'TABLE|' || x.name || '|' ||
+                 case when to_regclass('public.' || x.name) is null then 'MISSING' else 'OK' end
+          from (values
+            ('deliveries'),('locals'),('cities'),('orders'),('order_locals'),
+            ('local_requests'),('categories'),('products'),('customers'),
+            ('user_deliveries'),('user_locals'),('capabilities'),
+            ('delivery_capabilities'),('local_capabilities')
+          ) as x(name)
+          order by x.name;
           """
           subprocess.run(
               ["psql","-h",parsed.hostname,"-p",str(parsed.port),"-U",parsed.username,
