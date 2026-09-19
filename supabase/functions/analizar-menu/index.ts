@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import OpenAI from "npm:openai@7.19.0";
+import OpenAI from "npm:openai@7.15.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
