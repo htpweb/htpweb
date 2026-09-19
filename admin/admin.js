@@ -16,10 +16,10 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","analytics"],
-  DELIVERY_ADMIN: ["overview","orders","requests","analytics"],
+  MASTER: ["overview","orders","requests","deliveries","storage","analytics"],
+  DELIVERY_ADMIN: ["overview","orders","requests","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
-  LOCAL_ADMIN: ["overview","orders","catalog","analytics"]
+  LOCAL_ADMIN: ["overview","orders","catalog","storage","analytics"]
 };
 
 const globalTransitions = {
@@ -116,6 +116,7 @@ function showSection(name) {
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "catalog") loadCatalog();
+  if (name === "storage") loadStorage();
   if (name === "analytics") loadAnalytics();
 }
 
@@ -1125,6 +1126,26 @@ function bindEvents() {
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
   $("saveProductBtn").onclick = saveProduct;
+
+  $("storageDelivery").onchange = refreshDeliveryMediaPreview;
+  $("storageLocal").onchange = async () => {
+    await refreshLocalMediaPreview();
+    await loadStorageProducts();
+  };
+  $("storageProduct").onchange = refreshProductMediaPreview;
+
+  $("uploadDeliveryLogoBtn").onclick = uploadDeliveryLogo;
+  $("deleteDeliveryLogoBtn").onclick = deleteDeliveryLogo;
+  $("enableDeliveryMediaBtn").onclick = enableDeliveryMedia;
+
+  $("uploadLocalLogoBtn").onclick = () => uploadLocalMedia("logo");
+  $("deleteLocalLogoBtn").onclick = () => deleteLocalMedia("logo");
+  $("uploadLocalBannerBtn").onclick = () => uploadLocalMedia("banner");
+  $("deleteLocalBannerBtn").onclick = () => deleteLocalMedia("banner");
+  $("enableLocalMediaBtn").onclick = enableLocalMedia;
+
+  $("uploadProductImageBtn").onclick = uploadProductImage;
+  $("deleteProductImageBtn").onclick = deleteProductImage;
 }
 
 init();
