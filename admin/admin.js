@@ -1361,6 +1361,8 @@ function bindEvents() {
   $("catalogLocal").onchange = loadCatalog;
 
   $("submitRequestBtn").onclick = submitRequest;
+  $("requestType").onchange = updateRequestForm;
+  $("requestDelivery").onchange = updateRequestForm;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
