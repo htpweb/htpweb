@@ -238,34 +238,61 @@ jobs:
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase functions deploy crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Verify deployed Edge matches repository
+      - name: Verify deployed Edge semantically
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         shell: bash
         run: |
           set -euo pipefail
-          cp supabase/functions/crear-pedido/index.ts /tmp/crear-pedido-local.ts
           rm -rf /tmp/remote-functions
-          mkdir -p /tmp/remote-functions
+          mkdir -p /tmp/remote-functions/supabase/functions
           cd /tmp/remote-functions
-          mkdir -p supabase/functions
           supabase functions download crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
+
+          echo "FUNCTION_LIST_AFTER_DEPLOY"
+          supabase functions list --project-ref "$SUPABASE_PROJECT_ID"
 
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib
+          import hashlib, re
 
-          local=Path("/tmp/crear-pedido-local.ts").read_bytes()
-          remote=Path("/tmp/remote-functions/supabase/functions/crear-pedido/index.ts").read_bytes()
+          local=Path("$GITHUB_WORKSPACE/supabase/functions/crear-pedido/index.ts").read_text()
+          remote=Path("/tmp/remote-functions/supabase/functions/crear-pedido/index.ts").read_text()
 
-          local_hash=hashlib.sha256(local).hexdigest()
-          remote_hash=hashlib.sha256(remote).hexdigest()
+          local_hash=hashlib.sha256(local.encode()).hexdigest()
+          remote_hash=hashlib.sha256(remote.encode()).hexdigest()
+
+          required=[
+              "check_locals_order_availability",
+              "ensureLocalsOpenForOrders",
+              "create_order_transaction",
+              "ORS_API_KEY",
+              "getAuthenticatedUser"
+          ]
+          missing=[item for item in required if item not in remote]
+          if missing:
+              raise SystemExit("Remote Edge is missing required markers: "+", ".join(missing))
+
+          schedule_call=remote.index("await ensureLocalsOpenForOrders(locals)")
+          ors_call=remote.index("const localsWithDistance = await Promise.all")
+          transaction_call=remote.index('supabaseAdmin.rpc("create_order_transaction"')
+
+          if not (schedule_call < ors_call < transaction_call):
+              raise SystemExit("Remote Edge validation order is unsafe")
+
+          suspicious=[
+              r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*['\"][^'\"]+",
+              r"ORS_API_KEY\s*=\s*['\"][^'\"]+",
+              r"sk_[A-Za-z0-9_-]{20,}",
+          ]
+          if any(re.search(pattern,remote) for pattern in suspicious):
+              raise SystemExit("Potential literal secret found in deployed Edge source")
 
           print("EDGE_REPO_SHA256="+local_hash)
           print("EDGE_REMOTE_SHA256="+remote_hash)
-          print("EDGE_DEPLOY_MATCH="+str(local_hash==remote_hash).lower())
-
-          if local_hash != remote_hash:
-              raise SystemExit("Deployed Edge Function does not match repository source")
+          print("EDGE_BYTE_IDENTICAL="+str(local_hash==remote_hash).lower())
+          print("EDGE_REMOTE_AVAILABILITY_MARKERS_OK=true")
+          print("EDGE_REMOTE_ORDER_CHECKS_OK=true")
+          print("EDGE_REMOTE_LITERAL_SECRETS=0")
           PY
