@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTPWEB Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/admin.css">
+<link rel="stylesheet" href="../assets/analytics-dashboard.css">
+</head>
+<body>
+<main class="analytics-page">
+  <div class="analytics-head">
+    <div><a href="./index.html">← Panel administrativo</a><h1>Analytics HTPWEB</h1><p class="muted" id="analyticsRole">Cargando ámbito...</p></div>
+    <button class="btn-muted" id="analyticsRefresh">Actualizar</button>
+  </div>
+  <div class="card analytics-filters">
+    <div><label>Ámbito</label><select id="analyticsScope"></select></div>
+    <div><label>Desde</label><input type="date" id="analyticsFrom"></div>
+    <div><label>Hasta</label><input type="date" id="analyticsTo"></div>
+    <button class="btn-primary" id="analyticsApply">Aplicar</button>
+  </div>
+  <div id="analyticsMessage" class="message hidden"></div>
+  <section id="analyticsMetrics" class="analytics-metrics"></section>
+  <section class="analytics-grid">
+    <div class="card"><h2>Actividad</h2><div id="analyticsActivity"></div></div>
+    <div class="card"><h2>Detalle</h2><div id="analyticsDetail"></div></div>
+  </section>
+</main>
+<script src="./analytics-dashboard.js"></script>
+</body>
+</html>
