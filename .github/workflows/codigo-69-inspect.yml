@@ -1,4 +1,4 @@
-name: Codigo 69 Inspect
+name: Codigo 69 Inspect Access
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect fee and zone backend
+      - name: Inspect RLS permissions capabilities
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,38 +34,43 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'FEE_CONFIG_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='save_delivery_fee_config';
+          select 'POLICIES';
+          select tablename||'|'||policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public'
+            and tablename in ('delivery_fee_configs','delivery_fee_ranges','zones','delivery_zones')
+          order by tablename,policyname;
 
-          select 'FEE_RANGE_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='save_delivery_fee_range';
+          select 'ROLE_PERMISSION';
+          select r.code||'|'||p.code||'|'||rp.allowed
+          from public.role_permissions rp
+          join public.roles r on r.id=rp.role_id
+          join public.permissions p on p.id=rp.permission_id
+          where r.code in ('MASTER','DELIVERY_ADMIN','DELIVERY_OPERATOR')
+            and p.code in ('delivery_fees.manage','zones.assign')
+          order by r.code,p.code;
 
-          select 'SET_ZONE_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='set_delivery_zone';
+          select 'DELIVERY_CAPABILITIES';
+          select dc.delivery_id||'|'||c.code||'|'||dc.enabled
+          from public.delivery_capabilities dc
+          join public.capabilities c on c.id=dc.capability_id
+          where c.code in ('delivery_fees.manage','zones.manage')
+          order by dc.delivery_id,c.code;
 
-          select 'FEE_CONFIG_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='delivery_fee_configs'
-          order by ordinal_position;
+          select 'DEMO_DELIVERY';
+          select id||'|'||name||'|'||coalesce(city_id::text,'NULL') from public.deliveries where active=true order by created_at limit 5;
 
-          select 'FEE_RANGE_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='delivery_fee_ranges'
-          order by ordinal_position;
+          select 'FEE_CONFIGS';
+          select delivery_id||'|'||mode||'|'||fixed_fee||'|'||active from public.delivery_fee_configs order by created_at;
 
-          select 'ZONES_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='zones'
-          order by ordinal_position;
+          select 'FEE_RANGES';
+          select delivery_id||'|'||distance_from||'|'||distance_to||'|'||fee||'|'||active from public.delivery_fee_ranges order by delivery_id,distance_from;
+
+          select 'DELIVERY_ZONES';
+          select delivery_id||'|'||zone_id||'|'||active from public.delivery_zones order by delivery_id,zone_id;
+
+          select 'ZONES';
+          select id||'|'||name||'|'||city_id||'|'||active from public.zones order by name limit 50;
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
