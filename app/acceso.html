@@ -63,7 +63,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const requestedReturn = retornoSeguro(params.get("return"), urlDelivery("index.html"));
+const fallbackReturn = obtenerDeliverySlug() ? urlDelivery("index.html") : "../index.html";
+const requestedReturn = retornoSeguro(params.get("return"), fallbackReturn);
 
 function showMessage(text, type = "error") {
   const box = $("message");
