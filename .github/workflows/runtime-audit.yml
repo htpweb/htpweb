@@ -37,11 +37,11 @@ jobs:
           import os, re, subprocess
 
           raw = Path("supabase/.temp/pooler-url").read_text(encoding="utf-8").strip()
-          m = re.match(r"postgresql://([^:]+):\[YOUR-PASSWORD\]@([^:]+):(\d+)/([^?]+)", raw)
+          m = re.match(r"postgresql://([^:]+):([^@]*)@([^:]+):(\d+)/([^?]+)", raw)
           if not m:
               raise SystemExit("Could not parse linked pooler URL")
 
-          user, host, port, db = m.groups()
+          user, _stored_password, host, port, db = m.groups()
           env = os.environ.copy()
           env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
 
