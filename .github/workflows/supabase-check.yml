@@ -2,6 +2,12 @@ name: Supabase Connection Check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-check.yml"
 
 permissions:
   contents: read
@@ -11,6 +17,7 @@ env:
 
 jobs:
   check:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
 
     steps:
@@ -23,6 +30,25 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check Edge Functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find supabase/functions -mindepth 2 -maxdepth 2 -name index.ts -print -quit 2>/dev/null | grep -q .; then
+            find supabase/functions -mindepth 2 -maxdepth 2 -name index.ts -print0 |
+              while IFS= read -r -d '' file; do
+                echo "Checking $file"
+                deno check --config supabase/functions/deno.json "$file"
+              done
+          else
+            echo "No Edge Functions found."
+          fi
 
       - name: Verify required secrets
         shell: bash
@@ -46,4 +72,4 @@ jobs:
         run: supabase db push --dry-run
 
       - name: Connection OK
-        run: echo "GitHub Actions can connect to Supabase successfully."
+        run: echo "Supabase migration dry-run and Edge Function checks passed."
