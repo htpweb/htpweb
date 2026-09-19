@@ -13,6 +13,7 @@ const state = {
   requests: [],
   requestLocalOptions: [],
   deliveryProfileRecord: null,
+  localProfileRecord: null,
   categories: [],
   products: []
 };
@@ -21,7 +22,7 @@ const roleSections = {
   MASTER: ["overview","orders","requests","deliveries","storage","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
-  LOCAL_ADMIN: ["overview","orders","catalog","storage","analytics"]
+  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","storage","analytics"]
 };
 
 const globalTransitions = {
@@ -115,6 +116,7 @@ function showSection(name) {
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
   if (name === "mydelivery") loadDeliveryProfile();
+  if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
@@ -343,6 +345,114 @@ function openDeliveryStorage() {
   if (deliveryId && $("storageDelivery")) {
     $("storageDelivery").value = deliveryId;
     refreshDeliveryMediaPreview();
+  }
+}
+
+async function loadLocalProfile() {
+  if (state.role !== "LOCAL_ADMIN") return;
+
+  const select = $("profileLocal");
+  if (!select) return;
+
+  const previous = select.value;
+  select.innerHTML = state.locals.length
+    ? state.locals.map(local => `<option value="${local.id}">${esc(local.name)}</option>`).join("")
+    : '<option value="">No hay LOCAL asignados</option>';
+
+  if (previous && state.locals.some(local => local.id === previous)) {
+    select.value = previous;
+  }
+
+  await loadLocalProfileRecord();
+}
+
+async function loadLocalProfileRecord() {
+  if (state.role !== "LOCAL_ADMIN") return;
+
+  const localId = $("profileLocal")?.value || null;
+  if (!localId) {
+    state.localProfileRecord = null;
+    [
+      "profileLocalName","profileLocalAddress","profileLocalPhone","profileLocalWhatsapp",
+      "profileLocalWebsite","profileLocalInstagram","profileLocalFacebook",
+      "profileLocalTiktok","profileLocalTelegram","profileLocalDescription"
+    ].forEach(id => { if ($(id)) $(id).value = ""; });
+    $("saveLocalProfileBtn").disabled = true;
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("locals")
+      .select("id,name,address,description,banner_url,logo_url,phone,whatsapp,website_url,instagram_url,facebook_url,tiktok_url,telegram_url,active")
+      .eq("id", localId)
+      .single();
+
+    if (error) throw error;
+
+    state.localProfileRecord = data;
+    $("profileLocalName").value = data.name || "";
+    $("profileLocalAddress").value = data.address || "";
+    $("profileLocalPhone").value = data.phone || "";
+    $("profileLocalWhatsapp").value = data.whatsapp || "";
+    $("profileLocalWebsite").value = data.website_url || "";
+    $("profileLocalInstagram").value = data.instagram_url || "";
+    $("profileLocalFacebook").value = data.facebook_url || "";
+    $("profileLocalTiktok").value = data.tiktok_url || "";
+    $("profileLocalTelegram").value = data.telegram_url || "";
+    $("profileLocalDescription").value = data.description || "";
+    $("saveLocalProfileBtn").disabled = false;
+  } catch (e) {
+    state.localProfileRecord = null;
+    $("saveLocalProfileBtn").disabled = true;
+    message(e.message || "No se pudo cargar la información del LOCAL.", "error");
+  }
+}
+
+async function saveLocalProfile() {
+  try {
+    const local = state.localProfileRecord;
+    if (!local?.id) throw new Error("Selecciona un LOCAL.");
+
+    await rpc("update_my_local_content", {
+      p_local_id: local.id,
+      p_description: $("profileLocalDescription").value.trim() || null,
+      p_banner_url: local.banner_url || null,
+      p_logo_url: local.logo_url || null,
+      p_phone: $("profileLocalPhone").value.trim() || null,
+      p_whatsapp: $("profileLocalWhatsapp").value.trim() || null,
+      p_website_url: $("profileLocalWebsite").value.trim() || null,
+      p_instagram_url: $("profileLocalInstagram").value.trim() || null,
+      p_facebook_url: $("profileLocalFacebook").value.trim() || null,
+      p_tiktok_url: $("profileLocalTiktok").value.trim() || null,
+      p_telegram_url: $("profileLocalTelegram").value.trim() || null
+    });
+
+    message("Información del LOCAL actualizada.");
+    await loadLocalProfileRecord();
+  } catch (e) {
+    message(e.message || "No se pudo actualizar el LOCAL.", "error");
+  }
+}
+
+function openLocalStorage() {
+  showSection("storage");
+
+  const localId = $("profileLocal")?.value;
+  if (localId && $("storageLocal")) {
+    $("storageLocal").value = localId;
+    refreshLocalMediaPreview();
+    loadStorageProducts();
+  }
+}
+
+function openLocalCatalog() {
+  showSection("catalog");
+
+  const localId = $("profileLocal")?.value;
+  if (localId && $("catalogLocal")) {
+    $("catalogLocal").value = localId;
+    loadCatalog();
   }
 }
 
@@ -1265,7 +1375,7 @@ async function enableLocalMedia() {
       });
     }
 
-    message("Gestión visual habilitada para el LOCAL.");
+    message("Gestión del LOCAL habilitada.");
   } catch (e) {
     message(e.message || "No se pudieron habilitar las capabilities.", "error");
   }
@@ -1451,6 +1561,10 @@ function bindEvents() {
   $("profileDelivery").onchange = loadDeliveryProfileRecord;
   $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
   $("profileGoStorageBtn").onclick = openDeliveryStorage;
+  $("profileLocal").onchange = loadLocalProfileRecord;
+  $("saveLocalProfileBtn").onclick = saveLocalProfile;
+  $("profileLocalGoStorageBtn").onclick = openLocalStorage;
+  $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
