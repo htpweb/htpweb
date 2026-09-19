@@ -1,0 +1,73 @@
+name: Codigo 69 Inspect
+
+on:
+  push:
+    branches: [codigo-69-tarifas-delivery]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Inspect fee and zone backend
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+          sql=r"""
+          select 'FEE_CONFIG_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='save_delivery_fee_config';
+
+          select 'FEE_RANGE_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='save_delivery_fee_range';
+
+          select 'SET_ZONE_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='set_delivery_zone';
+
+          select 'FEE_CONFIG_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='delivery_fee_configs'
+          order by ordinal_position;
+
+          select 'FEE_RANGE_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='delivery_fee_ranges'
+          order by ordinal_position;
+
+          select 'ZONES_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='zones'
+          order by ordinal_position;
+          """
+          subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
+            check=True,env=env)
+          PY
