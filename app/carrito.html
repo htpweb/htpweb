@@ -504,9 +504,25 @@ $("savedAddressSelect").onchange = () => {
   const id = $("savedAddressSelect").value;
   if (id) {
     applySavedAddress(id);
-  } else {
-    syncSavedAddressButtons();
+    return;
   }
+
+  $("address").value = "";
+  $("reference").value = "";
+  $("addressLabel").value = "";
+  $("addressDefault").checked = false;
+  latitude = null;
+  longitude = null;
+  locationAccepted = false;
+
+  if (marker && map) {
+    map.removeLayer(marker);
+    marker = null;
+  }
+
+  $("locationInfo").textContent = "Selecciona un punto en el mapa y confírmalo.";
+  $("acceptLocation").classList.add("hidden");
+  syncSavedAddressButtons();
 };
 
 $("saveAddressBtn").onclick = saveCurrentAddress;
