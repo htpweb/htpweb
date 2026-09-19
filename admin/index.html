@@ -22,6 +22,7 @@
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
+      <button data-section="users">Usuarios</button>
       <button data-section="catalog">Catálogo</button>
       <button data-section="storage">Storage</button>
       <button data-section="analytics">Analytics</button>
@@ -291,6 +292,69 @@
       <div class="card">
         <h2>Deliveries registrados</h2>
         <div id="deliveriesList"></div>
+      </div>
+    </section>
+
+    <section id="section-users" class="section">
+      <div class="card">
+        <h2>Usuarios y accesos</h2>
+        <p class="muted">
+          La persona debe crear primero su cuenta desde la pantalla de acceso de HTPWEB. Después MASTER puede asignarla
+          como administrador u operador sin conocer ni cambiar su contraseña.
+        </p>
+        <div class="form-grid">
+          <div>
+            <label>Buscar cuenta</label>
+            <input id="userManagerSearch" placeholder="Nombre o correo">
+          </div>
+          <div>
+            <label>Cuenta</label>
+            <select id="userManagerUser"></select>
+          </div>
+        </div>
+        <div id="userManagerSummary" class="request-details" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Asignar a un DELIVERY</h3>
+        <div class="form-grid">
+          <div>
+            <label>Delivery</label>
+            <select id="userManagerDelivery"></select>
+          </div>
+          <div>
+            <label>Rol</label>
+            <select id="userManagerDeliveryRole">
+              <option value="DELIVERY_ADMIN">Administrador del DELIVERY</option>
+              <option value="DELIVERY_OPERATOR">Operador del DELIVERY</option>
+            </select>
+          </div>
+        </div>
+        <label class="row" style="margin-top:12px">
+          <input id="userManagerDeliveryConvert" type="checkbox" style="width:auto">
+          <span>Convertir la cuenta CLIENT si tiene un CUSTOMER activo</span>
+        </label>
+        <button class="btn-primary" id="assignDeliveryUserBtn" style="margin-top:12px">Asignar al DELIVERY</button>
+      </div>
+
+      <div class="card">
+        <h3>Asignar como administrador de LOCAL</h3>
+        <div class="form-grid">
+          <div>
+            <label>Local</label>
+            <select id="userManagerLocal"></select>
+          </div>
+        </div>
+        <label class="row" style="margin-top:12px">
+          <input id="userManagerLocalConvert" type="checkbox" style="width:auto">
+          <span>Convertir la cuenta CLIENT si tiene un CUSTOMER activo</span>
+        </label>
+        <button class="btn-primary" id="assignLocalUserBtn" style="margin-top:12px">Asignar al LOCAL</button>
+      </div>
+
+      <div class="card">
+        <h3>Accesos actuales de la cuenta</h3>
+        <div id="userManagerAssignments"></div>
       </div>
     </section>
 
