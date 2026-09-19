@@ -1,0 +1,95 @@
+name: HTPWEB Live Browser Smoke
+
+on:
+  push:
+    branches: [runtime-live-smoke]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Test public flow
+        shell: bash
+        run: |
+          node <<'JS'
+          const { chromium } = require('playwright');
+
+          const base = 'https://htpweb.github.io/htpweb/';
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+
+            const consoleErrors = [];
+            page.on('console', msg => {
+              if (msg.type() === 'error') consoleErrors.push(msg.text());
+            });
+            page.on('pageerror', err => consoleErrors.push(err.message));
+
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 90000 });
+            await page.getByText('Delivery Demo HTPWEB').waitFor({ timeout: 30000 });
+            console.log('ROOT_OK', await page.title());
+
+            await page.getByRole('link', { name: 'Entrar' }).click();
+            await page.waitForLoadState('networkidle');
+            await page.getByText('Local Demo').waitFor({ timeout: 30000 });
+            console.log('DELIVERY_OK', page.url());
+
+            await page.getByRole('button', { name: 'Ver productos' }).click();
+            await page.waitForLoadState('networkidle');
+            await page.getByText('Producto Demo', { exact: true }).waitFor({ timeout: 30000 });
+            await page.getByText('Bebida Demo', { exact: true }).waitFor({ timeout: 30000 });
+            console.log('LOCAL_OK', page.url());
+
+            const product = page.locator('.product-row').filter({ hasText: 'Producto Demo' });
+            await product.getByRole('button', { name: 'Agregar' }).click();
+            await page.locator('#cartCount').waitFor();
+            const count = (await page.locator('#cartCount').textContent() || '').trim();
+            if (count !== '1') throw new Error('Cart count expected 1, got ' + count);
+            console.log('CART_ADD_OK', count);
+
+            await page.locator('#cartBtn').click();
+            await page.waitForLoadState('networkidle');
+            await page.getByText('Producto Demo', { exact: true }).waitFor({ timeout: 30000 });
+            await page.getByRole('button', { name: 'Continuar' }).click();
+            await page.waitForLoadState('networkidle');
+            if (!page.url().includes('/app/acceso.html')) {
+              throw new Error('Unauthenticated checkout did not redirect to access page: ' + page.url());
+            }
+            await page.getByRole('button', { name: 'Entrar' }).waitFor({ timeout: 30000 });
+            console.log('AUTH_REDIRECT_OK', page.url());
+
+            const admin = await browser.newPage();
+            await admin.goto(base + 'admin/index.html', { waitUntil: 'networkidle', timeout: 90000 });
+            await admin.waitForURL(/\/app\/acceso\.html/, { timeout: 30000 });
+            console.log('ADMIN_GUARD_OK', admin.url());
+
+            const meaningful = consoleErrors.filter(e =>
+              !e.includes('favicon') &&
+              !e.includes('Nominatim') &&
+              !e.includes('OpenStreetMap')
+            );
+            if (meaningful.length) {
+              throw new Error('Browser console errors: ' + meaningful.join(' | '));
+            }
+
+            await browser.close();
+            console.log('HTPWEB_LIVE_SMOKE_OK');
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          JS
