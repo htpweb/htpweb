@@ -20,3 +20,6 @@ enabled = true
 
 [functions.crear-pedido]
 verify_jwt = true
+
+[functions.analizar-menu]
+verify_jwt = true
