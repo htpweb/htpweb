@@ -73,3 +73,5 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5
   .media-editor{grid-template-columns:1fr}
   .media-grid{grid-template-columns:1fr}
 }
+
+.request-details{display:grid;gap:7px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;margin:10px 0}
