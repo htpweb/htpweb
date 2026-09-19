@@ -1134,7 +1134,7 @@ async function enableDeliveryMedia() {
       p_enabled: true
     });
 
-    message("Gestión visual habilitada para el DELIVERY.");
+    message("Gestión del DELIVERY habilitada.");
   } catch (e) {
     message(e.message || "No se pudieron habilitar las capabilities.", "error");
   }
