@@ -169,7 +169,15 @@ jobs:
 
             await page.locator('#confirmBtn').click();
 
-            await page.locator('#successCard:not(.hidden)').waitFor({ timeout: 90000 });
+            const outcome = await Promise.race([
+              page.locator('#successCard:not(.hidden)').waitFor({ timeout: 90000 }).then(() => 'success'),
+              page.locator('#message.error').waitFor({ timeout: 90000 }).then(() => 'error')
+            ]);
+
+            if (outcome === 'error') {
+              throw new Error('Checkout error: ' + await page.locator('#message').innerText());
+            }
+
             const successText = await page.locator('#successCard').innerText();
             const match = successText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
             if (!match) throw new Error('Order was created but ID was not found.');
