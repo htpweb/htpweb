@@ -8,6 +8,7 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
 <script src="../config/auth.js"></script>
+<script src="../config/addresses.js"></script>
 <script src="../config/cart.js"></script>
 <link rel="stylesheet" href="../assets/app.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -41,6 +42,17 @@
     <label>Teléfono</label>
     <input id="phone" type="tel" autocomplete="tel">
 
+    <div id="savedAddressBox" class="hidden">
+      <h3>Direcciones guardadas</h3>
+      <label>Usar una dirección</label>
+      <select id="savedAddressSelect">
+        <option value="">Nueva dirección</option>
+      </select>
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-muted hidden" id="deactivateAddressBtn" type="button">Desactivar dirección</button>
+      </div>
+    </div>
+
     <h3>Ubicación</h3>
     <button class="btn btn-muted" id="geoBtn" type="button">📍 Usar mi ubicación</button>
     <div id="map"></div>
@@ -52,6 +64,24 @@
 
     <label>Referencia</label>
     <input id="reference" placeholder="Casa, edificio, punto de referencia">
+
+    <div class="save-address-panel">
+      <h3>Guardar esta dirección</h3>
+      <div class="form-grid">
+        <div>
+          <label>Nombre</label>
+          <input id="addressLabel" placeholder="Ej. Casa, Trabajo, Mamá">
+        </div>
+        <div>
+          <label class="row">
+            <input id="addressDefault" type="checkbox" style="width:auto">
+            Usar como dirección predeterminada
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-muted" id="saveAddressBtn" type="button">Guardar dirección</button>
+      <small class="note">La dirección guardada conservará el punto exacto del mapa para calcular el delivery.</small>
+    </div>
 
     <label>Observaciones</label>
     <textarea id="notes" rows="3"></textarea>
@@ -96,6 +126,7 @@ let items = [];
 let productMap = new Map();
 let variantMap = new Map();
 let localMap = new Map();
+let savedAddresses = [];
 
 let map = null;
 let marker = null;
@@ -125,6 +156,15 @@ async function init() {
         $("name").value = data.name || "";
         $("phone").value = data.phone || "";
         if (data.email) $("invoiceEmail").value = data.email;
+      }
+
+      try {
+        const { data: role } = await supabaseClient.rpc("current_role_code");
+        if (role === "CLIENT") {
+          await loadSavedAddresses();
+        }
+      } catch (addressError) {
+        console.warn("No se pudieron cargar las direcciones guardadas.", addressError);
       }
     }
   } catch (e) {
@@ -304,8 +344,132 @@ async function openCheckout() {
 
   $("checkoutCard").classList.remove("hidden");
   if (!map) initMap();
+
+  const selected = $("savedAddressSelect")?.value || "";
+  if (selected) {
+    applySavedAddress(selected);
+  }
+
   setTimeout(() => map?.invalidateSize(), 100);
   $("checkoutCard").scrollIntoView({ behavior: "smooth" });
+}
+
+async function loadSavedAddresses(preferredId = null) {
+  savedAddresses = await listarMisDireccionesCliente({ soloActivas: true });
+
+  const select = $("savedAddressSelect");
+  const box = $("savedAddressBox");
+  if (!select || !box) return;
+
+  box.classList.remove("hidden");
+
+  select.innerHTML =
+    '<option value="">Nueva dirección</option>' +
+    savedAddresses.map(address => {
+      const suffix = address.is_default ? " — predeterminada" : "";
+      return `<option value="${address.id}">${esc(address.label)}${suffix}</option>`;
+    }).join("");
+
+  const preferred = preferredId
+    ? savedAddresses.find(address => address.id === preferredId)
+    : savedAddresses.find(address => address.is_default);
+
+  if (preferred) {
+    select.value = preferred.id;
+  }
+
+  syncSavedAddressButtons();
+}
+
+function selectedSavedAddress() {
+  const id = $("savedAddressSelect")?.value || "";
+  return savedAddresses.find(address => address.id === id) || null;
+}
+
+function syncSavedAddressButtons() {
+  const selected = selectedSavedAddress();
+  $("deactivateAddressBtn")?.classList.toggle("hidden", !selected);
+  $("saveAddressBtn").textContent = selected ? "Actualizar dirección" : "Guardar dirección";
+
+  if (selected) {
+    $("addressLabel").value = selected.label || "";
+    $("addressDefault").checked = Boolean(selected.is_default);
+  } else {
+    $("addressLabel").value = "";
+    $("addressDefault").checked = false;
+  }
+}
+
+function applySavedAddress(addressId) {
+  const saved = savedAddresses.find(address => address.id === addressId);
+  if (!saved) return;
+
+  $("address").value = saved.address || "";
+  $("reference").value = saved.reference || "";
+  $("addressLabel").value = saved.label || "";
+  $("addressDefault").checked = Boolean(saved.is_default);
+
+  if (saved.latitude !== null && saved.longitude !== null) {
+    setLocation(Number(saved.latitude), Number(saved.longitude));
+    locationAccepted = true;
+    $("locationInfo").textContent = `✓ Dirección guardada: ${Number(saved.latitude).toFixed(6)}, ${Number(saved.longitude).toFixed(6)}`;
+    $("acceptLocation").classList.add("hidden");
+  } else {
+    latitude = null;
+    longitude = null;
+    locationAccepted = false;
+    $("locationInfo").textContent = "Esta dirección no tiene coordenadas guardadas. Selecciona un punto en el mapa.";
+  }
+
+  syncSavedAddressButtons();
+}
+
+async function saveCurrentAddress() {
+  try {
+    const addressText = $("address").value.trim();
+    const label = $("addressLabel").value.trim();
+
+    if (!label) throw new Error("Escribe un nombre para la dirección.");
+    if (!addressText) throw new Error("Escribe la dirección.");
+    if (!locationAccepted || latitude === null || longitude === null) {
+      throw new Error("Selecciona y acepta la ubicación antes de guardar.");
+    }
+
+    const current = selectedSavedAddress();
+
+    const saved = await guardarMiDireccionCliente({
+      id: current?.id || null,
+      label,
+      address: addressText,
+      reference: $("reference").value.trim() || null,
+      latitude,
+      longitude,
+      isDefault: $("addressDefault").checked,
+      active: true
+    });
+
+    await loadSavedAddresses(saved?.id || current?.id || null);
+    showMessage(current ? "Dirección actualizada." : "Dirección guardada.", "success");
+  } catch (e) {
+    showMessage(e.message || "No se pudo guardar la dirección.");
+  }
+}
+
+async function deactivateSelectedAddress() {
+  const current = selectedSavedAddress();
+  if (!current) return;
+
+  if (!confirm(`¿Desactivar la dirección "${current.label}"?`)) return;
+
+  try {
+    await desactivarMiDireccionCliente(current);
+    await loadSavedAddresses();
+    $("savedAddressSelect").value = "";
+    syncSavedAddressButtons();
+    showMessage("Dirección desactivada.", "success");
+  } catch (e) {
+    showMessage(e.message || "No se pudo desactivar la dirección.");
+  }
 }
 
 function initMap() {
@@ -335,6 +499,18 @@ function setLocation(lat, lng) {
   $("locationInfo").textContent = `Ubicación seleccionada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   $("acceptLocation").classList.remove("hidden");
 }
+
+$("savedAddressSelect").onchange = () => {
+  const id = $("savedAddressSelect").value;
+  if (id) {
+    applySavedAddress(id);
+  } else {
+    syncSavedAddressButtons();
+  }
+};
+
+$("saveAddressBtn").onclick = saveCurrentAddress;
+$("deactivateAddressBtn").onclick = deactivateSelectedAddress;
 
 $("geoBtn").onclick = () => {
   if (!navigator.geolocation) {
