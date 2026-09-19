@@ -23,10 +23,8 @@
     const now = Date.now();
     const startRaw = text(row, ["starts_at", "start_at", "start_date", "valid_from", "published_at"]);
     const endRaw = text(row, ["ends_at", "end_at", "end_date", "valid_until", "expires_at"]);
-
     const start = startRaw ? Date.parse(startRaw) : NaN;
     const end = endRaw ? Date.parse(endRaw) : NaN;
-
     if (Number.isFinite(start) && start > now) return false;
     if (Number.isFinite(end) && end < now) return false;
     return true;
@@ -37,8 +35,7 @@
   const belongsToDelivery = row => {
     const rowDelivery = text(row, ["delivery_id"]);
     if (rowDelivery) return rowDelivery === delivery?.id;
-    const rowScope = scope(row);
-    return ["HTPWEB", "GLOBAL", "DELIVERY", "LOCAL", "PRODUCT"].includes(rowScope);
+    return ["HTPWEB", "GLOBAL", "DELIVERY", "LOCAL", "PRODUCT"].includes(scope(row));
   };
 
   async function resolveTarget(row) {
@@ -53,10 +50,8 @@
 
     let localId = text(row, ["local_id"]);
     let productId = text(row, ["product_id"]);
-
     const rowScope = scope(row);
     const destinationId = text(row, ["destination_id", "target_id"]);
-
     if (!localId && rowScope === "LOCAL") localId = destinationId;
     if (!productId && rowScope === "PRODUCT") productId = destinationId;
 
@@ -67,7 +62,6 @@
         .eq("id", productId)
         .eq("active", true)
         .maybeSingle();
-
       if (error || !data) return null;
       localId = data.local_id;
     }
@@ -80,9 +74,7 @@
         .eq("local_id", localId)
         .eq("active", true)
         .maybeSingle();
-
       if (error || !relation) return null;
-
       const params = { local: localId };
       if (productId) params.product = productId;
       return urlDelivery("local.html", params);
@@ -94,14 +86,27 @@
   async function normalize(row) {
     const href = await resolveTarget(row);
     if (!href) return null;
+    return {
+      id: String(text(row, ["id"], "")),
+      title: String(text(row, ["title", "headline", "name"], scope(row) === "LOCAL" ? "Local recomendado" : "Producto recomendado")),
+      description: String(text(row, ["description", "subtitle", "body", "message"], "")),
+      image: String(text(row, ["image_url", "banner_url", "media_url"], "")),
+      priority: Number(text(row, ["priority", "display_order", "weight"], 0)) || 0,
+      localId: text(row, ["local_id"]) || null,
+      productId: text(row, ["product_id"]) || null,
+      href
+    };
+  }
 
-    const title = String(text(row, ["title", "headline", "name"], scope(row) === "LOCAL" ? "Local recomendado" : "Producto recomendado"));
-    const description = String(text(row, ["description", "subtitle", "body", "message"], ""));
-    const image = String(text(row, ["image_url", "banner_url", "media_url"], ""));
-    const priority = Number(text(row, ["priority", "display_order", "weight"], 0)) || 0;
-    const id = String(text(row, ["id"], ""));
-
-    return { id, title, description, image, href, priority };
+  function trackAd(eventType, ad, extra = {}) {
+    if (!ad?.id) return;
+    window.HTPWEBAnalytics?.track(eventType, {
+      delivery_id: delivery?.id,
+      local_id: ad.localId,
+      product_id: ad.productId,
+      advertisement_id: ad.id,
+      metadata: { placement: "persistent_banner" }
+    }, extra);
   }
 
   function ensureShell() {
@@ -125,6 +130,7 @@
       </a>
     `;
 
+    shell.querySelector("#htpwebAdLink").addEventListener("click", () => trackAd("AD_CLICK", ads[index]));
     document.body.appendChild(shell);
     document.body.classList.add("has-htpweb-ad");
     return shell;
@@ -143,10 +149,11 @@
     description.textContent = ad.description || "Toca para ver la promoción.";
     media.style.backgroundImage = ad.image ? `url("${String(ad.image).replace(/"/g, "%22")}")` : "";
     media.classList.toggle("no-image", !ad.image);
-
     progress.classList.remove("run");
     void progress.offsetWidth;
     progress.classList.add("run");
+
+    trackAd("AD_IMPRESSION", ad, { dedupeKey: `ad-impression:${ad.id}:${index}` });
   }
 
   function rotate() {
@@ -160,10 +167,7 @@
       delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
       if (!delivery?.id) return;
 
-      const { data, error } = await supabaseClient
-        .from("advertisements")
-        .select("*");
-
+      const { data, error } = await supabaseClient.from("advertisements").select("*");
       if (error) {
         console.warn("Publicidad no disponible:", error.message || error);
         return;
@@ -177,13 +181,11 @@
       const normalized = (await Promise.all(eligible.map(normalize)))
         .filter(Boolean)
         .sort((a, b) => b.priority - a.priority);
-
       if (!normalized.length) return;
 
       ads = normalized;
       index = 0;
       show(ads[0]);
-
       if (timer) clearInterval(timer);
       if (ads.length > 1) timer = setInterval(rotate, ROTATE_MS);
     } catch (error) {
@@ -192,9 +194,6 @@
   }
 
   window.HTPWEBAds = { load };
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", load, { once: true });
-  } else {
-    load();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load, { once: true });
+  else load();
 })();
