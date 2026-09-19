@@ -54,6 +54,7 @@
 
     <div class="stack" style="margin-top:14px">
       <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
+      <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
     </div>
   </section>
@@ -96,12 +97,22 @@ async function init() {
   }
 
   const user = await obtenerUsuarioActual();
+
   if (user) {
     $("sessionBox").textContent = `Sesión iniciada como ${user.email || "usuario"}.`;
     $("sessionBox").classList.remove("hidden");
     $("authForms").classList.add("hidden");
     $("continueBtn").classList.remove("hidden");
     $("logoutBtn").classList.remove("hidden");
+
+    try {
+      const { data: role } = await supabaseClient.rpc("current_role_code");
+      if (role && role !== "CLIENT") {
+        $("adminBtn").classList.remove("hidden");
+      }
+    } catch (e) {
+      console.warn(e);
+    }
   }
 }
 
@@ -163,6 +174,7 @@ $("registerForm").onsubmit = async event => {
 };
 
 $("continueBtn").onclick = () => location.href = requestedReturn;
+$("adminBtn").onclick = () => location.href = "../admin/index.html";
 
 $("logoutBtn").onclick = async () => {
   try {
