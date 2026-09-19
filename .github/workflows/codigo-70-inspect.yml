@@ -1,4 +1,4 @@
-name: Codigo 70 Inspect
+name: Codigo 70 Inspect Detail
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect zones backend
+      - name: Inspect zones backend detail
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -37,51 +37,26 @@ jobs:
           env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
 
           sql=r"""
-          select 'ZONE_FUNCTIONS';
-          select p.proname||'|'||pg_get_function_identity_arguments(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public'
-            and (p.proname ilike '%zone%' or p.proname ilike '%city%')
-          order by p.proname,pg_get_function_identity_arguments(p.oid);
+          select 'MASTER_SAVE_ZONE_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_save_zone';
 
-          select 'ZONES_CONSTRAINTS';
-          select conname||'|'||pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.zones'::regclass
-          order by conname;
+          select 'SET_DELIVERY_ZONE_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='set_delivery_zone';
 
-          select 'DELIVERY_ZONES_CONSTRAINTS';
-          select conname||'|'||pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.delivery_zones'::regclass
-          order by conname;
+          select 'MASTER_SET_DELIVERY_CITY_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_set_delivery_city';
 
-          select 'ZONE_POLICIES';
-          select tablename||'|'||policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename in ('zones','delivery_zones')
-          order by tablename,policyname;
-
-          select 'ZONE_PERMISSIONS';
-          select r.code||'|'||p.code
-          from public.role_permissions rp
-          join public.roles r on r.id=rp.role_id
-          join public.permissions p on p.id=rp.permission_id
-          where p.code ilike '%zone%'
-          order by r.code,p.code;
-
-          select 'ZONE_CAPABILITIES';
-          select c.code||'|'||c.scope||'|'||c.active
-          from public.capabilities c
-          where c.code ilike '%zone%'
-          order by c.code;
-
-          select 'ZONE_LIMITS';
-          select code||'|'||scope||'|'||active
-          from public.limits
-          where code ilike '%zone%'
-          order by code;
+          select 'LIMIT_TABLES';
+          select tablename
+          from pg_tables
+          where schemaname='public' and tablename ilike '%limit%'
+          order by tablename;
 
           select 'CITIES';
           select id||'|'||name||'|'||coalesce(province,'')||'|'||country||'|'||active
