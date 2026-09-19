@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis pedidos | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/negocio.js"></script>
+<script src="../config/auth.js"></script>
+<script src="../config/orders.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<header><div class="header-row">
+  <div><div class="brand">Mis pedidos</div><small id="deliveryName"></small></div>
+  <div class="header-actions">
+    <a class="btn btn-light" id="shopLink" href="../index.html">Volver a la tienda</a>
+    <a class="btn btn-primary hidden" id="cartLink" href="#">Carrito</a>
+  </div>
+</div></header>
+<main>
+  <section class="card">
+    <div class="row between"><h1>Mis pedidos</h1><button class="btn btn-muted" id="refreshBtn" disabled>Actualizar</button></div>
+    <p class="muted">Consulta tus compras en este DELIVERY. Puedes cancelar un pedido mientras esté pendiente.</p>
+    <div id="message" class="hidden" role="status" aria-live="polite"></div>
+  </section>
+  <section id="detail" class="card hidden" aria-label="Detalle del pedido" tabindex="-1"></section>
+  <div id="orders" aria-live="polite"><div class="card empty">Cargando pedidos…</div></div>
+  <nav class="row between" aria-label="Páginas de pedidos">
+    <button id="prevBtn" class="btn btn-muted" disabled>Anterior</button>
+    <span id="pageLabel"></span>
+    <button id="nextBtn" class="btn btn-muted" disabled>Siguiente</button>
+  </nav>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+const money = value => '$' + Number(value || 0).toFixed(2);
+const statusNames = { PENDING:'Pendiente', CONFIRMED:'Confirmado', PREPARING:'En preparación', READY:'Listo', EN_ROUTE:'En camino', DELIVERED:'Entregado', CANCELLED:'Cancelado' };
+const statusText = value => statusNames[value] || 'Estado por actualizar';
+const dateText = value => new Date(value).toLocaleString('es-EC', { timeZone:'America/Guayaquil' });
+let delivery = null;
+let page = 0;
+let hasMore = false;
+let busy = false;
+let selectedId = new URLSearchParams(location.search).get('order') || '';
+
+function message(text, success = false) {
+  $('message').textContent = text;
+  $('message').className = text ? (success ? 'success' : 'error') : 'hidden';
+}
+function controls() {
+  $('refreshBtn').disabled = busy || !delivery;
+  $('prevBtn').disabled = busy || page === 0;
+  $('nextBtn').disabled = busy || !hasMore;
+  document.querySelectorAll('[data-order], #cancelBtn, #closeDetailBtn').forEach(button => { button.disabled = busy; });
+}
+function renderOrders(orders) {
+  $('pageLabel').textContent = `Página ${page + 1}`;
+  $('orders').innerHTML = orders.length ? orders.map(order => `
+    <article class="card">
+      <p style="overflow-wrap:anywhere"><strong>Pedido ${esc(order.id)}</strong></p>
+      <p class="muted">${esc(dateText(order.created_at))}</p>
+      <p><strong>${esc(statusText(order.status))}</strong> · Total ${money(order.total)}</p>
+      <button class="btn btn-dark" data-order="${esc(order.id)}">Ver detalle</button>
+    </article>`).join('') : '<div class="card empty">No hay pedidos en esta página. Tus compras en este DELIVERY aparecerán aquí.</div>';
+  document.querySelectorAll('[data-order]').forEach(button => {
+    button.onclick = () => showDetail(button.dataset.order);
+  });
+}
+async function renderDetail() {
+  $('detail').classList.add('hidden');
+  $('detail').innerHTML = '';
+  if (!selectedId) return;
+  const order = await obtenerPedidoCliente(delivery.id, selectedId);
+  if (!order) throw new Error('Pedido no disponible en esta cuenta y DELIVERY.');
+  const groups = (order.order_locals || []).map(local => `
+    <div class="cart-group">
+      <h3>${esc(local.locals?.name || 'LOCAL')}</h3>
+      <p>${esc(statusText(local.status))}</p>
+      ${(order.order_items || []).filter(item => item.local_id === local.local_id).map(item => `
+        <div class="cart-item"><div><strong>${esc(item.product_name)}</strong>
+        ${item.variant_name ? `<div class="muted">${esc(item.variant_name)}</div>` : ''}
+        <div>${esc(item.quantity)} × ${money(item.unit_price)}</div></div><strong>${money(item.subtotal)}</strong></div>`).join('')}
+    </div>`).join('');
+  $('detail').innerHTML = `
+    <button class="btn btn-muted" id="closeDetailBtn">Cerrar detalle</button>
+    <h2 style="overflow-wrap:anywhere">Pedido ${esc(order.id)}</h2>
+    <p>${esc(dateText(order.created_at))} · <strong>${esc(statusText(order.status))}</strong></p>
+    <p><strong>Entrega:</strong> ${esc(order.delivery_address)}</p>
+    ${groups}
+    <div class="summary-line"><span>Productos</span><strong>${money(order.subtotal)}</strong></div>
+    <div class="summary-line"><span>Delivery</span><strong>${money(order.delivery_fee)}</strong></div>
+    <div class="summary-line total"><span>Total</span><strong>${money(order.total)}</strong></div>
+    ${order.status === 'PENDING' ? '<button class="btn btn-danger" id="cancelBtn">Cancelar pedido</button>' : ''}`;
+  $('detail').classList.remove('hidden');
+  $('closeDetailBtn').onclick = () => {
+    selectedId = '';
+    history.replaceState(null, '', urlDelivery('pedidos.html'));
+    $('detail').classList.add('hidden');
+    $('detail').innerHTML = '';
+  };
+  if ($('cancelBtn')) $('cancelBtn').onclick = cancelSelected;
+}
+async function reload(targetPage = page) {
+  if (busy || !delivery) return;
+  busy = true;
+  controls();
+  message('');
+  $('orders').innerHTML = '<div class="card empty">Cargando pedidos…</div>';
+  $('detail').classList.add('hidden');
+  try {
+    const result = await listarPedidosCliente(delivery.id, targetPage);
+    page = targetPage;
+    hasMore = result.hasMore;
+    renderOrders(result.orders);
+    await renderDetail();
+  } catch (e) {
+    message(e.message || 'No se pudieron cargar los pedidos.');
+    if ($('orders').textContent.includes('Cargando pedidos')) $('orders').innerHTML = '';
+    hasMore = false;
+  } finally { busy = false; controls(); }
+}
+async function showDetail(id) {
+  if (busy) return;
+  busy = true;
+  controls();
+  message('');
+  selectedId = id;
+  history.replaceState(null, '', urlDelivery('pedidos.html', {order:id}));
+  try {
+    await renderDetail();
+    $('detail').scrollIntoView({behavior:'smooth', block:'start'});
+    $('detail').focus({preventScroll:true});
+  } catch (e) { message(e.message || 'No se pudo cargar el pedido.'); }
+  finally { busy = false; controls(); }
+}
+async function cancelSelected() {
+  if (busy || !selectedId || !confirm('¿Cancelar este pedido pendiente? Esta acción no se puede deshacer.')) return;
+  busy = true;
+  controls();
+  let outcome = '';
+  let success = false;
+  try {
+    await cancelarPedidoCliente(delivery.id, selectedId);
+    outcome = 'Pedido cancelado.';
+    success = true;
+  } catch (e) { outcome = e.message || 'No se pudo cancelar el pedido.'; }
+  finally { busy = false; }
+  await reload();
+  // Conserva también un posible error de recarga; no muestra datos antiguos como actuales.
+  const reloadError = $('message').textContent;
+  message(reloadError ? `${outcome} ${reloadError}` : outcome, success && !reloadError);
+}
+async function init() {
+  try {
+    if (!await obtenerUsuarioActual()) { irAAcceso(rutaActualRelativa()); return; }
+    delivery = await cargarNegocio();
+    $('deliveryName').textContent = delivery.name;
+    $('shopLink').href = urlDelivery('index.html');
+    $('cartLink').href = urlDelivery('carrito.html');
+    $('cartLink').classList.remove('hidden');
+    await reload();
+  } catch (e) { $('orders').innerHTML = ''; message(e.message || 'No se pudieron cargar los pedidos.'); }
+}
+$('refreshBtn').onclick = () => reload();
+$('prevBtn').onclick = () => reload(page - 1);
+$('nextBtn').onclick = () => reload(page + 1);
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT') {
+    $('orders').innerHTML = '';
+    $('detail').innerHTML = '';
+    irAAcceso(rutaActualRelativa());
+  }
+});
+init();
+</script>
+</body>
+</html>
