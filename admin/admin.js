@@ -72,7 +72,7 @@ async function init() {
         <main style="max-width:720px;margin:60px auto;font-family:Arial;padding:20px">
           <h1>Acceso administrativo no disponible</h1>
           <p>Tu cuenta tiene el rol <strong>${esc(state.role || "sin rol")}</strong>.</p>
-          <p><a href="../app/index.html">Volver al sitio público</a></p>
+          <p><a href="../index.html">Volver al sitio público</a></p>
         </main>
       `;
       return;
