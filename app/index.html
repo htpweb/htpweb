@@ -52,6 +52,7 @@ let negocioActual = null;
 let locals = [];
 let categories = [];
 let products = [];
+let availabilityByLocal = new Map();
 let categoryId = "";
 
 async function init() {
@@ -130,6 +131,22 @@ async function loadCatalog() {
   locals = localsRes.data || [];
   categories = catsRes.data || [];
   products = productsRes.data || [];
+
+  try {
+    const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
+      "public_locals_order_availability",
+      { p_local_ids: locals.map(local => local.id) }
+    );
+
+    if (availabilityError) throw availabilityError;
+
+    availabilityByLocal = new Map(
+      (availabilityData || []).map(row => [row.local_id, row])
+    );
+  } catch (availabilityError) {
+    console.warn("No se pudo cargar la disponibilidad de locales:", availabilityError);
+    availabilityByLocal = new Map();
+  }
 }
 
 function renderCategories() {
@@ -149,6 +166,37 @@ function selectCategory(id) {
   categoryId = id;
   renderCategories();
   renderLocals();
+}
+
+function availabilityText(localId) {
+  const availability = availabilityByLocal.get(localId);
+  if (!availability) return null;
+
+  if (availability.is_open === true) {
+    if (availability.reason === "NO_SCHEDULE_CONFIGURED") {
+      return { text: "Disponible", className: "availability-open" };
+    }
+
+    return {
+      text: availability.closing_time
+        ? `Abierto hasta ${availability.closing_time}`
+        : "Abierto",
+      className: "availability-open"
+    };
+  }
+
+  if (availability.reason === "BEFORE_OPENING" && availability.opening_time) {
+    return {
+      text: `Abre a las ${availability.opening_time}`,
+      className: "availability-closed"
+    };
+  }
+
+  if (availability.reason === "CLOSED_TODAY") {
+    return { text: "Cerrado hoy", className: "availability-closed" };
+  }
+
+  return { text: "Cerrado", className: "availability-closed" };
 }
 
 function renderLocals() {
@@ -174,11 +222,16 @@ function renderLocals() {
       (p.name + " " + (p.description || "")).toLowerCase().includes(q)
     );
 
+    const availability = availabilityText(local.id);
+
     return `
       <article class="local-card">
         <div class="cover">${local.banner_url ? `<img src="${esc(local.banner_url)}" alt="${esc(local.name)}">` : ""}</div>
         <div class="pad">
-          <h3>${esc(local.name)}</h3>
+          <div class="row between">
+            <h3>${esc(local.name)}</h3>
+            ${availability ? `<span class="availability-badge ${availability.className}">${esc(availability.text)}</span>` : ""}
+          </div>
           <p class="muted">${esc(local.description || "")}</p>
           ${ps.slice(0,3).map(p => `
             <div class="summary-line">
