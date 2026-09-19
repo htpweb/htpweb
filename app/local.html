@@ -41,6 +41,7 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 
 const params = new URLSearchParams(location.search);
 const localId = params.get("local") || params.get("id");
+const sharedProductId = params.get("product") || "";
 
 let negocioActual = null;
 let localActual = null;
@@ -117,6 +118,20 @@ async function init() {
     }
 
     render();
+
+    if (sharedProductId) {
+      requestAnimationFrame(() => {
+        const target = document.getElementById("product-" + sharedProductId);
+
+        if (target) {
+          target.classList.add("shared-product-target");
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          $("error").textContent = "El producto compartido ya no está disponible en este LOCAL.";
+          $("error").classList.remove("hidden");
+        }
+      });
+    }
   } catch (error) {
     console.error(error);
     $("error").textContent = error.message || "No se pudo cargar el local.";
@@ -191,7 +206,7 @@ function render() {
     const minPrice = vs.length ? Math.min(...vs.map(v => Number(v.price))) : Number(product.price || 0);
 
     return `
-      <div class="product-row">
+      <div class="product-row" id="product-${product.id}">
         <div>${product.image_url ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}">` : ""}</div>
         <div>
           <strong>${esc(product.name)}</strong>
