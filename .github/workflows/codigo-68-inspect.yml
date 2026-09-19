@@ -1,0 +1,72 @@
+name: Codigo 68 Inspect
+
+on:
+  push:
+    branches: [codigo-68-master-usuarios]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Inspect user assignment backend
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+          sql=r"""
+          select 'FUNCTIONS';
+          select p.proname || '|' || pg_get_function_identity_arguments(p.oid)
+          from pg_proc p
+          join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public'
+            and (
+              p.proname ilike '%user%'
+              or p.proname ilike '%profile%'
+              or p.proname ilike '%delivery%'
+              or p.proname ilike '%local%'
+              or p.proname ilike '%role%'
+            )
+          order by p.proname, pg_get_function_identity_arguments(p.oid);
+
+          select 'USER_DELIVERIES_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='user_deliveries'
+          order by ordinal_position;
+
+          select 'USER_LOCALS_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='user_locals'
+          order by ordinal_position;
+
+          select 'PROFILES_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='profiles'
+          order by policyname;
+          """
+          subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
+            check=True,env=env)
+          PY
