@@ -1,0 +1,89 @@
+name: Codigo 75 Inspect Customer Addresses
+
+on:
+  push:
+    branches: [codigo-75-direcciones-cliente]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Inspect address backend
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy()
+          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql=r"""
+          select 'ADDRESS_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='customer_addresses'
+          order by ordinal_position;
+
+          select 'ADDRESS_CONSTRAINTS';
+          select conname||'|'||pg_get_constraintdef(oid)
+          from pg_constraint
+          where conrelid='public.customer_addresses'::regclass
+          order by conname;
+
+          select 'ADDRESS_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='customer_addresses'
+          order by policyname;
+
+          select 'ADDRESS_FUNCTIONS';
+          select p.proname||'|'||pg_get_function_identity_arguments(p.oid)
+          from pg_proc p
+          join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public'
+            and (
+              p.proname ilike '%address%'
+              or p.proname ilike '%customer%'
+            )
+          order by p.proname,pg_get_function_identity_arguments(p.oid);
+
+          select 'CUSTOMER_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='customers'
+          order by ordinal_position;
+
+          select 'ADDRESS_PRIVILEGES';
+          select grantee||'|'||privilege_type
+          from information_schema.role_table_grants
+          where table_schema='public' and table_name='customer_addresses'
+          order by grantee,privilege_type;
+
+          select 'ADDRESS_COUNT|'||count(*) from public.customer_addresses;
+          """
+          subprocess.run([
+            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
+          ],check=True,env=env)
+          PY
