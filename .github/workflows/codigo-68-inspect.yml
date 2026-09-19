@@ -1,4 +1,4 @@
-name: Codigo 68 Inspect
+name: Codigo 68 Inspect Assignments
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect user assignment backend
+      - name: Inspect assignment RPCs
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,37 +34,28 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'FUNCTIONS';
-          select p.proname || '|' || pg_get_function_identity_arguments(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public'
-            and (
-              p.proname ilike '%user%'
-              or p.proname ilike '%profile%'
-              or p.proname ilike '%delivery%'
-              or p.proname ilike '%local%'
-              or p.proname ilike '%role%'
-            )
-          order by p.proname, pg_get_function_identity_arguments(p.oid);
+          select 'MASTER_ASSIGN_DELIVERY_USER';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_assign_delivery_user';
 
-          select 'USER_DELIVERIES_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='user_deliveries'
-          order by ordinal_position;
+          select 'MASTER_UNASSIGN_DELIVERY_USER';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_unassign_delivery_user';
 
-          select 'USER_LOCALS_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='user_locals'
-          order by ordinal_position;
+          select 'MASTER_ASSIGN_LOCAL_ADMIN';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_assign_local_admin';
 
-          select 'PROFILES_POLICIES';
-          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename='profiles'
-          order by policyname;
+          select 'MASTER_UNASSIGN_LOCAL_ADMIN';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='master_unassign_local_admin';
+
+          select 'ROLES';
+          select code||'|'||name||'|'||active from public.roles order by code;
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
