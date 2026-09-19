@@ -160,6 +160,89 @@
       </div>
     </section>
 
+
+    <section id="section-storage" class="section">
+      <div class="card">
+        <h2>Imágenes y Storage</h2>
+        <p class="muted">Bucket público: <code>htpweb-media</code>. Solo se sube una imagen cuando seleccionas un archivo nuevo.</p>
+      </div>
+
+      <div class="card" id="storageDeliveryCard">
+        <div class="row between">
+          <h3>Logo de DELIVERY</h3>
+          <select id="storageDelivery" style="max-width:340px"></select>
+        </div>
+        <div class="media-editor">
+          <div class="media-preview"><img id="deliveryLogoPreview" alt=""></div>
+          <div class="stack">
+            <input id="deliveryLogoFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="row">
+              <button class="btn-primary" id="uploadDeliveryLogoBtn">Subir / reemplazar logo</button>
+              <button class="btn-danger" id="deleteDeliveryLogoBtn">Eliminar logo</button>
+              <button class="btn-muted master-only" id="enableDeliveryMediaBtn">Habilitar gestión visual</button>
+            </div>
+            <small class="muted">DELIVERY_ADMIN requiere <code>images.manage</code> + <code>delivery.info.manage</code>.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="storageLocalCard">
+        <div class="row between">
+          <h3>Imágenes de LOCAL</h3>
+          <select id="storageLocal" style="max-width:340px"></select>
+        </div>
+        <div class="media-grid">
+          <div class="media-editor">
+            <div>
+              <strong>Logo</strong>
+              <div class="media-preview"><img id="localLogoPreview" alt=""></div>
+            </div>
+            <div class="stack">
+              <input id="localLogoFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <div class="row">
+                <button class="btn-primary" id="uploadLocalLogoBtn">Subir / reemplazar</button>
+                <button class="btn-danger" id="deleteLocalLogoBtn">Eliminar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="media-editor">
+            <div>
+              <strong>Banner</strong>
+              <div class="media-preview media-preview-wide"><img id="localBannerPreview" alt=""></div>
+            </div>
+            <div class="stack">
+              <input id="localBannerFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <div class="row">
+                <button class="btn-primary" id="uploadLocalBannerBtn">Subir / reemplazar</button>
+                <button class="btn-danger" id="deleteLocalBannerBtn">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión visual del LOCAL</button>
+        <small class="muted">LOCAL_ADMIN requiere <code>images.manage</code> + <code>local.info.manage</code>.</small>
+      </div>
+
+      <div class="card" id="storageProductCard">
+        <div class="row between">
+          <h3>Imagen de PRODUCTO</h3>
+          <select id="storageProduct" style="max-width:420px"></select>
+        </div>
+        <div class="media-editor">
+          <div class="media-preview"><img id="productImagePreview" alt=""></div>
+          <div class="stack">
+            <input id="productImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="row">
+              <button class="btn-primary" id="uploadProductImageBtn">Subir / reemplazar imagen</button>
+              <button class="btn-danger" id="deleteProductImageBtn">Eliminar imagen</button>
+            </div>
+            <small class="muted">El PRODUCTO se actualiza por RPC; el navegador no obtiene UPDATE directo.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="section-analytics" class="section">
       <div class="card">
         <div class="row between">
@@ -172,6 +255,6 @@
   </main>
 </div>
 
-<script src="./admin.js"></script>
+<script src="../config/storage.js"></script>\n<script src="./admin.js"></script>
 </body>
 </html>
