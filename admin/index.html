@@ -29,6 +29,7 @@
       <button data-section="catalog">Catálogo</button>
       <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
+      <button data-section="advertising">Publicidad</button>
       <button data-section="analytics">Analytics</button>
     </nav>
 
@@ -788,6 +789,83 @@
             <small class="muted">El PRODUCTO se actualiza por RPC; el navegador no obtiene UPDATE directo.</small>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section id="section-advertising" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Publicidad</h2>
+            <p class="muted">Crea anuncios de HTPWEB, DELIVERY, LOCAL o PRODUCTO. El banner público conserva siempre el contexto del DELIVERY.</p>
+          </div>
+          <button class="btn-muted" id="clearAdvertisementBtn">Nuevo anuncio</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <input id="advertisementId" type="hidden">
+        <div class="form-grid">
+          <div>
+            <label>Scope</label>
+            <select id="advertisementScope"></select>
+          </div>
+          <div id="advertisementDeliveryField">
+            <label>DELIVERY</label>
+            <select id="advertisementDelivery"></select>
+          </div>
+          <div id="advertisementLocalField">
+            <label>LOCAL</label>
+            <select id="advertisementLocal"></select>
+          </div>
+          <div id="advertisementProductField">
+            <label>PRODUCTO</label>
+            <select id="advertisementProduct"></select>
+          </div>
+          <div>
+            <label>Prioridad</label>
+            <input id="advertisementPriority" type="number" min="0" value="0">
+          </div>
+          <div>
+            <label>Inicio (opcional)</label>
+            <input id="advertisementStartsAt" type="datetime-local">
+          </div>
+          <div>
+            <label>Fin (opcional)</label>
+            <input id="advertisementEndsAt" type="datetime-local">
+          </div>
+        </div>
+
+        <label>Título</label>
+        <input id="advertisementTitle" maxlength="160" placeholder="Ej. Combo especial">
+
+        <label>Texto</label>
+        <textarea id="advertisementBody" rows="3" maxlength="800" placeholder="Mensaje breve que verá el cliente"></textarea>
+
+        <label>URL de destino externa/opcional</label>
+        <input id="advertisementTargetUrl" placeholder="Déjalo vacío para usar el deep link automático al LOCAL o PRODUCTO">
+
+        <label>Imagen actual / URL</label>
+        <input id="advertisementImageUrl" placeholder="Se completa automáticamente al subir una imagen">
+
+        <label>Subir imagen</label>
+        <input id="advertisementImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+
+        <label class="row" style="margin-top:14px">
+          <input id="advertisementActive" type="checkbox" style="width:auto">
+          Publicar anuncio
+        </label>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveAdvertisementBtn">Guardar publicidad</button>
+          <button class="btn-muted" id="previewAdvertisementBtn">Abrir destino</button>
+        </div>
+        <small class="muted">La escritura se realiza únicamente mediante la RPC segura <code>save_advertisement</code>; RLS y capabilities siguen controlando el scope.</small>
+      </div>
+
+      <div class="card">
+        <h3>Publicidad visible para tu ámbito</h3>
+        <div id="advertisementsList" class="stack"><div class="muted">Cargando...</div></div>
       </div>
     </section>
 
