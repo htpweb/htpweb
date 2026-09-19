@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config/supabase.js"></script>
+<link rel="stylesheet" href="./assets/app.css">
+<style>
+.landing{max-width:980px;margin:0 auto;padding:28px 16px 48px}
+.landing-head{text-align:center;padding:34px 16px}
+.delivery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.delivery-card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 4px 18px #00000010}
+.delivery-logo{width:72px;height:72px;border-radius:16px;object-fit:cover;background:#eef2f7;margin-bottom:12px}
+.delivery-card h2{margin:0 0 8px}
+.delivery-card p{min-height:44px}
+.top-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+</style>
+</head>
+<body>
+<main class="landing">
+  <section class="landing-head">
+    <h1>HTPWEB</h1>
+    <p class="muted">Selecciona el servicio de delivery que deseas utilizar.</p>
+    <div class="top-actions">
+      <a class="btn btn-muted" href="./app/acceso.html">Acceder</a>
+      <a class="btn btn-dark" href="./admin/index.html">Panel administrativo</a>
+    </div>
+  </section>
+
+  <div id="message" class="hidden"></div>
+  <section id="deliveries" class="delivery-grid"></section>
+</main>
+
+<script>
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+}[ch]));
+
+async function init() {
+  const box = document.getElementById("deliveries");
+  const message = document.getElementById("message");
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("deliveries")
+      .select("id,name,slug,description,logo_url,active")
+      .eq("active", true)
+      .order("name");
+
+    if (error) throw error;
+
+    const deliveries = data || [];
+    if (!deliveries.length) {
+      message.textContent = "HTPWEB está disponible, pero todavía no hay deliveries activos para mostrar.";
+      message.className = "card";
+      return;
+    }
+
+    box.innerHTML = deliveries.map(delivery => `
+      <article class="delivery-card">
+        ${delivery.logo_url ? `<img class="delivery-logo" src="${esc(delivery.logo_url)}" alt="${esc(delivery.name)}">` : ""}
+        <h2>${esc(delivery.name)}</h2>
+        <p class="muted">${esc(delivery.description || "Explora locales y productos disponibles.")}</p>
+        <a class="btn btn-primary" style="display:block;text-align:center"
+           href="./app/index.html?delivery=${encodeURIComponent(delivery.slug)}">
+          Entrar
+        </a>
+      </article>
+    `).join("");
+  } catch (error) {
+    console.error(error);
+    message.textContent = error.message || "No se pudo cargar HTPWEB.";
+    message.className = "error";
+  }
+}
+
+init();
+</script>
+</body>
+</html>
