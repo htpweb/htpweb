@@ -1,0 +1,70 @@
+name: HTPWEB Runtime Audit
+
+on:
+  push:
+    branches: [runtime-audit]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Audit public runtime data
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re, subprocess
+
+          raw = Path("supabase/.temp/pooler-url").read_text(encoding="utf-8").strip()
+          m = re.match(r"postgresql://([^:]+):\[YOUR-PASSWORD\]@([^:]+):(\d+)/([^?]+)", raw)
+          if not m:
+              raise SystemExit("Could not parse linked pooler URL")
+
+          user, host, port, db = m.groups()
+          env = os.environ.copy()
+          env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql = r"""
+          select json_build_object(
+            'deliveries', (select count(*) from public.deliveries),
+            'active_deliveries', (select count(*) from public.deliveries where active),
+            'locals', (select count(*) from public.locals),
+            'active_locals', (select count(*) from public.locals where active),
+            'local_deliveries', (select count(*) from public.local_deliveries where active),
+            'categories', (select count(*) from public.categories where active),
+            'products', (select count(*) from public.products where active),
+            'variants', (select count(*) from public.product_variants where active)
+          )::text;
+
+          select 'DELIVERY|' || id || '|' || coalesce(slug,'') || '|' || coalesce(name,'') || '|' || active
+          from public.deliveries
+          order by name
+          limit 20;
+          """
+          subprocess.run(
+              ["psql","-h",host,"-p",port,"-U",user,"-d",db,"-At","-v","ON_ERROR_STOP=1","-c",sql],
+              check=True,
+              env=env
+          )
+          PY
