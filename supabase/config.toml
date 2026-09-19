@@ -1,0 +1,22 @@
+project_id = "htpweb"
+
+[api]
+enabled = true
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[functions.crear-pedido]
+verify_jwt = true
