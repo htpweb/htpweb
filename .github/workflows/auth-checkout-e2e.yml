@@ -1,0 +1,250 @@
+name: HTPWEB Authenticated Checkout E2E
+
+on:
+  push:
+    branches: [runtime-auth-e2e]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Create temporary CLIENT user
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: https://hwfloywzqlgqieonuswl.supabase.co
+          PROJECT_REF: hwfloywzqlgqieonuswl
+        run: |
+          python3 - <<'PY'
+          import json, os, secrets, string, urllib.request
+
+          token = os.environ["SUPABASE_ACCESS_TOKEN"]
+          project_ref = os.environ["PROJECT_REF"]
+          base = os.environ["SUPABASE_URL"]
+
+          req = urllib.request.Request(
+              f"https://api.supabase.com/v1/projects/{project_ref}/api-keys?reveal=true",
+              headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+          )
+          with urllib.request.urlopen(req, timeout=30) as response:
+              keys = json.load(response)
+
+          if isinstance(keys, dict):
+              keys = keys.get("data") or keys.get("keys") or [keys]
+
+          secret_obj = next((k for k in keys if k.get("type") == "secret" and k.get("api_key")), None)
+          if not secret_obj:
+              secret_obj = next((k for k in keys if k.get("name") == "service_role" and k.get("api_key")), None)
+          if not secret_obj:
+              raise SystemExit("No server-side Supabase secret/service_role key is available.")
+
+          server_key = secret_obj["api_key"]
+          print(f"::add-mask::{server_key}")
+
+          run_id = os.environ.get("GITHUB_RUN_ID", "local")
+          email = f"htpweb-e2e-{run_id}@example.com"
+          alphabet = string.ascii_letters + string.digits
+          password = "E2e!" + "".join(secrets.choice(alphabet) for _ in range(24))
+          print(f"::add-mask::{password}")
+
+          body = json.dumps({
+              "email": email,
+              "password": password,
+              "email_confirm": True,
+              "user_metadata": {
+                  "full_name": "HTPWEB E2E CLIENT",
+                  "phone": "0999999999"
+              }
+          }).encode()
+
+          create = urllib.request.Request(
+              base + "/auth/v1/admin/users",
+              data=body,
+              method="POST",
+              headers={
+                  "apikey": server_key,
+                  "Authorization": f"Bearer {server_key}",
+                  "Content-Type": "application/json"
+              },
+          )
+          with urllib.request.urlopen(create, timeout=30) as response:
+              user = json.load(response)
+
+          user_id = user.get("id")
+          if not user_id:
+              raise SystemExit("Temporary Auth user was not created.")
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"HTPWEB_SERVER_KEY={server_key}\n")
+              env.write(f"E2E_EMAIL={email}\n")
+              env.write(f"E2E_PASSWORD={password}\n")
+              env.write(f"E2E_USER_ID={user_id}\n")
+
+          print("TEMP_CLIENT_CREATED", user_id)
+          PY
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run authenticated checkout
+        shell: bash
+        env:
+          E2E_EMAIL: ${{ env.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ env.E2E_PASSWORD }}
+        run: |
+          node <<'JS'
+          const fs = require('fs');
+          const { chromium } = require('playwright');
+
+          const base = 'https://htpweb.github.io/htpweb/';
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+
+            const pageErrors = [];
+            page.on('pageerror', err => pageErrors.push(err.message));
+
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 90000 });
+            await page.getByRole('link', { name: 'Entrar' }).click();
+            await page.waitForLoadState('networkidle');
+            await page.getByText('Local Demo').waitFor({ timeout: 30000 });
+
+            await page.getByRole('button', { name: 'Ver productos' }).click();
+            await page.waitForLoadState('networkidle');
+
+            const product = page.locator('.product-row').filter({ hasText: 'Producto Demo' });
+            await product.getByRole('button', { name: 'Agregar' }).click();
+            if ((await page.locator('#cartCount').textContent() || '').trim() !== '1') {
+              throw new Error('Could not add demo product to cart.');
+            }
+
+            await page.locator('#cartBtn').click();
+            await page.waitForLoadState('networkidle');
+            await page.getByRole('button', { name: 'Continuar' }).click();
+            await page.waitForURL(/\/app\/acceso\.html/, { timeout: 30000 });
+
+            await page.locator('#loginEmail').fill(process.env.E2E_EMAIL);
+            await page.locator('#loginPassword').fill(process.env.E2E_PASSWORD);
+            await page.locator('#loginForm button[type="submit"]').click();
+            await page.waitForURL(/\/app\/carrito\.html/, { timeout: 30000 });
+            await page.waitForLoadState('networkidle');
+            console.log('CLIENT_LOGIN_OK', page.url());
+
+            await page.getByRole('button', { name: 'Continuar' }).click();
+            await page.locator('#checkoutCard:not(.hidden)').waitFor({ timeout: 30000 });
+
+            await page.locator('#name').fill('HTPWEB E2E CLIENT');
+            await page.locator('#phone').fill('0999999999');
+
+            await page.evaluate(() => {
+              if (typeof setLocation !== 'function') throw new Error('setLocation is unavailable');
+              setLocation(0.9700, -79.6500);
+            });
+            await page.locator('#acceptLocation').click();
+            await page.locator('#address').fill('Esmeraldas, Ecuador - prueba automática');
+            await page.locator('#reference').fill('HTPWEB E2E');
+            await page.locator('#notes').fill('Pedido temporal de prueba automática.');
+
+            await page.locator('#confirmBtn').click();
+
+            await page.locator('#successCard:not(.hidden)').waitFor({ timeout: 90000 });
+            const successText = await page.locator('#successCard').innerText();
+            const match = successText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+            if (!match) throw new Error('Order was created but ID was not found.');
+
+            fs.appendFileSync(process.env.GITHUB_ENV, 'E2E_ORDER_ID=' + match[0] + '\n');
+            console.log('ORDER_CREATED_OK', match[0]);
+
+            if (pageErrors.length) {
+              throw new Error('Page errors: ' + pageErrors.join(' | '));
+            }
+
+            await browser.close();
+            console.log('AUTHENTICATED_CHECKOUT_E2E_OK');
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          JS
+
+      - name: Cleanup public test data
+        if: always()
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+
+          user_id = os.environ.get("E2E_USER_ID")
+          if not user_id:
+              print("No temporary user ID; skipping DB cleanup.")
+              raise SystemExit(0)
+
+          parsed = urlparse(Path("supabase/.temp/pooler-url").read_text(encoding="utf-8").strip())
+          env = os.environ.copy()
+          env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql = f"""
+          begin;
+          delete from public.orders
+          where customer_id in (
+            select id from public.customers where profile_id = '{user_id}'::uuid
+          );
+          delete from public.customers where profile_id = '{user_id}'::uuid;
+          commit;
+          """
+          subprocess.run(
+              ["psql","-h",parsed.hostname,"-p",str(parsed.port),"-U",parsed.username,
+               "-d",parsed.path.lstrip("/").split("?")[0],"-v","ON_ERROR_STOP=1","-c",sql],
+              check=True, env=env
+          )
+          print("PUBLIC_TEST_DATA_CLEANED")
+          PY
+
+      - name: Delete temporary Auth user
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, urllib.request
+
+          key = os.environ.get("HTPWEB_SERVER_KEY")
+          user_id = os.environ.get("E2E_USER_ID")
+          if not key or not user_id:
+              print("No temporary Auth user to delete.")
+              raise SystemExit(0)
+
+          req = urllib.request.Request(
+              f"https://hwfloywzqlgqieonuswl.supabase.co/auth/v1/admin/users/{user_id}",
+              method="DELETE",
+              headers={"apikey": key, "Authorization": f"Bearer {key}"}
+          )
+          with urllib.request.urlopen(req, timeout=30) as response:
+              response.read()
+          print("TEMP_CLIENT_DELETED")
+          PY
