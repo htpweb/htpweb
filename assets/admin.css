@@ -62,3 +62,14 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5
   .nav{grid-template-columns:repeat(2,1fr)}
   .content{padding:14px}
 }
+
+.media-editor{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:center;margin-top:12px}
+.media-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.media-preview{width:160px;height:160px;border-radius:14px;background:#eef2f7;border:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:10px 0}
+.media-preview-wide{width:100%;max-width:360px;height:160px}
+.media-preview img{width:100%;height:100%;object-fit:cover}
+.media-preview img:not([src]),.media-preview img[src=""]{display:none}
+@media(max-width:860px){
+  .media-editor{grid-template-columns:1fr}
+  .media-grid{grid-template-columns:1fr}
+}
