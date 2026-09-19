@@ -74,3 +74,28 @@ small.note{display:block;color:#6b7280;margin-top:6px}
 @media(max-width:640px){
   .address-card{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Publicidad persistente HTPWEB */
+body.has-htpweb-ad{padding-bottom:104px}
+.htpweb-ad-banner{position:fixed;left:0;right:0;bottom:0;z-index:80;padding:10px 14px;pointer-events:none}
+.htpweb-ad-link{position:relative;max-width:920px;margin:0 auto;min-height:78px;display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:12px;padding:8px 12px;background:#111;color:#fff;border-radius:16px;box-shadow:0 8px 30px #0004;overflow:hidden;pointer-events:auto}
+.htpweb-ad-media{width:72px;height:58px;border-radius:11px;background:#2b2b2b center/cover no-repeat}
+.htpweb-ad-media.no-image::after{content:"★";display:grid;place-items:center;width:100%;height:100%;font-size:24px}
+.htpweb-ad-copy{min-width:0;display:grid;gap:2px}
+.htpweb-ad-copy strong,.htpweb-ad-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.htpweb-ad-label{font-size:10px;font-weight:800;letter-spacing:.12em;color:#f7c948}
+#htpwebAdDescription{font-size:13px;color:#e5e7eb}
+.htpweb-ad-cta{background:#fff;color:#111;font-weight:800;border-radius:10px;padding:9px 12px}
+.htpweb-ad-progress{position:absolute;left:0;bottom:0;height:3px;width:0;background:#f7c948}
+.htpweb-ad-progress.run{animation:htpwebAdProgress 5s linear forwards}
+@keyframes htpwebAdProgress{from{width:0}to{width:100%}}
+@media(max-width:640px){
+  body.has-htpweb-ad{padding-bottom:96px}
+  .htpweb-ad-banner{padding:8px}
+  .htpweb-ad-link{grid-template-columns:58px minmax(0,1fr) auto;gap:9px;min-height:72px;padding:7px 9px;border-radius:14px}
+  .htpweb-ad-media{width:58px;height:54px}
+  .htpweb-ad-copy strong{font-size:14px}
+  #htpwebAdDescription{font-size:12px}
+  .htpweb-ad-cta{padding:8px 9px}
+}
