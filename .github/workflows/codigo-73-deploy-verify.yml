@@ -1,0 +1,271 @@
+name: Codigo 73 Deploy and Verify
+
+on:
+  push:
+    branches: [codigo-73-disponibilidad-local-checkout]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Dry run database migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run
+
+      - name: Apply database migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+
+      - name: Verify availability backend with rollback
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy()
+          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql=r"""
+          select 'AVAILABILITY_FUNCTION_EXISTS|' ||
+            (to_regprocedure('public.check_locals_order_availability(uuid[],timestamp with time zone)') is not null);
+          select 'AVAILABILITY_SERVICE_EXECUTE|' ||
+            has_function_privilege(
+              'service_role',
+              'public.check_locals_order_availability(uuid[],timestamp with time zone)',
+              'EXECUTE'
+            );
+          select 'AVAILABILITY_AUTH_EXECUTE|' ||
+            has_function_privilege(
+              'authenticated',
+              'public.check_locals_order_availability(uuid[],timestamp with time zone)',
+              'EXECUTE'
+            );
+          select 'AVAILABILITY_ANON_EXECUTE|' ||
+            has_function_privilege(
+              'anon',
+              'public.check_locals_order_availability(uuid[],timestamp with time zone)',
+              'EXECUTE'
+            );
+
+          begin;
+
+          do $$
+          declare
+            v_local uuid;
+            v_result jsonb;
+            v_row jsonb;
+          begin
+            select l.id into v_local
+            from public.locals l
+            where l.active=true
+            order by l.created_at
+            limit 1;
+
+            if v_local is null then
+              raise exception 'Missing active LOCAL';
+            end if;
+
+            delete from public.local_schedules
+            where local_id=v_local;
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-21 15:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+
+            if (v_row->>'is_open')::boolean is not true
+               or v_row->>'reason' <> 'NO_SCHEDULE_CONFIGURED'
+            then
+              raise exception 'No-schedule compatibility check failed: %', v_row;
+            end if;
+
+            insert into public.local_schedules(
+              id,local_id,day_of_week,is_closed,opening_time,closing_time,created_at,updated_at
+            )
+            values
+              (gen_random_uuid(),v_local,1,false,'09:00','17:00',now(),now()),
+              (gen_random_uuid(),v_local,2,true,null,null,now(),now());
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-21 15:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+            if (v_row->>'is_open')::boolean is not true
+               or v_row->>'reason' <> 'OPEN'
+            then
+              raise exception 'Open-hours check failed: %', v_row;
+            end if;
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-21 13:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+            if (v_row->>'is_open')::boolean is not false
+               or v_row->>'reason' <> 'BEFORE_OPENING'
+            then
+              raise exception 'Before-opening check failed: %', v_row;
+            end if;
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-21 22:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+            if (v_row->>'is_open')::boolean is not false
+               or v_row->>'reason' <> 'AFTER_CLOSING'
+            then
+              raise exception 'After-closing check failed: %', v_row;
+            end if;
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-22 15:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+            if (v_row->>'is_open')::boolean is not false
+               or v_row->>'reason' <> 'CLOSED_TODAY'
+            then
+              raise exception 'Closed-day check failed: %', v_row;
+            end if;
+
+            v_result := public.check_locals_order_availability(
+              array[v_local],
+              '2026-09-23 15:00:00+00'::timestamptz
+            );
+            v_row := v_result->0;
+            if (v_row->>'is_open')::boolean is not false
+               or v_row->>'reason' <> 'DAY_NOT_CONFIGURED'
+            then
+              raise exception 'Missing-day check failed: %', v_row;
+            end if;
+
+            raise notice 'NO_SCHEDULE_COMPATIBILITY_OK=true';
+            raise notice 'OPEN_HOURS_OK=true';
+            raise notice 'BEFORE_OPENING_BLOCK_OK=true';
+            raise notice 'AFTER_CLOSING_BLOCK_OK=true';
+            raise notice 'CLOSED_DAY_BLOCK_OK=true';
+            raise notice 'MISSING_DAY_BLOCK_OK=true';
+          end
+          $$;
+
+          rollback;
+          """
+
+          subprocess.run([
+            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
+          ],check=True,env=env)
+          PY
+
+      - name: Validate Edge source before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, re
+
+          p=Path("supabase/functions/crear-pedido/index.ts")
+          text=p.read_text()
+
+          required=[
+            "check_locals_order_availability",
+            "await ensureLocalsOpenForOrders(locals)",
+            "create_order_transaction",
+            "ORS_API_KEY",
+            "getAuthenticatedUser"
+          ]
+          missing=[item for item in required if item not in text]
+          if missing:
+              raise SystemExit("Missing required Edge markers: "+", ".join(missing))
+
+          schedule_call=text.index("await ensureLocalsOpenForOrders(locals)")
+          ors_call=text.index("const localsWithDistance = await Promise.all")
+          transaction_call=text.index('supabaseAdmin.rpc("create_order_transaction"')
+
+          if not (schedule_call < ors_call < transaction_call):
+              raise SystemExit("Edge validation order is unsafe")
+
+          suspicious=[
+            r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*['\"][^'\"]+",
+            r"ORS_API_KEY\s*=\s*['\"][^'\"]+",
+            r"sk_[A-Za-z0-9_-]{20,}",
+          ]
+          if any(re.search(pattern,text) for pattern in suspicious):
+              raise SystemExit("Potential literal secret found in Edge source")
+
+          print("EDGE_LOCAL_SHA256="+hashlib.sha256(text.encode()).hexdigest())
+          print("EDGE_ORDER_CHECKS_OK=true")
+          print("EDGE_LITERAL_SECRETS=0")
+          PY
+
+      - name: Deploy crear-pedido
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase functions deploy crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Verify deployed Edge matches repository
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp supabase/functions/crear-pedido/index.ts /tmp/crear-pedido-local.ts
+          rm -rf /tmp/remote-functions
+          mkdir -p /tmp/remote-functions
+          cd /tmp/remote-functions
+          mkdir -p supabase/functions
+          supabase functions download crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          local=Path("/tmp/crear-pedido-local.ts").read_bytes()
+          remote=Path("/tmp/remote-functions/supabase/functions/crear-pedido/index.ts").read_bytes()
+
+          local_hash=hashlib.sha256(local).hexdigest()
+          remote_hash=hashlib.sha256(remote).hexdigest()
+
+          print("EDGE_REPO_SHA256="+local_hash)
+          print("EDGE_REMOTE_SHA256="+remote_hash)
+          print("EDGE_DEPLOY_MATCH="+str(local_hash==remote_hash).lower())
+
+          if local_hash != remote_hash:
+              raise SystemExit("Deployed Edge Function does not match repository source")
+          PY
