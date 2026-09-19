@@ -697,6 +697,379 @@ async function saveProduct() {
   }
 }
 
+
+async function loadStorage() {
+  if (!["MASTER","DELIVERY_ADMIN","LOCAL_ADMIN"].includes(state.role)) return;
+
+  document.querySelectorAll(".master-only").forEach(el => {
+    el.classList.toggle("hidden", state.role !== "MASTER");
+  });
+
+  $("storageDeliveryCard").classList.toggle(
+    "hidden",
+    !["MASTER","DELIVERY_ADMIN"].includes(state.role)
+  );
+
+  $("storageLocalCard").classList.toggle(
+    "hidden",
+    !["MASTER","LOCAL_ADMIN"].includes(state.role)
+  );
+
+  $("storageProductCard").classList.toggle(
+    "hidden",
+    !["MASTER","LOCAL_ADMIN"].includes(state.role)
+  );
+
+  if (["MASTER","DELIVERY_ADMIN"].includes(state.role)) {
+    $("storageDelivery").innerHTML = state.deliveries.map(d =>
+      `<option value="${d.id}">${esc(d.name)}</option>`
+    ).join("");
+
+    await refreshDeliveryMediaPreview();
+  }
+
+  if (["MASTER","LOCAL_ADMIN"].includes(state.role)) {
+    $("storageLocal").innerHTML = state.locals.map(l =>
+      `<option value="${l.id}">${esc(l.name)}</option>`
+    ).join("");
+
+    await refreshLocalMediaPreview();
+    await loadStorageProducts();
+  }
+}
+
+function setPreview(id, url) {
+  const img = $(id);
+  img.src = url || "";
+  img.alt = url ? "Vista previa" : "";
+}
+
+async function getDeliveryMediaRecord() {
+  const id = $("storageDelivery").value;
+  if (!id) return null;
+
+  const { data, error } = await supabaseClient
+    .from("deliveries")
+    .select("id,name,description,logo_url,phone,whatsapp")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function refreshDeliveryMediaPreview() {
+  if (!$("storageDelivery")?.value) {
+    setPreview("deliveryLogoPreview", "");
+    return;
+  }
+
+  try {
+    const delivery = await getDeliveryMediaRecord();
+    setPreview("deliveryLogoPreview", delivery?.logo_url || "");
+  } catch (e) {
+    message(e.message || "No se pudo cargar el logo del DELIVERY.", "error");
+  }
+}
+
+async function saveDeliveryLogoUrl(delivery, logoUrl) {
+  await rpc("update_my_delivery_content", {
+    p_delivery_id: delivery.id,
+    p_description: delivery.description || null,
+    p_logo_url: logoUrl || null,
+    p_phone: delivery.phone || null,
+    p_whatsapp: delivery.whatsapp || null
+  });
+}
+
+async function uploadDeliveryLogo() {
+  const input = $("deliveryLogoFile");
+  const file = input.files?.[0];
+  if (!file) return message("Selecciona una imagen nueva.", "error");
+
+  let uploaded = null;
+
+  try {
+    const delivery = await getDeliveryMediaRecord();
+    const path = mediaPathDelivery(delivery.id, "logo");
+    uploaded = await subirImagenHTPWEB(path, file);
+
+    await saveDeliveryLogoUrl(delivery, uploaded.url);
+
+    input.value = "";
+    setPreview("deliveryLogoPreview", uploaded.url);
+    message("Logo del DELIVERY actualizado.");
+  } catch (e) {
+    if (uploaded && !pathDesdePublicUrlHTPWEB((await getDeliveryMediaRecord().catch(()=>null))?.logo_url)) {
+      await eliminarObjetoMediaHTPWEB(uploaded.path).catch(()=>{});
+    }
+    message(e.message || "No se pudo subir el logo.", "error");
+  }
+}
+
+async function deleteDeliveryLogo() {
+  try {
+    const delivery = await getDeliveryMediaRecord();
+    const oldPath = pathDesdePublicUrlHTPWEB(delivery.logo_url) || mediaPathDelivery(delivery.id, "logo");
+
+    await saveDeliveryLogoUrl(delivery, null);
+    await eliminarObjetoMediaHTPWEB(oldPath).catch(()=>{});
+
+    setPreview("deliveryLogoPreview", "");
+    message("Logo eliminado.");
+  } catch (e) {
+    message(e.message || "No se pudo eliminar el logo.", "error");
+  }
+}
+
+async function enableDeliveryMedia() {
+  try {
+    const deliveryId = $("storageDelivery").value;
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+
+    await rpc("master_set_delivery_capability", {
+      p_delivery_id: deliveryId,
+      p_capability_code: "images.manage",
+      p_enabled: true
+    });
+
+    await rpc("master_set_delivery_capability", {
+      p_delivery_id: deliveryId,
+      p_capability_code: "delivery.info.manage",
+      p_enabled: true
+    });
+
+    message("Gestión visual habilitada para el DELIVERY.");
+  } catch (e) {
+    message(e.message || "No se pudieron habilitar las capabilities.", "error");
+  }
+}
+
+async function getLocalMediaRecord() {
+  const id = $("storageLocal").value;
+  if (!id) return null;
+
+  const { data, error } = await supabaseClient
+    .from("locals")
+    .select("id,name,description,banner_url,logo_url,phone,whatsapp,website_url,instagram_url,facebook_url,tiktok_url,telegram_url")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function saveLocalMediaUrl(local, field, value) {
+  const next = {
+    banner_url: local.banner_url || null,
+    logo_url: local.logo_url || null
+  };
+
+  next[field] = value || null;
+
+  await rpc("update_my_local_content", {
+    p_local_id: local.id,
+    p_description: local.description || null,
+    p_banner_url: next.banner_url,
+    p_logo_url: next.logo_url,
+    p_phone: local.phone || null,
+    p_whatsapp: local.whatsapp || null,
+    p_website_url: local.website_url || null,
+    p_instagram_url: local.instagram_url || null,
+    p_facebook_url: local.facebook_url || null,
+    p_tiktok_url: local.tiktok_url || null,
+    p_telegram_url: local.telegram_url || null
+  });
+}
+
+async function refreshLocalMediaPreview() {
+  if (!$("storageLocal")?.value) {
+    setPreview("localLogoPreview", "");
+    setPreview("localBannerPreview", "");
+    return;
+  }
+
+  try {
+    const local = await getLocalMediaRecord();
+    setPreview("localLogoPreview", local?.logo_url || "");
+    setPreview("localBannerPreview", local?.banner_url || "");
+  } catch (e) {
+    message(e.message || "No se pudieron cargar las imágenes del LOCAL.", "error");
+  }
+}
+
+async function uploadLocalMedia(kind) {
+  const input = $(kind === "logo" ? "localLogoFile" : "localBannerFile");
+  const file = input.files?.[0];
+
+  if (!file) return message("Selecciona una imagen nueva.", "error");
+
+  try {
+    const local = await getLocalMediaRecord();
+    const uploaded = await subirImagenHTPWEB(
+      mediaPathLocal(local.id, kind),
+      file
+    );
+
+    await saveLocalMediaUrl(
+      local,
+      kind === "logo" ? "logo_url" : "banner_url",
+      uploaded.url
+    );
+
+    input.value = "";
+    setPreview(
+      kind === "logo" ? "localLogoPreview" : "localBannerPreview",
+      uploaded.url
+    );
+
+    message(kind === "logo" ? "Logo del LOCAL actualizado." : "Banner del LOCAL actualizado.");
+  } catch (e) {
+    message(e.message || "No se pudo subir la imagen del LOCAL.", "error");
+  }
+}
+
+async function deleteLocalMedia(kind) {
+  try {
+    const local = await getLocalMediaRecord();
+    const field = kind === "logo" ? "logo_url" : "banner_url";
+    const oldUrl = local[field];
+    const oldPath = pathDesdePublicUrlHTPWEB(oldUrl) || mediaPathLocal(local.id, kind);
+
+    await saveLocalMediaUrl(local, field, null);
+    await eliminarObjetoMediaHTPWEB(oldPath).catch(()=>{});
+
+    setPreview(kind === "logo" ? "localLogoPreview" : "localBannerPreview", "");
+    message("Imagen del LOCAL eliminada.");
+  } catch (e) {
+    message(e.message || "No se pudo eliminar la imagen.", "error");
+  }
+}
+
+async function enableLocalMedia() {
+  try {
+    const localId = $("storageLocal").value;
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    for (const capability of ["images.manage","local.info.manage","products.manage"]) {
+      await rpc("master_set_local_capability", {
+        p_local_id: localId,
+        p_capability_code: capability,
+        p_enabled: true
+      });
+    }
+
+    message("Gestión visual habilitada para el LOCAL.");
+  } catch (e) {
+    message(e.message || "No se pudieron habilitar las capabilities.", "error");
+  }
+}
+
+async function loadStorageProducts() {
+  const localId = $("storageLocal").value;
+
+  if (!localId) {
+    $("storageProduct").innerHTML = "";
+    setPreview("productImagePreview", "");
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("products")
+    .select("id,name,image_url,local_id")
+    .eq("local_id", localId)
+    .order("name");
+
+  if (error) {
+    message(error.message, "error");
+    return;
+  }
+
+  $("storageProduct").innerHTML = (data || []).map(p =>
+    `<option value="${p.id}">${esc(p.name)}</option>`
+  ).join("");
+
+  await refreshProductMediaPreview();
+}
+
+async function getProductMediaRecord() {
+  const id = $("storageProduct").value;
+  if (!id) return null;
+
+  const { data, error } = await supabaseClient
+    .from("products")
+    .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function refreshProductMediaPreview() {
+  if (!$("storageProduct")?.value) {
+    setPreview("productImagePreview", "");
+    return;
+  }
+
+  try {
+    const product = await getProductMediaRecord();
+    setPreview("productImagePreview", product?.image_url || "");
+  } catch (e) {
+    message(e.message || "No se pudo cargar la imagen del producto.", "error");
+  }
+}
+
+async function saveProductImageUrl(product, imageUrl) {
+  await rpc("save_local_product", {
+    p_local_id: product.local_id,
+    p_product_id: product.id,
+    p_category_id: product.category_id || null,
+    p_name: product.name,
+    p_description: product.description || null,
+    p_price: Number(product.price),
+    p_image_url: imageUrl || null,
+    p_display_order: Number(product.display_order || 0),
+    p_active: Boolean(product.active)
+  });
+}
+
+async function uploadProductImage() {
+  const file = $("productImageFile").files?.[0];
+  if (!file) return message("Selecciona una imagen nueva.", "error");
+
+  try {
+    const product = await getProductMediaRecord();
+    const uploaded = await subirImagenHTPWEB(
+      mediaPathProduct(product.id),
+      file
+    );
+
+    await saveProductImageUrl(product, uploaded.url);
+    $("productImageFile").value = "";
+    setPreview("productImagePreview", uploaded.url);
+    message("Imagen del producto actualizada.");
+  } catch (e) {
+    message(e.message || "No se pudo subir la imagen del producto.", "error");
+  }
+}
+
+async function deleteProductImage() {
+  try {
+    const product = await getProductMediaRecord();
+    const oldPath = pathDesdePublicUrlHTPWEB(product.image_url) || mediaPathProduct(product.id);
+
+    await saveProductImageUrl(product, null);
+    await eliminarObjetoMediaHTPWEB(oldPath).catch(()=>{});
+
+    setPreview("productImagePreview", "");
+    message("Imagen del producto eliminada.");
+  } catch (e) {
+    message(e.message || "No se pudo eliminar la imagen del producto.", "error");
+  }
+}
+
+
 async function loadAnalytics() {
   if (!["MASTER","DELIVERY_ADMIN","LOCAL_ADMIN"].includes(state.role)) return;
 
