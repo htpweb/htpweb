@@ -255,10 +255,12 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib, re
+          import hashlib, os, re
 
-          local=Path("$GITHUB_WORKSPACE/supabase/functions/crear-pedido/index.ts").read_text()
-          remote=Path("/tmp/remote-functions/supabase/functions/crear-pedido/index.ts").read_text()
+          local=Path(os.environ["GITHUB_WORKSPACE"]) / "supabase/functions/crear-pedido/index.ts"
+          remote=Path("/tmp/remote-functions/supabase/functions/crear-pedido/index.ts")
+          local=local.read_text()
+          remote=remote.read_text()
 
           local_hash=hashlib.sha256(local.encode()).hexdigest()
           remote_hash=hashlib.sha256(remote.encode()).hexdigest()
