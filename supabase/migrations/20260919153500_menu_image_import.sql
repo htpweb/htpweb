@@ -200,7 +200,7 @@ begin
       raise exception 'HTPWEB: cada imagen requiere storage_path';
     end if;
 
-    if v_mime not in ('image/jpeg','image/png','image/webp') then
+    if v_mime is null or v_mime not in ('image/jpeg','image/png','image/webp') then
       raise exception 'HTPWEB: formato de imagen no permitido (%)', coalesce(v_mime, 'NULL');
     end if;
 
@@ -280,7 +280,7 @@ begin
 end;
 $function$;
 
-revoke all on function public.master_create_menu_image_job(uuid,jsonb)
+revoke execute on function public.master_create_menu_image_job(uuid,jsonb)
 from public, anon, service_role;
 
 grant execute on function public.master_create_menu_image_job(uuid,jsonb)
@@ -767,7 +767,7 @@ begin
 end;
 $function$;
 
-revoke all on function public.master_apply_menu_import(uuid,jsonb,uuid)
+revoke execute on function public.master_apply_menu_import(uuid,jsonb,uuid)
 from public, anon, service_role;
 
 grant execute on function public.master_apply_menu_import(uuid,jsonb,uuid)
