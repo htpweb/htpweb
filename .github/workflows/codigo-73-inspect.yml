@@ -1,0 +1,80 @@
+name: Codigo 73 Inspect Edge
+
+on:
+  push:
+    branches: [codigo-73-disponibilidad-local-checkout]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Inspect deployed Edge Function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "FUNCTION_LIST"
+          supabase functions list --project-ref "$SUPABASE_PROJECT_ID"
+
+          echo "DOWNLOAD_HELP"
+          supabase functions download --help | head -80
+
+          rm -rf supabase/functions
+          mkdir -p supabase/functions
+          supabase functions download crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
+
+          echo "DOWNLOADED_FILES"
+          find supabase/functions -maxdepth 3 -type f -printf '%p|%s bytes\n' | sort
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, re
+          root=Path("supabase/functions/crear-pedido")
+          files=[p for p in root.rglob("*") if p.is_file()]
+          if not files:
+              raise SystemExit("crear-pedido download produced no files")
+
+          print("SOURCE_SUMMARY")
+          for p in files:
+              raw=p.read_bytes()
+              print(f"{p}|sha256={hashlib.sha256(raw).hexdigest()}|bytes={len(raw)}")
+
+          text="\n".join(
+              p.read_text(errors="ignore")
+              for p in files
+              if p.suffix in {".ts",".js",".json",".toml"}
+          )
+
+          checks={
+            "HAS_LOCAL_SCHEDULES": bool(re.search(r"local_schedules|schedule|opening_time|closing_time", text, re.I)),
+            "HAS_CREATE_ORDER_TRANSACTION": "create_order_transaction" in text,
+            "HAS_CALCULATE_DELIVERY_FEE": "calculate_delivery_fee" in text,
+            "HAS_ORS": bool(re.search(r"openrouteservice|ORS", text, re.I)),
+            "HAS_AUTH_UID_FLOW": bool(re.search(r"authorization|jwt|getUser", text, re.I)),
+          }
+          for k,v in checks.items():
+              print(f"{k}|{str(v).lower()}")
+
+          suspicious=[]
+          patterns=[
+              r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*['\"][^'\"]+",
+              r"ORS_API_KEY\s*=\s*['\"][^'\"]+",
+              r"sk_[A-Za-z0-9_-]{20,}",
+          ]
+          for pat in patterns:
+              if re.search(pat,text):
+                  suspicious.append(pat)
+          print(f"LITERAL_SECRET_PATTERNS|{len(suspicious)}")
+          if suspicious:
+              raise SystemExit("Potential literal secret found in downloaded source; refusing further handling")
+          PY
