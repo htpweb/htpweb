@@ -1,4 +1,4 @@
-name: Codigo 70 Inspect Limits
+name: Codigo 70 Inspect Invariants
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect zone limits and ACL
+      - name: Inspect city-zone invariants
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,46 +34,25 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'LIMIT_DEFINITION_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='limit_definitions'
-          order by ordinal_position;
+          select 'TRIGGERS';
+          select c.relname||'|'||t.tgname||'|'||pg_get_triggerdef(t.oid)
+          from pg_trigger t
+          join pg_class c on c.oid=t.tgrelid
+          join pg_namespace n on n.oid=c.relnamespace
+          where n.nspname='public'
+            and c.relname in ('deliveries','zones','delivery_zones')
+            and not t.tgisinternal
+          order by c.relname,t.tgname;
 
-          select 'LIMIT_DEFINITIONS';
-          select row_to_json(x)::text
-          from (
-            select *
-            from public.limit_definitions
-            where code ilike '%zone%'
-            order by code
-          ) x;
+          select 'VALIDATE_CITY_STATE_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='validate_city_state';
 
-          select 'DELIVERY_LIMIT_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='delivery_limits'
-          order by ordinal_position;
-
-          select 'DELIVERY_LIMITS';
-          select row_to_json(x)::text
-          from (
-            select dl.*
-            from public.delivery_limits dl
-            join public.limit_definitions ld on ld.id=dl.limit_id
-            where ld.code='max_zones'
-            order by dl.delivery_id
-          ) x;
-
-          select 'FUNCTION_PRIVS';
-          select 'master_save_zone|auth='||has_function_privilege('authenticated','public.master_save_zone(uuid,uuid,text,boolean)','EXECUTE')
-            ||'|anon='||has_function_privilege('anon','public.master_save_zone(uuid,uuid,text,boolean)','EXECUTE');
-          select 'set_delivery_zone|auth='||has_function_privilege('authenticated','public.set_delivery_zone(uuid,uuid,boolean)','EXECUTE')
-            ||'|anon='||has_function_privilege('anon','public.set_delivery_zone(uuid,uuid,boolean)','EXECUTE');
-          select 'master_set_delivery_city|auth='||has_function_privilege('authenticated','public.master_set_delivery_city(uuid,uuid)','EXECUTE')
-            ||'|anon='||has_function_privilege('anon','public.master_set_delivery_city(uuid,uuid)','EXECUTE');
-          select 'master_set_delivery_limit|auth='||has_function_privilege('authenticated','public.master_set_delivery_limit(uuid,text,integer)','EXECUTE')
-            ||'|anon='||has_function_privilege('anon','public.master_set_delivery_limit(uuid,text,integer)','EXECUTE');
+          select 'SYNC_ZONE_CITY_LEGACY_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='sync_zone_city_legacy';
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
