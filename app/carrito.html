@@ -694,6 +694,7 @@ async function confirmOrder() {
         <p><strong>Delivery:</strong> $${Number(data.order.delivery_fee || 0).toFixed(2)}</p>
         <p class="total"><strong>Total:</strong> $${Number(data.order.total || 0).toFixed(2)}</p>
       </div>
+      <a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>
       <button class="btn btn-dark" onclick="location.href=urlDelivery('index.html')">Volver a comprar</button>
     `;
     $("successCard").classList.remove("hidden");

@@ -16,6 +16,7 @@
   <div class="header-row">
     <div class="brand" id="brand">HTPWEB</div>
     <div class="header-actions">
+      <a class="btn btn-light" id="ordersLink" href="#">Mis pedidos</a>
       <a class="btn btn-light" id="authLink" href="#">Acceder</a>
       <a class="btn btn-primary" id="cartLink" href="#">🛒 <span id="cartCount">0</span></a>
     </div>
@@ -64,6 +65,7 @@ async function init() {
     $("title").textContent = "¿Qué quieres pedir?";
     $("subtitle").textContent = negocioActual.description || `Explora los locales disponibles en ${negocioActual.name}.`;
     $("cartLink").href = urlDelivery("carrito.html");
+    $("ordersLink").href = urlDelivery("pedidos.html");
     updateCartCount();
 
     const user = await obtenerUsuarioActual();

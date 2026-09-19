@@ -54,6 +54,7 @@
     </div>
 
     <div class="stack" style="margin-top:14px">
+      <a id="ordersLink" class="btn btn-muted hidden" href="#">Mis pedidos</a>
       <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
       <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
@@ -124,6 +125,10 @@ async function init() {
       }
 
       if (role === "CLIENT") {
+        if (obtenerDeliverySlug()) {
+          $("ordersLink").href = urlDelivery("pedidos.html");
+          $("ordersLink").classList.remove("hidden");
+        }
         $("addressesCard").classList.remove("hidden");
         await loadAccountAddresses();
       }
