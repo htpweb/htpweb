@@ -17,6 +17,7 @@
 
     <nav class="nav" id="nav">
       <button data-section="overview">Resumen</button>
+      <button data-section="mydelivery">Mi Delivery</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
@@ -47,6 +48,52 @@
       <div class="card">
         <h2>Ámbito actual</h2>
         <div id="scopeInfo" class="muted">Cargando...</div>
+      </div>
+    </section>
+
+    <section id="section-mydelivery" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Mi Delivery</h2>
+            <p class="muted">Administra la información pública del DELIVERY asignado a tu cuenta.</p>
+          </div>
+          <select id="profileDelivery" style="max-width:340px"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div>
+            <label>Nombre</label>
+            <input id="profileDeliveryName" disabled>
+          </div>
+          <div>
+            <label>Slug público</label>
+            <input id="profileDeliverySlug" disabled>
+          </div>
+          <div>
+            <label>Teléfono</label>
+            <input id="profileDeliveryPhone" maxlength="40">
+          </div>
+          <div>
+            <label>WhatsApp</label>
+            <input id="profileDeliveryWhatsapp" maxlength="40">
+          </div>
+        </div>
+
+        <label style="margin-top:12px">Descripción</label>
+        <textarea id="profileDeliveryDescription" rows="4" maxlength="1200"></textarea>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveDeliveryProfileBtn">Guardar información</button>
+          <button class="btn-muted" id="profileGoStorageBtn">Gestionar logo</button>
+        </div>
+
+        <p class="muted" style="margin-top:10px">
+          El nombre y el slug requieren intervención de HTPWEB. La edición de información necesita la capability
+          <code>delivery.info.manage</code>.
+        </p>
       </div>
     </section>
 
@@ -236,7 +283,7 @@
             <div class="row">
               <button class="btn-primary" id="uploadDeliveryLogoBtn">Subir / reemplazar logo</button>
               <button class="btn-danger" id="deleteDeliveryLogoBtn">Eliminar logo</button>
-              <button class="btn-muted master-only" id="enableDeliveryMediaBtn">Habilitar gestión visual</button>
+              <button class="btn-muted master-only" id="enableDeliveryMediaBtn">Habilitar gestión del DELIVERY</button>
             </div>
             <small class="muted">DELIVERY_ADMIN requiere <code>images.manage</code> + <code>delivery.info.manage</code>.</small>
           </div>
