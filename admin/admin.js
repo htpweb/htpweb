@@ -12,13 +12,14 @@ const state = {
   orders: [],
   requests: [],
   requestLocalOptions: [],
+  deliveryProfileRecord: null,
   categories: [],
   products: []
 };
 
 const roleSections = {
   MASTER: ["overview","orders","requests","deliveries","storage","analytics"],
-  DELIVERY_ADMIN: ["overview","orders","requests","storage","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","orders","catalog","storage","analytics"]
 };
@@ -113,6 +114,7 @@ function showSection(name) {
   document.querySelector(`#nav button[data-section="${name}"]`)?.classList.add("active");
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
+  if (name === "mydelivery") loadDeliveryProfile();
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
@@ -259,6 +261,89 @@ async function loadOverview() {
       <strong>${value === null ? "—" : value}</strong>
     </div>
   `).join("");
+}
+
+async function loadDeliveryProfile() {
+  if (state.role !== "DELIVERY_ADMIN") return;
+
+  const select = $("profileDelivery");
+  if (!select) return;
+
+  const previous = select.value;
+  select.innerHTML = state.deliveries.length
+    ? state.deliveries.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join("")
+    : '<option value="">No hay DELIVERY asignados</option>';
+
+  if (previous && state.deliveries.some(d => d.id === previous)) {
+    select.value = previous;
+  }
+
+  await loadDeliveryProfileRecord();
+}
+
+async function loadDeliveryProfileRecord() {
+  if (state.role !== "DELIVERY_ADMIN") return;
+
+  const deliveryId = $("profileDelivery")?.value || null;
+  if (!deliveryId) {
+    state.deliveryProfileRecord = null;
+    ["profileDeliveryName","profileDeliverySlug","profileDeliveryPhone","profileDeliveryWhatsapp","profileDeliveryDescription"]
+      .forEach(id => { if ($(id)) $(id).value = ""; });
+    $("saveDeliveryProfileBtn").disabled = true;
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("deliveries")
+      .select("id,name,slug,description,logo_url,phone,whatsapp,active")
+      .eq("id", deliveryId)
+      .single();
+
+    if (error) throw error;
+
+    state.deliveryProfileRecord = data;
+    $("profileDeliveryName").value = data.name || "";
+    $("profileDeliverySlug").value = data.slug || "";
+    $("profileDeliveryPhone").value = data.phone || "";
+    $("profileDeliveryWhatsapp").value = data.whatsapp || "";
+    $("profileDeliveryDescription").value = data.description || "";
+    $("saveDeliveryProfileBtn").disabled = false;
+  } catch (e) {
+    state.deliveryProfileRecord = null;
+    $("saveDeliveryProfileBtn").disabled = true;
+    message(e.message || "No se pudo cargar la información del DELIVERY.", "error");
+  }
+}
+
+async function saveDeliveryProfile() {
+  try {
+    const delivery = state.deliveryProfileRecord;
+    if (!delivery?.id) throw new Error("Selecciona un DELIVERY.");
+
+    await rpc("update_my_delivery_content", {
+      p_delivery_id: delivery.id,
+      p_description: $("profileDeliveryDescription").value.trim() || null,
+      p_logo_url: delivery.logo_url || null,
+      p_phone: $("profileDeliveryPhone").value.trim() || null,
+      p_whatsapp: $("profileDeliveryWhatsapp").value.trim() || null
+    });
+
+    message("Información del DELIVERY actualizada.");
+    await loadDeliveryProfileRecord();
+  } catch (e) {
+    message(e.message || "No se pudo actualizar el DELIVERY.", "error");
+  }
+}
+
+function openDeliveryStorage() {
+  showSection("storage");
+
+  const deliveryId = $("profileDelivery")?.value;
+  if (deliveryId && $("storageDelivery")) {
+    $("storageDelivery").value = deliveryId;
+    refreshDeliveryMediaPreview();
+  }
 }
 
 async function loadOrders() {
@@ -1363,6 +1448,9 @@ function bindEvents() {
   $("submitRequestBtn").onclick = submitRequest;
   $("requestType").onchange = updateRequestForm;
   $("requestDelivery").onchange = updateRequestForm;
+  $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
+  $("profileGoStorageBtn").onclick = openDeliveryStorage;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
