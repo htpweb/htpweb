@@ -444,8 +444,21 @@ async function confirmOrder() {
     });
 
     if (error) {
-      const detail = data?.error || error.message || "No se pudo crear el pedido.";
-      throw new Error(detail);
+      let detail = data?.error || data?.message || "";
+
+      if (!detail && error?.context) {
+        try {
+          const response = typeof error.context.clone === "function"
+            ? error.context.clone()
+            : error.context;
+          const payload = await response.json();
+          detail = payload?.error || payload?.message || "";
+        } catch (parseError) {
+          console.warn("No se pudo leer el detalle devuelto por crear-pedido.", parseError);
+        }
+      }
+
+      throw new Error(detail || error.message || "No se pudo crear el pedido.");
     }
 
     if (!data?.ok || !data?.order?.id) {
