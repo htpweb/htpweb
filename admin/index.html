@@ -26,6 +26,7 @@
       <button data-section="fees">Tarifas</button>
       <button data-section="coverage">Cobertura</button>
       <button data-section="catalog">Catálogo</button>
+      <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
       <button data-section="analytics">Analytics</button>
     </nav>
@@ -159,6 +160,7 @@
           <button class="btn-primary" id="saveLocalProfileBtn">Guardar información</button>
           <button class="btn-muted" id="profileLocalGoStorageBtn">Gestionar logo y banner</button>
           <button class="btn-muted" id="profileLocalGoCatalogBtn">Gestionar catálogo</button>
+          <button class="btn-muted" id="profileLocalGoScheduleBtn">Gestionar horarios</button>
         </div>
 
         <p class="muted" style="margin-top:10px">
@@ -516,8 +518,14 @@
     <section id="section-catalog" class="section">
       <div class="card">
         <div class="row between">
-          <h2>Catálogo del LOCAL</h2>
-          <select id="catalogLocal" style="max-width:320px"></select>
+          <div>
+            <h2>Catálogo del LOCAL</h2>
+            <p class="muted">Gestiona categorías, productos y variantes.</p>
+          </div>
+          <div class="row">
+            <select id="catalogLocal" style="max-width:320px"></select>
+            <button class="btn-muted master-only" id="enableCatalogManagementBtn">Habilitar catálogo y variantes</button>
+          </div>
         </div>
       </div>
 
@@ -548,6 +556,67 @@
       <div class="card">
         <h3>Productos</h3>
         <div id="catalogProducts"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h3>Variantes de producto</h3>
+            <p class="muted">Ejemplos: Normal, Grande, 500 ml, Familiar.</p>
+          </div>
+          <select id="variantProduct" style="max-width:360px"></select>
+        </div>
+
+        <input id="variantId" type="hidden">
+
+        <div class="form-grid" style="margin-top:14px">
+          <div>
+            <label>Nombre</label>
+            <input id="variantName" maxlength="160">
+          </div>
+          <div>
+            <label>Precio (USD)</label>
+            <input id="variantPrice" type="number" min="0" step="0.01">
+          </div>
+          <div>
+            <label>Orden</label>
+            <input id="variantOrder" type="number" min="0" step="1" value="0">
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="variantActive">
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveVariantBtn">Guardar variante</button>
+          <button class="btn-muted" id="clearVariantBtn">Limpiar</button>
+        </div>
+
+        <div id="variantsList" style="margin-top:16px"></div>
+      </div>
+    </section>
+
+    <section id="section-schedules" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Horarios del LOCAL</h2>
+            <p class="muted">Configura apertura y cierre para cada día. La numeración interna usa 0=Domingo hasta 6=Sábado.</p>
+          </div>
+          <div class="row">
+            <select id="scheduleLocal" style="max-width:340px"></select>
+            <button class="btn-muted master-only" id="enableScheduleManagementBtn">Habilitar horarios</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="scheduleEditor"></div>
+        <button class="btn-primary" id="saveSchedulesBtn" style="margin-top:14px">Guardar semana completa</button>
       </div>
     </section>
 
@@ -612,7 +681,7 @@
           </div>
         </div>
         <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión del LOCAL</button>
-        <small class="muted">LOCAL_ADMIN requiere <code>images.manage</code> + <code>local.info.manage</code>.</small>
+        <small class="muted">LOCAL_ADMIN requiere las capabilities correspondientes para información, imágenes, productos, variantes y horarios.</small>
       </div>
 
       <div class="card" id="storageProductCard">
