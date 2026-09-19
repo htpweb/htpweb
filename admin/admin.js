@@ -11,6 +11,7 @@ const state = {
   cities: [],
   orders: [],
   requests: [],
+  requestLocalOptions: [],
   categories: [],
   products: []
 };
@@ -369,10 +370,144 @@ async function changeLocalOrder(orderId, localId, status) {
   }
 }
 
+const requestTypeLabels = {
+  CREATE_LOCAL: "Nuevo LOCAL",
+  LINK_EXISTING: "Vincular LOCAL existente",
+  CLAIM_LOCAL: "Reclamar administración de LOCAL",
+  SUGGEST_CHANGE: "Sugerir cambios"
+};
+
+const requestStatusLabels = {
+  PENDING: "Pendiente",
+  NEEDS_INFO: "Requiere información",
+  APPROVED: "Aprobada",
+  REJECTED: "Rechazada",
+  CANCELLED: "Cancelada"
+};
+
+function compactPayload(values) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) =>
+      value !== null &&
+      value !== undefined &&
+      (typeof value !== "string" || value.trim() !== "")
+    ).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])
+  );
+}
+
+function deliveryLabel(id) {
+  return state.deliveries.find(d => d.id === id)?.name || id || "—";
+}
+
+function localLabel(id, fallback = null) {
+  if (!id) return fallback || "—";
+  return state.locals.find(l => l.id === id)?.name
+    || state.requestLocalOptions.find(l => l.id === id)?.name
+    || fallback
+    || id;
+}
+
+function renderRequestPayload(payload = {}) {
+  const labels = {
+    name: "Nombre",
+    address: "Dirección",
+    phone: "Teléfono",
+    whatsapp: "WhatsApp",
+    description: "Descripción",
+    website_url: "Sitio web",
+    instagram_url: "Instagram",
+    facebook_url: "Facebook",
+    tiktok_url: "TikTok",
+    telegram_url: "Telegram",
+    google_maps_url: "Google Maps"
+  };
+
+  const entries = Object.entries(payload || {});
+  if (!entries.length) return '<div class="muted">Sin datos adicionales.</div>';
+
+  return `
+    <div class="request-details">
+      ${entries.map(([key, value]) => `
+        <div><strong>${esc(labels[key] || key)}:</strong> ${esc(
+          typeof value === "object" ? JSON.stringify(value) : value
+        )}</div>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function updateRequestForm() {
+  if (state.role !== "DELIVERY_ADMIN" || !$("requestType")) return;
+
+  const type = $("requestType").value;
+  const deliveryId = $("requestDelivery").value || null;
+  const needsExisting = ["LINK_EXISTING", "SUGGEST_CHANGE"].includes(type);
+
+  $("requestCreateFields").classList.toggle("hidden", type !== "CREATE_LOCAL");
+  $("requestExistingFields").classList.toggle("hidden", !needsExisting);
+  $("requestSuggestFields").classList.toggle("hidden", type !== "SUGGEST_CHANGE");
+
+  const submit = $("submitRequestBtn");
+  if (type === "CREATE_LOCAL") {
+    state.requestLocalOptions = [];
+    $("requestLocalSelect").innerHTML = "";
+    $("requestLocalHelp").textContent = "";
+    $("requestLocalSelectLabel").textContent = "LOCAL";
+    submit.disabled = !deliveryId;
+    submit.textContent = "Enviar solicitud de nuevo LOCAL";
+    return;
+  }
+
+  $("requestLocalSelectLabel").textContent =
+    type === "LINK_EXISTING" ? "LOCAL existente" : "LOCAL vinculado";
+  submit.textContent =
+    type === "LINK_EXISTING" ? "Solicitar vinculación" : "Enviar sugerencia";
+
+  if (!deliveryId) {
+    state.requestLocalOptions = [];
+    $("requestLocalSelect").innerHTML = '<option value="">Selecciona primero un DELIVERY</option>';
+    $("requestLocalHelp").textContent = "";
+    submit.disabled = true;
+    return;
+  }
+
+  try {
+    const mode = type === "LINK_EXISTING" ? "LINK_EXISTING" : "RELATED";
+    const options = await rpc("delivery_local_request_options", {
+      p_delivery_id: deliveryId,
+      p_mode: mode
+    });
+
+    state.requestLocalOptions = options || [];
+    $("requestLocalSelect").innerHTML = state.requestLocalOptions.length
+      ? '<option value="">Selecciona un LOCAL</option>' + state.requestLocalOptions.map(local => {
+          const detail = [local.address, local.phone].filter(Boolean).join(" · ");
+          return `<option value="${local.id}">${esc(local.name)}${detail ? " — " + esc(detail) : ""}</option>`;
+        }).join("")
+      : '<option value="">No hay LOCAL disponible</option>';
+
+    $("requestLocalHelp").textContent = state.requestLocalOptions.length
+      ? (type === "LINK_EXISTING"
+          ? "Solo aparecen LOCAL activos que todavía no están vinculados a este DELIVERY."
+          : "Solo aparecen LOCAL actualmente vinculados a este DELIVERY.")
+      : (type === "LINK_EXISTING"
+          ? "No hay LOCAL existentes disponibles para vincular."
+          : "Este DELIVERY todavía no tiene LOCAL vinculados.");
+
+    submit.disabled = !state.requestLocalOptions.length;
+  } catch (e) {
+    state.requestLocalOptions = [];
+    $("requestLocalSelect").innerHTML = '<option value="">No se pudieron cargar los LOCAL</option>';
+    $("requestLocalHelp").textContent = e.message || "No se pudieron cargar las opciones.";
+    submit.disabled = true;
+  }
+}
+
 async function loadRequests() {
   if (!roleSections[state.role]?.includes("requests")) return;
 
   $("requestCreateCard").classList.toggle("hidden", state.role !== "DELIVERY_ADMIN");
+  if (state.role === "DELIVERY_ADMIN") await updateRequestForm();
 
   const { data, error } = await supabaseClient
     .from("local_requests")
@@ -407,32 +542,85 @@ function renderRequest(req) {
     ? `<button class="btn-primary" onclick="applyRequest('${req.id}','${req.request_type}')">Aplicar solicitud aprobada</button>`
     : "";
 
+  const payloadName = req.payload?.name || null;
+  const requestedLocal = localLabel(req.local_id, payloadName);
+  const resultLocal = req.result_local_id ? localLabel(req.result_local_id, payloadName) : null;
+
   return `
     <div class="card">
       <div class="row between">
         <div>
-          <strong>${esc(req.request_type)}</strong>
-          <div class="muted">${esc(req.id)}</div>
+          <strong>${esc(requestTypeLabels[req.request_type] || req.request_type)}</strong>
+          <div class="muted">${new Date(req.created_at).toLocaleString()}</div>
         </div>
-        <span class="badge status-${esc(req.status)}">${esc(req.status)}</span>
+        <span class="badge status-${esc(req.status)}">${esc(requestStatusLabels[req.status] || req.status)}</span>
       </div>
-      <p><strong>Delivery:</strong> ${esc(req.delivery_id || "—")}</p>
-      <p><strong>Local:</strong> ${esc(req.local_id || "—")}</p>
-      <pre class="json">${esc(JSON.stringify(req.payload || {}, null, 2))}</pre>
+      <p><strong>Delivery:</strong> ${esc(deliveryLabel(req.delivery_id))}</p>
+      ${(req.local_id || payloadName) ? `<p><strong>Local:</strong> ${esc(requestedLocal)}</p>` : ""}
+      ${renderRequestPayload(req.payload || {})}
       ${req.review_note ? `<p><strong>Revisión:</strong> ${esc(req.review_note)}</p>` : ""}
-      ${req.result_local_id ? `<p><strong>Resultado LOCAL:</strong> ${esc(req.result_local_id)}</p>` : ""}
+      ${req.possible_duplicate_local_id ? `<p><strong>Posible duplicado:</strong> ${esc(localLabel(req.possible_duplicate_local_id))}</p>` : ""}
+      ${resultLocal ? `<p><strong>LOCAL resultante:</strong> ${esc(resultLocal)}</p>` : ""}
       ${masterActions}
       ${applyAction}
     </div>
   `;
 }
 
+function clearRequestFields(type) {
+  if (type === "CREATE_LOCAL") {
+    ["requestName","requestAddress","requestPhone","requestWhatsapp","requestDescription"]
+      .forEach(id => { if ($(id)) $(id).value = ""; });
+  }
+
+  if (type === "SUGGEST_CHANGE") {
+    ["requestSuggestName","requestSuggestAddress","requestSuggestPhone","requestSuggestWhatsapp","requestSuggestDescription"]
+      .forEach(id => { if ($(id)) $(id).value = ""; });
+  }
+}
+
 async function submitRequest() {
   try {
     const deliveryId = $("requestDelivery").value || null;
     const type = $("requestType").value;
-    const localId = $("requestLocalId").value.trim() || null;
-    const payload = JSON.parse($("requestPayload").value || "{}");
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+
+    let localId = null;
+    let payload = {};
+
+    if (type === "CREATE_LOCAL") {
+      payload = compactPayload({
+        name: $("requestName").value,
+        address: $("requestAddress").value,
+        phone: $("requestPhone").value,
+        whatsapp: $("requestWhatsapp").value,
+        description: $("requestDescription").value
+      });
+
+      if (!payload.name) throw new Error("Escribe el nombre del LOCAL.");
+    }
+
+    if (type === "LINK_EXISTING") {
+      localId = $("requestLocalSelect").value || null;
+      if (!localId) throw new Error("Selecciona el LOCAL que deseas vincular.");
+    }
+
+    if (type === "SUGGEST_CHANGE") {
+      localId = $("requestLocalSelect").value || null;
+      if (!localId) throw new Error("Selecciona el LOCAL que deseas actualizar.");
+
+      payload = compactPayload({
+        name: $("requestSuggestName").value,
+        address: $("requestSuggestAddress").value,
+        phone: $("requestSuggestPhone").value,
+        whatsapp: $("requestSuggestWhatsapp").value,
+        description: $("requestSuggestDescription").value
+      });
+
+      if (!Object.keys(payload).length) {
+        throw new Error("Escribe al menos un cambio para enviar la sugerencia.");
+      }
+    }
 
     await rpc("submit_local_request", {
       p_request_type: type,
@@ -441,9 +629,15 @@ async function submitRequest() {
       p_payload: payload
     });
 
-    message("Solicitud enviada.");
-    $("requestPayload").value = "{}";
-    $("requestLocalId").value = "";
+    message(
+      type === "CREATE_LOCAL"
+        ? "Solicitud de nuevo LOCAL enviada a HTPWEB."
+        : type === "LINK_EXISTING"
+          ? "Solicitud de vinculación enviada a HTPWEB."
+          : "Sugerencia enviada a HTPWEB."
+    );
+
+    clearRequestFields(type);
     await loadRequests();
   } catch (e) {
     message(e.message || "No se pudo enviar la solicitud.", "error");
@@ -1167,6 +1361,8 @@ function bindEvents() {
   $("catalogLocal").onchange = loadCatalog;
 
   $("submitRequestBtn").onclick = submitRequest;
+  $("requestType").onchange = updateRequestForm;
+  $("requestDelivery").onchange = updateRequestForm;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
