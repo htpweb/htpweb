@@ -66,3 +66,11 @@ small.note{display:block;color:#6b7280;margin-top:6px}
 .availability-closed{background:#ffebee;color:#b71c1c}
 
 .shared-product-target{outline:3px solid #111827;outline-offset:3px;border-radius:12px}
+
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.save-address-panel{margin:16px 0;padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#fafafa}
+.address-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid #e5e7eb}
+.address-card:last-child{border-bottom:0}
+@media(max-width:640px){
+  .address-card{align-items:flex-start;flex-direction:column}
+}
