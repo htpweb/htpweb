@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Verify E2E cleanup
+      - name: Simulate MASTER backend authorization in rollback
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -29,28 +29,84 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           from urllib.parse import urlparse
-          import os, subprocess
+          import os, subprocess, tempfile
 
           parsed = urlparse(Path("supabase/.temp/pooler-url").read_text(encoding="utf-8").strip())
           env = os.environ.copy()
           env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
 
-          sql = """
-          select 'E2E_CUSTOMERS|' || count(*)
-          from public.customers
-          where name = 'HTPWEB E2E CLIENT';
+          sql = r"""
+          \set ON_ERROR_STOP on
+          BEGIN;
 
-          select 'E2E_ORDERS|' || count(*)
-          from public.orders
-          where notes = 'Pedido temporal de prueba automática.';
+          SELECT p.id::text AS master_id
+          FROM public.profiles p
+          JOIN public.roles r ON r.id = p.role_id
+          WHERE r.code = 'MASTER' AND p.active = true
+          ORDER BY p.created_at
+          LIMIT 1
+          \gset
 
-          select 'E2E_AUTH_USERS|' || count(*)
-          from auth.users
-          where email like 'htpweb-e2e-%@example.com';
+          SET LOCAL ROLE authenticated;
+          SELECT set_config('request.jwt.claim.sub', :'master_id', true);
+          SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+
+          SELECT 'ROLE|' || public.current_role_code();
+
+          SELECT public.update_my_delivery_content(
+            d.id, d.description, d.logo_url, d.phone, d.whatsapp
+          )
+          FROM public.deliveries d
+          WHERE d.id = 'a0000000-0000-4000-8000-000000000001'::uuid;
+          SELECT 'DELIVERY_CONTENT_RPC|OK';
+
+          SELECT public.update_my_local_content(
+            l.id, l.description, l.banner_url, l.logo_url, l.phone, l.whatsapp,
+            l.website_url, l.instagram_url, l.facebook_url, l.tiktok_url, l.telegram_url
+          )
+          FROM public.locals l
+          WHERE l.id = 'b0000000-0000-4000-8000-000000000001'::uuid;
+          SELECT 'LOCAL_CONTENT_RPC|OK';
+
+          SELECT public.save_local_product(
+            p.local_id, p.id, p.category_id, p.name, p.description, p.price,
+            p.image_url, p.display_order, p.active
+          )
+          FROM public.products p
+          WHERE p.id = 'd0000000-0000-4000-8000-000000000001'::uuid;
+          SELECT 'PRODUCT_RPC|OK';
+
+          SELECT 'MEDIA_MANAGE_DELIVERY|' ||
+            public.can_manage_media_path(
+              'delivery/a0000000-0000-4000-8000-000000000001/logo'
+            );
+
+          SELECT 'MEDIA_UPLOAD_DELIVERY|' ||
+            public.can_upload_media_path(
+              'delivery/a0000000-0000-4000-8000-000000000001/logo'
+            );
+
+          SELECT 'MEDIA_MANAGE_LOCAL|' ||
+            public.can_manage_media_path(
+              'local/b0000000-0000-4000-8000-000000000001/logo'
+            );
+
+          SELECT 'MEDIA_MANAGE_PRODUCT|' ||
+            public.can_manage_media_path(
+              'product/d0000000-0000-4000-8000-000000000001/image'
+            );
+
+          ROLLBACK;
           """
+
+          with tempfile.NamedTemporaryFile("w", suffix=".sql", encoding="utf-8", delete=False) as tmp:
+              tmp.write(sql)
+              path = tmp.name
+
           subprocess.run(
               ["psql","-h",parsed.hostname,"-p",str(parsed.port),"-U",parsed.username,
-               "-d",parsed.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
+               "-d",parsed.path.lstrip("/").split("?")[0],"-At","-f",path],
               check=True, env=env
           )
+          Path(path).unlink(missing_ok=True)
           PY
