@@ -14,12 +14,13 @@ const state = {
   requestLocalOptions: [],
   deliveryProfileRecord: null,
   localProfileRecord: null,
+  users: [],
   categories: [],
   products: []
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","storage","analytics"],
+  MASTER: ["overview","orders","requests","deliveries","users","storage","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","storage","analytics"]
@@ -120,6 +121,7 @@ function showSection(name) {
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
+  if (name === "users") loadUsersModule();
   if (name === "catalog") loadCatalog();
   if (name === "storage") loadStorage();
   if (name === "analytics") loadAnalytics();
@@ -880,6 +882,232 @@ async function applyRequest(id, type) {
   }
 }
 
+function managedUser() {
+  const id = $("userManagerUser")?.value || "";
+  return state.users.find(user => user.user_id === id) || null;
+}
+
+function deliveryNameById(id) {
+  return state.deliveries.find(delivery => delivery.id === id)?.name || id;
+}
+
+function localNameById(id) {
+  return state.locals.find(local => local.id === id)?.name || id;
+}
+
+function renderUserOptions() {
+  if (state.role !== "MASTER") return;
+
+  const select = $("userManagerUser");
+  const search = ($("userManagerSearch")?.value || "").trim().toLowerCase();
+  const previous = select.value;
+
+  const filtered = state.users.filter(user => {
+    if (!search) return true;
+    return [
+      user.full_name,
+      user.email,
+      user.phone,
+      user.role_code
+    ].some(value => String(value || "").toLowerCase().includes(search));
+  });
+
+  select.innerHTML = filtered.length
+    ? filtered.map(user => {
+        const identity = user.full_name || user.email || user.user_id;
+        const email = user.email && user.email !== identity ? ` — ${user.email}` : "";
+        return `<option value="${user.user_id}">${esc(identity)}${esc(email)} — ${esc(user.role_code)}</option>`;
+      }).join("")
+    : '<option value="">No hay cuentas que coincidan</option>';
+
+  if (previous && filtered.some(user => user.user_id === previous)) {
+    select.value = previous;
+  }
+
+  renderManagedUser();
+}
+
+function renderManagedUser() {
+  if (state.role !== "MASTER") return;
+
+  const user = managedUser();
+  const summary = $("userManagerSummary");
+  const assignments = $("userManagerAssignments");
+
+  if (!user) {
+    summary.innerHTML = '<div class="muted">Selecciona una cuenta.</div>';
+    assignments.innerHTML = '<div class="muted">Sin cuenta seleccionada.</div>';
+    $("assignDeliveryUserBtn").disabled = true;
+    $("assignLocalUserBtn").disabled = true;
+    return;
+  }
+
+  const canDelivery = ["CLIENT","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(user.role_code);
+  const canLocal = ["CLIENT","LOCAL_ADMIN"].includes(user.role_code);
+
+  summary.innerHTML = `
+    <div><strong>Nombre:</strong> ${esc(user.full_name || "—")}</div>
+    <div><strong>Correo:</strong> ${esc(user.email || "—")}</div>
+    <div><strong>Teléfono:</strong> ${esc(user.phone || "—")}</div>
+    <div><strong>Rol actual:</strong> ${esc(user.role_code)}</div>
+    <div><strong>Perfil:</strong> ${user.profile_active ? "Activo" : "Inactivo"}</div>
+    <div><strong>Correo confirmado:</strong> ${user.email_confirmed ? "Sí" : "No"}</div>
+    <div><strong>CUSTOMER activo:</strong> ${user.active_customer ? "Sí" : "No"}</div>
+  `;
+
+  $("assignDeliveryUserBtn").disabled = !canDelivery || !user.profile_active;
+  $("assignLocalUserBtn").disabled = !canLocal || !user.profile_active;
+
+  const deliveryRows = (user.delivery_ids || []).map(deliveryId => `
+    <div class="row between assignment-row">
+      <span>DELIVERY: <strong>${esc(deliveryNameById(deliveryId))}</strong></span>
+      <button class="btn-danger" onclick="unassignDeliveryUser('${user.user_id}','${deliveryId}')">Desvincular</button>
+    </div>
+  `).join("");
+
+  const localRows = (user.local_ids || []).map(localId => `
+    <div class="row between assignment-row">
+      <span>LOCAL: <strong>${esc(localNameById(localId))}</strong></span>
+      <button class="btn-danger" onclick="unassignLocalUser('${user.user_id}','${localId}')">Desvincular</button>
+    </div>
+  `).join("");
+
+  assignments.innerHTML =
+    (deliveryRows || localRows)
+      ? `${deliveryRows}${localRows}`
+      : '<div class="muted">Esta cuenta no tiene asignaciones activas.</div>';
+
+  if (user.role_code === "MASTER") {
+    assignments.insertAdjacentHTML(
+      "afterbegin",
+      '<div class="message error">Las cuentas MASTER no se convierten desde este módulo.</div>'
+    );
+  }
+}
+
+async function loadUsersModule() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const users = await rpc("master_list_users");
+    state.users = users || [];
+
+    $("userManagerDelivery").innerHTML = state.deliveries.length
+      ? state.deliveries.filter(d => d.active !== false).map(d =>
+          `<option value="${d.id}">${esc(d.name)}</option>`
+        ).join("")
+      : '<option value="">No hay DELIVERY</option>';
+
+    $("userManagerLocal").innerHTML = state.locals.length
+      ? state.locals.filter(local => local.active !== false).map(local =>
+          `<option value="${local.id}">${esc(local.name)}</option>`
+        ).join("")
+      : '<option value="">No hay LOCAL</option>';
+
+    renderUserOptions();
+  } catch (e) {
+    message(e.message || "No se pudieron cargar los usuarios.", "error");
+  }
+}
+
+async function assignDeliveryUser() {
+  try {
+    const user = managedUser();
+    if (!user) throw new Error("Selecciona una cuenta.");
+
+    const deliveryId = $("userManagerDelivery").value || null;
+    const roleCode = $("userManagerDeliveryRole").value;
+    const convertCustomer = $("userManagerDeliveryConvert").checked;
+
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+
+    if (user.role_code === "CLIENT" && user.active_customer && !convertCustomer) {
+      throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión explícita para continuar.");
+    }
+
+    if (user.role_code === "CLIENT" && user.active_customer && convertCustomer) {
+      const ok = confirm("La conversión desactivará el CUSTOMER activo de esta cuenta para convertirla en usuario del DELIVERY. ¿Continuar?");
+      if (!ok) return;
+    }
+
+    await rpc("master_assign_delivery_user", {
+      p_user_id: user.user_id,
+      p_delivery_id: deliveryId,
+      p_role_code: roleCode,
+      p_convert_customer: convertCustomer
+    });
+
+    $("userManagerDeliveryConvert").checked = false;
+    message("Usuario asignado al DELIVERY.");
+    await loadUsersModule();
+  } catch (e) {
+    message(e.message || "No se pudo asignar el usuario al DELIVERY.", "error");
+  }
+}
+
+async function assignLocalUser() {
+  try {
+    const user = managedUser();
+    if (!user) throw new Error("Selecciona una cuenta.");
+
+    const localId = $("userManagerLocal").value || null;
+    const convertCustomer = $("userManagerLocalConvert").checked;
+
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    if (user.role_code === "CLIENT" && user.active_customer && !convertCustomer) {
+      throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión explícita para continuar.");
+    }
+
+    if (user.role_code === "CLIENT" && user.active_customer && convertCustomer) {
+      const ok = confirm("La conversión desactivará el CUSTOMER activo de esta cuenta para convertirla en LOCAL_ADMIN. ¿Continuar?");
+      if (!ok) return;
+    }
+
+    await rpc("master_assign_local_admin", {
+      p_user_id: user.user_id,
+      p_local_id: localId,
+      p_convert_customer: convertCustomer
+    });
+
+    $("userManagerLocalConvert").checked = false;
+    message("Usuario asignado como administrador del LOCAL.");
+    await loadUsersModule();
+  } catch (e) {
+    message(e.message || "No se pudo asignar el usuario al LOCAL.", "error");
+  }
+}
+
+async function unassignDeliveryUser(userId, deliveryId) {
+  if (!confirm("¿Desvincular esta cuenta del DELIVERY? El rol global de la cuenta no se elimina automáticamente.")) return;
+
+  try {
+    await rpc("master_unassign_delivery_user", {
+      p_user_id: userId,
+      p_delivery_id: deliveryId
+    });
+    message("Cuenta desvinculada del DELIVERY.");
+    await loadUsersModule();
+  } catch (e) {
+    message(e.message || "No se pudo desvincular la cuenta.", "error");
+  }
+}
+
+async function unassignLocalUser(userId, localId) {
+  if (!confirm("¿Desvincular esta cuenta del LOCAL? El rol global de la cuenta no se elimina automáticamente.")) return;
+
+  try {
+    await rpc("master_unassign_local_admin", {
+      p_user_id: userId,
+      p_local_id: localId
+    });
+    message("Cuenta desvinculada del LOCAL.");
+    await loadUsersModule();
+  } catch (e) {
+    message(e.message || "No se pudo desvincular la cuenta.", "error");
+  }
+}
+
 async function loadCities() {
   if (state.role !== "MASTER") return;
 
@@ -1565,6 +1793,10 @@ function bindEvents() {
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
   $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
+  $("userManagerSearch").oninput = renderUserOptions;
+  $("userManagerUser").onchange = renderManagedUser;
+  $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
+  $("assignLocalUserBtn").onclick = assignLocalUser;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
