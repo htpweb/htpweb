@@ -1,4 +1,4 @@
-name: Codigo 69 Inspect Catalog
+name: Codigo 69 Verify
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  inspect:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Verify capability catalog
+      - name: Runtime verify fee RPCs with rollback
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,17 +34,60 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'CAPABILITIES';
-          select code||'|'||scope||'|'||active
-          from public.capabilities
-          where code in ('delivery_fees.manage','zones.manage')
-          order by code;
+          begin;
 
-          select 'PERMISSIONS';
-          select code||'|'||active
-          from public.permissions
-          where code in ('delivery_fees.manage','zones.assign')
-          order by code;
+          do $$
+          declare
+            v_master uuid;
+            v_delivery uuid;
+            v_config uuid;
+            v_range uuid;
+          begin
+            select p.id into v_master
+            from public.profiles p
+            join public.roles r on r.id=p.role_id
+            where p.active=true and r.active=true and r.code='MASTER'
+            order by p.created_at
+            limit 1;
+
+            select d.id into v_delivery
+            from public.deliveries d
+            where d.active=true
+            order by d.created_at
+            limit 1;
+
+            if v_master is null or v_delivery is null then
+              raise exception 'Missing MASTER or active DELIVERY';
+            end if;
+
+            perform set_config('request.jwt.claim.sub', v_master::text, true);
+
+            select public.save_delivery_fee_config(v_delivery,'FIXED',1.50,true)
+              into v_config;
+
+            select public.save_delivery_fee_range(v_delivery,null,99,100,9.99,false)
+              into v_range;
+
+            if v_config is null or v_range is null then
+              raise exception 'Fee RPC verification returned null';
+            end if;
+
+            raise notice 'FEE_CONFIG_RPC_OK=true';
+            raise notice 'FEE_RANGE_RPC_OK=true';
+          end
+          $$;
+
+          rollback;
+
+          select 'DEMO_FEE_PRESERVED|' || mode || '|' || fixed_fee || '|' || active
+          from public.delivery_fee_configs
+          where delivery_id=(
+            select id from public.deliveries where active=true order by created_at limit 1
+          );
+
+          select 'ROLLBACK_TEST_RANGE_COUNT|' || count(*)
+          from public.delivery_fee_ranges
+          where distance_from=99 and distance_to=100 and fee=9.99;
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
