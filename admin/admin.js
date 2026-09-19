@@ -15,7 +15,7 @@ const state = {
   deliveryProfileRecord: null,
   localProfileRecord: null,
   users: [],
-  feeRanges: [],
+  feeRates: [],
   zoneContext: null,
   zonesCatalog: [],
   categories: [],
@@ -1240,53 +1240,46 @@ function feeDeliveryRecord() {
 function updateFeeModeUI() {
   const distanceMode = $("feeMode")?.value === "DISTANCE";
   $("fixedFeeField")?.classList.toggle("hidden", distanceMode);
-  $("distanceRangesCard")?.classList.toggle("hidden", !distanceMode);
+  $("distanceRatesCard")?.classList.toggle("hidden", !distanceMode);
 }
 
-function clearFeeRangeForm() {
-  $("feeRangeId").value = "";
-  $("feeDistanceFrom").value = "0";
-  $("feeDistanceTo").value = "";
-  $("feeRangeValue").value = "";
-  $("feeRangeActive").value = "true";
-  $("saveFeeRangeBtn").textContent = "Guardar rango";
+function feePeriodLabel(period) {
+  return period === "NIGHT" ? "Noche" : "Día";
 }
 
-function renderFeeRanges() {
-  const container = $("feeRangesList");
+function renderFeeRates() {
+  const container = $("feeRatesList");
   if (!container) return;
 
-  if (!state.feeRanges.length) {
-    container.innerHTML = '<div class="muted">Todavía no hay rangos configurados.</div>';
-    return;
-  }
+  const rates = ["DAY","NIGHT"].map(period =>
+    state.feeRates.find(rate => rate.period === period) || {
+      period,
+      rate_per_km: null,
+      active: false
+    }
+  );
 
   container.innerHTML = `
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Desde</th>
-            <th>Hasta</th>
-            <th>Tarifa</th>
+            <th>Periodo</th>
+            <th>Costo por km</th>
             <th>Estado</th>
-            <th>Acciones</th>
+            <th>Acción</th>
           </tr>
         </thead>
         <tbody>
-          ${state.feeRanges.map(range => `
+          ${rates.map(rate => `
             <tr>
-              <td>${Number(range.distance_from).toFixed(2)} km</td>
-              <td>${Number(range.distance_to).toFixed(2)} km</td>
-              <td>${Number(range.fee).toFixed(2)}</td>
-              <td><span class="badge">${range.active ? "Activo" : "Inactivo"}</span></td>
+              <td>${feePeriodLabel(rate.period)}</td>
+              <td>${rate.rate_per_km === null ? "Sin configurar" : "$" + Number(rate.rate_per_km).toFixed(4) + " / km"}</td>
+              <td><span class="badge">${rate.rate_per_km === null ? "Pendiente" : (rate.active ? "Activa" : "Inactiva")}</span></td>
               <td>
-                <div class="row">
-                  <button class="btn-muted" onclick="editFeeRange('${range.id}')">Editar</button>
-                  ${range.active
-                    ? `<button class="btn-danger" onclick="deactivateFeeRange('${range.id}')">Desactivar</button>`
-                    : ""}
-                </div>
+                <button class="btn-muted" onclick="selectFeeRatePeriod('${rate.period}')">
+                  Configurar
+                </button>
               </td>
             </tr>
           `).join("")}
@@ -1294,6 +1287,16 @@ function renderFeeRanges() {
       </table>
     </div>
   `;
+}
+
+function selectFeeRatePeriod(period) {
+  const normalized = period === "NIGHT" ? "NIGHT" : "DAY";
+  $("feeRatePeriod").value = normalized;
+
+  const current = state.feeRates.find(rate => rate.period === normalized);
+  $("feeRatePerKm").value = current?.rate_per_km ?? "";
+  $("feeRateActive").value = String(current?.active ?? true);
+  $("feeRatePerKm").focus();
 }
 
 async function loadFees() {
@@ -1321,47 +1324,53 @@ async function loadFeeDelivery() {
   const delivery = feeDeliveryRecord();
 
   if (!delivery) {
-    state.feeRanges = [];
+    state.feeRates = [];
     $("saveFeeConfigBtn").disabled = true;
-    $("saveFeeRangeBtn").disabled = true;
-    renderFeeRanges();
+    $("saveFeeScheduleBtn").disabled = true;
+    $("saveFeeRateBtn").disabled = true;
+    renderFeeRates();
     return;
   }
 
   try {
-    const [configRes, rangesRes] = await Promise.all([
+    const [configRes, ratesRes] = await Promise.all([
       supabaseClient
         .from("delivery_fee_configs")
-        .select("id,delivery_id,mode,fixed_fee,active")
+        .select("id,delivery_id,mode,fixed_fee,day_start_time,night_start_time,active")
         .eq("delivery_id", delivery.id)
         .maybeSingle(),
       supabaseClient
-        .from("delivery_fee_ranges")
-        .select("id,delivery_id,distance_from,distance_to,fee,active")
+        .from("delivery_fee_rates")
+        .select("id,delivery_id,period,rate_per_km,active")
         .eq("delivery_id", delivery.id)
-        .order("distance_from")
+        .order("period")
     ]);
 
     if (configRes.error) throw configRes.error;
-    if (rangesRes.error) throw rangesRes.error;
+    if (ratesRes.error) throw ratesRes.error;
 
     const config = configRes.data;
-    state.feeRanges = rangesRes.data || [];
+    state.feeRates = ratesRes.data || [];
 
     $("feeMode").value = config?.mode || "FIXED";
     $("fixedFee").value = config?.fixed_fee ?? "0";
+    $("feeDayStart").value = String(config?.day_start_time || "06:00").slice(0,5);
+    $("feeNightStart").value = String(config?.night_start_time || "18:00").slice(0,5);
     $("feeConfigActive").value = String(config?.active ?? true);
-    $("saveFeeConfigBtn").disabled = false;
-    $("saveFeeRangeBtn").disabled = false;
 
-    clearFeeRangeForm();
+    $("saveFeeConfigBtn").disabled = false;
+    $("saveFeeScheduleBtn").disabled = !config;
+    $("saveFeeRateBtn").disabled = !config;
+
     updateFeeModeUI();
-    renderFeeRanges();
+    renderFeeRates();
+    selectFeeRatePeriod($("feeRatePeriod").value || "DAY");
   } catch (e) {
-    state.feeRanges = [];
+    state.feeRates = [];
     $("saveFeeConfigBtn").disabled = true;
-    $("saveFeeRangeBtn").disabled = true;
-    renderFeeRanges();
+    $("saveFeeScheduleBtn").disabled = true;
+    $("saveFeeRateBtn").disabled = true;
+    renderFeeRates();
     message(e.message || "No se pudieron cargar las tarifas del DELIVERY.", "error");
   }
 }
@@ -1389,7 +1398,7 @@ async function saveFeeConfig() {
     message(
       mode === "FIXED"
         ? "Tarifa fija del DELIVERY actualizada."
-        : "Tarifa por distancia activada. Configura los rangos."
+        : "Tarifa por distancia activada. Configura el costo por km de Día y Noche."
     );
 
     await loadFeeDelivery();
@@ -1398,87 +1407,63 @@ async function saveFeeConfig() {
   }
 }
 
-async function saveFeeRange() {
+async function saveFeeSchedule() {
   try {
     const delivery = feeDeliveryRecord();
     if (!delivery) throw new Error("Selecciona un DELIVERY.");
 
-    const rangeId = $("feeRangeId").value || null;
-    const distanceFromRaw = $("feeDistanceFrom").value.trim();
-    const distanceToRaw = $("feeDistanceTo").value.trim();
-    const feeRaw = $("feeRangeValue").value.trim();
+    const dayStart = $("feeDayStart").value;
+    const nightStart = $("feeNightStart").value;
 
-    if (distanceFromRaw === "" || distanceToRaw === "" || feeRaw === "") {
-      throw new Error("Completa las distancias y el valor del rango.");
+    if (!dayStart || !nightStart) {
+      throw new Error("Selecciona la hora de inicio del día y de la noche.");
     }
 
-    const distanceFrom = Number(distanceFromRaw);
-    const distanceTo = Number(distanceToRaw);
-    const fee = Number(feeRaw);
-
-    if (!Number.isFinite(distanceFrom) || distanceFrom < 0) {
-      throw new Error("La distancia inicial debe ser igual o mayor que 0.");
+    if (dayStart >= nightStart) {
+      throw new Error("El inicio de la tarifa diurna debe ser anterior al inicio nocturno.");
     }
 
-    if (!Number.isFinite(distanceTo) || distanceTo <= distanceFrom) {
-      throw new Error("La distancia final debe ser mayor que la distancia inicial.");
-    }
-
-    if (!Number.isFinite(fee) || fee < 0) {
-      throw new Error("El valor del rango debe ser igual o mayor que 0.");
-    }
-
-    await rpc("save_delivery_fee_range", {
+    await rpc("save_delivery_fee_schedule", {
       p_delivery_id: delivery.id,
-      p_range_id: rangeId,
-      p_distance_from: distanceFrom,
-      p_distance_to: distanceTo,
-      p_fee: fee,
-      p_active: $("feeRangeActive").value === "true"
+      p_day_start_time: dayStart,
+      p_night_start_time: nightStart
     });
 
-    message(rangeId ? "Rango de tarifa actualizado." : "Rango de tarifa creado.");
+    message("Horario de tarifa Día / Noche actualizado.");
     await loadFeeDelivery();
   } catch (e) {
-    message(e.message || "No se pudo guardar el rango.", "error");
+    message(e.message || "No se pudo guardar el horario de tarifas.", "error");
   }
 }
 
-function editFeeRange(rangeId) {
-  const range = state.feeRanges.find(item => item.id === rangeId);
-  if (!range) return;
-
-  $("feeRangeId").value = range.id;
-  $("feeDistanceFrom").value = range.distance_from;
-  $("feeDistanceTo").value = range.distance_to;
-  $("feeRangeValue").value = range.fee;
-  $("feeRangeActive").value = String(range.active);
-  $("saveFeeRangeBtn").textContent = "Actualizar rango";
-
-  $("feeDistanceFrom").focus();
-}
-
-async function deactivateFeeRange(rangeId) {
-  const range = state.feeRanges.find(item => item.id === rangeId);
-  const delivery = feeDeliveryRecord();
-  if (!range || !delivery) return;
-
-  if (!confirm(`¿Desactivar el rango ${range.distance_from}–${range.distance_to} km?`)) return;
-
+async function saveFeeRate() {
   try {
-    await rpc("save_delivery_fee_range", {
+    const delivery = feeDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    const period = $("feeRatePeriod").value;
+    const raw = $("feeRatePerKm").value.trim();
+
+    if (raw === "") {
+      throw new Error(`Escribe el costo por km para ${feePeriodLabel(period).toLowerCase()}.`);
+    }
+
+    const rate = Number(raw);
+    if (!Number.isFinite(rate) || rate < 0) {
+      throw new Error("El costo por km debe ser un número igual o mayor que 0.");
+    }
+
+    await rpc("save_delivery_distance_rate", {
       p_delivery_id: delivery.id,
-      p_range_id: range.id,
-      p_distance_from: Number(range.distance_from),
-      p_distance_to: Number(range.distance_to),
-      p_fee: Number(range.fee),
-      p_active: false
+      p_period: period,
+      p_rate_per_km: rate,
+      p_active: $("feeRateActive").value === "true"
     });
 
-    message("Rango desactivado.");
+    message(`Tarifa por km de ${feePeriodLabel(period)} actualizada.`);
     await loadFeeDelivery();
   } catch (e) {
-    message(e.message || "No se pudo desactivar el rango.", "error");
+    message(e.message || "No se pudo guardar la tarifa por km.", "error");
   }
 }
 
@@ -1500,6 +1485,7 @@ async function enableDeliveryFees() {
     message(e.message || "No se pudo habilitar la gestión de tarifas.", "error");
   }
 }
+
 
 function coverageDeliveryRecord() {
   const id = $("coverageDelivery")?.value || "";
@@ -3038,8 +3024,9 @@ function bindEvents() {
   $("feeDelivery").onchange = loadFeeDelivery;
   $("feeMode").onchange = updateFeeModeUI;
   $("saveFeeConfigBtn").onclick = saveFeeConfig;
-  $("saveFeeRangeBtn").onclick = saveFeeRange;
-  $("cancelFeeRangeEditBtn").onclick = clearFeeRangeForm;
+  $("saveFeeScheduleBtn").onclick = saveFeeSchedule;
+  $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
+  $("saveFeeRateBtn").onclick = saveFeeRate;
   $("enableDeliveryFeesBtn").onclick = enableDeliveryFees;
   $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
