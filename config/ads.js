@@ -1,9 +1,28 @@
 (() => {
   const ROTATE_MS = 5000;
+  const scriptBase = document.currentScript?.src ? new URL(".", document.currentScript.src) : new URL("../config/", location.href);
   let ads = [];
   let index = 0;
   let timer = null;
   let delivery = null;
+
+  async function ensureAnalytics() {
+    if (window.HTPWEBAnalytics) return;
+    await new Promise(resolve => {
+      const existing = document.querySelector('script[data-htpweb-analytics="1"]');
+      if (existing) {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", resolve, { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = new URL("analytics.js", scriptBase).href;
+      script.dataset.htpwebAnalytics = "1";
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+    });
+  }
 
   const text = (row, keys, fallback = "") => {
     for (const key of keys) {
@@ -56,30 +75,20 @@
     if (!productId && rowScope === "PRODUCT") productId = destinationId;
 
     if (productId && !localId) {
-      const { data, error } = await supabaseClient
-        .from("products")
-        .select("id,local_id,active")
-        .eq("id", productId)
-        .eq("active", true)
-        .maybeSingle();
+      const { data, error } = await supabaseClient.from("products").select("id,local_id,active")
+        .eq("id", productId).eq("active", true).maybeSingle();
       if (error || !data) return null;
       localId = data.local_id;
     }
 
     if (localId) {
-      const { data: relation, error } = await supabaseClient
-        .from("local_deliveries")
-        .select("local_id")
-        .eq("delivery_id", delivery.id)
-        .eq("local_id", localId)
-        .eq("active", true)
-        .maybeSingle();
+      const { data: relation, error } = await supabaseClient.from("local_deliveries").select("local_id")
+        .eq("delivery_id", delivery.id).eq("local_id", localId).eq("active", true).maybeSingle();
       if (error || !relation) return null;
       const params = { local: localId };
       if (productId) params.product = productId;
       return urlDelivery("local.html", params);
     }
-
     return urlDelivery("index.html");
   }
 
@@ -112,7 +121,6 @@
   function ensureShell() {
     let shell = document.getElementById("htpwebAdBanner");
     if (shell) return shell;
-
     shell = document.createElement("aside");
     shell.id = "htpwebAdBanner";
     shell.className = "htpweb-ad-banner";
@@ -127,9 +135,7 @@
         </div>
         <span class="htpweb-ad-cta">Ver</span>
         <span class="htpweb-ad-progress" id="htpwebAdProgress"></span>
-      </a>
-    `;
-
+      </a>`;
     shell.querySelector("#htpwebAdLink").addEventListener("click", () => trackAd("AD_CLICK", ads[index]));
     document.body.appendChild(shell);
     document.body.classList.add("has-htpweb-ad");
@@ -143,7 +149,6 @@
     const title = document.getElementById("htpwebAdTitle");
     const description = document.getElementById("htpwebAdDescription");
     const progress = document.getElementById("htpwebAdProgress");
-
     link.href = ad.href;
     title.textContent = ad.title;
     description.textContent = ad.description || "Toca para ver la promoción.";
@@ -152,7 +157,6 @@
     progress.classList.remove("run");
     void progress.offsetWidth;
     progress.classList.add("run");
-
     trackAd("AD_IMPRESSION", ad, { dedupeKey: `ad-impression:${ad.id}:${index}` });
   }
 
@@ -164,25 +168,19 @@
 
   async function load() {
     try {
+      await ensureAnalytics();
       delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
       if (!delivery?.id) return;
-
       const { data, error } = await supabaseClient.from("advertisements").select("*");
       if (error) {
         console.warn("Publicidad no disponible:", error.message || error);
         return;
       }
-
-      const eligible = (data || [])
-        .filter(row => bool(text(row, ["active", "enabled", "is_active"], true), true))
-        .filter(dateOk)
-        .filter(belongsToDelivery);
-
-      const normalized = (await Promise.all(eligible.map(normalize)))
-        .filter(Boolean)
+      const eligible = (data || []).filter(row => bool(text(row, ["active", "enabled", "is_active"], true), true))
+        .filter(dateOk).filter(belongsToDelivery);
+      const normalized = (await Promise.all(eligible.map(normalize))).filter(Boolean)
         .sort((a, b) => b.priority - a.priority);
       if (!normalized.length) return;
-
       ads = normalized;
       index = 0;
       show(ads[0]);
