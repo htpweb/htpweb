@@ -18,6 +18,7 @@
     <nav class="nav" id="nav">
       <button data-section="overview">Resumen</button>
       <button data-section="mydelivery">Mi Delivery</button>
+      <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
@@ -93,6 +94,73 @@
         <p class="muted" style="margin-top:10px">
           El nombre y el slug requieren intervención de HTPWEB. La edición de información necesita la capability
           <code>delivery.info.manage</code>.
+        </p>
+      </div>
+    </section>
+
+    <section id="section-mylocal" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Mi Local</h2>
+            <p class="muted">Administra la información pública del LOCAL asignado a tu cuenta.</p>
+          </div>
+          <select id="profileLocal" style="max-width:340px"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div>
+            <label>Nombre</label>
+            <input id="profileLocalName" disabled>
+          </div>
+          <div>
+            <label>Dirección</label>
+            <input id="profileLocalAddress" disabled>
+          </div>
+          <div>
+            <label>Teléfono</label>
+            <input id="profileLocalPhone" maxlength="40">
+          </div>
+          <div>
+            <label>WhatsApp</label>
+            <input id="profileLocalWhatsapp" maxlength="40">
+          </div>
+          <div>
+            <label>Sitio web</label>
+            <input id="profileLocalWebsite" maxlength="500" placeholder="https://...">
+          </div>
+          <div>
+            <label>Instagram</label>
+            <input id="profileLocalInstagram" maxlength="500" placeholder="https://...">
+          </div>
+          <div>
+            <label>Facebook</label>
+            <input id="profileLocalFacebook" maxlength="500" placeholder="https://...">
+          </div>
+          <div>
+            <label>TikTok</label>
+            <input id="profileLocalTiktok" maxlength="500" placeholder="https://...">
+          </div>
+          <div>
+            <label>Telegram</label>
+            <input id="profileLocalTelegram" maxlength="500" placeholder="https://...">
+          </div>
+        </div>
+
+        <label style="margin-top:12px">Descripción</label>
+        <textarea id="profileLocalDescription" rows="4" maxlength="1200"></textarea>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveLocalProfileBtn">Guardar información</button>
+          <button class="btn-muted" id="profileLocalGoStorageBtn">Gestionar logo y banner</button>
+          <button class="btn-muted" id="profileLocalGoCatalogBtn">Gestionar catálogo</button>
+        </div>
+
+        <p class="muted" style="margin-top:10px">
+          El nombre y la dirección se cambian mediante solicitud a HTPWEB. La edición directa requiere
+          <code>local.info.manage</code>.
         </p>
       </div>
     </section>
@@ -324,7 +392,7 @@
             </div>
           </div>
         </div>
-        <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión visual del LOCAL</button>
+        <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión del LOCAL</button>
         <small class="muted">LOCAL_ADMIN requiere <code>images.manage</code> + <code>local.info.manage</code>.</small>
       </div>
 
