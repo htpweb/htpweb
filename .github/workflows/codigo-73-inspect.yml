@@ -1,80 +1,69 @@
-name: Codigo 73 Inspect Edge
+name: Codigo 73 Version Edge Source
 
 on:
   push:
     branches: [codigo-73-disponibilidad-local-checkout]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
+  version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Inspect deployed Edge Function
+      - name: Download deployed crear-pedido
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         shell: bash
         run: |
           set -euo pipefail
-          echo "FUNCTION_LIST"
-          supabase functions list --project-ref "$SUPABASE_PROJECT_ID"
-
-          echo "DOWNLOAD_HELP"
-          supabase functions download --help | head -80
-
-          rm -rf supabase/functions
+          rm -rf supabase/functions/crear-pedido
           mkdir -p supabase/functions
           supabase functions download crear-pedido --project-ref "$SUPABASE_PROJECT_ID"
 
-          echo "DOWNLOADED_FILES"
-          find supabase/functions -maxdepth 3 -type f -printf '%p|%s bytes\n' | sort
-
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib, re
-          root=Path("supabase/functions/crear-pedido")
-          files=[p for p in root.rglob("*") if p.is_file()]
-          if not files:
-              raise SystemExit("crear-pedido download produced no files")
+          import re, hashlib
 
-          print("SOURCE_SUMMARY")
-          for p in files:
-              raw=p.read_bytes()
-              print(f"{p}|sha256={hashlib.sha256(raw).hexdigest()}|bytes={len(raw)}")
+          p=Path("supabase/functions/crear-pedido/index.ts")
+          if not p.exists():
+              raise SystemExit("crear-pedido/index.ts was not downloaded")
 
-          text="\n".join(
-              p.read_text(errors="ignore")
-              for p in files
-              if p.suffix in {".ts",".js",".json",".toml"}
-          )
+          text=p.read_text(errors="strict")
 
-          checks={
-            "HAS_LOCAL_SCHEDULES": bool(re.search(r"local_schedules|schedule|opening_time|closing_time", text, re.I)),
-            "HAS_CREATE_ORDER_TRANSACTION": "create_order_transaction" in text,
-            "HAS_CALCULATE_DELIVERY_FEE": "calculate_delivery_fee" in text,
-            "HAS_ORS": bool(re.search(r"openrouteservice|ORS", text, re.I)),
-            "HAS_AUTH_UID_FLOW": bool(re.search(r"authorization|jwt|getUser", text, re.I)),
-          }
-          for k,v in checks.items():
-              print(f"{k}|{str(v).lower()}")
-
-          suspicious=[]
-          patterns=[
+          suspicious=[
               r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*['\"][^'\"]+",
               r"ORS_API_KEY\s*=\s*['\"][^'\"]+",
               r"sk_[A-Za-z0-9_-]{20,}",
           ]
-          for pat in patterns:
-              if re.search(pat,text):
-                  suspicious.append(pat)
-          print(f"LITERAL_SECRET_PATTERNS|{len(suspicious)}")
-          if suspicious:
-              raise SystemExit("Potential literal secret found in downloaded source; refusing further handling")
+          if any(re.search(pattern,text) for pattern in suspicious):
+              raise SystemExit("Potential literal secret found; refusing to commit downloaded Edge source")
+
+          print("EDGE_BYTES="+str(len(text.encode())))
+          print("EDGE_SHA256="+hashlib.sha256(text.encode()).hexdigest())
+          print("HAS_LOCAL_SCHEDULES="+str(bool(re.search(r"local_schedules|opening_time|closing_time",text,re.I))).lower())
           PY
+
+      - name: Commit downloaded source if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add supabase/functions/crear-pedido/index.ts
+          if git diff --cached --quiet; then
+            echo "EDGE_SOURCE_ALREADY_VERSIONED=true"
+            exit 0
+          fi
+
+          git config user.name "htpweb-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "Código #73: versionar crear-pedido desplegada antes de modificar"
+          git push origin HEAD:codigo-73-disponibilidad-local-checkout
