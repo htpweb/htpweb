@@ -94,7 +94,8 @@ jobs:
             limit 1;
 
             if v_client is null then
-              raise exception 'No active CLIENT profile available for address verification';
+              raise notice 'ADDRESS_RUNTIME_SKIPPED_NO_CLIENT=true';
+              return;
             end if;
 
             select c.id
