@@ -16,13 +16,15 @@ const state = {
   localProfileRecord: null,
   users: [],
   feeRanges: [],
+  zoneContext: null,
+  zonesCatalog: [],
   categories: [],
   products: []
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","users","fees","storage","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","fees","storage","analytics"],
+  MASTER: ["overview","orders","requests","deliveries","users","fees","coverage","storage","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","fees","coverage","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","storage","analytics"]
 };
@@ -128,6 +130,7 @@ function showSection(name) {
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
   if (name === "fees") loadFees();
+  if (name === "coverage") loadCoverage();
   if (name === "catalog") loadCatalog();
   if (name === "storage") loadStorage();
   if (name === "analytics") loadAnalytics();
@@ -1481,6 +1484,360 @@ async function enableDeliveryFees() {
   }
 }
 
+function coverageDeliveryRecord() {
+  const id = $("coverageDelivery")?.value || "";
+  return state.deliveries.find(delivery => delivery.id === id) || null;
+}
+
+function cityLabel(cityId) {
+  const city = state.cities.find(item => item.id === cityId);
+  if (!city) return cityId || "—";
+  return [city.name, city.province, city.country].filter(Boolean).join(" — ");
+}
+
+function renderCoverageSummary() {
+  const context = state.zoneContext;
+  const container = $("coverageSummary");
+  if (!container) return;
+
+  if (!context?.delivery) {
+    container.innerHTML = '<div class="muted">Selecciona un DELIVERY.</div>';
+    return;
+  }
+
+  const max = context.max_zones === null || context.max_zones === undefined
+    ? "Sin límite configurado"
+    : context.max_zones;
+
+  container.innerHTML = `
+    <div><strong>Delivery:</strong> ${esc(context.delivery.name || "—")}</div>
+    <div><strong>Ciudad:</strong> ${esc(context.city
+      ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
+      : "Sin ciudad asignada")}</div>
+    <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
+    <div><strong>Gestión de zonas:</strong> ${context.zones_manage_enabled ? "Habilitada" : "No habilitada"}</div>
+  `;
+}
+
+function renderCoverageZones() {
+  const context = state.zoneContext;
+  const container = $("coverageZonesList");
+  if (!container) return;
+
+  if (!context?.delivery) {
+    container.innerHTML = '<div class="muted">Selecciona un DELIVERY.</div>';
+    return;
+  }
+
+  if (!context.city) {
+    container.innerHTML = state.role === "MASTER"
+      ? '<div class="message error">Este DELIVERY todavía no tiene ciudad. Asígnala desde la configuración MASTER.</div>'
+      : '<div class="message error">Este DELIVERY todavía no tiene ciudad configurada. Solicita a HTPWEB que la asigne.</div>';
+    return;
+  }
+
+  const zones = Array.isArray(context.zones) ? context.zones : [];
+  if (!zones.length) {
+    container.innerHTML = state.role === "MASTER"
+      ? '<div class="muted">No existen zonas activas en esta ciudad. Créala en el catálogo de zonas.</div>'
+      : '<div class="muted">HTPWEB todavía no ha creado zonas activas para esta ciudad.</div>';
+    return;
+  }
+
+  const canAssign = state.role === "MASTER" || context.zones_manage_enabled === true;
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Zona</th>
+            <th>Estado</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${zones.map(zone => `
+            <tr>
+              <td>${esc(zone.name)}</td>
+              <td>${zone.assigned ? "Asignada" : "Disponible"}</td>
+              <td>
+                <button
+                  class="${zone.assigned ? "btn-danger" : "btn-primary"}"
+                  onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
+                  ${canAssign ? "" : "disabled"}
+                >
+                  ${zone.assigned ? "Quitar cobertura" : "Agregar cobertura"}
+                </button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+    ${!canAssign && state.role === "DELIVERY_ADMIN"
+      ? '<p class="muted" style="margin-top:10px">La capability <code>zones.manage</code> debe ser habilitada por HTPWEB.</p>'
+      : ""}
+  `;
+}
+
+function clearZoneForm() {
+  $("zoneEditId").value = "";
+  $("zoneEditName").value = "";
+  $("zoneEditActive").value = "true";
+  $("saveZoneBtn").textContent = "Guardar zona";
+}
+
+function renderZonesCatalog() {
+  if (state.role !== "MASTER") return;
+
+  const container = $("zonesCatalogList");
+  if (!container) return;
+
+  if (!state.zonesCatalog.length) {
+    container.innerHTML = '<div class="muted">Todavía no hay zonas registradas.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Zona</th>
+            <th>Ciudad</th>
+            <th>Estado</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.zonesCatalog.map(zone => `
+            <tr>
+              <td>${esc(zone.name)}</td>
+              <td>${esc(cityLabel(zone.city_id))}</td>
+              <td>${zone.active ? "Activa" : "Inactiva"}</td>
+              <td><button class="btn-muted" onclick="editZone('${zone.id}')">Editar</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function loadZoneCatalog() {
+  if (state.role !== "MASTER") return;
+
+  const { data, error } = await supabaseClient
+    .from("zones")
+    .select("id,name,city_id,active")
+    .order("name");
+
+  if (error) throw error;
+
+  state.zonesCatalog = data || [];
+
+  const activeCities = state.cities.filter(city => city.active);
+  $("zoneEditCity").innerHTML = activeCities.length
+    ? activeCities.map(city => `<option value="${city.id}">${esc(cityLabel(city.id))}</option>`).join("")
+    : '<option value="">Primero crea una ciudad</option>';
+
+  renderZonesCatalog();
+}
+
+async function loadCoverage() {
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+
+  const select = $("coverageDelivery");
+  const previous = select.value;
+  const available = state.deliveries.filter(delivery => delivery.active !== false);
+
+  select.innerHTML = available.length
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+    : '<option value="">No hay DELIVERY disponible</option>';
+
+  if (previous && available.some(delivery => delivery.id === previous)) {
+    select.value = previous;
+  }
+
+  if (state.role === "MASTER") {
+    const activeCities = state.cities.filter(city => city.active);
+    const cityOptions = activeCities.length
+      ? activeCities.map(city => `<option value="${city.id}">${esc(cityLabel(city.id))}</option>`).join("")
+      : '<option value="">Primero crea una ciudad</option>';
+
+    $("coverageCity").innerHTML = cityOptions;
+    await loadZoneCatalog();
+  }
+
+  await loadCoverageContext();
+}
+
+async function loadCoverageContext() {
+  const delivery = coverageDeliveryRecord();
+
+  if (!delivery) {
+    state.zoneContext = null;
+    renderCoverageSummary();
+    renderCoverageZones();
+    return;
+  }
+
+  try {
+    state.zoneContext = await rpc("delivery_zone_context", {
+      p_delivery_id: delivery.id
+    });
+
+    if (state.role === "MASTER") {
+      if (state.zoneContext?.delivery?.city_id) {
+        $("coverageCity").value = state.zoneContext.delivery.city_id;
+      }
+
+      $("coverageMaxZones").value =
+        state.zoneContext?.max_zones === null || state.zoneContext?.max_zones === undefined
+          ? ""
+          : state.zoneContext.max_zones;
+    }
+
+    renderCoverageSummary();
+    renderCoverageZones();
+  } catch (e) {
+    state.zoneContext = null;
+    renderCoverageSummary();
+    $("coverageZonesList").innerHTML = `<div class="message error">${esc(e.message || "No se pudo cargar la cobertura.")}</div>`;
+  }
+}
+
+async function toggleDeliveryZone(zoneId, active) {
+  const delivery = coverageDeliveryRecord();
+  if (!delivery) return;
+
+  try {
+    await rpc("set_delivery_zone", {
+      p_delivery_id: delivery.id,
+      p_zone_id: zoneId,
+      p_active: Boolean(active)
+    });
+
+    message(active ? "Zona agregada a la cobertura." : "Zona retirada de la cobertura.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo modificar la cobertura.", "error");
+  }
+}
+
+async function setCoverageDeliveryCity() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    const cityId = $("coverageCity").value || null;
+
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+    if (!cityId) throw new Error("Selecciona una ciudad.");
+
+    await rpc("master_set_delivery_city", {
+      p_delivery_id: delivery.id,
+      p_city_id: cityId
+    });
+
+    message("Ciudad del DELIVERY actualizada.");
+    await Promise.all([loadScopes(), loadDeliveriesModule()]);
+    await loadCoverage();
+  } catch (e) {
+    message(e.message || "No se pudo asignar la ciudad.", "error");
+  }
+}
+
+async function setCoverageLimit() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    const raw = $("coverageMaxZones").value.trim();
+
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+    if (raw === "") throw new Error("Escribe el límite máximo de zonas.");
+
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error("El límite debe ser un número entero igual o mayor que 0.");
+    }
+
+    await rpc("master_set_delivery_limit", {
+      p_delivery_id: delivery.id,
+      p_limit_code: "max_zones",
+      p_max_value: value
+    });
+
+    message("Límite de zonas actualizado.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo guardar el límite.", "error");
+  }
+}
+
+async function enableZonesManagement() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    await rpc("master_set_delivery_capability", {
+      p_delivery_id: delivery.id,
+      p_capability_code: "zones.manage",
+      p_enabled: true
+    });
+
+    message("Gestión de zonas habilitada para este DELIVERY.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo habilitar la gestión de zonas.", "error");
+  }
+}
+
+function editZone(zoneId) {
+  if (state.role !== "MASTER") return;
+
+  const zone = state.zonesCatalog.find(item => item.id === zoneId);
+  if (!zone) return;
+
+  $("zoneEditId").value = zone.id;
+  $("zoneEditCity").value = zone.city_id;
+  $("zoneEditName").value = zone.name || "";
+  $("zoneEditActive").value = String(zone.active);
+  $("saveZoneBtn").textContent = "Actualizar zona";
+  $("zoneEditName").focus();
+}
+
+async function saveZone() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const zoneId = $("zoneEditId").value || null;
+    const cityId = $("zoneEditCity").value || null;
+    const name = $("zoneEditName").value.trim();
+
+    if (!cityId) throw new Error("Selecciona una ciudad.");
+    if (!name) throw new Error("Escribe el nombre de la zona.");
+
+    await rpc("master_save_zone", {
+      p_zone_id: zoneId,
+      p_city_id: cityId,
+      p_name: name,
+      p_active: $("zoneEditActive").value === "true"
+    });
+
+    message(zoneId ? "Zona actualizada." : "Zona creada.");
+    clearZoneForm();
+    await loadZoneCatalog();
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la zona.", "error");
+  }
+}
+
 async function loadCatalog() {
   if (state.role !== "LOCAL_ADMIN") return;
 
@@ -2078,6 +2435,12 @@ function bindEvents() {
   $("saveFeeRangeBtn").onclick = saveFeeRange;
   $("cancelFeeRangeEditBtn").onclick = clearFeeRangeForm;
   $("enableDeliveryFeesBtn").onclick = enableDeliveryFees;
+  $("coverageDelivery").onchange = loadCoverageContext;
+  $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
+  $("setCoverageLimitBtn").onclick = setCoverageLimit;
+  $("enableZonesBtn").onclick = enableZonesManagement;
+  $("saveZoneBtn").onclick = saveZone;
+  $("clearZoneBtn").onclick = clearZoneForm;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
