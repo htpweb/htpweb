@@ -35,8 +35,14 @@ jobs:
           env = os.environ.copy()
           env["PGPASSWORD"] = os.environ["SUPABASE_DB_PASSWORD"]
 
-          tables = "profiles,customers,customer_deliveries,customer_addresses,orders,order_locals,order_details,order_status_history,local_order_status_history,order_local_status_history,user_deliveries,user_locals"
+          tables = "profiles,customers,customer_deliveries,customer_addresses,orders,order_locals,order_details,order_items,order_status_history,local_order_status_history,order_local_status_history,user_deliveries,user_locals"
           sql = f"""
+          select 'TABLE|' || table_name
+          from information_schema.tables
+          where table_schema='public'
+            and (table_name like '%order%' or table_name like '%detail%' or table_name like '%item%')
+          order by table_name;
+
           select 'COL|' || table_name || '|' || ordinal_position || '|' || column_name || '|' ||
                  data_type || '|' || is_nullable || '|' || coalesce(column_default,'')
           from information_schema.columns
