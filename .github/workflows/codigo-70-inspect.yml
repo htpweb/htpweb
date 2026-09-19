@@ -1,4 +1,4 @@
-name: Codigo 70 Inspect Detail
+name: Codigo 70 Inspect Limits
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect zones backend detail
+      - name: Inspect zone limits and ACL
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -31,55 +31,51 @@ jobs:
           from pathlib import Path
           from urllib.parse import urlparse
           import os, subprocess
-
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
-          env=os.environ.copy()
-          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
-
+          env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'MASTER_SAVE_ZONE_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_save_zone';
+          select 'LIMIT_DEFINITION_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='limit_definitions'
+          order by ordinal_position;
 
-          select 'SET_DELIVERY_ZONE_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='set_delivery_zone';
+          select 'LIMIT_DEFINITIONS';
+          select row_to_json(x)::text
+          from (
+            select *
+            from public.limit_definitions
+            where code ilike '%zone%'
+            order by code
+          ) x;
 
-          select 'MASTER_SET_DELIVERY_CITY_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_set_delivery_city';
+          select 'DELIVERY_LIMIT_COLUMNS';
+          select column_name||'|'||data_type||'|'||is_nullable
+          from information_schema.columns
+          where table_schema='public' and table_name='delivery_limits'
+          order by ordinal_position;
 
-          select 'LIMIT_TABLES';
-          select tablename
-          from pg_tables
-          where schemaname='public' and tablename ilike '%limit%'
-          order by tablename;
+          select 'DELIVERY_LIMITS';
+          select row_to_json(x)::text
+          from (
+            select dl.*
+            from public.delivery_limits dl
+            join public.limit_definitions ld on ld.id=dl.limit_id
+            where ld.code='max_zones'
+            order by dl.delivery_id
+          ) x;
 
-          select 'CITIES';
-          select id||'|'||name||'|'||coalesce(province,'')||'|'||country||'|'||active
-          from public.cities
-          order by name;
-
-          select 'ZONES';
-          select id||'|'||name||'|'||city_id||'|'||active
-          from public.zones
-          order by name;
-
-          select 'DELIVERY_ZONES';
-          select delivery_id||'|'||zone_id||'|'||active
-          from public.delivery_zones
-          order by delivery_id,zone_id;
-
-          select 'DELIVERIES';
-          select id||'|'||name||'|'||coalesce(city_id::text,'NULL')||'|'||active
-          from public.deliveries
-          order by name;
+          select 'FUNCTION_PRIVS';
+          select 'master_save_zone|auth='||has_function_privilege('authenticated','public.master_save_zone(uuid,uuid,text,boolean)','EXECUTE')
+            ||'|anon='||has_function_privilege('anon','public.master_save_zone(uuid,uuid,text,boolean)','EXECUTE');
+          select 'set_delivery_zone|auth='||has_function_privilege('authenticated','public.set_delivery_zone(uuid,uuid,boolean)','EXECUTE')
+            ||'|anon='||has_function_privilege('anon','public.set_delivery_zone(uuid,uuid,boolean)','EXECUTE');
+          select 'master_set_delivery_city|auth='||has_function_privilege('authenticated','public.master_set_delivery_city(uuid,uuid)','EXECUTE')
+            ||'|anon='||has_function_privilege('anon','public.master_set_delivery_city(uuid,uuid)','EXECUTE');
+          select 'master_set_delivery_limit|auth='||has_function_privilege('authenticated','public.master_set_delivery_limit(uuid,text,integer)','EXECUTE')
+            ||'|anon='||has_function_privilege('anon','public.master_set_delivery_limit(uuid,text,integer)','EXECUTE');
           """
-          subprocess.run([
-            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
-            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
-          ],check=True,env=env)
+          subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
+            check=True,env=env)
           PY
