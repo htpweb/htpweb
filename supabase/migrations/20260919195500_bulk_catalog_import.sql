@@ -1,4 +1,9 @@
 -- HTPWEB Código #83 — carga masiva transaccional CSV/XLSX
+create or replace function public.raise_exception_bool(p_message text)
+returns boolean language plpgsql immutable as $
+begin raise exception '%', p_message; end;
+$;
+
 create or replace function public.bulk_import_local_catalog(
   p_local_id uuid,
   p_rows jsonb
@@ -60,7 +65,13 @@ begin
 
       if v_category_id is null then
         perform public.save_local_category(
-          p_local_id, null, v_category_name, null, null, 0, true
+          p_local_id := p_local_id,
+          p_category_id := null,
+          p_name := v_category_name,
+          p_description := null,
+          p_image_url := null,
+          p_display_order := 0,
+          p_active := true
         );
         select c.id into v_category_id
         from public.categories c
@@ -71,21 +82,21 @@ begin
     end if;
 
     perform public.save_local_product(
-      p_local_id, null, v_category_id, v_product_name,
-      nullif(trim(coalesce(v_row->>'descripcion','')), ''),
-      v_price, null, v_order, v_active
+      p_local_id := p_local_id,
+      p_product_id := null,
+      p_category_id := v_category_id,
+      p_name := v_product_name,
+      p_description := nullif(trim(coalesce(v_row->>'descripcion','')), ''),
+      p_price := v_price,
+      p_image_url := null,
+      p_display_order := v_order,
+      p_active := v_active
     );
     v_products := v_products + 1;
   end loop;
 
   return jsonb_build_object('categories_created',v_categories,'products_created',v_products,'rows',jsonb_array_length(p_rows));
 end;
-$$;
-
--- Helper pequeño para mantener CASE estricto sin aceptar valores ambiguos.
-create or replace function public.raise_exception_bool(p_message text)
-returns boolean language plpgsql immutable as $$
-begin raise exception '%', p_message; end;
 $$;
 
 revoke all on function public.bulk_import_local_catalog(uuid,jsonb) from public;
