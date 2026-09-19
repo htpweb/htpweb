@@ -1,20 +1,41 @@
-let negocio=null;
+let negocio = null;
 
-async function cargarNegocio(){
-  const params=new URLSearchParams(window.location.search);
-  const slug=params.get("cliente");
+function obtenerDeliverySlug() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("delivery") || params.get("cliente") || "";
+}
 
-  if(!slug) throw new Error("No se especificó el cliente.");
+async function cargarNegocio() {
+  const slug = obtenerDeliverySlug();
 
-  const {data,error}=await supabaseClient
-    .from("clientes")
-    .select("id,nombre,slug,logo_url,activo")
-    .eq("slug",slug)
-    .eq("activo",true)
+  if (!slug) {
+    throw new Error("No se especificó el delivery.");
+  }
+
+  const { data, error } = await supabaseClient
+    .from("deliveries")
+    .select("id,name,slug,description,logo_url,phone,whatsapp,city_id,active")
+    .eq("slug", slug)
+    .eq("active", true)
     .single();
 
-  if(error||!data) throw new Error("Cliente no encontrado.");
+  if (error || !data) {
+    throw new Error("Delivery no encontrado o inactivo.");
+  }
 
-  negocio=data;
+  negocio = data;
   return negocio;
+}
+
+function urlDelivery(path, extra = {}) {
+  const slug = negocio?.slug || obtenerDeliverySlug();
+  const params = new URLSearchParams({ delivery: slug });
+
+  Object.entries(extra).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  return `${path}?${params.toString()}`;
 }
