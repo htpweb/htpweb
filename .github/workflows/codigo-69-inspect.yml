@@ -1,4 +1,4 @@
-name: Codigo 69 Inspect Access
+name: Codigo 69 Inspect Catalog
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect permissions and data
+      - name: Verify capability catalog
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,59 +34,17 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'ROLE_PERMISSIONS_COLUMNS';
-          select column_name||'|'||data_type
-          from information_schema.columns
-          where table_schema='public' and table_name='role_permissions'
-          order by ordinal_position;
+          select 'CAPABILITIES';
+          select code||'|'||scope||'|'||active
+          from public.capabilities
+          where code in ('delivery_fees.manage','zones.manage')
+          order by code;
 
-          select 'DELIVERY_CAP_COLUMNS';
-          select column_name||'|'||data_type
-          from information_schema.columns
-          where table_schema='public' and table_name='delivery_capabilities'
-          order by ordinal_position;
-
-          select 'CAPABILITIES_COLUMNS';
-          select column_name||'|'||data_type
-          from information_schema.columns
-          where table_schema='public' and table_name='capabilities'
-          order by ordinal_position;
-
-          select 'ROLE_PERMISSION_ROWS';
-          select row_to_json(x)::text from (
-            select r.code role_code,p.code permission_code,rp.*
-            from public.role_permissions rp
-            join public.roles r on r.id=rp.role_id
-            join public.permissions p on p.id=rp.permission_id
-            where r.code in ('MASTER','DELIVERY_ADMIN','DELIVERY_OPERATOR')
-              and p.code in ('delivery_fees.manage','zones.assign')
-            order by r.code,p.code
-          ) x;
-
-          select 'DELIVERY_CAPABILITY_ROWS';
-          select row_to_json(x)::text from (
-            select d.name delivery_name,c.code capability_code,dc.*
-            from public.delivery_capabilities dc
-            join public.capabilities c on c.id=dc.capability_id
-            join public.deliveries d on d.id=dc.delivery_id
-            where c.code in ('delivery_fees.manage','zones.manage')
-            order by d.name,c.code
-          ) x;
-
-          select 'DEMO_DELIVERY';
-          select id||'|'||name||'|'||coalesce(city_id::text,'NULL') from public.deliveries where active=true order by created_at limit 5;
-
-          select 'FEE_CONFIGS';
-          select delivery_id||'|'||mode||'|'||fixed_fee||'|'||active from public.delivery_fee_configs order by created_at;
-
-          select 'FEE_RANGES';
-          select delivery_id||'|'||distance_from||'|'||distance_to||'|'||fee||'|'||active from public.delivery_fee_ranges order by delivery_id,distance_from;
-
-          select 'DELIVERY_ZONES';
-          select delivery_id||'|'||zone_id||'|'||active from public.delivery_zones order by delivery_id,zone_id;
-
-          select 'ZONES';
-          select id||'|'||name||'|'||city_id||'|'||active from public.zones order by name limit 50;
+          select 'PERMISSIONS';
+          select code||'|'||active
+          from public.permissions
+          where code in ('delivery_fees.manage','zones.assign')
+          order by code;
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
