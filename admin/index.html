@@ -407,40 +407,54 @@
         </p>
       </div>
 
-      <div class="card" id="distanceRangesCard">
-        <h3>Rangos por distancia</h3>
-        <p class="muted">Usa rangos sin superposición. Ejemplo: 0–3 km, 3–6 km, 6–10 km.</p>
-
-        <input id="feeRangeId" type="hidden">
+      <div class="card" id="distanceRatesCard">
+        <h3>Tarifa por kilómetro — Día / Noche</h3>
+        <p class="muted">
+          El DELIVERY configura un costo por km para el día y otro para la noche.
+          El cliente no selecciona la tarifa: el backend aplica automáticamente la correcta según la hora del pedido.
+        </p>
 
         <div class="form-grid">
           <div>
-            <label>Desde (km)</label>
-            <input id="feeDistanceFrom" type="number" min="0" step="0.01" value="0">
+            <label>Inicio tarifa diurna</label>
+            <input id="feeDayStart" type="time" value="06:00">
           </div>
           <div>
-            <label>Hasta (km)</label>
-            <input id="feeDistanceTo" type="number" min="0.01" step="0.01">
+            <label>Inicio tarifa nocturna</label>
+            <input id="feeNightStart" type="time" value="18:00">
+          </div>
+        </div>
+
+        <button class="btn-muted" id="saveFeeScheduleBtn" style="margin-top:14px">Guardar horario Día / Noche</button>
+
+        <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb">
+
+        <div class="form-grid">
+          <div>
+            <label>Periodo a configurar</label>
+            <select id="feeRatePeriod">
+              <option value="DAY">Día</option>
+              <option value="NIGHT">Noche</option>
+            </select>
           </div>
           <div>
-            <label>Valor (USD)</label>
-            <input id="feeRangeValue" type="number" min="0" step="0.01">
+            <label>Costo por km (USD)</label>
+            <input id="feeRatePerKm" type="number" min="0" step="0.0001" placeholder="Ej. 0.50">
           </div>
           <div>
-            <label>Estado del rango</label>
-            <select id="feeRangeActive">
-              <option value="true">Activo</option>
-              <option value="false">Inactivo</option>
+            <label>Estado</label>
+            <select id="feeRateActive">
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
             </select>
           </div>
         </div>
 
         <div class="row" style="margin-top:14px">
-          <button class="btn-primary" id="saveFeeRangeBtn">Guardar rango</button>
-          <button class="btn-muted" id="cancelFeeRangeEditBtn">Limpiar</button>
+          <button class="btn-primary" id="saveFeeRateBtn">Guardar tarifa por km</button>
         </div>
 
-        <div id="feeRangesList" style="margin-top:16px"></div>
+        <div id="feeRatesList" style="margin-top:16px"></div>
       </div>
     </section>
 
