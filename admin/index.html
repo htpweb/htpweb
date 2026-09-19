@@ -530,27 +530,51 @@
       </div>
 
       <div class="card">
-        <h3>Nueva categoría</h3>
+        <h3 id="categoryFormTitle">Nueva categoría</h3>
+        <input id="categoryId" type="hidden">
         <div class="form-grid">
-          <div><label>Nombre</label><input id="categoryName"></div>
-          <div><label>Orden</label><input id="categoryOrder" type="number" min="0" value="0"></div>
+          <div><label>Nombre</label><input id="categoryName" maxlength="160"></div>
+          <div><label>Orden</label><input id="categoryOrder" type="number" min="0" step="1" value="0"></div>
+          <div>
+            <label>Estado</label>
+            <select id="categoryActive">
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
+            </select>
+          </div>
         </div>
         <label>Descripción</label>
-        <textarea id="categoryDescription" rows="2"></textarea>
-        <button class="btn-primary" id="saveCategoryBtn">Crear categoría</button>
+        <textarea id="categoryDescription" rows="2" maxlength="1000"></textarea>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveCategoryBtn">Crear categoría</button>
+          <button class="btn-muted" id="clearCategoryBtn">Limpiar</button>
+        </div>
+        <div id="catalogCategories" style="margin-top:16px"></div>
       </div>
 
       <div class="card">
-        <h3>Nuevo producto</h3>
+        <h3 id="productFormTitle">Nuevo producto</h3>
+        <input id="productId" type="hidden">
         <div class="form-grid">
-          <div><label>Nombre</label><input id="productName"></div>
+          <div><label>Nombre</label><input id="productName" maxlength="180"></div>
           <div><label>Precio</label><input id="productPrice" type="number" min="0" step="0.01"></div>
           <div><label>Categoría</label><select id="productCategory"></select></div>
-          <div><label>Orden</label><input id="productOrder" type="number" min="0" value="0"></div>
+          <div><label>Orden</label><input id="productOrder" type="number" min="0" step="1" value="0"></div>
+          <div>
+            <label>Estado</label>
+            <select id="productActive">
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+          </div>
         </div>
         <label>Descripción</label>
-        <textarea id="productDescription" rows="2"></textarea>
-        <button class="btn-primary" id="saveProductBtn">Crear producto</button>
+        <textarea id="productDescription" rows="2" maxlength="1400"></textarea>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveProductBtn">Crear producto</button>
+          <button class="btn-muted" id="clearProductBtn">Limpiar</button>
+          <button class="btn-muted" id="productGoStorageBtn">Gestionar imagen</button>
+        </div>
       </div>
 
       <div class="card">

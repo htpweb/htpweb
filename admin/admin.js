@@ -2040,7 +2040,7 @@ async function enableCatalogManagement() {
     const localId = selectedCatalogLocalId();
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
-    for (const capability of ["products.manage","variants.manage"]) {
+    for (const capability of ["categories.manage","products.manage","variants.manage"]) {
       await rpc("master_set_local_capability", {
         p_local_id: localId,
         p_capability_code: capability,
@@ -2190,26 +2190,153 @@ async function enableScheduleManagement() {
   }
 }
 
+function catalogCategoryName(categoryId) {
+  if (!categoryId) return "Sin categoría";
+  return state.categories.find(category => category.id === categoryId)?.name || categoryId;
+}
+
+function clearCategoryForm() {
+  $("categoryId").value = "";
+  $("categoryName").value = "";
+  $("categoryDescription").value = "";
+  $("categoryOrder").value = "0";
+  $("categoryActive").value = "true";
+  $("categoryFormTitle").textContent = "Nueva categoría";
+  $("saveCategoryBtn").textContent = "Crear categoría";
+}
+
+function clearProductForm() {
+  $("productId").value = "";
+  $("productName").value = "";
+  $("productDescription").value = "";
+  $("productPrice").value = "";
+  $("productCategory").value = "";
+  $("productOrder").value = "0";
+  $("productActive").value = "true";
+  $("productFormTitle").textContent = "Nuevo producto";
+  $("saveProductBtn").textContent = "Crear producto";
+}
+
+function renderCatalogCategories() {
+  const container = $("catalogCategories");
+  if (!container) return;
+
+  if (!state.categories.length) {
+    container.innerHTML = '<div class="muted">No hay categorías.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th>Orden</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.categories.map(category => `
+            <tr>
+              <td>
+                <strong>${esc(category.name)}</strong>
+                ${category.description ? `<div class="muted">${esc(category.description)}</div>` : ""}
+              </td>
+              <td>${esc(category.display_order ?? 0)}</td>
+              <td>${category.active ? "Activa" : "Inactiva"}</td>
+              <td>
+                <div class="row">
+                  <button class="btn-muted" onclick="editCategory('${category.id}')">Editar</button>
+                  ${category.active
+                    ? `<button class="btn-danger" onclick="deactivateCategory('${category.id}')">Desactivar</button>`
+                    : ""}
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderCatalogProducts() {
+  const container = $("catalogProducts");
+  if (!container) return;
+
+  if (!state.products.length) {
+    container.innerHTML = '<div class="muted">No hay productos.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Orden</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.products.map(product => `
+            <tr>
+              <td>
+                <strong>${esc(product.name)}</strong>
+                ${product.description ? `<div class="muted">${esc(product.description)}</div>` : ""}
+              </td>
+              <td>${esc(catalogCategoryName(product.category_id))}</td>
+              <td>$${Number(product.price || 0).toFixed(2)}</td>
+              <td>${esc(product.display_order ?? 0)}</td>
+              <td>${product.active ? "Activo" : "Inactivo"}</td>
+              <td>
+                <div class="row">
+                  <button class="btn-muted" onclick="editProduct('${product.id}')">Editar</button>
+                  <button class="btn-muted" onclick="openProductStorage('${product.id}')">Imagen</button>
+                  ${product.active
+                    ? `<button class="btn-danger" onclick="deactivateProduct('${product.id}')">Desactivar</button>`
+                    : ""}
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 async function loadCatalog() {
   if (!["MASTER","LOCAL_ADMIN"].includes(state.role)) return;
 
-  const localId = $("catalogLocal").value || state.locals[0]?.id;
+  const localId = selectedCatalogLocalId();
   if (!localId) {
-    $("catalogProducts").innerHTML = '<div class="muted">No tienes un LOCAL activo asignado.</div>';
+    state.categories = [];
+    state.products = [];
+    state.variants = [];
+    renderCatalogCategories();
+    renderCatalogProducts();
+    $("variantsList").innerHTML = '<div class="muted">No tienes un LOCAL activo asignado.</div>';
     return;
   }
 
   const [cRes, pRes] = await Promise.all([
     supabaseClient
       .from("categories")
-      .select("id,name,description,display_order,active")
+      .select("id,name,description,image_url,display_order,active")
       .eq("local_id", localId)
       .order("display_order")
       .order("name"),
 
     supabaseClient
       .from("products")
-      .select("id,category_id,name,description,price,display_order,active")
+      .select("id,category_id,name,description,price,image_url,display_order,active")
       .eq("local_id", localId)
       .order("display_order")
       .order("name")
@@ -2223,87 +2350,205 @@ async function loadCatalog() {
 
   $("productCategory").innerHTML =
     '<option value="">Sin categoría</option>' +
-    state.categories.filter(c => c.active).map(c =>
-      `<option value="${c.id}">${esc(c.name)}</option>`
+    state.categories.map(category =>
+      `<option value="${category.id}">${esc(category.name)}${category.active ? "" : " — inactiva"}</option>`
     ).join("");
 
   $("variantProduct").innerHTML = state.products.length
     ? state.products.map(product =>
-        `<option value="${product.id}">${esc(product.name)}</option>`
+        `<option value="${product.id}">${esc(product.name)}${product.active ? "" : " — inactivo"}</option>`
       ).join("")
     : '<option value="">Primero crea un producto</option>';
 
-  $("catalogProducts").innerHTML = state.products.length
-    ? `
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Producto</th><th>Precio</th><th>Estado</th><th>ID</th></tr></thead>
-          <tbody>
-          ${state.products.map(p => `
-            <tr>
-              <td>${esc(p.name)}</td>
-              <td>$${Number(p.price || 0).toFixed(2)}</td>
-              <td>${p.active ? "Activo" : "Inactivo"}</td>
-              <td><code>${esc(p.id)}</code></td>
-            </tr>
-          `).join("")}
-          </tbody>
-        </table>
-      </div>
-    `
-    : '<div class="muted">No hay productos.</div>';
-
+  clearCategoryForm();
+  clearProductForm();
+  renderCatalogCategories();
+  renderCatalogProducts();
   await loadVariants();
+}
+
+function editCategory(categoryId) {
+  const category = state.categories.find(item => item.id === categoryId);
+  if (!category) return;
+
+  $("categoryId").value = category.id;
+  $("categoryName").value = category.name || "";
+  $("categoryDescription").value = category.description || "";
+  $("categoryOrder").value = category.display_order ?? 0;
+  $("categoryActive").value = String(category.active);
+  $("categoryFormTitle").textContent = "Editar categoría";
+  $("saveCategoryBtn").textContent = "Actualizar categoría";
+  $("categoryName").focus();
 }
 
 async function saveCategory() {
   try {
-    const localId = $("catalogLocal").value || state.locals[0]?.id;
+    const localId = selectedCatalogLocalId();
+    const categoryId = $("categoryId").value || null;
+    const name = $("categoryName").value.trim();
+    const orderRaw = $("categoryOrder").value.trim();
+
     if (!localId) throw new Error("Selecciona un LOCAL.");
+    if (!name) throw new Error("Escribe el nombre de la categoría.");
+
+    const displayOrder = orderRaw === "" ? 0 : Number(orderRaw);
+    if (!Number.isInteger(displayOrder) || displayOrder < 0) {
+      throw new Error("El orden debe ser un entero igual o mayor que 0.");
+    }
+
+    const current = categoryId
+      ? state.categories.find(category => category.id === categoryId)
+      : null;
 
     await rpc("save_local_category", {
       p_local_id: localId,
-      p_category_id: null,
-      p_name: $("categoryName").value.trim(),
+      p_category_id: categoryId,
+      p_name: name,
       p_description: $("categoryDescription").value.trim() || null,
-      p_image_url: null,
-      p_display_order: Number.parseInt($("categoryOrder").value, 10) || 0,
-      p_active: true
+      p_image_url: current?.image_url || null,
+      p_display_order: displayOrder,
+      p_active: $("categoryActive").value === "true"
     });
 
-    message("Categoría creada.");
-    $("categoryName").value = "";
-    $("categoryDescription").value = "";
+    message(categoryId ? "Categoría actualizada." : "Categoría creada.");
+    clearCategoryForm();
     await loadCatalog();
   } catch (e) {
-    message(e.message || "No se pudo crear la categoría.", "error");
+    message(e.message || "No se pudo guardar la categoría.", "error");
   }
+}
+
+async function deactivateCategory(categoryId) {
+  const localId = selectedCatalogLocalId();
+  const category = state.categories.find(item => item.id === categoryId);
+  if (!localId || !category) return;
+
+  if (!confirm(`¿Desactivar la categoría "${category.name}"? Los productos conservarán su relación con ella, pero la categoría dejará de estar activa.`)) return;
+
+  try {
+    await rpc("save_local_category", {
+      p_local_id: localId,
+      p_category_id: category.id,
+      p_name: category.name,
+      p_description: category.description || null,
+      p_image_url: category.image_url || null,
+      p_display_order: Number(category.display_order || 0),
+      p_active: false
+    });
+
+    message("Categoría desactivada.");
+    await loadCatalog();
+  } catch (e) {
+    message(e.message || "No se pudo desactivar la categoría.", "error");
+  }
+}
+
+function editProduct(productId) {
+  const product = state.products.find(item => item.id === productId);
+  if (!product) return;
+
+  $("productId").value = product.id;
+  $("productName").value = product.name || "";
+  $("productDescription").value = product.description || "";
+  $("productPrice").value = product.price ?? "";
+  $("productCategory").value = product.category_id || "";
+  $("productOrder").value = product.display_order ?? 0;
+  $("productActive").value = String(product.active);
+  $("productFormTitle").textContent = "Editar producto";
+  $("saveProductBtn").textContent = "Actualizar producto";
+  $("productName").focus();
 }
 
 async function saveProduct() {
   try {
-    const localId = $("catalogLocal").value || state.locals[0]?.id;
+    const localId = selectedCatalogLocalId();
+    const productId = $("productId").value || null;
+    const name = $("productName").value.trim();
+    const priceRaw = $("productPrice").value.trim();
+    const orderRaw = $("productOrder").value.trim();
+
     if (!localId) throw new Error("Selecciona un LOCAL.");
+    if (!name) throw new Error("Escribe el nombre del producto.");
+    if (priceRaw === "") throw new Error("Escribe el precio del producto.");
+
+    const price = Number(priceRaw);
+    const displayOrder = orderRaw === "" ? 0 : Number(orderRaw);
+
+    if (!Number.isFinite(price) || price < 0) {
+      throw new Error("El precio debe ser igual o mayor que 0.");
+    }
+
+    if (!Number.isInteger(displayOrder) || displayOrder < 0) {
+      throw new Error("El orden debe ser un entero igual o mayor que 0.");
+    }
+
+    const current = productId
+      ? state.products.find(product => product.id === productId)
+      : null;
 
     await rpc("save_local_product", {
       p_local_id: localId,
-      p_product_id: null,
+      p_product_id: productId,
       p_category_id: $("productCategory").value || null,
-      p_name: $("productName").value.trim(),
+      p_name: name,
       p_description: $("productDescription").value.trim() || null,
-      p_price: Number($("productPrice").value),
-      p_image_url: null,
-      p_display_order: Number.parseInt($("productOrder").value, 10) || 0,
-      p_active: true
+      p_price: price,
+      p_image_url: current?.image_url || null,
+      p_display_order: displayOrder,
+      p_active: $("productActive").value === "true"
     });
 
-    message("Producto creado.");
-    $("productName").value = "";
-    $("productDescription").value = "";
-    $("productPrice").value = "";
+    message(productId ? "Producto actualizado." : "Producto creado.");
+    clearProductForm();
     await loadCatalog();
   } catch (e) {
-    message(e.message || "No se pudo crear el producto.", "error");
+    message(e.message || "No se pudo guardar el producto.", "error");
+  }
+}
+
+async function deactivateProduct(productId) {
+  const localId = selectedCatalogLocalId();
+  const product = state.products.find(item => item.id === productId);
+  if (!localId || !product) return;
+
+  if (!confirm(`¿Desactivar el producto "${product.name}"? Dejará de mostrarse en el sitio público.`)) return;
+
+  try {
+    await rpc("save_local_product", {
+      p_local_id: localId,
+      p_product_id: product.id,
+      p_category_id: product.category_id || null,
+      p_name: product.name,
+      p_description: product.description || null,
+      p_price: Number(product.price),
+      p_image_url: product.image_url || null,
+      p_display_order: Number(product.display_order || 0),
+      p_active: false
+    });
+
+    message("Producto desactivado.");
+    await loadCatalog();
+  } catch (e) {
+    message(e.message || "No se pudo desactivar el producto.", "error");
+  }
+}
+
+async function openProductStorage(productId = null) {
+  const localId = selectedCatalogLocalId();
+  if (!localId) return;
+
+  showSection("storage");
+
+  if ($("storageLocal")) {
+    $("storageLocal").value = localId;
+    await refreshLocalMediaPreview();
+    await loadStorageProducts();
+  }
+
+  const targetId = productId || $("productId").value || null;
+  if (targetId && $("storageProduct")) {
+    $("storageProduct").value = targetId;
+    await refreshProductMediaPreview();
   }
 }
 
@@ -2587,7 +2832,7 @@ async function enableLocalMedia() {
     const localId = $("storageLocal").value;
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
-    for (const capability of ["images.manage","local.info.manage","products.manage","variants.manage","schedules.manage"]) {
+    for (const capability of ["images.manage","local.info.manage","categories.manage","products.manage","variants.manage","schedules.manage"]) {
       await rpc("master_set_local_capability", {
         p_local_id: localId,
         p_capability_code: capability,
@@ -2805,7 +3050,10 @@ function bindEvents() {
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
+  $("clearCategoryBtn").onclick = clearCategoryForm;
   $("saveProductBtn").onclick = saveProduct;
+  $("clearProductBtn").onclick = clearProductForm;
+  $("productGoStorageBtn").onclick = () => openProductStorage();
   $("variantProduct").onchange = loadVariants;
   $("saveVariantBtn").onclick = saveVariant;
   $("clearVariantBtn").onclick = clearVariantForm;
