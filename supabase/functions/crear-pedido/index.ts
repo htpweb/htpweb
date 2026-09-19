@@ -159,6 +159,63 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   }
 }
 /* ============================================================
+   DISPONIBILIDAD REAL DE LOCALES
+
+   - La hora la resuelve PostgreSQL, no el navegador.
+   - Usa local_schedules.
+   - Si un LOCAL todavía no tiene horarios configurados,
+     se mantiene compatibilidad y se permite ordenar.
+   - Si ya existen horarios, el día/hora actual debe estar abierto.
+   ============================================================ */ async function ensureLocalsOpenForOrders(locals) {
+  const localIds = locals.map((local)=>local.id);
+  const { data, error } = await supabaseAdmin.rpc("check_locals_order_availability", {
+    p_local_ids: localIds
+  });
+
+  if (error) {
+    console.error("Error consultando disponibilidad de LOCAL:", error);
+    throw new HttpError(500, "No se pudo validar si los locales están abiertos");
+  }
+
+  if (!Array.isArray(data) || data.length !== localIds.length) {
+    console.error("Disponibilidad inesperada:", data);
+    throw new HttpError(500, "La disponibilidad de los locales no es válida");
+  }
+
+  const byLocal = new Map(data.map((row)=>[
+      row?.local_id,
+      row
+    ]));
+
+  for (const local of locals){
+    const availability = byLocal.get(local.id);
+
+    if (!availability) {
+      throw new HttpError(500, `No se pudo obtener la disponibilidad del local "${local.name}"`);
+    }
+
+    if (availability.is_open === true) {
+      continue;
+    }
+
+    const opening = typeof availability.opening_time === "string" ? availability.opening_time : null;
+    const closing = typeof availability.closing_time === "string" ? availability.closing_time : null;
+
+    switch(availability.reason){
+      case "CLOSED_TODAY":
+        throw new HttpError(409, `El local "${local.name}" está cerrado hoy`);
+      case "DAY_NOT_CONFIGURED":
+        throw new HttpError(409, `El local "${local.name}" no recibe pedidos hoy`);
+      case "BEFORE_OPENING":
+        throw new HttpError(409, opening ? `El local "${local.name}" todavía está cerrado. Abre a las ${opening}` : `El local "${local.name}" todavía está cerrado`);
+      case "AFTER_CLOSING":
+        throw new HttpError(409, opening && closing ? `El local "${local.name}" ya cerró. Horario de hoy: ${opening}–${closing}` : `El local "${local.name}" ya cerró por hoy`);
+      default:
+        throw new HttpError(409, `El local "${local.name}" no está disponible para recibir pedidos en este momento`);
+    }
+  }
+}
+/* ============================================================
    DISTANCIA REAL MEDIANTE ORS
    ============================================================ */ async function calculateRouteDistance(originLat, originLng, destinationLat, destinationLng) {
   if (!ORS_API_KEY) {
@@ -385,7 +442,14 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       }
     }
     /* ======================================================
-         15. CALCULAR DISTANCIA REAL CON ORS
+         15. VALIDAR DISPONIBILIDAD REAL DE LOS LOCALES
+
+         Esta validación ocurre antes de llamar a ORS:
+         si un LOCAL está cerrado, no consumimos una consulta
+         de rutas innecesaria ni intentamos crear el pedido.
+         ====================================================== */ await ensureLocalsOpenForOrders(locals);
+    /* ======================================================
+         16. CALCULAR DISTANCIA REAL CON ORS
 
          LOCAL
            ↓
@@ -403,7 +467,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       };
     }));
     /* ======================================================
-         16. TRANSACCIÓN SQL
+         17. TRANSACCIÓN SQL
 
          SEGURIDAD:
 
@@ -445,7 +509,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       throw new HttpError(400, transactionError.message || "No se pudo crear el pedido");
     }
     /* ======================================================
-         17. RESULTADO
+         18. RESULTADO
          ====================================================== */ const order = Array.isArray(transactionData) ? transactionData[0] : transactionData;
     if (!order?.order_id) {
       throw new HttpError(500, "La transacción no devolvió el pedido creado");
