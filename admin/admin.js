@@ -15,13 +15,14 @@ const state = {
   deliveryProfileRecord: null,
   localProfileRecord: null,
   users: [],
+  feeRanges: [],
   categories: [],
   products: []
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","users","storage","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","storage","analytics"],
+  MASTER: ["overview","orders","requests","deliveries","users","fees","storage","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","fees","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","storage","analytics"]
 };
@@ -105,6 +106,10 @@ function configureNavigation() {
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
 
+  document.querySelectorAll(".master-only").forEach(el => {
+    el.classList.toggle("hidden", state.role !== "MASTER");
+  });
+
   showSection(roleSections[state.role][0]);
 }
 
@@ -122,6 +127,7 @@ function showSection(name) {
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
+  if (name === "fees") loadFees();
   if (name === "catalog") loadCatalog();
   if (name === "storage") loadStorage();
   if (name === "analytics") loadAnalytics();
@@ -1206,6 +1212,267 @@ async function saveDelivery() {
   }
 }
 
+function feeDeliveryRecord() {
+  const id = $("feeDelivery")?.value || "";
+  return state.deliveries.find(delivery => delivery.id === id) || null;
+}
+
+function updateFeeModeUI() {
+  const distanceMode = $("feeMode")?.value === "DISTANCE";
+  $("fixedFeeField")?.classList.toggle("hidden", distanceMode);
+  $("distanceRangesCard")?.classList.toggle("hidden", !distanceMode);
+}
+
+function clearFeeRangeForm() {
+  $("feeRangeId").value = "";
+  $("feeDistanceFrom").value = "0";
+  $("feeDistanceTo").value = "";
+  $("feeRangeValue").value = "";
+  $("feeRangeActive").value = "true";
+  $("saveFeeRangeBtn").textContent = "Guardar rango";
+}
+
+function renderFeeRanges() {
+  const container = $("feeRangesList");
+  if (!container) return;
+
+  if (!state.feeRanges.length) {
+    container.innerHTML = '<div class="muted">Todavía no hay rangos configurados.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Desde</th>
+            <th>Hasta</th>
+            <th>Tarifa</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.feeRanges.map(range => `
+            <tr>
+              <td>${Number(range.distance_from).toFixed(2)} km</td>
+              <td>${Number(range.distance_to).toFixed(2)} km</td>
+              <td>${Number(range.fee).toFixed(2)}</td>
+              <td><span class="badge">${range.active ? "Activo" : "Inactivo"}</span></td>
+              <td>
+                <div class="row">
+                  <button class="btn-muted" onclick="editFeeRange('${range.id}')">Editar</button>
+                  ${range.active
+                    ? `<button class="btn-danger" onclick="deactivateFeeRange('${range.id}')">Desactivar</button>`
+                    : ""}
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function loadFees() {
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+
+  const select = $("feeDelivery");
+  if (!select) return;
+
+  const previous = select.value;
+  const available = state.deliveries.filter(delivery => delivery.active !== false);
+
+  select.innerHTML = available.length
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+    : '<option value="">No hay DELIVERY disponible</option>';
+
+  if (previous && available.some(delivery => delivery.id === previous)) {
+    select.value = previous;
+  }
+
+  $("enableDeliveryFeesBtn").classList.toggle("hidden", state.role !== "MASTER");
+  await loadFeeDelivery();
+}
+
+async function loadFeeDelivery() {
+  const delivery = feeDeliveryRecord();
+
+  if (!delivery) {
+    state.feeRanges = [];
+    $("saveFeeConfigBtn").disabled = true;
+    $("saveFeeRangeBtn").disabled = true;
+    renderFeeRanges();
+    return;
+  }
+
+  try {
+    const [configRes, rangesRes] = await Promise.all([
+      supabaseClient
+        .from("delivery_fee_configs")
+        .select("id,delivery_id,mode,fixed_fee,active")
+        .eq("delivery_id", delivery.id)
+        .maybeSingle(),
+      supabaseClient
+        .from("delivery_fee_ranges")
+        .select("id,delivery_id,distance_from,distance_to,fee,active")
+        .eq("delivery_id", delivery.id)
+        .order("distance_from")
+    ]);
+
+    if (configRes.error) throw configRes.error;
+    if (rangesRes.error) throw rangesRes.error;
+
+    const config = configRes.data;
+    state.feeRanges = rangesRes.data || [];
+
+    $("feeMode").value = config?.mode || "FIXED";
+    $("fixedFee").value = config?.fixed_fee ?? "0";
+    $("feeConfigActive").value = String(config?.active ?? true);
+    $("saveFeeConfigBtn").disabled = false;
+    $("saveFeeRangeBtn").disabled = false;
+
+    clearFeeRangeForm();
+    updateFeeModeUI();
+    renderFeeRanges();
+  } catch (e) {
+    state.feeRanges = [];
+    $("saveFeeConfigBtn").disabled = true;
+    $("saveFeeRangeBtn").disabled = true;
+    renderFeeRanges();
+    message(e.message || "No se pudieron cargar las tarifas del DELIVERY.", "error");
+  }
+}
+
+async function saveFeeConfig() {
+  try {
+    const delivery = feeDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    const mode = $("feeMode").value;
+    const fixedRaw = $("fixedFee").value;
+    const fixedFee = mode === "FIXED" ? Number(fixedRaw) : 0;
+
+    if (!Number.isFinite(fixedFee) || fixedFee < 0) {
+      throw new Error("La tarifa fija debe ser un número igual o mayor que 0.");
+    }
+
+    await rpc("save_delivery_fee_config", {
+      p_delivery_id: delivery.id,
+      p_mode: mode,
+      p_fixed_fee: fixedFee,
+      p_active: $("feeConfigActive").value === "true"
+    });
+
+    message(
+      mode === "FIXED"
+        ? "Tarifa fija del DELIVERY actualizada."
+        : "Tarifa por distancia activada. Configura los rangos."
+    );
+
+    await loadFeeDelivery();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la tarifa.", "error");
+  }
+}
+
+async function saveFeeRange() {
+  try {
+    const delivery = feeDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    const rangeId = $("feeRangeId").value || null;
+    const distanceFrom = Number($("feeDistanceFrom").value);
+    const distanceTo = Number($("feeDistanceTo").value);
+    const fee = Number($("feeRangeValue").value);
+
+    if (!Number.isFinite(distanceFrom) || distanceFrom < 0) {
+      throw new Error("La distancia inicial debe ser igual o mayor que 0.");
+    }
+
+    if (!Number.isFinite(distanceTo) || distanceTo <= distanceFrom) {
+      throw new Error("La distancia final debe ser mayor que la distancia inicial.");
+    }
+
+    if (!Number.isFinite(fee) || fee < 0) {
+      throw new Error("El valor del rango debe ser igual o mayor que 0.");
+    }
+
+    await rpc("save_delivery_fee_range", {
+      p_delivery_id: delivery.id,
+      p_range_id: rangeId,
+      p_distance_from: distanceFrom,
+      p_distance_to: distanceTo,
+      p_fee: fee,
+      p_active: $("feeRangeActive").value === "true"
+    });
+
+    message(rangeId ? "Rango de tarifa actualizado." : "Rango de tarifa creado.");
+    await loadFeeDelivery();
+  } catch (e) {
+    message(e.message || "No se pudo guardar el rango.", "error");
+  }
+}
+
+function editFeeRange(rangeId) {
+  const range = state.feeRanges.find(item => item.id === rangeId);
+  if (!range) return;
+
+  $("feeRangeId").value = range.id;
+  $("feeDistanceFrom").value = range.distance_from;
+  $("feeDistanceTo").value = range.distance_to;
+  $("feeRangeValue").value = range.fee;
+  $("feeRangeActive").value = String(range.active);
+  $("saveFeeRangeBtn").textContent = "Actualizar rango";
+
+  $("feeDistanceFrom").focus();
+}
+
+async function deactivateFeeRange(rangeId) {
+  const range = state.feeRanges.find(item => item.id === rangeId);
+  const delivery = feeDeliveryRecord();
+  if (!range || !delivery) return;
+
+  if (!confirm(`¿Desactivar el rango ${range.distance_from}–${range.distance_to} km?`)) return;
+
+  try {
+    await rpc("save_delivery_fee_range", {
+      p_delivery_id: delivery.id,
+      p_range_id: range.id,
+      p_distance_from: Number(range.distance_from),
+      p_distance_to: Number(range.distance_to),
+      p_fee: Number(range.fee),
+      p_active: false
+    });
+
+    message("Rango desactivado.");
+    await loadFeeDelivery();
+  } catch (e) {
+    message(e.message || "No se pudo desactivar el rango.", "error");
+  }
+}
+
+async function enableDeliveryFees() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = feeDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    await rpc("master_set_delivery_capability", {
+      p_delivery_id: delivery.id,
+      p_capability_code: "delivery_fees.manage",
+      p_enabled: true
+    });
+
+    message("Gestión de tarifas habilitada para este DELIVERY.");
+  } catch (e) {
+    message(e.message || "No se pudo habilitar la gestión de tarifas.", "error");
+  }
+}
+
 async function loadCatalog() {
   if (state.role !== "LOCAL_ADMIN") return;
 
@@ -1797,6 +2064,12 @@ function bindEvents() {
   $("userManagerUser").onchange = renderManagedUser;
   $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
   $("assignLocalUserBtn").onclick = assignLocalUser;
+  $("feeDelivery").onchange = loadFeeDelivery;
+  $("feeMode").onchange = updateFeeModeUI;
+  $("saveFeeConfigBtn").onclick = saveFeeConfig;
+  $("saveFeeRangeBtn").onclick = saveFeeRange;
+  $("cancelFeeRangeEditBtn").onclick = clearFeeRangeForm;
+  $("enableDeliveryFeesBtn").onclick = enableDeliveryFees;
   $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
