@@ -1,0 +1,239 @@
+name: Codigo 75 Deploy and Verify
+
+on:
+  push:
+    branches: [codigo-75-direcciones-cliente-v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Dry run migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run
+
+      - name: Apply migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+
+      - name: Verify address RPC with rollback
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy()
+          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql=r"""
+          select 'DEFAULT_INDEX_EXISTS|' ||
+            (to_regclass('public.ux_customer_addresses_one_active_default') is not null);
+
+          select 'ADDRESS_AUTH_EXECUTE|' ||
+            has_function_privilege(
+              'authenticated',
+              'public.save_my_customer_address(uuid,text,text,text,numeric,numeric,boolean,boolean)',
+              'EXECUTE'
+            );
+
+          select 'ADDRESS_ANON_EXECUTE|' ||
+            has_function_privilege(
+              'anon',
+              'public.save_my_customer_address(uuid,text,text,text,numeric,numeric,boolean,boolean)',
+              'EXECUTE'
+            );
+
+          begin;
+
+          do $$
+          declare
+            v_client uuid;
+            v_customer uuid;
+            v_address1 uuid;
+            v_address2 uuid;
+            v_default_count integer;
+            v_row record;
+          begin
+            select p.id
+              into v_client
+            from public.profiles p
+            join public.roles r on r.id=p.role_id
+            where p.active=true
+              and r.active=true
+              and r.code='CLIENT'
+            order by p.created_at
+            limit 1;
+
+            if v_client is null then
+              raise exception 'No active CLIENT profile available for address verification';
+            end if;
+
+            select c.id
+              into v_customer
+            from public.customers c
+            where c.profile_id=v_client
+            order by c.created_at
+            limit 1;
+
+            if v_customer is null then
+              insert into public.customers(
+                id,name,phone,email,active,marketing_consent,created_at,updated_at,profile_id
+              )
+              select
+                gen_random_uuid(),
+                'HTPWEB VERIFY CLIENT',
+                null,
+                u.email,
+                true,
+                false,
+                now(),
+                now(),
+                v_client
+              from auth.users u
+              where u.id=v_client
+              returning id into v_customer;
+            else
+              update public.customers
+              set active=true,
+                  updated_at=now()
+              where id=v_customer;
+            end if;
+
+            perform set_config('request.jwt.claim.sub', v_client::text, true);
+
+            if public.current_customer_id() is distinct from v_customer then
+              raise exception 'current_customer_id did not resolve verification customer';
+            end if;
+
+            select id into v_address1
+            from public.save_my_customer_address(
+              null,
+              'HTPWEB VERIFY CASA',
+              'Dirección temporal 1',
+              'Referencia 1',
+              0.950001,
+              -79.650001,
+              true,
+              true
+            );
+
+            select id into v_address2
+            from public.save_my_customer_address(
+              null,
+              'HTPWEB VERIFY TRABAJO',
+              'Dirección temporal 2',
+              'Referencia 2',
+              0.960002,
+              -79.660002,
+              true,
+              true
+            );
+
+            select count(*) into v_default_count
+            from public.customer_addresses ca
+            where ca.customer_id=v_customer
+              and ca.active=true
+              and ca.is_default=true;
+
+            if v_default_count <> 1 then
+              raise exception 'Expected exactly one active default address, got %', v_default_count;
+            end if;
+
+            if not exists(
+              select 1
+              from public.customer_addresses ca
+              where ca.id=v_address2
+                and ca.customer_id=v_customer
+                and ca.is_default=true
+            ) then
+              raise exception 'Second address was not set as default';
+            end if;
+
+            select *
+              into v_row
+            from public.save_my_customer_address(
+              v_address2,
+              'HTPWEB VERIFY TRABAJO EDIT',
+              'Dirección temporal 2 editada',
+              'Referencia editada',
+              0.970003,
+              -79.670003,
+              false,
+              true
+            );
+
+            if v_row.address <> 'Dirección temporal 2 editada'
+               or v_row.latitude <> 0.970003
+               or v_row.longitude <> -79.670003
+            then
+              raise exception 'Address update verification failed';
+            end if;
+
+            perform public.save_my_customer_address(
+              v_address2,
+              'HTPWEB VERIFY TRABAJO EDIT',
+              'Dirección temporal 2 editada',
+              'Referencia editada',
+              0.970003,
+              -79.670003,
+              false,
+              false
+            );
+
+            if exists(
+              select 1
+              from public.customer_addresses ca
+              where ca.id=v_address2
+                and ca.active=true
+            ) then
+              raise exception 'Address deactivate verification failed';
+            end if;
+
+            raise notice 'ADDRESS_CREATE_OK=true';
+            raise notice 'ONE_DEFAULT_OK=true';
+            raise notice 'ADDRESS_UPDATE_OK=true';
+            raise notice 'ADDRESS_DEACTIVATE_OK=true';
+          end
+          $$;
+
+          rollback;
+
+          select 'VERIFY_ADDRESS_RESIDUE|' || count(*)
+          from public.customer_addresses
+          where label like 'HTPWEB VERIFY%';
+          """
+
+          subprocess.run([
+            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
+          ],check=True,env=env)
+          PY
