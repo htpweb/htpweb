@@ -1,0 +1,7 @@
+const test=require("node:test"); const assert=require("node:assert/strict"); const fs=require("node:fs"); const path=require("node:path");
+const sql=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20260919211000_plan_enforcement.sql"),"utf8");
+test("precedencia override plan legado",()=>{assert.match(sql,/excepción MASTER > plan vigente > configuración manual heredada/);assert.match(sql,/plan_entitlement_overrides/);assert.match(sql,/effective_plan_entitlement/);});
+test("integra helpers operativos existentes",()=>{assert.match(sql,/rename to delivery_has_capability_legacy/);assert.match(sql,/create or replace function public\.delivery_has_capability/);assert.match(sql,/rename to delivery_limit_value_legacy/);assert.match(sql,/create or replace function public\.delivery_limit_value/);});
+test("integra permisos LOCAL sin frontend paralelo",()=>{assert.match(sql,/user_can_manage_local_resource_legacy/);assert.match(sql,/local_has_effective_capability/);assert.match(sql,/public\.user_has_local/);});
+test("MASTER puede negar o ampliar una prestación",()=>{assert.match(sql,/master_set_plan_override/);assert.match(sql,/Solo MASTER puede gestionar excepciones/);assert.match(sql,/jsonb_typeof\(p_value\)/);});
+test("expone consumo scoped para administración",()=>{assert.match(sql,/plan_usage_snapshot/);assert.match(sql,/public\.user_has_delivery/);assert.match(sql,/public\.user_has_local/);});
