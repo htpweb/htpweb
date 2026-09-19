@@ -1,4 +1,4 @@
-name: Codigo 65 Backend Inspect
+name: Codigo 65 RLS Inspect
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect local requests backend
+      - name: Inspect local discovery policies
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -36,35 +36,24 @@ jobs:
           env=os.environ.copy()
           env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'LOCAL_REQUESTS_COLUMNS';
-          select column_name||':'||data_type
-          from information_schema.columns
-          where table_schema='public' and table_name='local_requests'
-          order by ordinal_position;
+          select 'LOCALS_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='locals'
+          order by policyname;
 
-          select 'LOCAL_REQUESTS_CONSTRAINTS';
-          select pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.local_requests'::regclass
-          order by conname;
+          select 'LOCAL_DELIVERIES_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='local_deliveries'
+          order by policyname;
 
-          select 'LOCALS_COLUMNS';
-          select column_name||':'||data_type
+          select 'LOCALS_NULLABILITY';
+          select column_name||'|'||is_nullable
           from information_schema.columns
           where table_schema='public' and table_name='locals'
-          order by ordinal_position;
-
-          select 'SUBMIT_LOCAL_REQUEST_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='submit_local_request';
-
-          select 'MASTER_APPLY_LOCAL_REQUEST_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_apply_local_request';
+            and column_name in ('zone_id','name','slug','address','phone','latitude','longitude')
+          order by column_name;
           """
           subprocess.run([
             "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
