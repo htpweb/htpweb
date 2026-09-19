@@ -1,4 +1,4 @@
-name: Codigo 71 Inspect
+name: Codigo 71 Inspect Variant RPC
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect local schedules and variants
+      - name: Inspect variant RPC and ACL
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -31,85 +31,35 @@ jobs:
           from pathlib import Path
           from urllib.parse import urlparse
           import os, subprocess
-
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
-          env=os.environ.copy()
-          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
-
+          env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'FUNCTIONS';
-          select p.proname||'|'||pg_get_function_identity_arguments(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public'
-            and (
-              p.proname ilike '%variant%'
-              or p.proname ilike '%schedule%'
-              or p.proname ilike '%product%'
-            )
-          order by p.proname,pg_get_function_identity_arguments(p.oid);
-
-          select 'SAVE_LOCAL_SCHEDULE_DEF';
+          select 'SAVE_PRODUCT_VARIANT_DEF';
           select pg_get_functiondef(p.oid)
           from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='save_local_schedule';
+          where n.nspname='public' and p.proname='save_product_variant';
 
-          select 'VARIANT_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='product_variants'
-          order by ordinal_position;
+          select 'FUNCTION_PRIVS';
+          select 'save_product_variant|auth='||
+            has_function_privilege('authenticated','public.save_product_variant(uuid,uuid,text,numeric,integer,boolean)','EXECUTE')
+            ||'|anon='||
+            has_function_privilege('anon','public.save_product_variant(uuid,uuid,text,numeric,integer,boolean)','EXECUTE');
+          select 'save_local_schedule|auth='||
+            has_function_privilege('authenticated','public.save_local_schedule(uuid,smallint,boolean,time without time zone,time without time zone)','EXECUTE')
+            ||'|anon='||
+            has_function_privilege('anon','public.save_local_schedule(uuid,smallint,boolean,time without time zone,time without time zone)','EXECUTE');
 
-          select 'VARIANT_CONSTRAINTS';
-          select conname||'|'||pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.product_variants'::regclass
-          order by conname;
+          select 'DEMO_PRODUCTS';
+          select p.id||'|'||p.name||'|'||p.local_id||'|'||p.active
+          from public.products p
+          order by p.created_at;
 
-          select 'SCHEDULE_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='local_schedules'
-          order by ordinal_position;
-
-          select 'SCHEDULE_CONSTRAINTS';
-          select conname||'|'||pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.local_schedules'::regclass
-          order by conname;
-
-          select 'POLICIES';
-          select tablename||'|'||policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename in ('product_variants','local_schedules')
-          order by tablename,policyname;
-
-          select 'PERMISSIONS';
-          select r.code||'|'||p.code
-          from public.role_permissions rp
-          join public.roles r on r.id=rp.role_id
-          join public.permissions p on p.id=rp.permission_id
-          where p.code ilike '%product%' or p.code ilike '%schedule%'
-          order by r.code,p.code;
-
-          select 'CAPABILITIES';
-          select code||'|'||scope||'|'||active
-          from public.capabilities
-          where code ilike '%product%' or code ilike '%schedule%'
-          order by code;
-
-          select 'LIMITS';
-          select code||'|'||scope||'|'||minimum_value||'|'||active
-          from public.limit_definitions
-          where code ilike '%product%' or code ilike '%variant%' or code ilike '%schedule%'
-          order by code;
-
-          select 'COUNTS';
-          select 'schedules|'||count(*) from public.local_schedules;
-          select 'variants|'||count(*) from public.product_variants;
+          select 'DEMO_VARIANTS';
+          select v.id||'|'||v.product_id||'|'||v.name||'|'||v.price||'|'||v.active
+          from public.product_variants v
+          order by v.product_id,v.display_order,v.name;
           """
-          subprocess.run([
-            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
-            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
-          ],check=True,env=env)
+          subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
+            check=True,env=env)
           PY
