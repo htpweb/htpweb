@@ -21,12 +21,14 @@ const state = {
   categories: [],
   products: [],
   variants: [],
-  schedules: []
+  schedules: [],
+  shareLocals: [],
+  shareProducts: []
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","users","fees","coverage","catalog","schedules","storage","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","fees","coverage","storage","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","users","fees","coverage","catalog","schedules","storage","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","analytics"]
 };
@@ -126,6 +128,7 @@ function showSection(name) {
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
   if (name === "mydelivery") loadDeliveryProfile();
+  if (name === "share") loadShareModule();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
@@ -364,6 +367,259 @@ function openDeliveryStorage() {
     $("storageDelivery").value = deliveryId;
     refreshDeliveryMediaPreview();
   }
+}
+
+function publicAppRootUrl() {
+  const marker = "/admin/";
+  const pathname = location.pathname;
+  const index = pathname.indexOf(marker);
+  const projectRoot = index >= 0 ? pathname.slice(0, index + 1) : "/";
+  return new URL(projectRoot + "app/", location.origin).toString();
+}
+
+function currentShareDelivery() {
+  const id = $("shareDelivery")?.value || "";
+  return state.deliveries.find(delivery => delivery.id === id) || null;
+}
+
+function currentShareLocal() {
+  const id = $("shareLocal")?.value || "";
+  return state.shareLocals.find(local => local.id === id) || null;
+}
+
+function currentShareProduct() {
+  const id = $("shareProduct")?.value || "";
+  return state.shareProducts.find(product => product.id === id) || null;
+}
+
+function buildSharedLocalUrl() {
+  const delivery = currentShareDelivery();
+  const local = currentShareLocal();
+  if (!delivery?.slug || !local?.id) return "";
+
+  const url = new URL("local.html", publicAppRootUrl());
+  url.searchParams.set("delivery", delivery.slug);
+  url.searchParams.set("local", local.id);
+  return url.toString();
+}
+
+function buildSharedProductUrl() {
+  const delivery = currentShareDelivery();
+  const local = currentShareLocal();
+  const product = currentShareProduct();
+  if (!delivery?.slug || !local?.id || !product?.id) return "";
+
+  const url = new URL("local.html", publicAppRootUrl());
+  url.searchParams.set("delivery", delivery.slug);
+  url.searchParams.set("local", local.id);
+  url.searchParams.set("product", product.id);
+  return url.toString();
+}
+
+function renderShareLinks() {
+  const localUrl = buildSharedLocalUrl();
+  const productUrl = buildSharedProductUrl();
+
+  $("shareLocalUrl").textContent = localUrl || "Selecciona un LOCAL.";
+  $("shareProductUrl").textContent = productUrl || "Selecciona un producto.";
+
+  const localReady = Boolean(localUrl);
+  const productReady = Boolean(productUrl);
+
+  ["shareLocalNativeBtn","shareLocalWhatsappBtn","shareLocalFacebookBtn","copyLocalLinkBtn"]
+    .forEach(id => { if ($(id)) $(id).disabled = !localReady; });
+
+  ["shareProductNativeBtn","shareProductWhatsappBtn","shareProductFacebookBtn","copyProductLinkBtn"]
+    .forEach(id => { if ($(id)) $(id).disabled = !productReady; });
+}
+
+async function loadShareModule() {
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+
+  const select = $("shareDelivery");
+  if (!select) return;
+
+  const previous = select.value;
+  const available = state.deliveries.filter(delivery => delivery.active !== false);
+
+  select.innerHTML = available.length
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+    : '<option value="">No hay DELIVERY disponible</option>';
+
+  if (previous && available.some(delivery => delivery.id === previous)) {
+    select.value = previous;
+  }
+
+  await loadShareLocals();
+}
+
+async function loadShareLocals() {
+  const delivery = currentShareDelivery();
+
+  state.shareLocals = [];
+  state.shareProducts = [];
+
+  if (!delivery) {
+    $("shareLocal").innerHTML = '<option value="">No hay DELIVERY seleccionado</option>';
+    $("shareProduct").innerHTML = '<option value="">Selecciona primero un LOCAL</option>';
+    renderShareLinks();
+    return;
+  }
+
+  try {
+    const rel = await supabaseClient
+      .from("local_deliveries")
+      .select("local_id")
+      .eq("delivery_id", delivery.id)
+      .eq("active", true);
+
+    if (rel.error) throw rel.error;
+
+    const localIds = [...new Set((rel.data || []).map(row => row.local_id).filter(Boolean))];
+
+    if (!localIds.length) {
+      $("shareLocal").innerHTML = '<option value="">Este DELIVERY no tiene LOCAL vinculados</option>';
+      $("shareProduct").innerHTML = '<option value="">Sin productos</option>';
+      renderShareLinks();
+      return;
+    }
+
+    const localRes = await supabaseClient
+      .from("locals")
+      .select("id,name,active")
+      .in("id", localIds)
+      .eq("active", true)
+      .order("name");
+
+    if (localRes.error) throw localRes.error;
+
+    state.shareLocals = localRes.data || [];
+
+    $("shareLocal").innerHTML = state.shareLocals.length
+      ? state.shareLocals.map(local => `<option value="${local.id}">${esc(local.name)}</option>`).join("")
+      : '<option value="">No hay LOCAL activos vinculados</option>';
+
+    await loadShareProducts();
+  } catch (e) {
+    state.shareLocals = [];
+    state.shareProducts = [];
+    $("shareLocal").innerHTML = '<option value="">No se pudieron cargar los LOCAL</option>';
+    $("shareProduct").innerHTML = '<option value="">Sin productos</option>';
+    renderShareLinks();
+    message(e.message || "No se pudieron cargar los LOCAL para compartir.", "error");
+  }
+}
+
+async function loadShareProducts() {
+  const local = currentShareLocal();
+  state.shareProducts = [];
+
+  if (!local) {
+    $("shareProduct").innerHTML = '<option value="">Selecciona un LOCAL</option>';
+    renderShareLinks();
+    return;
+  }
+
+  try {
+    const productRes = await supabaseClient
+      .from("products")
+      .select("id,local_id,name,price,active")
+      .eq("local_id", local.id)
+      .eq("active", true)
+      .order("name");
+
+    if (productRes.error) throw productRes.error;
+
+    state.shareProducts = productRes.data || [];
+
+    $("shareProduct").innerHTML = state.shareProducts.length
+      ? state.shareProducts.map(product =>
+          `<option value="${product.id}">${esc(product.name)} — ${Number(product.price || 0).toFixed(2)}</option>`
+        ).join("")
+      : '<option value="">Este LOCAL no tiene productos activos</option>';
+
+    renderShareLinks();
+  } catch (e) {
+    state.shareProducts = [];
+    $("shareProduct").innerHTML = '<option value="">No se pudieron cargar los productos</option>';
+    renderShareLinks();
+    message(e.message || "No se pudieron cargar los productos para compartir.", "error");
+  }
+}
+
+function sharePayload(kind) {
+  const delivery = currentShareDelivery();
+  const local = currentShareLocal();
+  const product = currentShareProduct();
+
+  if (kind === "local") {
+    const url = buildSharedLocalUrl();
+    return url ? {
+      title: `${local.name} | ${delivery.name}`,
+      text: `Mira ${local.name} en ${delivery.name}`,
+      url
+    } : null;
+  }
+
+  const url = buildSharedProductUrl();
+  return url ? {
+    title: `${product.name} | ${delivery.name}`,
+    text: `Mira ${product.name} de ${local.name} en ${delivery.name}`,
+    url
+  } : null;
+}
+
+async function copyShareLink(kind) {
+  const payload = sharePayload(kind);
+  if (!payload) return;
+
+  try {
+    await navigator.clipboard.writeText(payload.url);
+    message("Enlace copiado.");
+  } catch {
+    const helper = document.createElement("textarea");
+    helper.value = payload.url;
+    helper.setAttribute("readonly", "");
+    helper.style.position = "fixed";
+    helper.style.opacity = "0";
+    document.body.appendChild(helper);
+    helper.select();
+    document.execCommand("copy");
+    helper.remove();
+    message("Enlace copiado.");
+  }
+}
+
+async function nativeShare(kind) {
+  const payload = sharePayload(kind);
+  if (!payload) return;
+
+  if (navigator.share) {
+    try {
+      await navigator.share(payload);
+      return;
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+    }
+  }
+
+  await copyShareLink(kind);
+}
+
+function shareWhatsApp(kind) {
+  const payload = sharePayload(kind);
+  if (!payload) return;
+
+  const text = encodeURIComponent(`${payload.text}\n${payload.url}`);
+  window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
+}
+
+function shareFacebook(kind) {
+  const payload = sharePayload(kind);
+  if (!payload) return;
+
+  const url = encodeURIComponent(payload.url);
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "noopener,noreferrer");
 }
 
 async function loadLocalProfile() {
@@ -3012,6 +3268,17 @@ function bindEvents() {
   $("profileDelivery").onchange = loadDeliveryProfileRecord;
   $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
   $("profileGoStorageBtn").onclick = openDeliveryStorage;
+  $("shareDelivery").onchange = loadShareLocals;
+  $("shareLocal").onchange = loadShareProducts;
+  $("shareProduct").onchange = renderShareLinks;
+  $("shareLocalNativeBtn").onclick = () => nativeShare("local");
+  $("shareLocalWhatsappBtn").onclick = () => shareWhatsApp("local");
+  $("shareLocalFacebookBtn").onclick = () => shareFacebook("local");
+  $("copyLocalLinkBtn").onclick = () => copyShareLink("local");
+  $("shareProductNativeBtn").onclick = () => nativeShare("product");
+  $("shareProductWhatsappBtn").onclick = () => shareWhatsApp("product");
+  $("shareProductFacebookBtn").onclick = () => shareFacebook("product");
+  $("copyProductLinkBtn").onclick = () => copyShareLink("product");
   $("profileLocal").onchange = loadLocalProfileRecord;
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;

@@ -64,3 +64,5 @@ small.note{display:block;color:#6b7280;margin-top:6px}
 .availability-badge{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2}
 .availability-open{background:#e8f5e9;color:#1b5e20}
 .availability-closed{background:#ffebee;color:#b71c1c}
+
+.shared-product-target{outline:3px solid #111827;outline-offset:3px;border-radius:12px}
