@@ -2154,15 +2154,15 @@ async function saveSchedules() {
       return { day, isClosed, opening, closing };
     });
 
-    for (const row of rows) {
-      await rpc("save_local_schedule", {
-        p_local_id: localId,
-        p_day_of_week: row.day,
-        p_is_closed: row.isClosed,
-        p_opening_time: row.isClosed ? null : row.opening,
-        p_closing_time: row.isClosed ? null : row.closing
-      });
-    }
+    await rpc("save_local_schedule_week", {
+      p_local_id: localId,
+      p_days: rows.map(row => ({
+        day_of_week: row.day,
+        is_closed: row.isClosed,
+        opening_time: row.isClosed ? null : row.opening,
+        closing_time: row.isClosed ? null : row.closing
+      }))
+    });
 
     message("Horario semanal actualizado.");
     await loadSchedules();
