@@ -57,6 +57,9 @@ jobs:
           print(f"Inline scripts checked: {checked}")
           PY
 
+      - name: Check checkout address regressions
+        run: node --test tests/checkout-addresses.test.cjs
+
       - name: Reject conflict markers
         shell: bash
         run: |
