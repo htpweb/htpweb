@@ -1,0 +1,103 @@
+name: Codigo 72 Inspect
+
+on:
+  push:
+    branches: [codigo-72-catalogo-completo-local]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Inspect catalog backend
+        shell: bash
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import os, subprocess
+
+          p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
+          env=os.environ.copy()
+          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
+          sql=r"""
+          select 'SAVE_CATEGORY_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='save_local_category';
+
+          select 'SAVE_PRODUCT_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname='save_local_product';
+
+          select 'CATEGORY_CONSTRAINTS';
+          select conname||'|'||pg_get_constraintdef(oid)
+          from pg_constraint
+          where conrelid='public.categories'::regclass
+          order by conname;
+
+          select 'PRODUCT_CONSTRAINTS';
+          select conname||'|'||pg_get_constraintdef(oid)
+          from pg_constraint
+          where conrelid='public.products'::regclass
+          order by conname;
+
+          select 'CATEGORY_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='categories'
+          order by policyname;
+
+          select 'PRODUCT_POLICIES';
+          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
+          from pg_policies
+          where schemaname='public' and tablename='products'
+          order by policyname;
+
+          select 'CATALOG_ACCESS';
+          select r.code||'|'||p.code
+          from public.role_permissions rp
+          join public.roles r on r.id=rp.role_id
+          join public.permissions p on p.id=rp.permission_id
+          where p.code in ('categories.manage','products.manage','variants.manage')
+          order by r.code,p.code;
+
+          select 'CATALOG_CAPABILITIES';
+          select code||'|'||scope||'|'||active
+          from public.capabilities
+          where code in ('categories.manage','products.manage','variants.manage')
+          order by code;
+
+          select 'CATALOG_LIMITS';
+          select code||'|'||scope||'|'||minimum_value||'|'||active
+          from public.limit_definitions
+          where code ilike '%categor%' or code ilike '%product%' or code ilike '%variant%'
+          order by code;
+
+          select 'DEMO_COUNTS';
+          select 'categories|'||count(*) from public.categories;
+          select 'products|'||count(*) from public.products;
+          select 'variants|'||count(*) from public.product_variants;
+          """
+          subprocess.run([
+            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
+          ],check=True,env=env)
+          PY
