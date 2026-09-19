@@ -1,0 +1,6 @@
+const test=require("node:test");const assert=require("node:assert/strict");const fs=require("node:fs");
+const page=fs.readFileSync("admin/carga-masiva.html","utf8"),js=fs.readFileSync("admin/bulk-import.js","utf8"),sql=fs.readFileSync("supabase/migrations/20260919195500_bulk_catalog_import.sql","utf8");
+test("acepta CSV y XLSX con plantilla",()=>{assert.match(page,/\.csv,\.xlsx/);assert.match(page,/xlsx\.full\.min\.js/);assert.match(js,/plantilla_catalogo_htpweb\.csv/);});
+test("valida antes de importar",()=>{assert.match(js,/Máximo 1000 filas/);assert.match(js,/precio inválido/);assert.match(js,/activo debe ser Sí\/No/);});
+test("usa RPC transaccional y no INSERT directo",()=>{assert.match(js,/rpc\("bulk_import_local_catalog"/);assert.doesNotMatch(js,/\.insert\(/);assert.match(sql,/save_local_category/);assert.match(sql,/save_local_product/);});
+test("limita acceso a MASTER y LOCAL_ADMIN",()=>{assert.match(js,/\["MASTER","LOCAL_ADMIN"\]/);assert.match(sql,/grant execute.*authenticated/i);});
