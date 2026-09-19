@@ -1,4 +1,4 @@
-name: Codigo 65 RLS Inspect
+name: Codigo 65 Deploy and Verify
 
 on:
   push:
@@ -7,21 +7,40 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-production
+  cancel-in-progress: false
+
 jobs:
-  inspect:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+
       - name: Link project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect local discovery policies
+
+      - name: Dry run migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run
+
+      - name: Apply migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+
+      - name: Verify RPC
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -31,30 +50,57 @@ jobs:
           from pathlib import Path
           from urllib.parse import urlparse
           import os, subprocess
+
           raw=Path("supabase/.temp/pooler-url").read_text().strip()
           p=urlparse(raw)
           env=os.environ.copy()
           env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
           sql=r"""
-          select 'LOCALS_POLICIES';
-          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename='locals'
-          order by policyname;
+          select 'FUNCTION_EXISTS|' || (to_regprocedure('public.delivery_local_request_options(uuid,text)') is not null);
+          select 'AUTH_EXECUTE|' || has_function_privilege('authenticated','public.delivery_local_request_options(uuid,text)','EXECUTE');
+          select 'ANON_EXECUTE|' || has_function_privilege('anon','public.delivery_local_request_options(uuid,text)','EXECUTE');
 
-          select 'LOCAL_DELIVERIES_POLICIES';
-          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename='local_deliveries'
-          order by policyname;
+          do $$
+          declare
+            v_master uuid;
+            v_delivery uuid;
+            v_count integer;
+          begin
+            select p.id
+              into v_master
+            from public.profiles p
+            join public.roles r on r.id=p.role_id
+            where p.active=true and r.code='MASTER' and r.active=true
+            order by p.created_at
+            limit 1;
 
-          select 'LOCALS_NULLABILITY';
-          select column_name||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='locals'
-            and column_name in ('zone_id','name','slug','address','phone','latitude','longitude')
-          order by column_name;
+            select d.id
+              into v_delivery
+            from public.deliveries d
+            where d.active=true
+            order by d.created_at
+            limit 1;
+
+            if v_master is null or v_delivery is null then
+              raise exception 'Missing MASTER or active DELIVERY for verification';
+            end if;
+
+            perform set_config('request.jwt.claim.sub', v_master::text, true);
+
+            select count(*) into v_count
+            from public.delivery_local_request_options(v_delivery,'LINK_EXISTING');
+
+            raise notice 'LINK_EXISTING_OPTIONS=%', v_count;
+
+            select count(*) into v_count
+            from public.delivery_local_request_options(v_delivery,'RELATED');
+
+            raise notice 'RELATED_OPTIONS=%', v_count;
+          end
+          $$;
           """
+
           subprocess.run([
             "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
