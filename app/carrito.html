@@ -426,14 +426,30 @@ function applySavedAddress(addressId) {
 
 async function saveCurrentAddress() {
   try {
+    const user = await obtenerUsuarioActual();
+    if (!user) {
+      irAAcceso(rutaActualRelativa());
+      return;
+    }
+
+    const name = $("name").value.trim();
+    const phone = $("phone").value.trim();
     const addressText = $("address").value.trim();
     const label = $("addressLabel").value.trim();
 
+    if (!name) throw new Error("Ingresa tu nombre.");
+    if (!phone) throw new Error("Ingresa tu teléfono.");
     if (!label) throw new Error("Escribe un nombre para la dirección.");
     if (!addressText) throw new Error("Escribe la dirección.");
     if (!locationAccepted || latitude === null || longitude === null) {
       throw new Error("Selecciona y acepta la ubicación antes de guardar.");
     }
+
+    await asegurarCustomerActual({
+      name,
+      phone,
+      email: user.email || ""
+    });
 
     const current = selectedSavedAddress();
 
