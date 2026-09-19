@@ -44,7 +44,7 @@ jobs:
             find supabase/functions -mindepth 2 -maxdepth 2 -name index.ts -print0 |
               while IFS= read -r -d '' file; do
                 echo "Checking $file"
-                deno check "$file"
+                deno check --config supabase/functions/deno.json "$file"
               done
           else
             echo "No Edge Functions found."
