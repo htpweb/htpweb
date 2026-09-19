@@ -1,4 +1,4 @@
-name: Codigo 75 Inspect Customer Addresses
+name: Codigo 75 Inspect Address RPC
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Inspect address backend
+      - name: Inspect address RPC
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -39,48 +39,40 @@ jobs:
           env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
 
           sql=r"""
-          select 'ADDRESS_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='customer_addresses'
-          order by ordinal_position;
-
-          select 'ADDRESS_CONSTRAINTS';
-          select conname||'|'||pg_get_constraintdef(oid)
-          from pg_constraint
-          where conrelid='public.customer_addresses'::regclass
-          order by conname;
-
-          select 'ADDRESS_POLICIES';
-          select policyname||'|'||cmd||'|'||coalesce(qual,'')||'|'||coalesce(with_check,'')
-          from pg_policies
-          where schemaname='public' and tablename='customer_addresses'
-          order by policyname;
-
-          select 'ADDRESS_FUNCTIONS';
-          select p.proname||'|'||pg_get_function_identity_arguments(p.oid)
+          select 'SAVE_MY_CUSTOMER_ADDRESS_DEF';
+          select pg_get_functiondef(p.oid)
           from pg_proc p
           join pg_namespace n on n.oid=p.pronamespace
           where n.nspname='public'
-            and (
-              p.proname ilike '%address%'
-              or p.proname ilike '%customer%'
-            )
-          order by p.proname,pg_get_function_identity_arguments(p.oid);
+            and p.proname='save_my_customer_address';
 
-          select 'CUSTOMER_COLUMNS';
-          select column_name||'|'||data_type||'|'||is_nullable
-          from information_schema.columns
-          where table_schema='public' and table_name='customers'
-          order by ordinal_position;
+          select 'CURRENT_CUSTOMER_ID_DEF';
+          select pg_get_functiondef(p.oid)
+          from pg_proc p
+          join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public'
+            and p.proname='current_customer_id';
 
-          select 'ADDRESS_PRIVILEGES';
-          select grantee||'|'||privilege_type
-          from information_schema.role_table_grants
-          where table_schema='public' and table_name='customer_addresses'
-          order by grantee,privilege_type;
+          select 'ADDRESS_RPC_PRIVS';
+          select 'auth='||
+            has_function_privilege(
+              'authenticated',
+              'public.save_my_customer_address(uuid,text,text,text,numeric,numeric,boolean,boolean)',
+              'EXECUTE'
+            )||
+            '|anon='||
+            has_function_privilege(
+              'anon',
+              'public.save_my_customer_address(uuid,text,text,text,numeric,numeric,boolean,boolean)',
+              'EXECUTE'
+            );
 
-          select 'ADDRESS_COUNT|'||count(*) from public.customer_addresses;
+          select 'INDEXES';
+          select indexname||'|'||indexdef
+          from pg_indexes
+          where schemaname='public'
+            and tablename='customer_addresses'
+          order by indexname;
           """
           subprocess.run([
             "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
