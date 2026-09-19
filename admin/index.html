@@ -24,6 +24,7 @@
       <button data-section="deliveries">Deliveries</button>
       <button data-section="users">Usuarios</button>
       <button data-section="fees">Tarifas</button>
+      <button data-section="coverage">Cobertura</button>
       <button data-section="catalog">Catálogo</button>
       <button data-section="storage">Storage</button>
       <button data-section="analytics">Analytics</button>
@@ -438,6 +439,77 @@
         </div>
 
         <div id="feeRangesList" style="margin-top:16px"></div>
+      </div>
+    </section>
+
+    <section id="section-coverage" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Cobertura del DELIVERY</h2>
+            <p class="muted">Define en qué zonas puede operar cada DELIVERY. Esto es independiente de los LOCAL vinculados.</p>
+          </div>
+          <select id="coverageDelivery" style="max-width:340px"></select>
+        </div>
+        <div id="coverageSummary" class="request-details" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card master-only">
+        <h3>Configuración de cobertura — MASTER</h3>
+        <div class="form-grid">
+          <div>
+            <label>Ciudad del DELIVERY</label>
+            <select id="coverageCity"></select>
+          </div>
+          <div>
+            <label>Límite máximo de zonas</label>
+            <input id="coverageMaxZones" type="number" min="0" step="1" placeholder="Sin límite">
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="setDeliveryCityBtn">Asignar ciudad</button>
+          <button class="btn-muted" id="setCoverageLimitBtn">Guardar límite</button>
+          <button class="btn-muted" id="enableZonesBtn">Habilitar gestión de zonas</button>
+        </div>
+        <p class="muted" style="margin-top:10px">
+          Si un DELIVERY ya tiene zonas activas, primero deben desasignarse antes de cambiar su ciudad.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Zonas disponibles para este DELIVERY</h3>
+        <p class="muted">
+          Solo se muestran zonas activas de la misma ciudad. DELIVERY_ADMIN necesita el permiso
+          <code>zones.assign</code> y la capability <code>zones.manage</code>.
+        </p>
+        <div id="coverageZonesList"></div>
+      </div>
+
+      <div class="card master-only">
+        <h3>Catálogo de zonas — MASTER</h3>
+        <input id="zoneEditId" type="hidden">
+        <div class="form-grid">
+          <div>
+            <label>Ciudad</label>
+            <select id="zoneEditCity"></select>
+          </div>
+          <div>
+            <label>Nombre de la zona</label>
+            <input id="zoneEditName" maxlength="160" placeholder="Ej. Centro, Las Palmas, Sur">
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="zoneEditActive">
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveZoneBtn">Guardar zona</button>
+          <button class="btn-muted" id="clearZoneBtn">Limpiar</button>
+        </div>
+        <div id="zonesCatalogList" style="margin-top:16px"></div>
       </div>
     </section>
 
