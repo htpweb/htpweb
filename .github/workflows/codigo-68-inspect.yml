@@ -1,4 +1,4 @@
-name: Codigo 68 Inspect Assignments
+name: Codigo 68 Inspect Conversions
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect assignment RPCs
+      - name: Inspect conversion RPCs
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,28 +34,15 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'MASTER_ASSIGN_DELIVERY_USER';
+          select 'CONVERT_DELIVERY';
           select pg_get_functiondef(p.oid)
           from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_assign_delivery_user';
+          where n.nspname='public' and p.proname='convert_profile_to_delivery_role';
 
-          select 'MASTER_UNASSIGN_DELIVERY_USER';
+          select 'CONVERT_LOCAL';
           select pg_get_functiondef(p.oid)
           from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_unassign_delivery_user';
-
-          select 'MASTER_ASSIGN_LOCAL_ADMIN';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_assign_local_admin';
-
-          select 'MASTER_UNASSIGN_LOCAL_ADMIN';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='master_unassign_local_admin';
-
-          select 'ROLES';
-          select code||'|'||name||'|'||active from public.roles order by code;
+          where n.nspname='public' and p.proname='convert_profile_to_local_admin';
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
