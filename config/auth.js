@@ -10,17 +10,16 @@ async function obtenerUsuarioActual() {
 }
 
 function rutaActualRelativa() {
-  const file = location.pathname.split("/").pop() || "index.html";
-  return file + location.search + location.hash;
+  return location.pathname + location.search + location.hash;
 }
 
 function retornoSeguro(raw, fallback = "index.html") {
   if (!raw) return fallback;
 
   try {
-    const parsed = new URL(raw, location.origin);
+    const parsed = new URL(raw, location.href);
     if (parsed.origin !== location.origin) return fallback;
-    return parsed.pathname.split("/").pop() + parsed.search + parsed.hash;
+    return parsed.pathname + parsed.search + parsed.hash;
   } catch {
     return fallback;
   }
@@ -33,7 +32,11 @@ function irAAcceso(returnTo = rutaActualRelativa()) {
   if (delivery) params.set("delivery", delivery);
   params.set("return", returnTo);
 
-  location.href = `acceso.html?${params.toString()}`;
+  const base = location.pathname.includes("/admin/")
+    ? "../app/acceso.html"
+    : "acceso.html";
+
+  location.href = `${base}?${params.toString()}`;
 }
 
 async function asegurarCustomerActual({ name, phone, email, marketingConsent = false }) {
