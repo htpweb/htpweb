@@ -1,4 +1,4 @@
-name: Codigo 71 Inspect Variant RPC
+name: Codigo 71 Inspect Variant Access
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect variant RPC and ACL
+      - name: Verify variant and schedule access
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -34,30 +34,27 @@ jobs:
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
           env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
           sql=r"""
-          select 'SAVE_PRODUCT_VARIANT_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public' and p.proname='save_product_variant';
+          select 'PERMISSIONS';
+          select r.code||'|'||p.code
+          from public.role_permissions rp
+          join public.roles r on r.id=rp.role_id
+          join public.permissions p on p.id=rp.permission_id
+          where p.code in ('variants.manage','schedules.manage','products.manage')
+          order by r.code,p.code;
 
-          select 'FUNCTION_PRIVS';
-          select 'save_product_variant|auth='||
-            has_function_privilege('authenticated','public.save_product_variant(uuid,uuid,text,numeric,integer,boolean)','EXECUTE')
-            ||'|anon='||
-            has_function_privilege('anon','public.save_product_variant(uuid,uuid,text,numeric,integer,boolean)','EXECUTE');
-          select 'save_local_schedule|auth='||
-            has_function_privilege('authenticated','public.save_local_schedule(uuid,smallint,boolean,time without time zone,time without time zone)','EXECUTE')
-            ||'|anon='||
-            has_function_privilege('anon','public.save_local_schedule(uuid,smallint,boolean,time without time zone,time without time zone)','EXECUTE');
+          select 'CAPABILITIES';
+          select code||'|'||scope||'|'||active
+          from public.capabilities
+          where code in ('variants.manage','schedules.manage','products.manage')
+          order by code;
 
-          select 'DEMO_PRODUCTS';
-          select p.id||'|'||p.name||'|'||p.local_id||'|'||p.active
-          from public.products p
-          order by p.created_at;
-
-          select 'DEMO_VARIANTS';
-          select v.id||'|'||v.product_id||'|'||v.name||'|'||v.price||'|'||v.active
-          from public.product_variants v
-          order by v.product_id,v.display_order,v.name;
+          select 'LOCAL_CAPABILITY_ROWS';
+          select l.name||'|'||c.code||'|'||lc.enabled
+          from public.local_capabilities lc
+          join public.locals l on l.id=lc.local_id
+          join public.capabilities c on c.id=lc.capability_id
+          where c.code in ('variants.manage','schedules.manage','products.manage')
+          order by l.name,c.code;
           """
           subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
             "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
