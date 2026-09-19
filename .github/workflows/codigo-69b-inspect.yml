@@ -1,4 +1,4 @@
-name: Codigo 69B Inspect Validator
+name: Codigo 69B Deploy and Verify
 
 on:
   push:
@@ -7,21 +7,39 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-production
+  cancel-in-progress: false
+
 jobs:
-  inspect:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+
       - name: Link project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: hwfloywzqlgqieonuswl
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: Inspect fee validator
+
+      - name: Dry run migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run
+
+      - name: Apply migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+
+      - name: Verify day and night rates with rollback
         shell: bash
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -31,36 +49,157 @@ jobs:
           from pathlib import Path
           from urllib.parse import urlparse
           import os, subprocess
+
           p=urlparse(Path("supabase/.temp/pooler-url").read_text().strip())
-          env=os.environ.copy(); env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+          env=os.environ.copy()
+          env["PGPASSWORD"]=os.environ["SUPABASE_DB_PASSWORD"]
+
           sql=r"""
-          select 'VALIDATOR_DEF';
-          select pg_get_functiondef(p.oid)
-          from pg_proc p
-          join pg_namespace n on n.oid=p.pronamespace
-          where n.nspname='public'
-            and p.proname='validate_delivery_fee_config_state';
+          select 'RATE_TABLE_EXISTS|' ||
+            (to_regclass('public.delivery_fee_rates') is not null);
 
-          select 'FEE_TRIGGERS';
-          select c.relname||'|'||t.tgname||'|'||pg_get_triggerdef(t.oid)
-          from pg_trigger t
-          join pg_class c on c.oid=t.tgrelid
-          join pg_namespace n on n.oid=c.relnamespace
-          where n.nspname='public'
-            and c.relname in ('delivery_fee_configs','delivery_fee_ranges','delivery_fee_rates')
-            and not t.tgisinternal
-          order by c.relname,t.tgname;
+          select 'SCHEDULE_AUTH_EXECUTE|' ||
+            has_function_privilege(
+              'authenticated',
+              'public.save_delivery_fee_schedule(uuid,time without time zone,time without time zone)',
+              'EXECUTE'
+            );
 
-          select 'POST_MIGRATION_CONFIG';
-          select d.name||'|'||c.mode||'|'||c.fixed_fee||'|'||c.day_start_time||'|'||c.night_start_time||'|'||c.active
-          from public.delivery_fee_configs c
-          join public.deliveries d on d.id=c.delivery_id
-          order by d.name;
+          select 'SCHEDULE_ANON_EXECUTE|' ||
+            has_function_privilege(
+              'anon',
+              'public.save_delivery_fee_schedule(uuid,time without time zone,time without time zone)',
+              'EXECUTE'
+            );
 
-          select 'POST_MIGRATION_RATE_COUNT|'||count(*)
+          select 'RATE_AUTH_EXECUTE|' ||
+            has_function_privilege(
+              'authenticated',
+              'public.save_delivery_distance_rate(uuid,text,numeric,boolean)',
+              'EXECUTE'
+            );
+
+          select 'RATE_ANON_EXECUTE|' ||
+            has_function_privilege(
+              'anon',
+              'public.save_delivery_distance_rate(uuid,text,numeric,boolean)',
+              'EXECUTE'
+            );
+
+          select 'CALC_AT_SERVICE_EXECUTE|' ||
+            has_function_privilege(
+              'service_role',
+              'public.calculate_delivery_fee_at(uuid,numeric,timestamp with time zone)',
+              'EXECUTE'
+            );
+
+          select 'CALC_AT_AUTH_EXECUTE|' ||
+            has_function_privilege(
+              'authenticated',
+              'public.calculate_delivery_fee_at(uuid,numeric,timestamp with time zone)',
+              'EXECUTE'
+            );
+
+          select 'CALC_AT_ANON_EXECUTE|' ||
+            has_function_privilege(
+              'anon',
+              'public.calculate_delivery_fee_at(uuid,numeric,timestamp with time zone)',
+              'EXECUTE'
+            );
+
+          select 'DEMO_FIXED_BEFORE|' || public.calculate_delivery_fee(
+            (select id from public.deliveries where active=true order by created_at limit 1),
+            10
+          );
+
+          begin;
+
+          do $$
+          declare
+            v_master uuid;
+            v_delivery uuid;
+            v_day numeric;
+            v_night numeric;
+            v_day_boundary numeric;
+            v_night_boundary numeric;
+          begin
+            select p.id into v_master
+            from public.profiles p
+            join public.roles r on r.id=p.role_id
+            where p.active=true and r.active=true and r.code='MASTER'
+            order by p.created_at
+            limit 1;
+
+            select d.id into v_delivery
+            from public.deliveries d
+            where d.active=true
+            order by d.created_at
+            limit 1;
+
+            if v_master is null or v_delivery is null then
+              raise exception 'Missing MASTER or active DELIVERY';
+            end if;
+
+            perform set_config('request.jwt.claim.sub', v_master::text, true);
+
+            perform public.save_delivery_fee_config(v_delivery,'DISTANCE',0,true);
+            perform public.save_delivery_fee_schedule(v_delivery,'06:00'::time,'18:00'::time);
+            perform public.save_delivery_distance_rate(v_delivery,'DAY',0.50,true);
+            perform public.save_delivery_distance_rate(v_delivery,'NIGHT',0.75,true);
+
+            v_day := public.calculate_delivery_fee_at(
+              v_delivery,10,'2026-09-21 15:00:00+00'::timestamptz
+            );
+
+            v_night := public.calculate_delivery_fee_at(
+              v_delivery,10,'2026-09-22 01:00:00+00'::timestamptz
+            );
+
+            v_day_boundary := public.calculate_delivery_fee_at(
+              v_delivery,10,'2026-09-21 11:00:00+00'::timestamptz
+            );
+
+            v_night_boundary := public.calculate_delivery_fee_at(
+              v_delivery,10,'2026-09-21 23:00:00+00'::timestamptz
+            );
+
+            if v_day <> 5.00 then
+              raise exception 'Expected DAY fee 5.00, got %', v_day;
+            end if;
+
+            if v_night <> 7.50 then
+              raise exception 'Expected NIGHT fee 7.50, got %', v_night;
+            end if;
+
+            if v_day_boundary <> 5.00 then
+              raise exception '06:00 Ecuador boundary must be DAY, got %', v_day_boundary;
+            end if;
+
+            if v_night_boundary <> 7.50 then
+              raise exception '18:00 Ecuador boundary must be NIGHT, got %', v_night_boundary;
+            end if;
+
+            raise notice 'DAY_RATE_OK=true';
+            raise notice 'NIGHT_RATE_OK=true';
+            raise notice 'DAY_BOUNDARY_OK=true';
+            raise notice 'NIGHT_BOUNDARY_OK=true';
+            raise notice 'RATE_SELECTOR_MODEL_OK=true';
+          end
+          $$;
+
+          rollback;
+
+          select 'DEMO_FIXED_AFTER|' || public.calculate_delivery_fee(
+            (select id from public.deliveries where active=true order by created_at limit 1),
+            10
+          );
+
+          select 'RATE_RESIDUE|' || count(*)
           from public.delivery_fee_rates;
           """
-          subprocess.run(["psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
-            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql],
-            check=True,env=env)
+
+          subprocess.run([
+            "psql","-h",p.hostname,"-p",str(p.port),"-U",p.username,
+            "-d",p.path.lstrip("/").split("?")[0],"-At","-v","ON_ERROR_STOP=1","-c",sql
+          ],check=True,env=env)
           PY
