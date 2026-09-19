@@ -27,11 +27,14 @@ const state = {
   advertisements: [],
   advertisementDeliveries: [],
   advertisementLocals: [],
-  advertisementProducts: []
+  advertisementProducts: [],
+  menuImportJobs: [],
+  menuImportJob: null,
+  menuImportPreview: null
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","users","fees","coverage","catalog","schedules","storage","advertising","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -144,6 +147,7 @@ function showSection(name) {
   if (name === "schedules") loadSchedules();
   if (name === "storage") loadStorage();
   if (name === "advertising") loadAdvertising();
+  if (name === "menuimport") loadMenuImport();
   if (name === "analytics") loadAnalytics();
 }
 
@@ -3616,6 +3620,504 @@ function previewAdvertisementDestination() {
   window.open(base.href, "_blank", "noopener");
 }
 
+
+function menuClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function menuParseNumber(value, label, required = false) {
+  const raw = String(value ?? "").trim().replace(",", ".");
+  if (!raw) {
+    if (required) throw new Error(`${label} es obligatorio.`);
+    return null;
+  }
+  const number = Number(raw);
+  if (!Number.isFinite(number)) throw new Error(`${label} no es un número válido.`);
+  return number;
+}
+
+function menuPrice(value, label, required = false) {
+  const number = menuParseNumber(value, label, required);
+  if (number !== null && number < 0) throw new Error(`${label} no puede ser negativo.`);
+  return number;
+}
+
+function menuLocalOptions() {
+  const detected = String(state.menuImportPreview?.local?.name || "").trim().toLowerCase();
+  const locals = [...state.locals].sort((a, b) => {
+    const aMatch = detected && String(a.name || "").trim().toLowerCase() === detected;
+    const bMatch = detected && String(b.name || "").trim().toLowerCase() === detected;
+    if (aMatch !== bMatch) return aMatch ? -1 : 1;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+
+  return '<option value="">Crear un LOCAL nuevo</option>' +
+    locals.map(local => {
+      const match = detected && String(local.name || "").trim().toLowerCase() === detected;
+      return `<option value="${local.id}">${match ? "★ Posible coincidencia — " : ""}${esc(local.name)}${local.active ? "" : " — inactivo"}</option>`;
+    }).join("");
+}
+
+function renderMenuWarnings() {
+  const el = $("menuWarnings");
+  const warnings = state.menuImportPreview?.warnings || [];
+
+  if (!warnings.length) {
+    el.className = "message hidden";
+    el.textContent = "";
+    return;
+  }
+
+  el.className = "message";
+  el.innerHTML = "<strong>Revisar:</strong><br>" + warnings.map(item => "• " + esc(item)).join("<br>");
+}
+
+function renderMenuPreview() {
+  const preview = state.menuImportPreview;
+  const card = $("menuPreviewCard");
+
+  if (!preview || !state.menuImportJob) {
+    card.classList.add("hidden");
+    return;
+  }
+
+  card.classList.remove("hidden");
+  $("menuPreviewJobLabel").textContent =
+    `Job ${state.menuImportJob.id} · ${state.menuImportJob.status || "PREVIEW"}`;
+
+  const local = preview.local || {};
+  $("menuExistingLocal").innerHTML = menuLocalOptions();
+  $("menuExistingLocal").value = state.menuImportJob.existing_local_id || "";
+  $("menuLocalName").value = local.name || "";
+  $("menuLocalDescription").value = local.description || "";
+  $("menuLocalPhone").value = local.phone || "";
+  $("menuLocalWhatsapp").value = local.whatsapp || "";
+  $("menuLocalAddress").value = local.address || "";
+  $("menuLocalLatitude").value = local.latitude ?? "";
+  $("menuLocalLongitude").value = local.longitude ?? "";
+  $("menuLocalActive").checked = local.active === true;
+
+  renderMenuWarnings();
+  renderMenuCategories();
+}
+
+function renderMenuCategories() {
+  const container = $("menuCategoriesEditor");
+  const categories = state.menuImportPreview?.categories || [];
+
+  if (!categories.length) {
+    container.innerHTML = '<div class="muted">No hay categorías. Agrega una para poder confirmar.</div>';
+    return;
+  }
+
+  container.innerHTML = categories.map((category, ci) => `
+    <div class="card menu-category-card" style="margin:0">
+      <div class="row between">
+        <strong>Categoría ${ci + 1}</strong>
+        <button class="btn-danger" type="button" onclick="removeMenuCategory(${ci})">Eliminar categoría</button>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label>Nombre</label>
+          <input id="menuCatName-${ci}" value="${esc(category.name || "")}">
+        </div>
+        <div>
+          <label>Descripción</label>
+          <input id="menuCatDescription-${ci}" value="${esc(category.description || "")}">
+        </div>
+      </div>
+      <div class="row between" style="margin:12px 0">
+        <strong>Productos</strong>
+        <button class="btn-muted" type="button" onclick="addMenuProduct(${ci})">+ Producto</button>
+      </div>
+      <div class="stack">
+        ${(category.products || []).map((product, pi) => `
+          <div class="card menu-product-card" style="margin:0">
+            <div class="row between">
+              <strong>Producto ${pi + 1}</strong>
+              <button class="btn-danger" type="button" onclick="removeMenuProduct(${ci},${pi})">Eliminar</button>
+            </div>
+            <div class="form-grid">
+              <div>
+                <label>Nombre</label>
+                <input id="menuProductName-${ci}-${pi}" value="${esc(product.name || "")}">
+              </div>
+              <div>
+                <label>Precio base</label>
+                <input id="menuProductPrice-${ci}-${pi}" inputmode="decimal" value="${product.price ?? ""}" placeholder="Puede quedar vacío si las variantes tienen precio">
+              </div>
+            </div>
+            <label>Descripción</label>
+            <textarea id="menuProductDescription-${ci}-${pi}" rows="2">${esc(product.description || "")}</textarea>
+
+            <div class="row between" style="margin:12px 0 8px">
+              <strong>Variantes</strong>
+              <button class="btn-muted" type="button" onclick="addMenuVariant(${ci},${pi})">+ Variante</button>
+            </div>
+            <div class="stack">
+              ${(product.variants || []).map((variant, vi) => `
+                <div class="row">
+                  <input id="menuVariantName-${ci}-${pi}-${vi}" value="${esc(variant.name || "")}" placeholder="Nombre de variante">
+                  <input id="menuVariantPrice-${ci}-${pi}-${vi}" inputmode="decimal" value="${variant.price ?? ""}" placeholder="Precio">
+                  <button class="btn-danger" type="button" onclick="removeMenuVariant(${ci},${pi},${vi})">Quitar</button>
+                </div>
+              `).join("") || '<div class="muted">Sin variantes.</div>'}
+            </div>
+          </div>
+        `).join("") || '<div class="muted">No hay productos en esta categoría.</div>'}
+      </div>
+    </div>
+  `).join("");
+}
+
+function collectMenuPreview(strict = true) {
+  if (!state.menuImportPreview) throw new Error("No hay preview cargado.");
+
+  const latitude = menuParseNumber($("menuLocalLatitude").value, "Latitud");
+  const longitude = menuParseNumber($("menuLocalLongitude").value, "Longitud");
+
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error("Latitud y longitud deben completarse juntas.");
+  }
+  if (latitude !== null && (latitude < -90 || latitude > 90)) {
+    throw new Error("Latitud fuera de rango.");
+  }
+  if (longitude !== null && (longitude < -180 || longitude > 180)) {
+    throw new Error("Longitud fuera de rango.");
+  }
+  if ($("menuLocalActive").checked && latitude === null) {
+    throw new Error("Para publicar un LOCAL nuevo debes completar latitud y longitud.");
+  }
+
+  const preview = {
+    local: {
+      name: $("menuLocalName").value.trim(),
+      description: $("menuLocalDescription").value.trim() || null,
+      address: $("menuLocalAddress").value.trim() || null,
+      phone: $("menuLocalPhone").value.trim() || null,
+      whatsapp: $("menuLocalWhatsapp").value.trim() || null,
+      latitude,
+      longitude,
+      active: $("menuLocalActive").checked
+    },
+    categories: [],
+    warnings: state.menuImportPreview.warnings || []
+  };
+
+  if (!preview.local.name && strict) throw new Error("El nombre del LOCAL es obligatorio.");
+
+  const sourceCategories = state.menuImportPreview.categories || [];
+
+  sourceCategories.forEach((category, ci) => {
+    const name = $("menuCatName-" + ci)?.value.trim() || "";
+    if (!name && strict) throw new Error(`La categoría ${ci + 1} necesita nombre.`);
+
+    const nextCategory = {
+      name,
+      description: $("menuCatDescription-" + ci)?.value.trim() || null,
+      products: []
+    };
+
+    (category.products || []).forEach((product, pi) => {
+      const productName = $("menuProductName-" + ci + "-" + pi)?.value.trim() || "";
+      if (!productName && strict) throw new Error(`Hay un producto sin nombre en ${name || "la categoría"}.`);
+
+      const variants = [];
+      (product.variants || []).forEach((variant, vi) => {
+        const variantName = $("menuVariantName-" + ci + "-" + pi + "-" + vi)?.value.trim() || "";
+        const variantPrice = menuPrice(
+          $("menuVariantPrice-" + ci + "-" + pi + "-" + vi)?.value,
+          `Precio de variante ${variantName || vi + 1}`,
+          strict
+        );
+
+        if (!variantName && strict) throw new Error(`Hay una variante sin nombre en ${productName || "un producto"}.`);
+        variants.push({ name: variantName, price: variantPrice });
+      });
+
+      const price = menuPrice(
+        $("menuProductPrice-" + ci + "-" + pi)?.value,
+        `Precio de ${productName || "producto"}`,
+        false
+      );
+
+      if (strict && price === null && variants.length === 0) {
+        throw new Error(`Completa el precio de ${productName}.`);
+      }
+
+      nextCategory.products.push({
+        name: productName,
+        description: $("menuProductDescription-" + ci + "-" + pi)?.value.trim() || null,
+        price,
+        variants
+      });
+    });
+
+    if (strict && nextCategory.products.length === 0) {
+      throw new Error(`La categoría ${name} no tiene productos.`);
+    }
+
+    preview.categories.push(nextCategory);
+  });
+
+  if (strict && preview.categories.length === 0) {
+    throw new Error("Agrega al menos una categoría.");
+  }
+
+  return preview;
+}
+
+function syncMenuPreviewFromEditor() {
+  try {
+    state.menuImportPreview = collectMenuPreview(false);
+  } catch {
+    // Las ediciones estructurales no deben bloquearse por un campo numérico incompleto.
+  }
+}
+
+function addMenuCategory() {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories.push({
+    name: "Nueva categoría",
+    description: null,
+    products: []
+  });
+  renderMenuCategories();
+}
+
+function removeMenuCategory(ci) {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories.splice(ci, 1);
+  renderMenuCategories();
+}
+
+function addMenuProduct(ci) {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories[ci].products.push({
+    name: "Nuevo producto",
+    description: null,
+    price: null,
+    variants: []
+  });
+  renderMenuCategories();
+}
+
+function removeMenuProduct(ci, pi) {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories[ci].products.splice(pi, 1);
+  renderMenuCategories();
+}
+
+function addMenuVariant(ci, pi) {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories[ci].products[pi].variants.push({
+    name: "Nueva variante",
+    price: null
+  });
+  renderMenuCategories();
+}
+
+function removeMenuVariant(ci, pi, vi) {
+  syncMenuPreviewFromEditor();
+  state.menuImportPreview.categories[ci].products[pi].variants.splice(vi, 1);
+  renderMenuCategories();
+}
+
+function renderMenuImportJobs() {
+  const container = $("menuImportJobs");
+
+  if (!state.menuImportJobs.length) {
+    container.innerHTML = '<div class="muted">Todavía no hay importaciones de menú.</div>';
+    return;
+  }
+
+  container.innerHTML = state.menuImportJobs.map(job => {
+    const date = job.created_at ? new Date(job.created_at).toLocaleString() : "";
+    const canAnalyze = ["UPLOADED","FAILED","PREVIEW_READY"].includes(job.status);
+    return `
+      <div class="card" style="margin:0">
+        <div class="row between">
+          <div>
+            <strong>${esc(job.status)}</strong>
+            <div class="muted">${esc(date)} · ${job.total_rows ?? "—"} productos detectados</div>
+            ${job.analysis_model ? `<div class="muted">Modelo: ${esc(job.analysis_model)}</div>` : ""}
+            ${job.error_message ? `<div class="message error" style="margin-top:8px">${esc(job.error_message)}</div>` : ""}
+          </div>
+          <div class="row">
+            ${job.preview_data ? `<button class="btn-muted" onclick="openMenuImportJob('${job.id}')">Revisar</button>` : ""}
+            ${canAnalyze ? `<button class="btn-muted" onclick="analyzeMenuImportJob('${job.id}')">Analizar</button>` : ""}
+            ${job.result_local_id ? `<button class="btn-muted" onclick="openImportedLocal('${job.result_local_id}')">Abrir LOCAL</button>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadMenuImport() {
+  if (state.role !== "MASTER") return;
+
+  const deliverySelect = $("menuImportDelivery");
+  const previous = deliverySelect.value;
+  deliverySelect.innerHTML = state.deliveries
+    .filter(delivery => delivery.active !== false)
+    .map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`)
+    .join("") || '<option value="">No hay DELIVERY activo</option>';
+
+  if (previous && state.deliveries.some(delivery => delivery.id === previous)) {
+    deliverySelect.value = previous;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("bulk_import_jobs")
+    .select("id,delivery_id,status,total_rows,analysis_model,preview_data,error_message,result_local_id,created_at,updated_at")
+    .eq("import_type", "MENU_IMAGE")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    $("menuImportJobs").innerHTML = `<div class="message error">${esc(error.message)}</div>`;
+    return;
+  }
+
+  state.menuImportJobs = data || [];
+  renderMenuImportJobs();
+}
+
+async function startMenuImageImport() {
+  const button = $("startMenuImportBtn");
+  let uploaded = [];
+
+  try {
+    if (state.role !== "MASTER") throw new Error("Operación exclusiva de MASTER.");
+
+    const deliveryId = $("menuImportDelivery").value;
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+
+    button.disabled = true;
+    $("menuImportStatus").textContent = "Subiendo imágenes a Storage privado...";
+
+    uploaded = await subirImagenesMenuHTPWEB(deliveryId, $("menuImportFiles").files);
+
+    $("menuImportStatus").textContent = "Registrando importación...";
+
+    let jobId;
+    try {
+      jobId = await rpc("master_create_menu_image_job", {
+        p_delivery_id: deliveryId,
+        p_files: uploaded
+      });
+    } catch (error) {
+      await eliminarImportacionesMenuHTPWEB(uploaded.map(item => item.storage_path)).catch(() => {});
+      throw error;
+    }
+
+    $("menuImportFiles").value = "";
+    $("menuImportStatus").textContent = "Imágenes guardadas. Analizando menú...";
+    await loadMenuImport();
+    await analyzeMenuImportJob(jobId);
+  } catch (e) {
+    $("menuImportStatus").textContent = e.message || "No se pudo iniciar la importación.";
+    message(e.message || "No se pudo iniciar la importación.", "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function analyzeMenuImportJob(jobId) {
+  try {
+    if (state.role !== "MASTER") throw new Error("Operación exclusiva de MASTER.");
+
+    $("menuImportStatus").textContent = "Analizando las imágenes y preparando la vista previa...";
+
+    const { data, error } = await supabaseClient.functions.invoke("analizar-menu", {
+      body: { job_id: jobId }
+    });
+
+    if (error) throw error;
+    if (!data?.ok || !data?.preview) throw new Error(data?.error || "No se recibió una vista previa.");
+
+    await loadMenuImport();
+
+    const job = state.menuImportJobs.find(item => item.id === jobId) || {
+      id: jobId,
+      status: "PREVIEW_READY",
+      preview_data: data.preview
+    };
+
+    state.menuImportJob = job;
+    state.menuImportPreview = menuClone(data.preview);
+    renderMenuPreview();
+    $("menuImportStatus").textContent = "Análisis terminado. Revisa y corrige antes de confirmar.";
+    document.getElementById("menuPreviewCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    await loadMenuImport();
+    $("menuImportStatus").textContent =
+      "El job quedó guardado. Si la API de análisis aún no está configurada, podrás pulsar Analizar después de configurar OPENAI_API_KEY.";
+    message(e.message || "No se pudo analizar el menú.", "error");
+  }
+}
+
+function openMenuImportJob(jobId) {
+  const job = state.menuImportJobs.find(item => item.id === jobId);
+  if (!job?.preview_data) return;
+
+  state.menuImportJob = job;
+  state.menuImportPreview = menuClone(job.preview_data);
+  renderMenuPreview();
+  document.getElementById("menuPreviewCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function applyMenuImport() {
+  const button = $("applyMenuImportBtn");
+
+  try {
+    if (!state.menuImportJob?.id) throw new Error("No hay importación seleccionada.");
+
+    const preview = collectMenuPreview(true);
+    const existingLocalId = $("menuExistingLocal").value || null;
+
+    if (!existingLocalId && preview.local.active !== true) {
+      const proceed = confirm(
+        "El LOCAL nuevo se creará inactivo para que puedas completar sus datos antes de publicarlo. ¿Continuar?"
+      );
+      if (!proceed) return;
+    }
+
+    button.disabled = true;
+
+    const result = await rpc("master_apply_menu_import", {
+      p_job_id: state.menuImportJob.id,
+      p_preview: preview,
+      p_existing_local_id: existingLocalId
+    });
+
+    message(
+      `Importación aplicada: ${result.categories} categorías, ${result.products} productos y ${result.variants} variantes.`
+    );
+
+    $("menuPreviewCard").classList.add("hidden");
+    state.menuImportJob = null;
+    state.menuImportPreview = null;
+
+    await loadScopes();
+    await loadMenuImport();
+  } catch (e) {
+    message(e.message || "No se pudo aplicar la importación.", "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openImportedLocal(localId) {
+  if (state.role !== "MASTER") return;
+  showSection("catalog");
+  if ($("catalogLocal")) {
+    $("catalogLocal").value = localId;
+    loadCatalog();
+  }
+}
+
 async function loadAnalytics() {
   if (!["MASTER","DELIVERY_ADMIN","LOCAL_ADMIN"].includes(state.role)) return;
 
@@ -3664,6 +4166,11 @@ function bindEvents() {
   $("refreshBtn").onclick = refreshAll;
   $("orderScope").onchange = loadOrders;
   $("analyticsScope").onchange = loadAnalytics;
+  $("menuImportDelivery").onchange = () => { $("menuImportStatus").textContent = "Selecciona de 1 a 5 imágenes para iniciar."; };
+  $("startMenuImportBtn").onclick = startMenuImageImport;
+  $("reanalyzeMenuBtn").onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
+  $("addMenuCategoryBtn").onclick = addMenuCategory;
+  $("applyMenuImportBtn").onclick = applyMenuImport;
   $("advertisementScope").onchange = loadAdvertisingTargets;
   $("advertisementDelivery").onchange = loadAdvertisingTargets;
   $("advertisementLocal").onchange = loadAdvertisingProducts;
