@@ -1384,9 +1384,17 @@ async function saveFeeRange() {
     if (!delivery) throw new Error("Selecciona un DELIVERY.");
 
     const rangeId = $("feeRangeId").value || null;
-    const distanceFrom = Number($("feeDistanceFrom").value);
-    const distanceTo = Number($("feeDistanceTo").value);
-    const fee = Number($("feeRangeValue").value);
+    const distanceFromRaw = $("feeDistanceFrom").value.trim();
+    const distanceToRaw = $("feeDistanceTo").value.trim();
+    const feeRaw = $("feeRangeValue").value.trim();
+
+    if (distanceFromRaw === "" || distanceToRaw === "" || feeRaw === "") {
+      throw new Error("Completa las distancias y el valor del rango.");
+    }
+
+    const distanceFrom = Number(distanceFromRaw);
+    const distanceTo = Number(distanceToRaw);
+    const fee = Number(feeRaw);
 
     if (!Number.isFinite(distanceFrom) || distanceFrom < 0) {
       throw new Error("La distancia inicial debe ser igual o mayor que 0.");
