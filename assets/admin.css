@@ -78,3 +78,16 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5
 
 .assignment-row{padding:10px 0;border-bottom:1px solid #e5e7eb}
 .assignment-row:last-child{border-bottom:0}
+
+.schedule-row{
+  display:grid;
+  grid-template-columns:minmax(120px,1fr) minmax(120px,.7fr) minmax(150px,1fr) minmax(150px,1fr);
+  gap:12px;
+  align-items:end;
+  padding:12px 0;
+  border-bottom:1px solid #e5e7eb
+}
+.schedule-row:last-child{border-bottom:0}
+@media(max-width:800px){
+  .schedule-row{grid-template-columns:1fr 1fr}
+}

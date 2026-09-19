@@ -19,14 +19,16 @@ const state = {
   zoneContext: null,
   zonesCatalog: [],
   categories: [],
-  products: []
+  products: [],
+  variants: [],
+  schedules: []
 };
 
 const roleSections = {
-  MASTER: ["overview","orders","requests","deliveries","users","fees","coverage","storage","analytics"],
+  MASTER: ["overview","orders","requests","deliveries","users","fees","coverage","catalog","schedules","storage","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","orders","requests","fees","coverage","storage","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
-  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","storage","analytics"]
+  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","analytics"]
 };
 
 const globalTransitions = {
@@ -132,6 +134,7 @@ function showSection(name) {
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
   if (name === "catalog") loadCatalog();
+  if (name === "schedules") loadSchedules();
   if (name === "storage") loadStorage();
   if (name === "analytics") loadAnalytics();
 }
@@ -222,6 +225,10 @@ function renderScopeSelectors() {
 
   if ($("catalogLocal")) {
     $("catalogLocal").innerHTML = localOptions;
+  }
+
+  if ($("scheduleLocal")) {
+    $("scheduleLocal").innerHTML = localOptions;
   }
 
   if ($("analyticsScope")) {
@@ -464,6 +471,16 @@ function openLocalCatalog() {
   if (localId && $("catalogLocal")) {
     $("catalogLocal").value = localId;
     loadCatalog();
+  }
+}
+
+function openLocalSchedules() {
+  showSection("schedules");
+
+  const localId = $("profileLocal")?.value;
+  if (localId && $("scheduleLocal")) {
+    $("scheduleLocal").value = localId;
+    loadSchedules();
   }
 }
 
@@ -1838,8 +1855,343 @@ async function saveZone() {
   }
 }
 
+const scheduleDayNames = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado"
+];
+
+function selectedCatalogLocalId() {
+  return $("catalogLocal")?.value || state.locals[0]?.id || null;
+}
+
+function selectedScheduleLocalId() {
+  return $("scheduleLocal")?.value || state.locals[0]?.id || null;
+}
+
+function clearVariantForm() {
+  $("variantId").value = "";
+  $("variantName").value = "";
+  $("variantPrice").value = "";
+  $("variantOrder").value = "0";
+  $("variantActive").value = "true";
+  $("saveVariantBtn").textContent = "Guardar variante";
+}
+
+function renderVariants() {
+  const container = $("variantsList");
+  if (!container) return;
+
+  if (!state.variants.length) {
+    container.innerHTML = '<div class="muted">Este producto todavía no tiene variantes.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Variante</th>
+            <th>Precio</th>
+            <th>Orden</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.variants.map(variant => `
+            <tr>
+              <td>${esc(variant.name)}</td>
+              <td>${Number(variant.price || 0).toFixed(2)}</td>
+              <td>${esc(variant.display_order ?? 0)}</td>
+              <td>${variant.active ? "Activa" : "Inactiva"}</td>
+              <td>
+                <div class="row">
+                  <button class="btn-muted" onclick="editVariant('${variant.id}')">Editar</button>
+                  ${variant.active
+                    ? `<button class="btn-danger" onclick="deactivateVariant('${variant.id}')">Desactivar</button>`
+                    : ""}
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function loadVariants() {
+  const productId = $("variantProduct")?.value || null;
+
+  if (!productId) {
+    state.variants = [];
+    renderVariants();
+    $("saveVariantBtn").disabled = true;
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("product_variants")
+    .select("id,product_id,name,price,display_order,active")
+    .eq("product_id", productId)
+    .order("display_order")
+    .order("name");
+
+  if (error) {
+    state.variants = [];
+    renderVariants();
+    $("saveVariantBtn").disabled = true;
+    message(error.message || "No se pudieron cargar las variantes.", "error");
+    return;
+  }
+
+  state.variants = data || [];
+  $("saveVariantBtn").disabled = false;
+  clearVariantForm();
+  renderVariants();
+}
+
+function editVariant(variantId) {
+  const variant = state.variants.find(item => item.id === variantId);
+  if (!variant) return;
+
+  $("variantId").value = variant.id;
+  $("variantName").value = variant.name || "";
+  $("variantPrice").value = variant.price ?? "";
+  $("variantOrder").value = variant.display_order ?? 0;
+  $("variantActive").value = String(variant.active);
+  $("saveVariantBtn").textContent = "Actualizar variante";
+  $("variantName").focus();
+}
+
+async function saveVariant() {
+  try {
+    const productId = $("variantProduct").value || null;
+    const variantId = $("variantId").value || null;
+    const name = $("variantName").value.trim();
+    const priceRaw = $("variantPrice").value.trim();
+    const orderRaw = $("variantOrder").value.trim();
+
+    if (!productId) throw new Error("Selecciona un producto.");
+    if (!name) throw new Error("Escribe el nombre de la variante.");
+    if (priceRaw === "") throw new Error("Escribe el precio de la variante.");
+
+    const price = Number(priceRaw);
+    const displayOrder = orderRaw === "" ? 0 : Number(orderRaw);
+
+    if (!Number.isFinite(price) || price < 0) {
+      throw new Error("El precio debe ser igual o mayor que 0.");
+    }
+
+    if (!Number.isInteger(displayOrder) || displayOrder < 0) {
+      throw new Error("El orden debe ser un entero igual o mayor que 0.");
+    }
+
+    await rpc("save_product_variant", {
+      p_product_id: productId,
+      p_variant_id: variantId,
+      p_name: name,
+      p_price: price,
+      p_display_order: displayOrder,
+      p_active: $("variantActive").value === "true"
+    });
+
+    message(variantId ? "Variante actualizada." : "Variante creada.");
+    await loadVariants();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la variante.", "error");
+  }
+}
+
+async function deactivateVariant(variantId) {
+  const variant = state.variants.find(item => item.id === variantId);
+  const productId = $("variantProduct").value || null;
+  if (!variant || !productId) return;
+
+  if (!confirm(`¿Desactivar la variante "${variant.name}"?`)) return;
+
+  try {
+    await rpc("save_product_variant", {
+      p_product_id: productId,
+      p_variant_id: variant.id,
+      p_name: variant.name,
+      p_price: Number(variant.price),
+      p_display_order: Number(variant.display_order || 0),
+      p_active: false
+    });
+
+    message("Variante desactivada.");
+    await loadVariants();
+  } catch (e) {
+    message(e.message || "No se pudo desactivar la variante.", "error");
+  }
+}
+
+async function enableCatalogManagement() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const localId = selectedCatalogLocalId();
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    for (const capability of ["products.manage","variants.manage"]) {
+      await rpc("master_set_local_capability", {
+        p_local_id: localId,
+        p_capability_code: capability,
+        p_enabled: true
+      });
+    }
+
+    message("Catálogo y variantes habilitados para el LOCAL.");
+  } catch (e) {
+    message(e.message || "No se pudo habilitar el catálogo.", "error");
+  }
+}
+
+function renderScheduleEditor() {
+  const container = $("scheduleEditor");
+  if (!container) return;
+
+  const byDay = new Map(
+    state.schedules.map(schedule => [Number(schedule.day_of_week), schedule])
+  );
+
+  container.innerHTML = scheduleDayNames.map((dayName, day) => {
+    const schedule = byDay.get(day);
+    const isClosed = schedule ? Boolean(schedule.is_closed) : true;
+    const opening = schedule?.opening_time ? String(schedule.opening_time).slice(0,5) : "";
+    const closing = schedule?.closing_time ? String(schedule.closing_time).slice(0,5) : "";
+
+    return `
+      <div class="schedule-row">
+        <strong>${dayName}</strong>
+        <label class="row">
+          <input
+            id="scheduleClosed${day}"
+            type="checkbox"
+            style="width:auto"
+            ${isClosed ? "checked" : ""}
+            onchange="toggleScheduleDay(${day})"
+          >
+          <span>Cerrado</span>
+        </label>
+        <div>
+          <label>Apertura</label>
+          <input id="scheduleOpen${day}" type="time" value="${esc(opening)}" ${isClosed ? "disabled" : ""}>
+        </div>
+        <div>
+          <label>Cierre</label>
+          <input id="scheduleClose${day}" type="time" value="${esc(closing)}" ${isClosed ? "disabled" : ""}>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleScheduleDay(day) {
+  const closed = $("scheduleClosed" + day).checked;
+  $("scheduleOpen" + day).disabled = closed;
+  $("scheduleClose" + day).disabled = closed;
+}
+
+async function loadSchedules() {
+  if (!["MASTER","LOCAL_ADMIN"].includes(state.role)) return;
+
+  const localId = selectedScheduleLocalId();
+
+  if (!localId) {
+    state.schedules = [];
+    renderScheduleEditor();
+    $("saveSchedulesBtn").disabled = true;
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("local_schedules")
+    .select("id,local_id,day_of_week,is_closed,opening_time,closing_time")
+    .eq("local_id", localId)
+    .order("day_of_week");
+
+  if (error) {
+    state.schedules = [];
+    renderScheduleEditor();
+    $("saveSchedulesBtn").disabled = true;
+    message(error.message || "No se pudieron cargar los horarios.", "error");
+    return;
+  }
+
+  state.schedules = data || [];
+  $("saveSchedulesBtn").disabled = false;
+  renderScheduleEditor();
+}
+
+async function saveSchedules() {
+  try {
+    const localId = selectedScheduleLocalId();
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    const rows = scheduleDayNames.map((_, day) => {
+      const isClosed = $("scheduleClosed" + day).checked;
+      const opening = $("scheduleOpen" + day).value || null;
+      const closing = $("scheduleClose" + day).value || null;
+
+      if (!isClosed) {
+        if (!opening || !closing) {
+          throw new Error(`${scheduleDayNames[day]}: completa hora de apertura y cierre.`);
+        }
+
+        if (opening >= closing) {
+          throw new Error(`${scheduleDayNames[day]}: la apertura debe ser anterior al cierre.`);
+        }
+      }
+
+      return { day, isClosed, opening, closing };
+    });
+
+    await rpc("save_local_schedule_week", {
+      p_local_id: localId,
+      p_days: rows.map(row => ({
+        day_of_week: row.day,
+        is_closed: row.isClosed,
+        opening_time: row.isClosed ? null : row.opening,
+        closing_time: row.isClosed ? null : row.closing
+      }))
+    });
+
+    message("Horario semanal actualizado.");
+    await loadSchedules();
+  } catch (e) {
+    message(e.message || "No se pudieron guardar los horarios.", "error");
+  }
+}
+
+async function enableScheduleManagement() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const localId = selectedScheduleLocalId();
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    await rpc("master_set_local_capability", {
+      p_local_id: localId,
+      p_capability_code: "schedules.manage",
+      p_enabled: true
+    });
+
+    message("Gestión de horarios habilitada para el LOCAL.");
+  } catch (e) {
+    message(e.message || "No se pudo habilitar la gestión de horarios.", "error");
+  }
+}
+
 async function loadCatalog() {
-  if (state.role !== "LOCAL_ADMIN") return;
+  if (!["MASTER","LOCAL_ADMIN"].includes(state.role)) return;
 
   const localId = $("catalogLocal").value || state.locals[0]?.id;
   if (!localId) {
@@ -1875,6 +2227,12 @@ async function loadCatalog() {
       `<option value="${c.id}">${esc(c.name)}</option>`
     ).join("");
 
+  $("variantProduct").innerHTML = state.products.length
+    ? state.products.map(product =>
+        `<option value="${product.id}">${esc(product.name)}</option>`
+      ).join("")
+    : '<option value="">Primero crea un producto</option>';
+
   $("catalogProducts").innerHTML = state.products.length
     ? `
       <div class="table-wrap">
@@ -1894,6 +2252,8 @@ async function loadCatalog() {
       </div>
     `
     : '<div class="muted">No hay productos.</div>';
+
+  await loadVariants();
 }
 
 async function saveCategory() {
@@ -2227,7 +2587,7 @@ async function enableLocalMedia() {
     const localId = $("storageLocal").value;
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
-    for (const capability of ["images.manage","local.info.manage","products.manage"]) {
+    for (const capability of ["images.manage","local.info.manage","products.manage","variants.manage","schedules.manage"]) {
       await rpc("master_set_local_capability", {
         p_local_id: localId,
         p_capability_code: capability,
@@ -2425,6 +2785,7 @@ function bindEvents() {
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
   $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
+  $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
   $("userManagerSearch").oninput = renderUserOptions;
   $("userManagerUser").onchange = renderManagedUser;
   $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
@@ -2445,6 +2806,13 @@ function bindEvents() {
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
   $("saveProductBtn").onclick = saveProduct;
+  $("variantProduct").onchange = loadVariants;
+  $("saveVariantBtn").onclick = saveVariant;
+  $("clearVariantBtn").onclick = clearVariantForm;
+  $("enableCatalogManagementBtn").onclick = enableCatalogManagement;
+  $("scheduleLocal").onchange = loadSchedules;
+  $("saveSchedulesBtn").onclick = saveSchedules;
+  $("enableScheduleManagementBtn").onclick = enableScheduleManagement;
 
   $("storageDelivery").onchange = refreshDeliveryMediaPreview;
   $("storageLocal").onchange = async () => {
