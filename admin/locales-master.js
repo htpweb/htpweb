@@ -1,4 +1,4 @@
-const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false};
+const masterLocalsState={items:[],zones:[],businessCategories:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
@@ -19,6 +19,7 @@ function bindMasterLocals(){
  <div class="workspace-tabs" role="tablist" aria-label="Ficha del local"><button data-local-tab="info">Información y ubicación</button>
  <button data-local-tab="schedules">Horario</button><button data-local-tab="images">Imágenes</button><button data-local-tab="catalog">Productos y variantes</button></div>
  <div id="localInfoPane"><div class="form-grid">
+ <div><label for="masterLocalBusinessCategory">Categoría *</label><select id="masterLocalBusinessCategory"></select></div>
  <div><label for="masterLocalProvince">Provincia *</label><select id="masterLocalProvince"></select></div>
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
@@ -62,7 +63,7 @@ function bindMasterLocals(){
 }
 function discardLocalChanges(){return !masterLocalsState.dirty||confirm("Hay cambios sin guardar. ¿Deseas descartarlos?");}
 function fillLocalCities(selected=""){$("masterLocalCity").innerHTML=localOptions(state.cities.filter(c=>c.active&&c.province===$("masterLocalProvince").value),c=>c.name,selected);}
-function fillLocalZones(selected=""){$("masterLocalZone").innerHTML=localOptions(masterLocalsState.zones.filter(z=>z.active&&z.city_id===$("masterLocalCity").value),z=>z.code+" — "+z.name,selected);}
+function fillLocalZones(selected=""){$("masterLocalZone").innerHTML=localOptions(masterLocalsState.zones.filter(z=>z.active),z=>z.code+" — "+z.name+(z.city_name?" · ref. "+z.city_name:""),selected);}
 function clearGoogleScheduleDraft(){
  masterLocalsState.googleScheduleDraft=null;
  masterLocalsState.googleScheduleDraftLocalId=null;
@@ -77,6 +78,7 @@ function fillMasterLocalForm(local){
  const provinces=[...new Set(state.cities.filter(c=>c.active).map(c=>c.province||""))].sort();
  $("masterLocalProvince").innerHTML=localOptions(provinces.map(p=>({id:p})),p=>p.id,local?.province||"");
  fillLocalCities(local?.city_id||"");fillLocalZones(local?.zone_id||"");
+ $("masterLocalBusinessCategory").innerHTML=localOptions(masterLocalsState.businessCategories.filter(x=>x.active||x.id===local?.business_category_id),x=>x.name,local?.business_category_id||"");
  $("masterLocalActive").checked=!!local?.active;$("masterLocalToggleBtn").disabled=!local;$("masterLocalDeleteBtn").disabled=!local;
  $("masterLocalToggleBtn").textContent=local?.active?"Inactivar":"Activar";
  masterLocalsState.source=local?.location_source||"MANUAL";masterLocalsState.googlePlace=null;if($("googlePlaceDetailsBtn"))$("googlePlaceDetailsBtn").disabled=true;masterLocalsState.dirty=false;
@@ -90,14 +92,15 @@ function renderMasterLocalList(){
  (!$("localFilterProvince").value||l.province===$("localFilterProvince").value)&&(!$("localFilterCity").value||l.city_id===$("localFilterCity").value)&&
  (!$("localFilterZone").value||l.zone_id===$("localFilterZone").value)&&(!($("localFilterName").value)||l.name.toLowerCase().includes($("localFilterName").value.toLowerCase()))&&
  (!$("localFilterStatus").value||($("localFilterStatus").value==="unzoned"?!l.zone_id:String(l.active)===$("localFilterStatus").value)));
- $("masterLocalsSummary").innerHTML='<p>'+items.length+' locales</p><div class="table-wrap"><table><thead><tr><th>Provincia</th><th>Cantón</th><th>Zona</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
- items.map(l=>'<tr><td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td><td>'+esc(l.name)+'</td><td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>';
+ $("masterLocalsSummary").innerHTML='<p>'+items.length+' locales</p><div class="table-wrap"><table><thead><tr><th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
+ items.map(l=>'<tr><td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td><td>'+esc(l.business_category_name||"Sin categoría")+'</td><td>'+esc(l.name)+'</td><td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>';
  $("masterLocalsSummary").querySelectorAll("[data-edit-local]").forEach(b=>b.onclick=()=>{if(discardLocalChanges()){fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===b.dataset.editLocal));showLocalEditor(true);}});
 }
 async function loadMasterLocals(){
  if(state.role!=="MASTER")return;bindMasterLocals();
  try{
-   const [items,zones]=await Promise.all([rpc("master_list_locals"),rpc("master_list_zones")]);masterLocalsState.items=items||[];masterLocalsState.zones=zones||[];
+   const [items,zones,businessCategories]=await Promise.all([rpc("master_list_locals"),rpc("master_list_zones"),rpc("master_list_local_business_categories")]);masterLocalsState.items=items||[];masterLocalsState.zones=zones||[];masterLocalsState.businessCategories=businessCategories||[];
+   if(typeof localBusinessCategoriesState!=="undefined")localBusinessCategoriesState.items=masterLocalsState.businessCategories;
    const provinces=[...new Set(state.cities.map(c=>c.province).filter(Boolean))].sort();
    for(const [id,data,label] of [["localFilterProvince",provinces.map(p=>({id:p})),p=>p.id],["localFilterCity",state.cities,c=>c.name],["localFilterZone",zones,z=>z.code+" — "+z.name]]){
      const value=$(id).value;$(id).innerHTML='<option value="">Todos</option>'+localOptions(data,label,value).replace('<option value="">Seleccionar…</option>',"");
@@ -223,7 +226,7 @@ function setLocalPoint(lat,lng,center=false,lookupAddress=true){
 function detectLocalZone(select){
  const lat=nullableNumber("masterLocalLatitude"),lng=nullableNumber("masterLocalLongitude");
  if(lat===null||lng===null){$("localZoneDetection").textContent="Selecciona una ubicación.";return;}
- const matches=masterLocalsState.zones.filter(z=>z.active&&z.city_id===$("masterLocalCity").value&&ZoneMaps.contains(z.boundary,lat,lng));
+ const matches=masterLocalsState.zones.filter(z=>z.active&&Array.isArray(z.boundary)&&z.boundary.length>=3&&ZoneMaps.contains(z.boundary,lat,lng));
  if(select&&matches.length===1)$("masterLocalZone").value=matches[0].id;
  else if(select&&matches.length===0)$("masterLocalZone").value="";
  $("localZoneDetection").textContent=matches.length===1?"Zona detectada: "+matches[0].code+" — "+matches[0].name:
@@ -232,7 +235,8 @@ function detectLocalZone(select){
 }
 function drawLocalMap(){
  const map=masterLocalsState.map;if(!map)return;map.clear();
- masterLocalsState.zones.filter(z=>z.city_id===$("masterLocalCity").value&&z.boundary?.length).forEach(z=>map.polygon(z.boundary,z.color));
+ const province=$("masterLocalProvince")?.value||"";
+ masterLocalsState.zones.filter(z=>z.boundary?.length&&(!province||z.province===province||z.id===$("masterLocalZone")?.value)).forEach(z=>map.polygon(z.boundary,z.color));
  const a=nullableNumber("masterLocalLatitude"),b=nullableNumber("masterLocalLongitude");if(a!==null&&b!==null)map.marker([a,b],(lat,lng)=>setLocalPoint(lat,lng));
 }
 async function initLocalMap(){
@@ -374,10 +378,13 @@ async function saveMasterLocal(){
  try{
    const lat=nullableNumber("masterLocalLatitude"),lng=nullableNumber("masterLocalLongitude");
    if(!$("masterLocalName").value.trim())throw new Error("Escribe el nombre del local.");
+   if(!$("masterLocalCity").value)throw new Error("Selecciona provincia y cantón.");
+   if(!$("masterLocalBusinessCategory").value)throw new Error("Selecciona la categoría del LOCAL.");
    if(!$("masterLocalZone").value)throw new Error("Selecciona una zona.");
    if($("masterLocalActive").checked&&(lat===null||lng===null))throw new Error("Para activar el LOCAL confirma su ubicación.");
-   const id=await rpc("master_save_local_v2",{
-     p_local_id:$("masterLocalId").value||null,p_zone_id:$("masterLocalZone").value,p_name:$("masterLocalName").value.trim(),p_slug:$("masterLocalSlug").value.trim(),
+   const id=await rpc("master_save_local_v3",{
+     p_local_id:$("masterLocalId").value||null,p_city_id:$("masterLocalCity").value,p_zone_id:$("masterLocalZone").value,p_business_category_id:$("masterLocalBusinessCategory").value,
+     p_name:$("masterLocalName").value.trim(),p_slug:$("masterLocalSlug").value.trim(),
      p_description:$("masterLocalDescription").value.trim(),p_address:$("masterLocalAddress").value.trim(),p_phone:$("masterLocalPhone").value.trim(),p_whatsapp:$("masterLocalWhatsapp").value.trim(),
      p_latitude:lat,p_longitude:lng,p_google_place_id:$("masterLocalPlaceId").value||null,
      p_google_maps_url:lat===null?null:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(lat+","+lng),p_location_source:masterLocalsState.source,p_active:$("masterLocalActive").checked
