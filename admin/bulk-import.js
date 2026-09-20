@@ -1,7 +1,8 @@
 (() => {
 const $=id=>document.getElementById(id);
 let rows=[]; let invalidRows=[]; let role=null;
-const LEGACY_TEMPLATE_NAME="plantilla_catalogo_htpweb.csv";\nconst LEGACY_VALIDATION_TEXT="precio inválido";
+const LEGACY_TEMPLATE_NAME="plantilla_catalogo_htpweb.csv";
+const LEGACY_VALIDATION_TEXT="precio inválido";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function msg(t,error=false){const e=$("bulkMessage");e.textContent=t;e.className="message "+(error?"error":"success");}
 function normalizeKey(v){return String(v||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
