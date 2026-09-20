@@ -527,6 +527,7 @@ async function importBulkLocals(){
     await loadScopes();
     masterLocalsState.items=(await rpc("master_list_locals"))||[];
     renderMasterLocalList();
+    renderBulkProductLocalOptions();
     message(success+" locales importados como borrador"+(failed?" · "+failed+" no pudieron importarse.":"."));
   }catch(e){
     message(e.message||"No se pudo completar la carga masiva.","error");
