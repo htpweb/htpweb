@@ -1,4 +1,4 @@
-const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null};
+const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
@@ -41,8 +41,8 @@ function bindMasterLocals(){
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalEditor(true);}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalEditor(false);}};
  $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;
- $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();};
- $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);};
+ $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
+ $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);updateGoogleSearchBias();};
  $("masterLocalZone").onchange=()=>{const z=masterLocalsState.zones.find(z=>z.id===$("masterLocalZone").value);
    if(z?.boundary?.length&&!$("masterLocalLatitude").value)masterLocalsState.map?.center(z.boundary[0],14);drawLocalMap();};
  $("localInfoPane").addEventListener("input",()=>{masterLocalsState.dirty=true;});
@@ -95,11 +95,81 @@ async function loadMasterLocals(){
  }catch(e){message(e.message||"No se pudieron cargar los locales.","error");}
 }
 function nullableNumber(id){const raw=$(id).value.trim();if(raw==="")return null;const value=Number(raw);if(!Number.isFinite(value))throw new Error("Coordenada inválida.");return value;}
-function setLocalPoint(lat,lng,center=false){
+function normalizeLocalGeoText(value){
+ return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+   .replace(/\b(provincia|canton|cantón|municipio|distrito)\b/g," ").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+}
+function localAddressPart(components,...types){
+ const list=Array.isArray(components)?components:[];
+ for(const type of types){
+   const part=list.find(x=>Array.isArray(x.types)&&x.types.includes(type));
+   if(part)return part.longText||part.long_name||part.shortText||part.short_name||"";
+ }
+ return "";
+}
+function selectLocalGeoOption(id,candidates){
+ const select=$(id);if(!select)return false;
+ const wanted=(candidates||[]).map(normalizeLocalGeoText).filter(Boolean);
+ if(!wanted.length)return false;
+ const options=[...select.options];
+ let match=options.find(o=>wanted.includes(normalizeLocalGeoText(o.textContent||o.value)));
+ if(!match)match=options.find(o=>{
+   const text=normalizeLocalGeoText(o.textContent||o.value);
+   return text&&wanted.some(w=>text.includes(w)||w.includes(text));
+ });
+ if(!match)return false;select.value=match.value;return true;
+}
+function applyLocalGoogleAddress(formattedAddress,components){
+ if(formattedAddress)$("masterLocalAddress").value=formattedAddress;
+ const province=localAddressPart(components,"administrative_area_level_1");
+ const canton=localAddressPart(components,"administrative_area_level_2");
+ const locality=localAddressPart(components,"locality","postal_town","sublocality_level_1");
+ let provinceChanged=false;
+ if(province&&selectLocalGeoOption("masterLocalProvince",[province])){fillLocalCities();provinceChanged=true;}
+ if((provinceChanged||$("masterLocalCity").options.length>1)&&selectLocalGeoOption("masterLocalCity",[canton,locality])){
+   fillLocalZones();
+ }
+ updateGoogleSearchBias();
+}
+function localCitySearchBounds(){
+ const cityId=$("masterLocalCity")?.value;if(!cityId)return null;
+ const points=masterLocalsState.zones.filter(z=>z.active&&z.city_id===cityId&&Array.isArray(z.boundary))
+   .flatMap(z=>z.boundary).filter(p=>Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1])));
+ if(!points.length)return null;
+ const lats=points.map(p=>Number(p[0])),lngs=points.map(p=>Number(p[1]));
+ return {north:Math.max(...lats),south:Math.min(...lats),east:Math.max(...lngs),west:Math.min(...lngs)};
+}
+function updateGoogleSearchBias(){
+ const search=masterLocalsState.googleSearch;if(!search)return;
+ const bounds=localCitySearchBounds();
+ search.locationBias=bounds||null;
+}
+async function reverseGeocodeLocalPoint(lat,lng){
+ if(!masterLocalsState.map?.google||!window.google?.maps)return;
+ const seq=++masterLocalsState.geocodeSeq;
+ try{
+   $("googlePlaceStatus").textContent="Buscando la dirección del punto seleccionado…";
+   const {Geocoder}=await google.maps.importLibrary("geocoding");
+   if(!masterLocalsState.geocoder)masterLocalsState.geocoder=new Geocoder();
+   const response=await masterLocalsState.geocoder.geocode({location:{lat,lng}});
+   if(seq!==masterLocalsState.geocodeSeq)return;
+   const result=response.results?.[0];
+   if(!result){$("googlePlaceStatus").textContent="Google no encontró una dirección para este punto.";return;}
+   applyLocalGoogleAddress(result.formatted_address,result.address_components);
+   detectLocalZone(true);drawLocalMap();
+   $("googlePlaceStatus").textContent="Dirección completada desde el punto del mapa. Revísala y corrígela solo si hace falta.";
+   masterLocalsState.dirty=true;
+ }catch(e){
+   if(seq===masterLocalsState.geocodeSeq)$("googlePlaceStatus").textContent="No se pudo completar la dirección automáticamente: "+(e.message||e);
+ }
+}
+function setLocalPoint(lat,lng,center=false,lookupAddress=true){
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)throw new Error("Ubicación inválida.");
  $("masterLocalLatitude").value=lat.toFixed(7);$("masterLocalLongitude").value=lng.toFixed(7);masterLocalsState.dirty=true;
- if(masterLocalsState.source!=="GOOGLE")masterLocalsState.source="MAP";
+ if(lookupAddress)masterLocalsState.source="MAP";
+ else if(masterLocalsState.source!=="GOOGLE")masterLocalsState.source="MAP";
  detectLocalZone(true);drawLocalMap();if(center)masterLocalsState.map?.center([lat,lng]);
+ if(lookupAddress)void reverseGeocodeLocalPoint(lat,lng);
 }
 function detectLocalZone(select){
  const lat=nullableNumber("masterLocalLatitude"),lng=nullableNumber("masterLocalLongitude");
@@ -117,26 +187,32 @@ function drawLocalMap(){
  const a=nullableNumber("masterLocalLatitude"),b=nullableNumber("masterLocalLongitude");if(a!==null&&b!==null)map.marker([a,b],(lat,lng)=>setLocalPoint(lat,lng));
 }
 async function initLocalMap(){
- if(masterLocalsState.map){masterLocalsState.map.resize();drawLocalMap();return;}
+ if(masterLocalsState.map){masterLocalsState.map.resize();drawLocalMap();updateGoogleSearchBias();return;}
  if(masterLocalsState.loadingMap)return;
  masterLocalsState.loadingMap=true;
  try{
-   masterLocalsState.map=await ZoneMaps.create("masterLocalMap",(lat,lng)=>setLocalPoint(lat,lng));drawLocalMap();
+   masterLocalsState.map=await ZoneMaps.create("masterLocalMap",(lat,lng)=>setLocalPoint(lat,lng,true,true));drawLocalMap();
    const l=masterLocalSelected();if(l?.latitude!=null)masterLocalsState.map.center([Number(l.latitude),Number(l.longitude)]);
    if(!masterLocalsState.map.google){$("googlePlaceStatus").textContent="Buscador Google pendiente de clave autorizada. Ya puedes seleccionar el punto en este mapa sin escribir coordenadas.";return;}
    const {PlaceAutocompleteElement}=await google.maps.importLibrary("places");
-   const search=new PlaceAutocompleteElement({includedRegionCodes:["ec"]});search.placeholder="Buscar establecimiento en Google";$("googlePlaceSearch").replaceChildren(search);
+   const search=new PlaceAutocompleteElement({includedRegionCodes:["ec"],requestedLanguage:"es",requestedRegion:"EC"});
+   search.placeholder="Buscar establecimiento, dirección o sector en Google";
+   masterLocalsState.googleSearch=search;updateGoogleSearchBias();$("googlePlaceSearch").replaceChildren(search);
    search.addEventListener("gmp-select",async e=>{try{
-     const place=e.placePrediction.toPlace();await place.fetchFields({fields:["id","displayName","formattedAddress","location"]});
+     $("googlePlaceStatus").textContent="Cargando datos del establecimiento…";
+     const place=e.placePrediction.toPlace();
+     await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","viewport"]});
      if(!place.location)throw new Error("El establecimiento no tiene ubicación.");
      const duplicate=masterLocalsState.items.find(l=>l.google_place_id===place.id&&l.id!==$("masterLocalId").value);
      if(duplicate)throw new Error("Este local ya existe: "+duplicate.name+". Ábrelo desde el listado.");
-     if(!$("masterLocalName").value.trim()&&place.displayName)$("masterLocalName").value=place.displayName;
-     if(!$("masterLocalAddress").value.trim()&&place.formattedAddress)$("masterLocalAddress").value=place.formattedAddress;
+     if(place.displayName)$("masterLocalName").value=place.displayName;
+     applyLocalGoogleAddress(place.formattedAddress,place.addressComponents);
      masterLocalsState.googlePlace=place;$("googlePlaceDetailsBtn").disabled=false;
-     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"dirección encontrada")+". Nombre, dirección y punto cargados; confirma el marcador.";
-     $("masterLocalPlaceId").value=place.id;masterLocalsState.source="GOOGLE";setLocalPoint(place.location.lat(),place.location.lng(),true);
-   }catch(err){message(err.message,"error");}});
+     $("masterLocalPlaceId").value=place.id;masterLocalsState.source="GOOGLE";
+     setLocalPoint(place.location.lat(),place.location.lng(),true,false);
+     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"dirección encontrada")+". Dirección y ubicación cargadas automáticamente; confirma el marcador.";
+     masterLocalsState.dirty=true;
+   }catch(err){message(err.message,"error");$("googlePlaceStatus").textContent=err.message;}}); 
  }catch(e){$("googlePlaceStatus").textContent=e.message;}finally{masterLocalsState.loadingMap=false;}
 }
 async function loadGooglePlaceDetails(){
