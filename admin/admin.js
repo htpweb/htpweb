@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","advertising","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -113,9 +113,11 @@ async function init() {
 
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
+  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
-    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section));
+    const hiddenInsideLocales = state.role === "MASTER" && masterLocalWorkspaceSections.has(btn.dataset.section);
+    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section) || hiddenInsideLocales);
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
 
