@@ -154,7 +154,10 @@ as $$
 begin
   if public.is_master() then return true; end if;
   if public.user_can_manage_local_resource_legacy(p_local_id,p_permission_code,p_capability_code) then return true; end if;
-  return public.user_has_local(p_local_id)
+  return exists (
+      select 1 from public.user_locals ul
+      where ul.user_id = auth.uid() and ul.local_id = p_local_id and ul.active = true
+    )
     and public.has_permission(p_permission_code)
     and public.local_has_effective_capability(p_local_id,p_capability_code);
 end $$;
@@ -180,8 +183,14 @@ as $$
     ),'{}'::jsonb)
   )
   where public.monetization_is_master()
-    or (p_delivery_id is not null and public.user_has_delivery(p_delivery_id))
-    or (p_local_id is not null and public.user_has_local(p_local_id));
+    or (p_delivery_id is not null and exists (
+      select 1 from public.user_deliveries ud
+      where ud.user_id = auth.uid() and ud.delivery_id = p_delivery_id and ud.active = true
+    ))
+    or (p_local_id is not null and exists (
+      select 1 from public.user_locals ul
+      where ul.user_id = auth.uid() and ul.local_id = p_local_id and ul.active = true
+    ));
 $$;
 
 revoke all on function public.master_set_plan_override(uuid,uuid,text,text,jsonb,text) from public;
