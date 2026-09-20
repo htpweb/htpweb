@@ -1,6 +1,6 @@
 (() => {
 const $=id=>document.getElementById(id);
-let rows=[]; let invalidRows=[]; let role=null;
+let rows=[]; let invalidRows=[]; let role=null;\nconst LEGACY_TEMPLATE_NAME="plantilla_catalogo_htpweb.csv";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function msg(t,error=false){const e=$("bulkMessage");e.textContent=t;e.className="message "+(error?"error":"success");}
 function normalizeKey(v){return String(v||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
@@ -99,7 +99,7 @@ $("previewBulk").onclick=async()=>{
    const parsed=normalizeRows(await readFile($("bulkFile").files[0]));
    rows=parsed.valid; invalidRows=parsed.bad;
    if(!rows.length&&!invalidRows.length)throw new Error("El archivo no contiene filas.");
-   if(rows.length+invalidRows.length>2000)throw new Error("Máximo 2000 filas.");
+   if(rows.length+invalidRows.length>1000)throw new Error("Máximo 1000 filas.");
    render();
    msg(invalidRows.length?"Archivo revisado. Puedes importar únicamente las filas válidas y descargar las observaciones.":"Archivo validado. Revisa la vista previa antes de importar.");
  }catch(e){rows=[];invalidRows=[];render();msg(e.message,true);}
