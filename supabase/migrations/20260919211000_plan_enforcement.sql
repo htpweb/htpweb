@@ -47,7 +47,7 @@ begin
   end if;
   insert into public.plan_entitlement_overrides(delivery_id,local_id,entitlement_type,code,value,reason)
   values(p_delivery_id,p_local_id,v_type,lower(trim(p_code)),p_value,nullif(trim(coalesce(p_reason,'')),''))
-  on conflict nulls not distinct (delivery_id,local_id,entitlement_type,code)
+  on conflict (delivery_id,local_id,entitlement_type,code)
   do update set value=excluded.value,reason=excluded.reason,updated_by=auth.uid(),updated_at=now()
   returning id into v_id;
   return v_id;
