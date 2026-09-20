@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -143,6 +143,7 @@ function showSection(name) {
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
+  if (name === "categoriesmaster") loadMasterLocalBusinessCategories();
   if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
