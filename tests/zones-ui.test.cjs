@@ -16,7 +16,21 @@ test('one local editor embeds existing schedules/catalog/media',()=>{
  assert.match(js,/await loadStorageProducts/);assert.doesNotMatch(js,/p_delivery_ids/);
  assert.match(js,/p_zone_id/);assert.match(js,/data-edit-local/);
 });
-test('Google has explicit disabled state without key; no scraped data',()=>{
+test('Google has explicit disabled state, duplicate guard and controlled place enrichment',()=>{
  const js=fs.readFileSync('admin/locales-master.js','utf8');
  assert.match(js,/pendiente de clave autorizada/);assert.match(js,/google_place_id===place.id/);
+ assert.match(js,/masterLocalName/);assert.match(js,/formattedAddress/);
+ assert.match(js,/nationalPhoneNumber/);assert.match(js,/regularOpeningHours/);
+ assert.match(js,/solo sugerencia/);
+});
+test('menu image import cannot recreate manual DELIVERY-local assignments',()=>{
+ const sql=fs.readFileSync('supabase/migrations/20260920013000_zone_safe_menu_import.sql','utf8');
+ const admin=fs.readFileSync('admin/admin.js','utf8');
+ const html=fs.readFileSync('admin/index.html','utf8');
+ assert.match(sql,/master_save_local_v2/);
+ assert.doesNotMatch(sql,/insert into public\.local_deliveries/i);
+ assert.match(sql,/seleccione una zona/);
+ assert.match(admin,/menuLocalZone/);
+ assert.match(admin,/zone_id: zoneId/);
+ assert.match(html,/cobertura del LOCAL no se asigna aquí: se determina por su zona/);
 });
