@@ -942,8 +942,9 @@
       <div class="card">
         <div class="form-grid">
           <div>
-            <label>DELIVERY donde quedará vinculado</label>
+            <label>DELIVERY de referencia para la importación</label>
             <select id="menuImportDelivery"></select>
+            <small class="muted">Organiza los archivos de la importación. La cobertura del LOCAL no se asigna aquí: se determina por su zona.</small>
           </div>
           <div>
             <label>Imágenes del menú (máx. 5)</label>
@@ -973,7 +974,7 @@
             <div>
               <label>Usar LOCAL existente</label>
               <select id="menuExistingLocal"></select>
-              <small class="muted">Si eliges uno existente, no se sobrescriben sus datos globales; solo se vincula al DELIVERY y se importa el catálogo.</small>
+              <small class="muted">Si eliges uno existente, no se sobrescriben sus datos globales ni su zona; solamente se importa el catálogo.</small>
             </div>
             <div>
               <label>Nombre detectado</label>
@@ -990,6 +991,11 @@
             <div>
               <label>Dirección</label>
               <input id="menuLocalAddress">
+            </div>
+            <div>
+              <label>Zona del LOCAL nuevo</label>
+              <select id="menuLocalZone"></select>
+              <small class="muted">Obligatoria al crear un LOCAL. Si usas un LOCAL existente, se conserva su zona actual.</small>
             </div>
             <div>
               <label>Latitud</label>
