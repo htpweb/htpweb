@@ -20,6 +20,7 @@ const ZoneMaps = (() => {
       const script=document.createElement("script");
       const callback="htpMapsReady";
       window[callback]=()=>{delete window[callback];resolve(window.google);};
+      window.gm_authFailure=()=>{window.dispatchEvent(new CustomEvent("htp-google-auth-failure"));};
       script.src="https://maps.googleapis.com/maps/api/js?"+new URLSearchParams({
         key:window.HTPWEB_MAPS.googleKey,libraries:"places,marker",v:"quarterly",callback,loading:"async",language:"es",region:"EC"
       });
@@ -33,7 +34,7 @@ const ZoneMaps = (() => {
     const center=window.HTPWEB_MAPS?.defaultCenter||[0.9592,-79.6539];
     const g=await googleAPI(); let shapes=[],markers=[];
     if(g){
-      const map=new g.maps.Map(document.getElementById(id),{center:{lat:center[0],lng:center[1]},zoom:12,mapId:"DEMO_MAP_ID",streetViewControl:false});
+      const map=new g.maps.Map(document.getElementById(id),{center:{lat:center[0],lng:center[1]},zoom:12,streetViewControl:false});
       map.addListener("click",e=>onClick?.(e.latLng.lat(),e.latLng.lng()));
       return {google:true,map,
         center:(p,zoom=16)=>{map.setCenter({lat:p[0],lng:p[1]});map.setZoom(zoom);},
