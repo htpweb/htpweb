@@ -13,6 +13,21 @@ function bindMasterLocalBulk(){
   $("downloadBulkLocalErrorsBtn").onclick=downloadBulkLocalErrors;
   $("validateBulkLocalBtn").onclick=validateBulkLocalFile;
   $("importBulkLocalBtn").onclick=importBulkLocals;
+
+  const actions=$("importBulkLocalBtn")?.parentElement;
+  if(actions&&!document.getElementById("refreshGoogleReviewsBtn")){
+    actions.insertAdjacentHTML("beforeend",
+      '<button id="refreshGoogleReviewsBtn" type="button" class="btn-muted">Revisar datos Google</button>'+
+      '<button id="approveGoogleReviewsBtn" type="button" class="btn-primary" disabled>Aprobar horarios y publicar seleccionados</button>'
+    );
+    const panel=document.createElement("div");
+    panel.id="bulkGoogleReviewPanel";
+    panel.style.marginTop="16px";
+    actions.parentElement.appendChild(panel);
+    $("refreshGoogleReviewsBtn").onclick=loadBulkGoogleReviews;
+    $("approveGoogleReviewsBtn").onclick=approveBulkGoogleReviews;
+    loadBulkGoogleReviews().catch(()=>{});
+  }
 }
 
 function downloadBulkLocalTemplate(){
@@ -134,6 +149,59 @@ async function reverseBulkCoordinates(lat,lng){
   }
 }
 
+
+function googleTimeText(point){
+  if(!point)return null;
+  const h=String(Number(point.hour??point.hours??0)).padStart(2,"0");
+  const m=String(Number(point.minute??point.minutes??0)).padStart(2,"0");
+  return h+":"+m;
+}
+
+function normalizeGoogleSchedule(openingHours){
+  const periods=Array.isArray(openingHours?.periods)?openingHours.periods:[];
+  const byDay=Array.from({length:7},()=>[]);
+  const warnings=[];
+  for(const period of periods){
+    const open=period?.open,close=period?.close;
+    if(!open||!Number.isInteger(Number(open.day))||Number(open.day)<0||Number(open.day)>6){
+      warnings.push("Google devolvió un período sin día de apertura válido.");
+      continue;
+    }
+    const day=Number(open.day);
+    if(!close){
+      warnings.push("Horario 24 horas o sin cierre: requiere revisión manual.");
+      byDay[day].push({unsupported:true});
+      continue;
+    }
+    if(Number(close.day)!==day){
+      warnings.push("Horario nocturno que cruza de día: requiere revisión manual.");
+      byDay[day].push({unsupported:true});
+      continue;
+    }
+    const opening=googleTimeText(open),closing=googleTimeText(close);
+    if(!opening||!closing||opening>=closing){
+      warnings.push("Horario no compatible con el modelo semanal de HTPWEB.");
+      byDay[day].push({unsupported:true});
+      continue;
+    }
+    byDay[day].push({opening_time:opening,closing_time:closing});
+  }
+
+  const schedule=[];
+  for(let day=0;day<7;day++){
+    const slots=byDay[day].filter(Boolean);
+    if(slots.length===0){
+      schedule.push({day_of_week:day,is_closed:true,opening_time:null,closing_time:null});
+    }else if(slots.length===1&&!slots[0].unsupported){
+      schedule.push({day_of_week:day,is_closed:false,opening_time:slots[0].opening_time,closing_time:slots[0].closing_time});
+    }else{
+      warnings.push("El día "+day+" tiene horario partido o ambiguo y requiere revisión manual.");
+    }
+  }
+  const ready=schedule.length===7&&warnings.length===0&&periods.length>0;
+  return {schedule:ready?schedule:null,warnings:Array.from(new Set(warnings)),ready};
+}
+
 async function resolveBulkGooglePlace(query,province="",canton=""){
   if(!query)return null;
 
@@ -180,7 +248,7 @@ async function resolveBulkGooglePlace(query,province="",canton=""){
   const prediction=(response&&response.suggestions||[]).map(function(s){return s.placePrediction;}).find(Boolean);
   if(!prediction)throw new Error("Google no encontró el establecimiento o dirección.");
   const place=prediction.toPlace();
-  await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location"]});
+  await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","nationalPhoneNumber","regularOpeningHours"]});
   if(!place.location)throw new Error("Google encontró el lugar, pero no devolvió coordenadas.");
 
   return {
@@ -189,7 +257,9 @@ async function resolveBulkGooglePlace(query,province="",canton=""){
     address:place.formattedAddress||query,
     lat:place.location.lat(),
     lng:place.location.lng(),
-    addressComponents:place.addressComponents||[]
+    addressComponents:place.addressComponents||[],
+    phone:place.nationalPhoneNumber||"",
+    openingHours:place.regularOpeningHours||null
   };
 }
 
@@ -333,6 +403,12 @@ async function validateBulkLocalFile(){
         result.address=place.address||"";
         result.placeId=place.placeId||null;
         result.resolvedUrl=place.resolvedUrl||result.locationLink;
+        result.googlePhone=place.phone||"";
+        const scheduleInfo=normalizeGoogleSchedule(place.openingHours);
+        result.googleSchedule=scheduleInfo.schedule;
+        result.googleScheduleWarnings=scheduleInfo.warnings;
+        result.googleScheduleReady=scheduleInfo.ready;
+        if(!result.phone&&result.googlePhone)result.phone=result.googlePhone;
 
         const province=localAddressPart(place.addressComponents,"administrative_area_level_1");
         const canton=localAddressPart(place.addressComponents,"administrative_area_level_2");
@@ -401,7 +477,7 @@ async function importBulkLocals(){
   try{
     for(const row of pending){
       try{
-        await rpc("master_save_local_v3",{
+        const localId=await rpc("master_save_local_v3",{
           p_local_id:null,
           p_city_id:row.city.id,
           p_zone_id:row.zone.id,
@@ -419,6 +495,21 @@ async function importBulkLocals(){
           p_location_source:"GOOGLE",
           p_active:false
         });
+        row.localId=localId;
+        try{
+          const reviewStatus=row.googleScheduleReady?"PENDING":"REVIEW_REQUIRED";
+          const warnings=(row.googleScheduleWarnings||[]).slice();
+          if(!row.googleScheduleReady&&!warnings.length)warnings.push("Google no devolvió un horario semanal estructurado.");
+          await rpc("master_upsert_local_google_review",{
+            p_local_id:localId,
+            p_phone:row.googlePhone||row.phone||"",
+            p_schedule:row.googleSchedule||null,
+            p_status:reviewStatus,
+            p_warnings:warnings
+          });
+        }catch(reviewError){
+          row.googleReviewError=reviewError.message||String(reviewError);
+        }
         row.imported=true;
         success++;
       }catch(e){
@@ -438,5 +529,63 @@ async function importBulkLocals(){
   }finally{
     masterLocalsState.bulkBusy=false;
     renderBulkLocalPreview();
+  }
+}
+
+
+function renderBulkGoogleReviews(items){
+  const panel=document.getElementById("bulkGoogleReviewPanel");
+  const approve=document.getElementById("approveGoogleReviewsBtn");
+  if(!panel)return;
+  const pending=(items||[]).filter(x=>x.status==="PENDING");
+  const review=(items||[]).filter(x=>x.status==="REVIEW_REQUIRED");
+  const approved=(items||[]).filter(x=>x.status==="APPROVED");
+  if(approve)approve.disabled=pending.length===0;
+  if(!(items||[]).length){
+    panel.innerHTML='<div class="muted">No hay revisiones Google pendientes.</div>';
+    return;
+  }
+  panel.innerHTML=
+    '<div class="bulk-local-summary"><span>Listos para aprobar: <strong>'+pending.length+'</strong></span><span>Revisión manual: <strong>'+review.length+'</strong></span><span>Aprobados: <strong>'+approved.length+'</strong></span></div>'+
+    '<div class="table-wrap"><table><thead><tr><th></th><th>LOCAL</th><th>Teléfono Google</th><th>Horario</th><th>Estado</th></tr></thead><tbody>'+
+    (items||[]).map(function(r){
+      const selectable=r.status==="PENDING";
+      const warning=(r.warnings||[]).join(" · ");
+      return '<tr>'+
+        '<td>'+(selectable?'<input class="google-review-check" type="checkbox" value="'+esc(r.local_id)+'" checked>':'')+'</td>'+
+        '<td>'+esc(r.local_name||"")+'</td>'+
+        '<td>'+esc(r.phone||"—")+'</td>'+
+        '<td>'+esc(r.status==="PENDING"?"Semana compatible":(warning||"Revisar manualmente"))+'</td>'+
+        '<td>'+esc(r.status)+'</td>'+
+      '</tr>';
+    }).join("")+
+    '</tbody></table></div>';
+}
+
+async function loadBulkGoogleReviews(){
+  const panel=document.getElementById("bulkGoogleReviewPanel");
+  if(panel)panel.innerHTML='<div class="muted">Consultando revisiones Google…</div>';
+  const items=(await rpc("master_list_local_google_reviews"))||[];
+  masterLocalsState.googleBulkReviews=items;
+  renderBulkGoogleReviews(items);
+}
+
+async function approveBulkGoogleReviews(){
+  const checks=[...document.querySelectorAll(".google-review-check:checked")];
+  const ids=checks.map(x=>x.value).filter(Boolean);
+  if(!ids.length)return message("Selecciona al menos un LOCAL listo para aprobar.","error");
+  const btn=document.getElementById("approveGoogleReviewsBtn");
+  if(btn)btn.disabled=true;
+  try{
+    const result=await rpc("master_approve_local_google_reviews",{p_local_ids:ids,p_publish:true});
+    await loadScopes();
+    masterLocalsState.items=(await rpc("master_list_locals"))||[];
+    renderMasterLocalList();
+    await loadBulkGoogleReviews();
+    message((result?.approved||0)+" locales: horario Google aprobado y LOCAL publicado"+((result?.skipped||0)?" · "+result.skipped+" omitidos.":"."));
+  }catch(e){
+    message(e.message||"No se pudo aprobar la revisión Google.","error");
+  }finally{
+    if(btn)btn.disabled=false;
   }
 }
