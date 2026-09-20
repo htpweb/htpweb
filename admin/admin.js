@@ -140,7 +140,8 @@ function showSection(name) {
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") loadDeliveriesModule();
-  if (name === "users") loadUsersModule();\n  if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
+  if (name === "users") loadUsersModule();
+  if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
   if (name === "catalog") loadCatalog();
@@ -619,7 +620,8 @@ function shareWhatsApp(kind) {
   const payload = sharePayload(kind);
   if (!payload) return;
 
-  const text = encodeURIComponent(`${payload.text}\n${payload.url}`);
+  const text = encodeURIComponent(`${payload.text}
+${payload.url}`);
   window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
 }
 
