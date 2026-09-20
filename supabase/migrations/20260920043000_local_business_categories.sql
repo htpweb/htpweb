@@ -287,3 +287,55 @@ revoke all on function public.master_save_local_v3(uuid,uuid,uuid,uuid,text,text
 grant execute on function public.master_list_local_business_categories() to authenticated;
 grant execute on function public.master_save_local_business_category(uuid,text,text,boolean) to authenticated;
 grant execute on function public.master_save_local_v3(uuid,uuid,uuid,uuid,text,text,text,text,numeric,numeric,text,text,text,text,text,boolean) to authenticated;
+
+
+-- A partir de este punto el cantón de una zona es referencia administrativa,
+-- no una frontera de cobertura. Las superposiciones se validan entre todas las
+-- zonas activas, aunque tengan distinto city_id.
+create or replace function public.htp_validate_zone()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare z record;
+begin
+  perform pg_advisory_xact_lock(880115);
+  perform public.htp_zone_polygon(new.boundary);
+
+  if new.active and new.boundary is not null then
+    for z in
+      select id,code,boundary
+      from public.zones
+      where active
+        and id<>new.id
+        and boundary is not null
+    loop
+      if public.htp_zones_overlap(new.boundary,z.boundary) then
+        raise exception 'La zona se superpone con %',z.code;
+      end if;
+    end loop;
+  end if;
+
+  if tg_op='UPDATE' then
+    if new.boundary is distinct from old.boundary
+       and new.boundary is not null
+       and exists(
+         select 1
+         from public.locals l
+         where l.zone_id=new.id
+           and l.latitude is not null
+           and not public.htp_zone_contains(new.boundary,l.latitude,l.longitude)
+       ) then
+      raise exception 'El nuevo límite deja locales fuera: reclasifíquelos antes de guardar';
+    end if;
+  end if;
+
+  if not new.active
+     and exists(select 1 from public.locals where zone_id=new.id and active) then
+    raise exception 'Inactive o reclasifique los locales antes de desactivar la zona';
+  end if;
+
+  return new;
+end;
+$$;
