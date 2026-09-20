@@ -114,7 +114,10 @@ $("applyBulk").onclick=async()=>{
    $("applyBulk").disabled=true;
    const publish=$("publishBulk")?.checked===true;
    const payload=rows.map(({rowNumber,valid,error,...r})=>r);
-   const r=await supabaseClient.rpc("bulk_import_local_catalog_v2",{p_local_id:local,p_rows:payload,p_publish:publish});
+   let r=await supabaseClient.rpc("bulk_import_local_catalog_v2",{p_local_id:local,p_rows:payload,p_publish:publish});
+   if(r.error&&/bulk_import_local_catalog_v2|function .* does not exist/i.test(String(r.error.message||""))){
+     r=await supabaseClient.rpc("bulk_import_local_catalog",{p_local_id:local,p_rows:payload});
+   }
    if(r.error)throw r.error;
    const d=r.data||{};
    msg("Importación completada: "+(d.products_created||0)+" productos creados, "+(d.products_updated||0)+" actualizados, "+(d.variants_created||0)+" variantes creadas, "+(d.variants_updated||0)+" variantes actualizadas"+(publish?". Publicados según la columna ACTIVO.":". Quedaron en borrador/inactivos para revisión."));
