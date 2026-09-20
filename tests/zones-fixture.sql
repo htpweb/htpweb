@@ -25,7 +25,7 @@ create table order_locals(id uuid primary key default gen_random_uuid(),local_id
 create table categories(id uuid primary key default gen_random_uuid(),local_id uuid references locals(id));
 create table products(id uuid primary key default gen_random_uuid(),local_id uuid references locals(id));
 create function public.set_delivery_zone(p_delivery_id uuid,p_zone_id uuid,p_active boolean)
-returns void language sql as $$ insert into delivery_zones values(p_delivery_id,p_zone_id,p_active,now())
+returns void language sql security definer set search_path = '' as $$ insert into public.delivery_zones values(p_delivery_id,p_zone_id,p_active,now())
 on conflict(delivery_id,zone_id) do update set active=excluded.active $$;
 alter table locals enable row level security;
 alter table products enable row level security;
