@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 select set_config('test.role','MASTER',false);
 select set_config('test.uid','00000000-0000-4000-8000-000000000001',false);
-do $
+do $$
 declare c uuid; c2 uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; failed boolean;
 begin
   assert public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',1,1);
