@@ -35,5 +35,6 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920003000_master_local_management.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920011000_zone_based_local_architecture.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920011500_zone_geometry_and_coverage.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920040000_local_gallery.sql
       - name: Test real CRUD, geometry, zone access and role isolation
         run: psql -v ON_ERROR_STOP=1 -f tests/zones-integration.sql
