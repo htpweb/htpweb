@@ -26,7 +26,7 @@ test('Google has disabled state, duplicate guard, address autofill and reverse g
  assert.match(js,/importLibrary\("geocoding"\)/);assert.match(js,/reverseGeocodeLocalPoint/);
  assert.match(js,/administrative_area_level_1/);assert.match(js,/administrative_area_level_2/);
  assert.match(js,/nationalPhoneNumber/);assert.match(js,/regularOpeningHours/);
- assert.match(js,/solo sugerencia/);
+ assert.match(js,/IMPORTAR DATOS DE GOOGLE/);assert.match(js,/Horario importado desde Google — pendiente de guardar/);
 });
 test('menu image import cannot recreate manual DELIVERY-local assignments',()=>{
  const sql=fs.readFileSync('supabase/migrations/20260920013000_zone_safe_menu_import.sql','utf8');

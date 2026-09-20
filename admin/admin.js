@@ -2460,6 +2460,9 @@ async function saveSchedules() {
       }))
     });
 
+    if (typeof clearGoogleScheduleDraftForLocal === "function") {
+      clearGoogleScheduleDraftForLocal(localId);
+    }
     message("Horario semanal actualizado.");
     await loadSchedules();
   } catch (e) {

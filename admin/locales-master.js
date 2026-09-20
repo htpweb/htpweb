@@ -1,4 +1,4 @@
-const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,bulkRows:[],bulkFileName:"",bulkBusy:false};
+const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
@@ -23,7 +23,7 @@ function bindMasterLocals(){
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
  <div class="workspace-note">Busca primero el establecimiento. Si no aparece, pulsa en el mapa y arrastra el marcador hasta su entrada. Confirma provincia, cantón y zona.</div>
- <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" type="button" disabled>Completar teléfono y horario desde Google</button><button id="googleMapsDiagnosticBtn" type="button">Probar conexión Google</button></div><p id="googlePlaceStatus" class="muted"></p>
+ <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" class="btn-primary" type="button" disabled>IMPORTAR DATOS DE GOOGLE</button><button id="googleMapsDiagnosticBtn" type="button">Probar conexión Google</button></div><p id="googlePlaceStatus" class="muted"></p>
  <button id="localUsePosition">Usar mi ubicación actual</button><div id="masterLocalMap" class="workspace-map" aria-label="Ubicación del local" tabindex="0"></div>
  <p id="localZoneDetection" role="status"></p><details><summary>Coordenadas — opción avanzada</summary><div class="form-grid">
  <div><label for="masterLocalLatitude">Latitud</label><input id="masterLocalLatitude" inputmode="decimal"></div>
@@ -63,8 +63,15 @@ function bindMasterLocals(){
 function discardLocalChanges(){return !masterLocalsState.dirty||confirm("Hay cambios sin guardar. ¿Deseas descartarlos?");}
 function fillLocalCities(selected=""){$("masterLocalCity").innerHTML=localOptions(state.cities.filter(c=>c.active&&c.province===$("masterLocalProvince").value),c=>c.name,selected);}
 function fillLocalZones(selected=""){$("masterLocalZone").innerHTML=localOptions(masterLocalsState.zones.filter(z=>z.active&&z.city_id===$("masterLocalCity").value),z=>z.code+" — "+z.name,selected);}
-function clearMasterLocalForm(){fillMasterLocalForm(null);}
+function clearGoogleScheduleDraft(){
+ masterLocalsState.googleScheduleDraft=null;
+ masterLocalsState.googleScheduleDraftLocalId=null;
+ masterLocalsState.googleScheduleWarnings=[];
+}
+function clearMasterLocalForm(){clearGoogleScheduleDraft();fillMasterLocalForm(null);}
 function fillMasterLocalForm(local){
+ const nextLocalId=local?.id||null;
+ if(masterLocalsState.googleScheduleDraft&&masterLocalsState.googleScheduleDraftLocalId!==nextLocalId)clearGoogleScheduleDraft();
  restoreLocalPanels();$("masterLocalId").value=local?.id||"";$("masterLocalHeading").textContent=local?"Editar: "+local.name:"Crear local";
  for(const [id,key] of [["Name","name"],["Slug","slug"],["Description","description"],["Address","address"],["Phone","phone"],["Whatsapp","whatsapp"],["Latitude","latitude"],["Longitude","longitude"],["PlaceId","google_place_id"]])$("masterLocal"+id).value=local?.[key]??"";
  const provinces=[...new Set(state.cities.filter(c=>c.active).map(c=>c.province||""))].sort();
@@ -241,35 +248,127 @@ async function initLocalMap(){
    search.placeholder="Buscar establecimiento, dirección o sector en Google";
    masterLocalsState.googleSearch=search;updateGoogleSearchBias();$("googlePlaceSearch").replaceChildren(search);
    search.addEventListener("gmp-select",async e=>{try{
-     $("googlePlaceStatus").textContent="Cargando datos del establecimiento…";
+     $("googlePlaceStatus").textContent="Comprobando establecimiento…";
      const place=e.placePrediction.toPlace();
-     await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","viewport"]});
+     await place.fetchFields({fields:["id","displayName","formattedAddress","location","viewport"]});
      if(!place.location)throw new Error("El establecimiento no tiene ubicación.");
      const duplicate=masterLocalsState.items.find(l=>l.google_place_id===place.id&&l.id!==$("masterLocalId").value);
      if(duplicate)throw new Error("Este local ya existe: "+duplicate.name+". Ábrelo desde el listado.");
-     if(place.displayName)$("masterLocalName").value=place.displayName;
-     applyLocalGoogleAddress(place.formattedAddress,place.addressComponents);
-     masterLocalsState.googlePlace=place;$("googlePlaceDetailsBtn").disabled=false;
-     $("masterLocalPlaceId").value=place.id;masterLocalsState.source="GOOGLE";
-     setLocalPoint(place.location.lat(),place.location.lng(),true,false);
-     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"dirección encontrada")+". Dirección y ubicación cargadas automáticamente; confirma el marcador.";
-     masterLocalsState.dirty=true;
-   }catch(err){message(err.message,"error");$("googlePlaceStatus").textContent=err.message;}}); 
+     masterLocalsState.googlePlace=place;
+     $("googlePlaceDetailsBtn").disabled=false;
+     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"ubicación encontrada")+". Pulsa IMPORTAR DATOS DE GOOGLE para completar la ficha.";
+   }catch(err){masterLocalsState.googlePlace=null;$("googlePlaceDetailsBtn").disabled=true;message(err.message,"error");$("googlePlaceStatus").textContent=err.message;}}); 
  }catch(e){$("googlePlaceStatus").textContent=e.message;}finally{masterLocalsState.loadingMap=false;}
+}
+function googlePointTime(point){
+ const hour=Number(point?.hour),minute=Number(point?.minute);
+ if(!Number.isInteger(hour)||!Number.isInteger(minute))return null;
+ return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
+}
+function buildGoogleScheduleDraft(openingHours){
+ const days=Array.from({length:7},(_,day)=>({day,isClosed:true,opening:null,closing:null}));
+ const warnings=[];
+ const periods=Array.isArray(openingHours?.periods)?openingHours.periods:[];
+ if(periods.length===1&&periods[0]?.open?.day===0&&Number(periods[0]?.open?.hour)===0&&Number(periods[0]?.open?.minute)===0&&!periods[0]?.close){
+   days.forEach(day=>{day.isClosed=false;day.opening="00:00";day.closing="23:59";});
+   warnings.push("Google indica atención 24 horas. HTPWEB la representa temporalmente como 00:00–23:59; revisa antes de guardar.");
+   return {days,warnings};
+ }
+ const grouped=new Map();
+ periods.forEach(period=>{
+   const day=Number(period?.open?.day);
+   if(Number.isInteger(day)&&day>=0&&day<=6){
+     if(!grouped.has(day))grouped.set(day,[]);
+     grouped.get(day).push(period);
+   }
+ });
+ for(let day=0;day<7;day++){
+   const entries=grouped.get(day)||[];
+   if(!entries.length)continue;
+   if(entries.length>1){
+     warnings.push(scheduleDayNames[day]+": Google tiene "+entries.length+" franjas. No se importó automáticamente porque HTPWEB admite una sola franja por día.");
+     continue;
+   }
+   const period=entries[0];
+   const opening=googlePointTime(period.open);
+   const closing=googlePointTime(period.close);
+   if(!period.close){
+     warnings.push(scheduleDayNames[day]+": Google no devolvió una hora de cierre. Revísalo manualmente.");
+     continue;
+   }
+   if(Number(period.close.day)!==day){
+     warnings.push(scheduleDayNames[day]+": el horario de Google cruza medianoche. No se importó automáticamente.");
+     continue;
+   }
+   if(!opening||!closing||opening>=closing){
+     warnings.push(scheduleDayNames[day]+": Google devolvió un horario que HTPWEB no puede representar automáticamente.");
+     continue;
+   }
+   days[day]={day,isClosed:false,opening,closing};
+ }
+ return {days,warnings};
+}
+function applyGoogleScheduleDraftToEditor(localId){
+ if(!masterLocalsState.googleScheduleDraft||masterLocalsState.googleScheduleDraftLocalId!==localId)return false;
+ masterLocalsState.googleScheduleDraft.forEach(row=>{
+   const closed=$("scheduleClosed"+row.day),open=$("scheduleOpen"+row.day),close=$("scheduleClose"+row.day);
+   if(!closed||!open||!close)return;
+   closed.checked=!!row.isClosed;
+   open.value=row.isClosed?"":(row.opening||"");
+   close.value=row.isClosed?"":(row.closing||"");
+   toggleScheduleDay(row.day);
+ });
+ const editor=$("scheduleEditor");
+ if(editor){
+   const old=$("googleScheduleDraftNotice");if(old)old.remove();
+   const notice=document.createElement("div");
+   notice.id="googleScheduleDraftNotice";
+   notice.className="workspace-note";
+   notice.style.marginBottom="14px";
+   const warnings=masterLocalsState.googleScheduleWarnings||[];
+   notice.innerHTML="<strong>Horario importado desde Google — pendiente de guardar.</strong>"+
+     "<div>Revisa los 7 días y pulsa <b>Guardar semana completa</b>.</div>"+
+     (warnings.length?"<div style=\"margin-top:6px\"><b>Revisar:</b> "+warnings.map(esc).join(" · ")+"</div>":"");
+   editor.prepend(notice);
+ }
+ return true;
+}
+function clearGoogleScheduleDraftForLocal(localId){
+ if(masterLocalsState.googleScheduleDraftLocalId===localId)clearGoogleScheduleDraft();
 }
 async function loadGooglePlaceDetails(){
  const place=masterLocalsState.googlePlace;if(!place)return message("Selecciona primero un establecimiento de Google.","error");
  const button=$("googlePlaceDetailsBtn");button.disabled=true;
  try{
-   await place.fetchFields({fields:["nationalPhoneNumber","regularOpeningHours"]});
-   if(!$("masterLocalPhone").value.trim()&&place.nationalPhoneNumber)$("masterLocalPhone").value=place.nationalPhoneNumber;
-   const hours=place.regularOpeningHours?.weekdayDescriptions||[];
-   $("googlePlaceStatus").textContent="Datos ampliados revisados. "+(place.nationalPhoneNumber?"Teléfono disponible. ":"")+
-     (hours.length?"Horario de Google (solo sugerencia): "+hours.join(" · "):"Google no devolvió horario regular.");
+   $("googlePlaceStatus").textContent="Importando datos desde Google…";
+   await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","nationalPhoneNumber","regularOpeningHours"]});
+   if(!place.location)throw new Error("Google no devolvió la ubicación del establecimiento.");
+
+   if(place.displayName)$("masterLocalName").value=place.displayName;
+   applyLocalGoogleAddress(place.formattedAddress,place.addressComponents);
+   if(place.nationalPhoneNumber)$("masterLocalPhone").value=place.nationalPhoneNumber;
+   $("masterLocalPlaceId").value=place.id||"";
+   masterLocalsState.source="GOOGLE";
+   setLocalPoint(place.location.lat(),place.location.lng(),true,false);
+
+   const schedule=buildGoogleScheduleDraft(place.regularOpeningHours);
+   masterLocalsState.googleScheduleDraft=schedule.days;
+   masterLocalsState.googleScheduleDraftLocalId=$("masterLocalId").value||null;
+   masterLocalsState.googleScheduleWarnings=schedule.warnings;
    masterLocalsState.dirty=true;
- }catch(e){message(e.message||"No se pudieron cargar detalles de Google.","error");}
- finally{button.disabled=false;}
+
+   const hoursFound=Array.isArray(place.regularOpeningHours?.periods);
+   $("googlePlaceStatus").textContent="Datos de Google importados. "+
+     (place.nationalPhoneNumber?"Teléfono cargado. ":"Google no devolvió teléfono. ")+
+     (hoursFound?"Horario preparado para revisión. ":"Google no devolvió horario regular. ")+
+     "Guarda el LOCAL y luego abre Horario para revisar los 7 días.";
+   message("Datos de Google importados. Guarda el LOCAL antes de confirmar el horario.");
+ }catch(e){
+   message(e.message||"No se pudieron importar los datos de Google.","error");
+   $("googlePlaceStatus").textContent=e.message||"No se pudieron importar los datos de Google.";
+ }finally{button.disabled=false;}
 }
+
 async function saveMasterLocal(){
  if(masterLocalsState.busy)return;masterLocalsState.busy=true;$("masterLocalSaveBtn").disabled=true;
  try{
@@ -283,6 +382,7 @@ async function saveMasterLocal(){
      p_latitude:lat,p_longitude:lng,p_google_place_id:$("masterLocalPlaceId").value||null,
      p_google_maps_url:lat===null?null:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(lat+","+lng),p_location_source:masterLocalsState.source,p_active:$("masterLocalActive").checked
    });
+   if(masterLocalsState.googleScheduleDraft&&masterLocalsState.googleScheduleDraftLocalId===null)masterLocalsState.googleScheduleDraftLocalId=id;
    masterLocalsState.dirty=false;$("masterLocalId").value=id;await loadScopes();await loadMasterLocals();
    fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===id));showLocalEditor(true);message("Local guardado. Ya puedes configurar horario, imágenes y productos.");
  }catch(e){message(e.message,"error");}finally{masterLocalsState.busy=false;$("masterLocalSaveBtn").disabled=false;}
@@ -315,7 +415,7 @@ async function openLocalTab(tab){
  const nodes=tab==="images"?[$("storageLocalCard")]:Array.from($(source).children);
  for(const node of nodes){masterLocalsState.panels.push({node,parent:node.parentNode,next:node.nextSibling});$("localRelatedPane").appendChild(node);}
  try{
-   if(tab==="schedules"){$("scheduleLocal").value=id;await loadSchedules();}
+   if(tab==="schedules"){$("scheduleLocal").value=id;await loadSchedules();if(applyGoogleScheduleDraftToEditor(id))message("Horario de Google cargado como borrador. Revísalo y pulsa Guardar semana completa.");}
    if(tab==="catalog"){$("catalogLocal").value=id;await loadCatalog();}
    if(tab==="images"){await loadStorage();$("storageLocal").value=id;await refreshLocalMediaPreview();await refreshLocalGallery();}
    for(const sid of ["scheduleLocal","catalogLocal","storageLocal"]){$(sid).disabled=true;$(sid).dataset.localLocked="true";}
