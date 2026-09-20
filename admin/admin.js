@@ -113,9 +113,11 @@ async function init() {
 
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
+  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
-    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section));
+    const hiddenInsideLocales = state.role === "MASTER" && masterLocalWorkspaceSections.has(btn.dataset.section);
+    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section) || hiddenInsideLocales);
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
 
