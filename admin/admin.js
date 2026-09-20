@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -127,6 +127,7 @@ function configureNavigation() {
 }
 
 function showSection(name) {
+  if (typeof restoreLocalPanels === "function") restoreLocalPanels();
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
 
@@ -142,6 +143,7 @@ function showSection(name) {
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
+  if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
   if (name === "catalog") loadCatalog();
@@ -1837,7 +1839,7 @@ function renderCoverageZones() {
                   onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
                   ${canAssign ? "" : "disabled"}
                 >
-                  ${zone.assigned ? "Quitar cobertura" : "Agregar cobertura"}
+                  ${zone.assigned ? (state.role === "MASTER" ? "Quitar cobertura" : "Aprobada") : (state.role === "MASTER" ? "Aprobar cobertura" : "Solicitar cobertura")}
                 </button>
               </td>
             </tr>
@@ -1983,6 +1985,12 @@ async function toggleDeliveryZone(zoneId, active) {
   if (!delivery) return;
 
   try {
+    if (state.role !== "MASTER") {
+      if (!active) throw new Error("Solicita al MASTER la suspensión de esta zona.");
+      await rpc("request_delivery_zone", {p_delivery_id: delivery.id, p_zone_id: zoneId});
+      message("Solicitud enviada. El MASTER debe aprobar la zona antes de habilitar sus locales.");
+      return;
+    }
     await rpc("set_delivery_zone", {
       p_delivery_id: delivery.id,
       p_zone_id: zoneId,
