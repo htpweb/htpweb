@@ -1,0 +1,39 @@
+name: Zones PostgreSQL integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**', 'tests/zones*', '.github/workflows/zones-integration.yml']
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: htpweb_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: isolated-test-only
+      PGDATABASE: htpweb_test
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prepare isolated schema and execute migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f tests/zones-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920003000_master_local_management.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920011000_zone_based_local_architecture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260920011500_zone_geometry_and_coverage.sql
+      - name: Test real CRUD, geometry, zone access and role isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/zones-integration.sql
