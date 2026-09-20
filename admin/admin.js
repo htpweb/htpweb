@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","advertising","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
