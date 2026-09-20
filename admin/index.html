@@ -22,7 +22,7 @@
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
-      <button data-section="deliveries">Deliveries</button>
+      <button data-section="deliveries">Deliveries</button>\n      <button data-section="localsmaster">Locales</button>
       <button data-section="users">Usuarios</button>
       <button data-section="fees">Tarifas</button>
       <button data-section="coverage">Cobertura</button>
@@ -349,6 +349,58 @@
       <div class="card">
         <h2>Deliveries registrados</h2>
         <div id="deliveriesList"></div>
+      </div>
+    </section>
+
+
+    <section id="section-localsmaster" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Gestión de LOCAL</h2>
+            <p class="muted">Crea y administra el LOCAL global. Un mismo LOCAL puede vincularse a varios DELIVERY sin duplicarse.</p>
+          </div>
+          <div class="row">
+            <select id="masterLocalSelect" style="min-width:300px"><option value="">Nuevo LOCAL</option></select>
+            <button class="btn-muted" id="masterLocalNewBtn">Nuevo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <input id="masterLocalId" type="hidden">
+        <div class="form-grid">
+          <div><label>Nombre *</label><input id="masterLocalName" maxlength="160" placeholder="Nombre comercial"></div>
+          <div><label>Slug público</label><input id="masterLocalSlug" maxlength="180" placeholder="Se genera automáticamente al crear"></div>
+          <div><label>Dirección</label><input id="masterLocalAddress" maxlength="240"></div>
+          <div><label>Teléfono</label><input id="masterLocalPhone" maxlength="40"></div>
+          <div><label>WhatsApp</label><input id="masterLocalWhatsapp" maxlength="40"></div>
+          <div><label>Latitud</label><input id="masterLocalLatitude" inputmode="decimal" placeholder="-0.000000"></div>
+          <div><label>Longitud</label><input id="masterLocalLongitude" inputmode="decimal" placeholder="-79.000000"></div>
+          <div>
+            <label>Vincular con DELIVERY</label>
+            <select id="masterLocalDeliveries" multiple size="5"></select>
+            <small class="muted">Mantén Ctrl presionado para seleccionar varios.</small>
+          </div>
+        </div>
+        <label>Descripción</label>
+        <textarea id="masterLocalDescription" rows="4" maxlength="1200"></textarea>
+        <label class="row" style="margin-top:12px">
+          <input id="masterLocalActive" type="checkbox" style="width:auto">
+          <span>LOCAL activo y visible</span>
+        </label>
+        <small class="muted">Para activar el LOCAL es obligatorio completar latitud y longitud.</small>
+        <div class="row" style="margin-top:16px">
+          <button class="btn-primary" id="masterLocalSaveBtn">Guardar LOCAL</button>
+          <button class="btn-warn" id="masterLocalToggleBtn" disabled>Inactivar</button>
+          <button class="btn-danger" id="masterLocalDeleteBtn" disabled>Eliminar</button>
+        </div>
+        <p class="muted" style="margin-top:10px">Eliminar requiere escribir el nombre exacto. Si existe historial operativo, HTPWEB inactivará el LOCAL para conservar pedidos y trazabilidad.</p>
+      </div>
+
+      <div class="card">
+        <h3>LOCAL registrados</h3>
+        <div id="masterLocalsSummary" class="stack"><div class="muted">Cargando...</div></div>
       </div>
     </section>
 
@@ -984,6 +1036,6 @@
 
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
-<script src="./admin.js"></script>
+<script src="./admin.js"></script>\n<script src="./locales-master.js"></script>
 </body>
 </html>
