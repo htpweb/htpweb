@@ -10,8 +10,8 @@ $$ select coalesce(current_setting('test.role',true),'')='MASTER' $$;
 create function public.current_role_code() returns text language sql stable as
 $$ select current_setting('test.role',true) $$;
 create function public.has_permission(text) returns boolean language sql stable as $$ select true $$;
-create function public.delivery_has_capability(uuid,text) returns boolean language sql stable as $ select true $;
-create function public.delivery_limit_value(uuid,text) returns integer language sql stable as $ select 99 $;
+create function public.delivery_has_capability(uuid,text) returns boolean language sql stable as $function$ select true $function$;
+create function public.delivery_limit_value(uuid,text) returns integer language sql stable as $function$ select 99 $function$;
 create table cities(id uuid primary key default gen_random_uuid(),name text not null,province text,country text default 'Ecuador',active boolean default true);
 create table zones(id uuid primary key default gen_random_uuid(),name text not null,city text not null,province text,country text default 'Ecuador',city_id uuid not null references cities(id),active boolean default true,created_at timestamptz default now());
 create table deliveries(id uuid primary key default gen_random_uuid(),name text,city_id uuid references cities(id),active boolean default true);
