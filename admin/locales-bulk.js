@@ -13,6 +13,10 @@ function bindMasterLocalBulk(){
   $("downloadBulkLocalErrorsBtn").onclick=downloadBulkLocalErrors;
   $("validateBulkLocalBtn").onclick=validateBulkLocalFile;
   $("importBulkLocalBtn").onclick=importBulkLocals;
+  $("downloadBulkProductTemplateBtn").onclick=downloadBulkProductTemplate;
+  $("downloadBulkProductErrorsBtn").onclick=downloadBulkProductErrors;
+  $("validateBulkProductBtn").onclick=validateBulkProductFile;
+  $("importBulkProductBtn").onclick=importBulkProducts;
 
   const actions=$("importBulkLocalBtn")?.parentElement;
   if(actions&&!document.getElementById("refreshGoogleReviewsBtn")){
@@ -587,5 +591,255 @@ async function approveBulkGoogleReviews(){
     message(e.message||"No se pudo aprobar la revisión Google.","error");
   }finally{
     if(btn)btn.disabled=false;
+  }
+}
+
+
+function bulkProductNormalizeKey(value){
+  return String(value||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+function bulkProductBoolText(value){
+  return ["si","sí","true","1"].includes(String(value||"si").toLowerCase())?"si":"no";
+}
+
+function renderBulkProductLocalOptions(){
+  const select=$("bulkProductLocal");
+  if(!select)return;
+  const current=select.value;
+  select.innerHTML=(masterLocalsState.items||[]).map(function(local){
+    return '<option value="'+esc(local.id)+'">'+esc(local.name)+(local.active?"":" · borrador")+'</option>';
+  }).join("")||'<option value="">Sin LOCAL disponible</option>';
+  if(current&&masterLocalsState.items.some(l=>l.id===current))select.value=current;
+}
+
+function normalizeBulkProductRows(input){
+  const aliases={
+    categoria:"categoria",category:"categoria",
+    producto:"producto",product:"producto",nombre:"producto",
+    descripcion:"descripcion",description:"descripcion",
+    precio:"precio",price:"precio",
+    imagen_url:"imagen_url",imagen:"imagen_url",image_url:"imagen_url",
+    variante:"variante",variant:"variante",
+    precio_variante:"precio_variante",variant_price:"precio_variante",
+    orden:"orden",order:"orden",activo:"activo",active:"activo"
+  };
+  const valid=[],bad=[],seen=new Map();
+
+  (input||[]).forEach(function(raw,index){
+    const rowNumber=index+2;
+    const out={categoria:"",producto:"",descripcion:"",precio:"",imagen_url:"",variante:"",precio_variante:"",orden:"0",activo:"si",rowNumber,valid:false,error:""};
+    try{
+      Object.entries(raw||{}).forEach(function(entry){
+        const key=aliases[bulkProductNormalizeKey(entry[0])];
+        if(key)out[key]=String(entry[1]??"").trim();
+      });
+      if(!out.producto)throw new Error("Producto vacío.");
+      const price=Number(out.precio.replace(",","."));
+      if(!Number.isFinite(price)||price<0)throw new Error("Precio inválido.");
+      out.precio=price.toFixed(2);
+
+      const order=Number(out.orden||0);
+      if(!Number.isInteger(order)||order<0)throw new Error("Orden inválido.");
+      out.orden=String(order);
+
+      if(!["si","sí","true","1","no","false","0"].includes(out.activo.toLowerCase())){
+        throw new Error("Activo debe ser Sí/No.");
+      }
+      out.activo=bulkProductBoolText(out.activo);
+
+      if(out.imagen_url){
+        let url;
+        try{url=new URL(out.imagen_url);}catch{throw new Error("IMAGEN_URL no es una URL válida.");}
+        if(!["http:","https:"].includes(url.protocol))throw new Error("IMAGEN_URL debe usar HTTP/HTTPS.");
+      }
+
+      if(out.variante){
+        const variantPrice=Number(out.precio_variante.replace(",","."));
+        if(!Number.isFinite(variantPrice)||variantPrice<0){
+          throw new Error("La variante requiere PRECIO_VARIANTE válido.");
+        }
+        out.precio_variante=variantPrice.toFixed(2);
+      }else{
+        out.precio_variante="";
+      }
+
+      const duplicateKey=bulkProductNormalizeKey(out.producto)+"|"+bulkProductNormalizeKey(out.variante);
+      if(seen.has(duplicateKey)){
+        throw new Error("Duplicado dentro del archivo: coincide con la fila "+seen.get(duplicateKey)+".");
+      }
+      seen.set(duplicateKey,rowNumber);
+      out.valid=true;
+      valid.push(out);
+    }catch(e){
+      out.error=e.message||String(e);
+      bad.push(out);
+    }
+  });
+
+  return {valid,bad};
+}
+
+function parseBulkProductCSV(text){
+  const lines=String(text||"").replace(/^\uFEFF/,"").split(/\r?\n/).filter(x=>x.trim());
+  if(!lines.length)return [];
+  const parse=function(line){
+    const values=[];let value="",quoted=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){
+        if(quoted&&line[i+1]==='"'){value+='"';i++;}
+        else quoted=!quoted;
+      }else if(ch===","&&!quoted){
+        values.push(value);value="";
+      }else value+=ch;
+    }
+    values.push(value);
+    return values;
+  };
+  const headers=parse(lines.shift());
+  return lines.map(function(line){
+    const values=parse(line);
+    return Object.fromEntries(headers.map((key,index)=>[key,values[index]??""]));
+  });
+}
+
+async function readBulkProductFile(file){
+  if(!file)throw new Error("Selecciona un archivo de productos.");
+  const ext=(file.name.split(".").pop()||"").toLowerCase();
+  if(ext==="csv")return parseBulkProductCSV(await file.text());
+  if(!["xlsx","xls"].includes(ext))throw new Error("Formato no permitido. Usa CSV o XLSX.");
+  if(typeof XLSX==="undefined")throw new Error("No se cargó el componente de Excel.");
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+  const ws=wb.Sheets.PRODUCTOS||wb.Sheets[wb.SheetNames[0]];
+  if(!ws)return [];
+  return XLSX.utils.sheet_to_json(ws,{defval:""});
+}
+
+function renderBulkProductPreview(){
+  const valid=masterLocalsState.productBulkRows||[];
+  const bad=masterLocalsState.productBulkErrors||[];
+  const all=[...valid,...bad].sort((a,b)=>a.rowNumber-b.rowNumber);
+  $("bulkProductStatus").textContent=masterLocalsState.productBulkFileName
+    ? masterLocalsState.productBulkFileName+" · "+valid.length+" válidas · "+bad.length+" con observaciones"
+    : "Todavía no has cargado una plantilla de productos.";
+  $("importBulkProductBtn").disabled=masterLocalsState.productBulkBusy||valid.length===0;
+  $("downloadBulkProductErrorsBtn").disabled=masterLocalsState.productBulkBusy||bad.length===0;
+
+  if(!all.length){
+    $("bulkProductPreview").innerHTML="";
+    return;
+  }
+
+  $("bulkProductPreview").innerHTML=
+    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>Categoría</th><th>Producto</th><th>Precio</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
+    all.slice(0,200).map(function(row){
+      return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
+    }).join("")+
+    '</tbody></table></div>'+
+    (all.length>200?'<p class="muted">Mostrando las primeras 200 filas.</p>':"");
+}
+
+async function validateBulkProductFile(){
+  if(masterLocalsState.productBulkBusy)return;
+  const file=$("bulkProductFile")?.files?.[0];
+  masterLocalsState.productBulkBusy=true;
+  $("validateBulkProductBtn").disabled=true;
+  try{
+    const parsed=normalizeBulkProductRows(await readBulkProductFile(file));
+    if(parsed.valid.length+parsed.bad.length===0)throw new Error("El archivo no contiene filas.");
+    if(parsed.valid.length+parsed.bad.length>1000)throw new Error("Máximo 1000 filas por importación.");
+    masterLocalsState.productBulkFileName=file.name;
+    masterLocalsState.productBulkRows=parsed.valid;
+    masterLocalsState.productBulkErrors=parsed.bad;
+    renderBulkProductPreview();
+    message(parsed.bad.length
+      ?"Productos revisados. Puedes importar únicamente las filas válidas y descargar las observaciones."
+      :"Productos validados. Revisa la vista previa antes de importar.");
+  }catch(e){
+    masterLocalsState.productBulkRows=[];
+    masterLocalsState.productBulkErrors=[];
+    masterLocalsState.productBulkFileName="";
+    renderBulkProductPreview();
+    message(e.message||"No se pudo validar la plantilla de productos.","error");
+  }finally{
+    masterLocalsState.productBulkBusy=false;
+    $("validateBulkProductBtn").disabled=false;
+    renderBulkProductPreview();
+  }
+}
+
+function downloadBulkProductTemplate(){
+  if(typeof XLSX==="undefined")return message("No se cargó el componente de Excel.","error");
+  const data=[
+    {categoria:"Hamburguesas",producto:"Clásica",descripcion:"Carne, queso y vegetales",precio:"4.50",imagen_url:"",variante:"Normal",precio_variante:"4.50",orden:"0",activo:"Sí"},
+    {categoria:"Hamburguesas",producto:"Clásica",descripcion:"Carne, queso y vegetales",precio:"4.50",imagen_url:"",variante:"Grande",precio_variante:"6.00",orden:"1",activo:"Sí"},
+    {categoria:"Bebidas",producto:"Cola 500 ml",descripcion:"",precio:"1.25",imagen_url:"",variante:"",precio_variante:"",orden:"0",activo:"Sí"}
+  ];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws["!cols"]=[{wch:22},{wch:28},{wch:42},{wch:12},{wch:45},{wch:22},{wch:18},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,"PRODUCTOS");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ["HTPWEB — Carga masiva de productos"],
+    ["1","Selecciona el LOCAL destino antes de importar."],
+    ["2","Cada fila representa un producto o una variante."],
+    ["3","Para varias variantes, repite PRODUCTO y usa una VARIANTE distinta."],
+    ["4","Si el producto ya existe en el LOCAL, se actualiza en lugar de duplicarse."],
+    ["5","Sin marcar Publicar, productos y variantes quedan inactivos para revisión."],
+    ["6","IMAGEN_URL es opcional y debe usar HTTP o HTTPS."]
+  ]),"INSTRUCCIONES");
+  XLSX.writeFile(wb,"HTPWEB_Plantilla_Carga_Masiva_Productos.xlsx");
+}
+
+function downloadBulkProductErrors(){
+  const rows=masterLocalsState.productBulkErrors||[];
+  if(!rows.length)return message("No hay observaciones de productos para descargar.","error");
+  if(typeof XLSX==="undefined")return message("No se cargó el componente de Excel.","error");
+  const data=rows.map(function(row){
+    return {
+      FILA:row.rowNumber,CATEGORIA:row.categoria,PRODUCTO:row.producto,DESCRIPCION:row.descripcion,
+      PRECIO:row.precio,IMAGEN_URL:row.imagen_url,VARIANTE:row.variante,
+      PRECIO_VARIANTE:row.precio_variante,ORDEN:row.orden,ACTIVO:row.activo,ERROR:row.error
+    };
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"OBSERVACIONES");
+  XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Masiva_Productos.xlsx");
+}
+
+async function importBulkProducts(){
+  if(masterLocalsState.productBulkBusy)return;
+  const localId=$("bulkProductLocal")?.value;
+  const rows=masterLocalsState.productBulkRows||[];
+  if(!localId)return message("Selecciona el LOCAL destino.","error");
+  if(!rows.length)return message("Primero valida un archivo de productos.","error");
+
+  masterLocalsState.productBulkBusy=true;
+  $("importBulkProductBtn").disabled=true;
+  try{
+    const payload=rows.map(function(row){
+      const copy={...row};delete copy.rowNumber;delete copy.valid;delete copy.error;return copy;
+    });
+    const publish=$("bulkProductPublish")?.checked===true;
+    const result=await rpc("bulk_import_local_catalog_v2",{
+      p_local_id:localId,p_rows:payload,p_publish:publish
+    });
+    message(
+      "Importación completada: "+(result?.products_created||0)+" productos creados, "+
+      (result?.products_updated||0)+" actualizados, "+(result?.variants_created||0)+" variantes creadas, "+
+      (result?.variants_updated||0)+" variantes actualizadas"+
+      (publish?". Publicados según la columna ACTIVO.":". Quedaron en borrador/inactivos para revisión.")
+    );
+    masterLocalsState.productBulkRows=[];
+    masterLocalsState.productBulkErrors=[];
+    masterLocalsState.productBulkFileName="";
+    if($("bulkProductFile"))$("bulkProductFile").value="";
+    renderBulkProductPreview();
+  }catch(e){
+    message(e.message||"No se pudo importar el catálogo.","error");
+  }finally{
+    masterLocalsState.productBulkBusy=false;
+    renderBulkProductPreview();
   }
 }
