@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.analizar-menu]
 verify_jwt = true
+
+[functions.resolver-google-maps]
+verify_jwt = true
