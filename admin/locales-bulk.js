@@ -18,26 +18,40 @@ function downloadBulkLocalTemplate(){
   if(typeof XLSX==="undefined"){
     return message("No se cargó el componente de Excel. Actualiza la página e inténtalo de nuevo.","error");
   }
-  const headers=["NOMBRE","PROVINCIA","CANTON","BUSQUEDA_GOOGLE","ZONA_CODIGO","LATITUD","LONGITUD","TELEFONO","WHATSAPP","DESCRIPCION"];
+
+  const categories=masterLocalsState.businessCategories.filter(function(item){return item.active;});
+  if(!categories.length){
+    return message("Primero crea al menos una Categoría de LOCAL en MASTER → Categorías.","error");
+  }
+
+  const headers=["NOMBRE","CATEGORIA","LINK_UBICACION","TELEFONO","WHATSAPP","DESCRIPCION"];
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([headers]),"LOCALES");
+  const localSheet=XLSX.utils.aoa_to_sheet([
+    headers,
+    ["","","","","",""]
+  ]);
+  localSheet["!cols"]=[
+    {wch:28},{wch:22},{wch:58},{wch:18},{wch:18},{wch:42}
+  ];
+  XLSX.utils.book_append_sheet(wb,localSheet,"LOCALES");
 
   const instructions=[
     ["HTPWEB — Carga masiva de locales"],
-    ["1","No cambies los encabezados de la hoja LOCALES."],
-    ["2","NOMBRE, PROVINCIA y CANTON son obligatorios."],
-    ["3","Recomendado: en BUSQUEDA_GOOGLE pega el enlace compartido de Google Maps (maps.app.goo.gl) o escribe el nombre/dirección. HTPWEB intentará obtener ubicación y dirección automáticamente."],
-    ["4","Alternativa: completa LATITUD y LONGITUD. ZONA_CODIGO puede usarse cuando el punto no cae en un polígono dibujado."],
-    ["5","Los locales importados se crean como BORRADOR. Después completa horario, imágenes y productos desde la ficha del LOCAL."],
-    ["EJEMPLO","AGUA VIVA | Esmeraldas | Esmeraldas | Agua Viva Esmeraldas | ESM01 | | | 0999999999 | 0999999999 | Distribuidor de agua"]
+    ["1","Completa únicamente las columnas de la hoja LOCALES. No cambies los encabezados."],
+    ["2","NOMBRE, CATEGORIA y LINK_UBICACION son obligatorios."],
+    ["3","CATEGORIA debe coincidir con una categoría activa creada en MASTER → Categorías."],
+    ["4","En LINK_UBICACION pega el enlace compartido de Google Maps del establecimiento, por ejemplo https://maps.app.goo.gl/..."],
+    ["5","HTPWEB obtiene automáticamente dirección, provincia, cantón, latitud, longitud y zona a partir del enlace."],
+    ["6","Los locales se importan como BORRADOR para revisar horario, imágenes y productos antes de activarlos."],
+    ["EJEMPLO","Miguelacho | Restaurante | https://maps.app.goo.gl/... | 0999999999 | 0999999999 | Comida y bebidas"]
   ];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(instructions),"INSTRUCCIONES");
 
-  const zoneRows=[["PROVINCIA","CANTON","ZONA_CODIGO","ZONA_NOMBRE"]];
-  masterLocalsState.zones.filter(function(z){return z.active;}).forEach(function(z){
-    zoneRows.push([z.province||"",z.city_name||z.canton||"",z.code||"",z.name||""]);
-  });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zoneRows),"ZONAS_DISPONIBLES");
+  const categoryRows=[["CATEGORIA","DESCRIPCION"]].concat(
+    categories.map(function(item){return [item.name,item.description||""];})
+  );
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(categoryRows),"CATEGORIAS_DISPONIBLES");
+
   XLSX.writeFile(wb,"HTPWEB_Plantilla_Carga_Masiva_Locales.xlsx");
 }
 
@@ -75,10 +89,8 @@ async function reverseBulkCoordinates(lat,lng){
   }
 }
 
-async function resolveBulkGooglePlace(query,province,canton){
+async function resolveBulkGooglePlace(query,province="",canton=""){
   if(!query)return null;
-  const g=await ZoneMaps.googleAPI();
-  if(!g)throw new Error("Google Maps no está disponible. Revisa la configuración de Google Cloud.");
 
   if(isGoogleMapsLink(query)){
     const resolved=await resolveGoogleMapsLink(query);
@@ -92,6 +104,7 @@ async function resolveBulkGooglePlace(query,province,canton){
           address:resolved.search_text||query,
           lat,lng,
           resolvedUrl:resolved.resolved_url||query,
+          addressComponents:[],
           geocodeError:reverse.__error.message||String(reverse.__error)
         };
       }
@@ -107,6 +120,9 @@ async function resolveBulkGooglePlace(query,province,canton){
     query=resolved.search_text||query;
   }
 
+  const g=await ZoneMaps.googleAPI();
+  if(!g)throw new Error("Google Maps no está disponible. Revisa la configuración de Google Cloud.");
+
   const lib=await google.maps.importLibrary("places");
   const AutocompleteSuggestion=lib.AutocompleteSuggestion;
   const input=[query,canton,province,"Ecuador"].filter(Boolean).join(", ");
@@ -121,6 +137,7 @@ async function resolveBulkGooglePlace(query,province,canton){
   const place=prediction.toPlace();
   await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location"]});
   if(!place.location)throw new Error("Google encontró el lugar, pero no devolvió coordenadas.");
+
   return {
     placeId:place.id||null,
     name:place.displayName||query,
@@ -131,28 +148,31 @@ async function resolveBulkGooglePlace(query,province,canton){
   };
 }
 
-function bulkLocalZoneFor(cityId,lat,lng,zoneCode){
-  const zones=masterLocalsState.zones.filter(function(z){return z.active&&z.city_id===cityId;});
-  const requested=zoneCode?zones.find(function(z){
-    return normalizeLocalGeoText(z.code)===normalizeLocalGeoText(zoneCode);
-  }):null;
+function bulkFindCity(province,canton,locality){
+  const provinceKey=normalizeLocalGeoText(province);
+  const candidates=[canton,locality].map(normalizeLocalGeoText).filter(Boolean);
+  const provinceCities=state.cities.filter(function(city){
+    return city.active&&normalizeLocalGeoText(city.province)===provinceKey;
+  });
+  let match=provinceCities.find(function(city){
+    return candidates.includes(normalizeLocalGeoText(city.name));
+  });
+  if(!match)match=provinceCities.find(function(city){
+    const cityKey=normalizeLocalGeoText(city.name);
+    return candidates.some(function(value){
+      return value&&cityKey&&(value.includes(cityKey)||cityKey.includes(value));
+    });
+  });
+  return match||null;
+}
 
-  if(requested){
-    if(requested.boundary&&requested.boundary.length&&!ZoneMaps.contains(requested.boundary,lat,lng)){
-      throw new Error("El punto no pertenece a la zona "+requested.code+".");
-    }
-    return requested;
-  }
-
-  const matches=zones.filter(function(z){
-    return z.boundary&&z.boundary.length&&ZoneMaps.contains(z.boundary,lat,lng);
+function bulkLocalZoneFor(lat,lng){
+  const matches=masterLocalsState.zones.filter(function(z){
+    return z.active&&Array.isArray(z.boundary)&&z.boundary.length>=3&&ZoneMaps.contains(z.boundary,lat,lng);
   });
   if(matches.length===1)return matches[0];
-  if(matches.length>1)throw new Error("La ubicación cae en más de una zona. Especifica ZONA_CODIGO.");
-
-  const withoutBoundary=zones.filter(function(z){return !z.boundary||!z.boundary.length;});
-  if(withoutBoundary.length===1)return withoutBoundary[0];
-  throw new Error("No se pudo detectar una zona. Completa ZONA_CODIGO o dibuja los límites.");
+  if(matches.length>1)throw new Error("La ubicación cae en más de una zona HTPWEB. Revisa los polígonos superpuestos.");
+  throw new Error("La ubicación no cae dentro de ninguna zona HTPWEB dibujada.");
 }
 
 function renderBulkLocalPreview(){
@@ -177,9 +197,10 @@ function renderBulkLocalPreview(){
     return "<tr>"+
       "<td>"+esc(r.rowNumber)+"</td>"+
       "<td>"+esc(r.name||"")+"</td>"+
+      "<td>"+esc(r.category?.name||r.categoryName||"")+"</td>"+
       "<td>"+esc((r.province||"")+" / "+(r.canton||""))+"</td>"+
-      "<td>"+esc(r.address||r.query||"")+"</td>"+
-      "<td>"+esc((r.zone&&r.zone.code)||r.zoneCode||"—")+"</td>"+
+      "<td>"+esc(r.address||"")+"</td>"+
+      "<td>"+esc((r.zone&&r.zone.code)||"—")+"</td>"+
       "<td class=\""+statusClass+"\">"+esc(status)+"</td>"+
       "</tr>";
   }).join("");
@@ -191,7 +212,7 @@ function renderBulkLocalPreview(){
       "<span>Importados: <strong>"+imported+"</strong></span>"+
     "</div>"+
     "<div class=\"table-wrap bulk-local-table\"><table>"+
-      "<thead><tr><th>Fila</th><th>Local</th><th>Provincia / Cantón</th><th>Dirección</th><th>Zona</th><th>Estado</th></tr></thead>"+
+      "<thead><tr><th>Fila</th><th>Local</th><th>Categoría</th><th>Provincia / Cantón</th><th>Dirección</th><th>Zona</th><th>Estado</th></tr></thead>"+
       "<tbody>"+body+"</tbody></table></div>";
 }
 
@@ -212,6 +233,9 @@ async function validateBulkLocalFile(){
     const raw=XLSX.utils.sheet_to_json(sheet,{defval:""});
     if(!raw.length)throw new Error("La hoja LOCALES está vacía.");
     if(raw.length>500)throw new Error("La carga permite hasta 500 locales por archivo.");
+    if(!masterLocalsState.businessCategories.some(function(item){return item.active;})){
+      throw new Error("Primero crea al menos una Categoría de LOCAL en MASTER → Categorías.");
+    }
 
     masterLocalsState.bulkFileName=file.name;
     masterLocalsState.bulkRows=[];
@@ -221,61 +245,64 @@ async function validateBulkLocalFile(){
       const result={rowNumber:i+2,valid:false,imported:false};
       try{
         result.name=bulkLocalValue(row,"NOMBRE");
-        result.province=bulkLocalValue(row,"PROVINCIA");
-        result.canton=bulkLocalValue(row,"CANTON");
-        result.query=bulkLocalValue(row,"BUSQUEDA_GOOGLE");
-        result.zoneCode=bulkLocalValue(row,"ZONA_CODIGO");
+        result.categoryName=bulkLocalValue(row,"CATEGORIA");
+        result.locationLink=bulkLocalValue(row,"LINK_UBICACION");
         result.phone=bulkLocalValue(row,"TELEFONO");
         result.whatsapp=bulkLocalValue(row,"WHATSAPP");
         result.description=bulkLocalValue(row,"DESCRIPCION");
 
-        if(!result.name||!result.province||!result.canton){
-          throw new Error("Faltan NOMBRE, PROVINCIA o CANTON.");
+        if(!result.name||!result.categoryName||!result.locationLink){
+          throw new Error("Faltan NOMBRE, CATEGORIA o LINK_UBICACION.");
+        }
+        if(!isGoogleMapsLink(result.locationLink)){
+          throw new Error("LINK_UBICACION debe ser un enlace HTTPS de Google Maps.");
         }
 
-        const city=state.cities.find(function(x){
-          return x.active&&
-            normalizeLocalGeoText(x.province)===normalizeLocalGeoText(result.province)&&
-            normalizeLocalGeoText(x.name)===normalizeLocalGeoText(result.canton);
+        result.category=masterLocalsState.businessCategories.find(function(item){
+          return item.active&&normalizeLocalGeoText(item.name)===normalizeLocalGeoText(result.categoryName);
         });
-        if(!city)throw new Error("Provincia/Cantón no existe o está inactivo en HTPWEB.");
-        result.city=city;
-
-        const latRaw=bulkLocalValue(row,"LATITUD");
-        const lngRaw=bulkLocalValue(row,"LONGITUD");
-        if((latRaw&&!lngRaw)||(!latRaw&&lngRaw))throw new Error("Completa LATITUD y LONGITUD juntas.");
-
-        let place=null;
-        if(latRaw&&lngRaw){
-          result.lat=Number(String(latRaw).replace(",","."));
-          result.lng=Number(String(lngRaw).replace(",","."));
-          if(!Number.isFinite(result.lat)||Math.abs(result.lat)>90||!Number.isFinite(result.lng)||Math.abs(result.lng)>180){
-            throw new Error("Coordenadas inválidas.");
-          }
-        }else{
-          if(!result.query)throw new Error("Completa BUSQUEDA_GOOGLE o LATITUD/LONGITUD.");
-          $("bulkLocalStatus").textContent="Validando con Google fila "+result.rowNumber+"…";
-          place=await resolveBulkGooglePlace(result.query,result.province,result.canton);
-          result.lat=place.lat;
-          result.lng=place.lng;
-          result.address=place.address;
-          result.placeId=place.placeId;
-          result.resolvedUrl=place.resolvedUrl||null;
-          if(place.geocodeError){
-            result.warning="Ubicación obtenida del enlace, pero Google Geocoding rechazó la dirección: "+place.geocodeError;
-          }
+        if(!result.category){
+          throw new Error("La categoría '"+result.categoryName+"' no existe o está inactiva.");
         }
 
-        result.zone=bulkLocalZoneFor(city.id,result.lat,result.lng,result.zoneCode);
-        if(!result.address)result.address=result.query||"";
+        $("bulkLocalStatus").textContent="Validando con Google fila "+result.rowNumber+"…";
+        const place=await resolveBulkGooglePlace(result.locationLink);
+        if(!place||!Number.isFinite(Number(place.lat))||!Number.isFinite(Number(place.lng))){
+          throw new Error("Google no devolvió coordenadas válidas.");
+        }
+        if(place.geocodeError){
+          throw new Error("Se obtuvieron coordenadas, pero Google no permitió obtener provincia/cantón: "+place.geocodeError);
+        }
+
+        result.lat=Number(place.lat);
+        result.lng=Number(place.lng);
+        result.address=place.address||"";
+        result.placeId=place.placeId||null;
+        result.resolvedUrl=place.resolvedUrl||result.locationLink;
+
+        const province=localAddressPart(place.addressComponents,"administrative_area_level_1");
+        const canton=localAddressPart(place.addressComponents,"administrative_area_level_2");
+        const locality=localAddressPart(place.addressComponents,"locality","postal_town","sublocality_level_1");
+        if(!province||(!canton&&!locality)){
+          throw new Error("Google no devolvió provincia/cantón suficientes para esta ubicación.");
+        }
+
+        result.city=bulkFindCity(province,canton,locality);
+        if(!result.city){
+          throw new Error("La provincia/cantón detectada por Google no existe todavía en HTPWEB: "+[province,canton||locality].filter(Boolean).join(" / ")+".");
+        }
+        result.province=result.city.province||province;
+        result.canton=result.city.name||canton||locality;
+
+        result.zone=bulkLocalZoneFor(result.lat,result.lng);
 
         const duplicate=masterLocalsState.items.find(function(l){
           return (result.placeId&&l.google_place_id===result.placeId)||
-            (l.city_id===city.id&&normalizeLocalGeoText(l.name)===normalizeLocalGeoText(result.name));
+            (l.city_id===result.city.id&&normalizeLocalGeoText(l.name)===normalizeLocalGeoText(result.name));
         });
         if(duplicate)throw new Error("Posible duplicado: "+duplicate.name+" ya existe.");
 
-        result.source=place?"GOOGLE":"MANUAL";
+        result.source="GOOGLE";
         result.valid=true;
       }catch(e){
         result.error=e.message||String(e);
@@ -309,9 +336,11 @@ async function importBulkLocals(){
   try{
     for(const row of pending){
       try{
-        await rpc("master_save_local_v2",{
+        await rpc("master_save_local_v3",{
           p_local_id:null,
+          p_city_id:row.city.id,
           p_zone_id:row.zone.id,
+          p_business_category_id:row.category.id,
           p_name:row.name,
           p_slug:"",
           p_description:row.description||"",
@@ -321,8 +350,8 @@ async function importBulkLocals(){
           p_phone:row.phone||"",
           p_whatsapp:row.whatsapp||"",
           p_google_place_id:row.placeId||null,
-          p_google_maps_url:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(row.lat+","+row.lng),
-          p_location_source:row.source||"MANUAL",
+          p_google_maps_url:row.resolvedUrl||row.locationLink,
+          p_location_source:"GOOGLE",
           p_active:false
         });
         row.imported=true;
