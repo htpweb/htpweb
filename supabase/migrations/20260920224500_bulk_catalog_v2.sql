@@ -33,7 +33,7 @@ begin
   if p_local_id is null then raise exception 'LOCAL requerido'; end if;
   if p_rows is null or jsonb_typeof(p_rows)<>'array' then raise exception 'Filas inválidas'; end if;
   if jsonb_array_length(p_rows)=0 then raise exception 'No hay filas para importar'; end if;
-  if jsonb_array_length(p_rows)>2000 then raise exception 'Máximo 2000 filas por importación'; end if;
+  if jsonb_array_length(p_rows)>1000 then raise exception 'Máximo 1000 filas por importación'; end if;
 
   for v_row in select value from jsonb_array_elements(p_rows)
   loop
