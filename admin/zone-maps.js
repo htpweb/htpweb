@@ -56,6 +56,6 @@ const ZoneMaps = (() => {
         if(onMove)m.on("dragend",()=>onMove(m.getLatLng().lat,m.getLatLng().lng));return m;},
       destroy:()=>map.remove()};
   }
-  return {contains,create};
+  return {contains,create,googleAPI};
 })();
 if(typeof module!=="undefined")module.exports=ZoneMaps;
