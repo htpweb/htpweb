@@ -26,7 +26,7 @@ function downloadBulkLocalTemplate(){
     ["HTPWEB — Carga masiva de locales"],
     ["1","No cambies los encabezados de la hoja LOCALES."],
     ["2","NOMBRE, PROVINCIA y CANTON son obligatorios."],
-    ["3","Recomendado: completa BUSQUEDA_GOOGLE con el nombre del negocio o su dirección. HTPWEB intentará obtener ubicación y dirección con Google."],
+    ["3","Recomendado: en BUSQUEDA_GOOGLE pega el enlace compartido de Google Maps (maps.app.goo.gl) o escribe el nombre/dirección. HTPWEB intentará obtener ubicación y dirección automáticamente."],
     ["4","Alternativa: completa LATITUD y LONGITUD. ZONA_CODIGO puede usarse cuando el punto no cae en un polígono dibujado."],
     ["5","Los locales importados se crean como BORRADOR. Después completa horario, imágenes y productos desde la ficha del LOCAL."],
     ["EJEMPLO","AGUA VIVA | Esmeraldas | Esmeraldas | Agua Viva Esmeraldas | ESM01 | | | 0999999999 | 0999999999 | Distribuidor de agua"]
@@ -41,10 +41,72 @@ function downloadBulkLocalTemplate(){
   XLSX.writeFile(wb,"HTPWEB_Plantilla_Carga_Masiva_Locales.xlsx");
 }
 
+function isGoogleMapsLink(value){
+  try{
+    const url=new URL(String(value||"").trim());
+    const host=url.hostname.toLowerCase();
+    return url.protocol==="https:"&&(
+      host==="maps.app.goo.gl"||
+      host==="goo.gl"||
+      host==="google.com"||
+      host==="www.google.com"||
+      host==="maps.google.com"
+    );
+  }catch{return false;}
+}
+
+async function resolveGoogleMapsLink(value){
+  const {data,error}=await supabaseClient.functions.invoke("resolver-google-maps",{body:{url:value}});
+  if(error)throw error;
+  if(!data?.ok)throw new Error(data?.error||"No se pudo resolver el enlace de Google Maps.");
+  return data;
+}
+
+async function reverseBulkCoordinates(lat,lng){
+  try{
+    const g=await ZoneMaps.googleAPI();
+    if(!g)return null;
+    const {Geocoder}=await google.maps.importLibrary("geocoding");
+    const geocoder=new Geocoder();
+    const response=await geocoder.geocode({location:{lat,lng}});
+    return response?.results?.[0]||null;
+  }catch(e){
+    return {__error:e};
+  }
+}
+
 async function resolveBulkGooglePlace(query,province,canton){
   if(!query)return null;
   const g=await ZoneMaps.googleAPI();
-  if(!g)throw new Error("Google Maps no está disponible. Completa LATITUD/LONGITUD o revisa la API.");
+  if(!g)throw new Error("Google Maps no está disponible. Revisa la configuración de Google Cloud.");
+
+  if(isGoogleMapsLink(query)){
+    const resolved=await resolveGoogleMapsLink(query);
+    if(Number.isFinite(Number(resolved.latitude))&&Number.isFinite(Number(resolved.longitude))){
+      const lat=Number(resolved.latitude),lng=Number(resolved.longitude);
+      const reverse=await reverseBulkCoordinates(lat,lng);
+      if(reverse?.__error){
+        return {
+          placeId:resolved.place_id||null,
+          name:resolved.search_text||query,
+          address:resolved.search_text||query,
+          lat,lng,
+          resolvedUrl:resolved.resolved_url||query,
+          geocodeError:reverse.__error.message||String(reverse.__error)
+        };
+      }
+      return {
+        placeId:resolved.place_id||reverse?.place_id||null,
+        name:resolved.search_text||query,
+        address:reverse?.formatted_address||resolved.search_text||query,
+        lat,lng,
+        resolvedUrl:resolved.resolved_url||query,
+        addressComponents:reverse?.address_components||[]
+      };
+    }
+    query=resolved.search_text||query;
+  }
+
   const lib=await google.maps.importLibrary("places");
   const AutocompleteSuggestion=lib.AutocompleteSuggestion;
   const input=[query,canton,province,"Ecuador"].filter(Boolean).join(", ");
@@ -57,14 +119,15 @@ async function resolveBulkGooglePlace(query,province,canton){
   const prediction=(response&&response.suggestions||[]).map(function(s){return s.placePrediction;}).find(Boolean);
   if(!prediction)throw new Error("Google no encontró el establecimiento o dirección.");
   const place=prediction.toPlace();
-  await place.fetchFields({fields:["id","displayName","formattedAddress","location"]});
+  await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location"]});
   if(!place.location)throw new Error("Google encontró el lugar, pero no devolvió coordenadas.");
   return {
     placeId:place.id||null,
     name:place.displayName||query,
     address:place.formattedAddress||query,
     lat:place.location.lat(),
-    lng:place.location.lng()
+    lng:place.location.lng(),
+    addressComponents:place.addressComponents||[]
   };
 }
 
@@ -197,6 +260,10 @@ async function validateBulkLocalFile(){
           result.lng=place.lng;
           result.address=place.address;
           result.placeId=place.placeId;
+          result.resolvedUrl=place.resolvedUrl||null;
+          if(place.geocodeError){
+            result.warning="Ubicación obtenida del enlace, pero Google Geocoding rechazó la dirección: "+place.geocodeError;
+          }
         }
 
         result.zone=bulkLocalZoneFor(city.id,result.lat,result.lng,result.zoneCode);

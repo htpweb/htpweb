@@ -54,3 +54,47 @@ Con la clave activa, en MASTER > Locales:
 - teléfono y horario de Google siguen siendo una consulta opcional; el horario es solo sugerencia.
 
 Si no hay clave, HTPWEB conserva el mapa alternativo y la selección manual del punto.
+
+
+## HTPWEB en GitHub Pages
+
+Para la publicación actual, la clave de navegador debe autorizar como mínimo:
+
+- `https://htpweb.github.io/*`
+- `https://htpweb.github.io/htpweb/*`
+
+Después de guardar un cambio de restricciones en Google Cloud, puede tardar unos minutos en propagarse. Actualiza HTPWEB con Ctrl+F5 antes de volver a probar.
+
+## Diagnóstico dentro de HTPWEB
+
+En MASTER > Locales > Crear/Editar LOCAL existe el botón **Probar conexión Google**.
+
+Comprueba por separado:
+
+1. Maps JavaScript API.
+2. Places.
+3. Geocoding.
+
+Si aparece `REQUEST_DENIED` o "the webpage is not allowed to use the geocoder", revisar en el mismo proyecto de Google Cloud:
+
+- facturación vinculada y activa;
+- Geocoding API habilitada;
+- Maps JavaScript API habilitada;
+- Places API (New) habilitada;
+- la clave usa restricciones de tipo Websites/HTTP referrers;
+- el dominio de GitHub Pages está en los sitios permitidos;
+- las restricciones de API incluyen los tres servicios anteriores.
+
+## Enlaces compartidos de Google Maps
+
+La carga masiva admite enlaces HTTPS de Google Maps, incluidos enlaces cortos `maps.app.goo.gl`.
+
+Los enlaces cortos se resuelven mediante la Edge Function autenticada `resolver-google-maps`. La función:
+
+- acepta únicamente dominios de Google Maps;
+- sigue la redirección del enlace corto;
+- extrae coordenadas cuando están presentes en la URL final;
+- devuelve el enlace resuelto y datos utilizables por el navegador;
+- no almacena ni necesita una clave privada de Google.
+
+Después, HTPWEB usa Google Geocoding cuando está autorizado para completar una dirección legible.

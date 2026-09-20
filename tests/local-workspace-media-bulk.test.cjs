@@ -64,3 +64,35 @@ test("carga masiva reutiliza Google y límites geográficos",()=>{
   assert.match(bulk,/ZoneMaps\.contains/);
   assert.match(bulk,/Posible duplicado/);
 });
+
+
+test("carga masiva acepta enlaces cortos de Google Maps mediante Edge Function",()=>{
+  const resolver=fs.readFileSync("supabase/functions/resolver-google-maps/index.ts","utf8");
+  assert.match(bulk,/isGoogleMapsLink/);
+  assert.match(bulk,/resolver-google-maps/);
+  assert.match(bulk,/maps\.app\.goo\.gl/);
+  assert.match(resolver,/maps\.app\.goo\.gl/);
+  assert.match(resolver,/redirect:\s*"follow"/);
+  assert.match(resolver,/extractLocation/);
+  assert.match(resolver,/query_place_id/);
+  assert.match(resolver,/Operación exclusiva de MASTER/);
+});
+
+test("diagnóstico Google separa Maps Places y Geocoding",()=>{
+  assert.match(locals,/googleMapsDiagnosticBtn/);
+  assert.match(locals,/diagnoseGoogleMaps/);
+  assert.match(locals,/importLibrary\("places"\)/);
+  assert.match(locals,/importLibrary\("geocoding"\)/);
+  assert.match(locals,/REQUEST_DENIED/);
+  assert.doesNotMatch(maps,/mapId:"DEMO_MAP_ID"/);
+});
+
+test("funciones Supabase se despliegan al cambiar main",()=>{
+  const workflow=fs.readFileSync(".github/workflows/supabase-deploy.yml","utf8");
+  const config=fs.readFileSync("supabase/config.toml","utf8");
+  assert.match(workflow,/supabase\/functions\/\*\*/);
+  assert.match(workflow,/github\.event_name == 'push'/);
+  assert.match(workflow,/supabase functions deploy/);
+  assert.match(config,/\[functions\.resolver-google-maps\]/);
+  assert.match(config,/verify_jwt = true/);
+});
