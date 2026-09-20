@@ -1,8 +1,8 @@
 -- HTPWEB Código #83 — carga masiva transaccional CSV/XLSX
 create or replace function public.raise_exception_bool(p_message text)
-returns boolean language plpgsql immutable as $
+returns boolean language plpgsql immutable as $$
 begin raise exception '%', p_message; end;
-$;
+$$;
 
 create or replace function public.bulk_import_local_catalog(
   p_local_id uuid,
