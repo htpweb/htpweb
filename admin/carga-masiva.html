@@ -1,22 +1,39 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Carga masiva | HTPWEB Admin</title>
+<title>Carga masiva de productos | HTPWEB Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="../config/supabase.js"></script><script src="../config/auth.js"></script>
 <link rel="stylesheet" href="../assets/admin.css"></head>
-<body><main class="content" style="max-width:1100px;margin:auto">
-<div class="topbar"><div><h1>Carga masiva CSV/XLSX</h1><div class="muted">Código #83 · catálogo de productos</div></div>
+<body><main class="content" style="max-width:1200px;margin:auto">
+<div class="topbar"><div><h1>Carga masiva de productos</h1><div class="muted">Código #99 · productos, variantes, actualización y revisión</div></div>
 <a class="btn-muted" href="./index.html">Volver al panel</a></div>
 <div id="bulkMessage" class="message hidden"></div>
+
 <div class="card"><h2>1. Selecciona LOCAL y archivo</h2>
-<p class="muted">Disponible para MASTER y LOCAL_ADMIN. Máximo 1000 filas. La importación completa es transaccional.</p>
-<div class="form-grid"><div><label>LOCAL</label><select id="bulkLocal"></select></div>
-<div><label>Archivo</label><input id="bulkFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div></div>
-<div class="row" style="margin-top:14px"><button class="btn-muted" id="downloadTemplate">Descargar plantilla CSV</button>
-<button class="btn-primary" id="previewBulk">Validar y previsualizar</button></div>
-<p class="muted">Columnas: <code>categoria, producto, descripcion, precio, orden, activo</code>. Activo acepta Sí/No.</p></div>
-<div class="card"><h2>2. Vista previa</h2><div id="bulkSummary" class="muted">Aún no hay archivo validado.</div>
+<p class="muted">Disponible para MASTER y LOCAL_ADMIN. Máximo 1000 filas. Las filas con errores no se importan.</p>
+<div class="form-grid">
+  <div><label>LOCAL</label><select id="bulkLocal"></select></div>
+  <div><label>Archivo</label><input id="bulkFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
+</div>
+<div class="row" style="margin-top:14px">
+  <button class="btn-muted" id="downloadTemplate">Descargar plantilla Excel</button>
+  <button class="btn-primary" id="previewBulk">Validar y previsualizar</button>
+</div>
+<p class="muted">Columnas: <code>categoria, producto, descripcion, precio, imagen_url, variante, precio_variante, orden, activo</code>.</p>
+</div>
+
+<div class="card"><h2>2. Vista previa y aprobación</h2>
+<div id="bulkSummary" class="muted">Aún no hay archivo validado.</div>
 <div id="bulkPreview" class="table-wrap" style="margin-top:12px"></div>
-<button class="btn-primary" id="applyBulk" disabled style="margin-top:14px">Importar catálogo</button></div>
+<div class="row" style="margin-top:14px">
+  <button class="btn-muted" id="downloadBulkErrors" disabled>Descargar observaciones</button>
+  <label class="row" style="margin:0">
+    <input id="publishBulk" type="checkbox" style="width:auto">
+    Publicar inmediatamente según columna ACTIVO
+  </label>
+  <button class="btn-primary" id="applyBulk" disabled>Importar filas válidas</button>
+</div>
+<p class="muted">Recomendado: deja desmarcada la publicación para importar como borrador, revisar y activar después.</p>
+</div>
 </main><script src="./bulk-import.js"></script></body></html>
