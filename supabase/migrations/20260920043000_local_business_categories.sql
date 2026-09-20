@@ -339,3 +339,289 @@ begin
   return new;
 end;
 $$;
+
+
+-- DELIVERY: el cantón es dato administrativo; la cobertura la define la zona seleccionada.
+drop trigger if exists trg_validate_delivery_city_zone_integrity on public.deliveries;
+
+create or replace function public.validate_zone_delivery_integrity()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+begin
+  if old.active is true
+     and new.active is not true
+     and exists(
+       select 1 from public.delivery_zones dz
+       where dz.zone_id=old.id and dz.active=true
+     ) then
+    raise exception 'HTPWEB: desactive la zona en todos los DELIVERY antes de desactivar la zona';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_validate_zone_delivery_integrity on public.zones;
+create trigger trg_validate_zone_delivery_integrity
+before update of active on public.zones
+for each row execute function public.validate_zone_delivery_integrity();
+
+create or replace function public.validate_delivery_zone_row_integrity()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_delivery_active boolean;
+  v_zone_active boolean;
+begin
+  if new.active is not true then return new; end if;
+
+  select d.active into v_delivery_active
+  from public.deliveries d
+  where d.id=new.delivery_id;
+  if not found then raise exception 'HTPWEB: DELIVERY inexistente'; end if;
+
+  select z.active into v_zone_active
+  from public.zones z
+  where z.id=new.zone_id;
+  if not found then raise exception 'HTPWEB: zona inexistente'; end if;
+
+  if v_delivery_active is not true then raise exception 'HTPWEB: DELIVERY inactivo'; end if;
+  if v_zone_active is not true then raise exception 'HTPWEB: zona inactiva'; end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.delivery_zone_context(p_delivery_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path=''
+as $$
+declare
+  v_delivery record;
+  v_city record;
+  v_current integer;
+  v_limit integer;
+  v_capability boolean;
+  v_zones jsonb;
+begin
+  if auth.uid() is null then raise exception 'HTPWEB: autenticación requerida'; end if;
+
+  select d.id,d.name,d.active,d.city_id into v_delivery
+  from public.deliveries d
+  where d.id=p_delivery_id;
+  if not found then raise exception 'HTPWEB: DELIVERY inexistente'; end if;
+
+  if not public.is_master() then
+    if not public.has_permission('zones.view') then raise exception 'HTPWEB: no tiene permiso zones.view'; end if;
+    if not public.user_has_delivery(p_delivery_id) then raise exception 'HTPWEB: no pertenece a este DELIVERY'; end if;
+  end if;
+
+  if v_delivery.city_id is not null then
+    select c.id,c.name,c.province,c.country,c.active into v_city
+    from public.cities c where c.id=v_delivery.city_id;
+  end if;
+
+  select count(*)::integer into v_current
+  from public.delivery_zones dz
+  where dz.delivery_id=p_delivery_id and dz.active=true;
+
+  v_limit:=public.delivery_limit_value(p_delivery_id,'max_zones');
+  v_capability:=public.delivery_has_capability(p_delivery_id,'zones.manage');
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id',z.id,
+    'code',z.code,
+    'name',z.name,
+    'city_id',z.city_id,
+    'city_name',c.name,
+    'province',c.province,
+    'active',z.active,
+    'assigned',coalesce(dz.active,false)
+  ) order by c.province,c.name,z.code,lower(z.name),z.id),'[]'::jsonb)
+  into v_zones
+  from public.zones z
+  join public.cities c on c.id=z.city_id
+  left join public.delivery_zones dz
+    on dz.delivery_id=p_delivery_id and dz.zone_id=z.id
+  where z.active=true;
+
+  return jsonb_build_object(
+    'delivery',jsonb_build_object(
+      'id',v_delivery.id,
+      'name',v_delivery.name,
+      'active',v_delivery.active,
+      'city_id',v_delivery.city_id
+    ),
+    'city',case when v_city.id is null then null else jsonb_build_object(
+      'id',v_city.id,'name',v_city.name,'province',v_city.province,
+      'country',v_city.country,'active',v_city.active
+    ) end,
+    'current_zones',coalesce(v_current,0),
+    'max_zones',v_limit,
+    'zones_manage_enabled',coalesce(v_capability,false),
+    'zones',coalesce(v_zones,'[]'::jsonb)
+  );
+end;
+$$;
+
+create or replace function public.set_delivery_zone(
+  p_delivery_id uuid,
+  p_zone_id uuid,
+  p_active boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_current integer;
+  v_limit integer;
+begin
+  if not public.is_master() then
+    raise exception 'Solicite la zona para aprobación del MASTER';
+  end if;
+
+  if not exists(select 1 from public.deliveries d where d.id=p_delivery_id and d.active=true) then
+    raise exception 'HTPWEB: DELIVERY inexistente o inactivo';
+  end if;
+  if not exists(select 1 from public.zones z where z.id=p_zone_id and z.active=true) then
+    raise exception 'HTPWEB: zona inexistente o inactiva';
+  end if;
+
+  perform pg_advisory_xact_lock(880115);
+
+  if coalesce(p_active,false)
+     and not exists(
+       select 1 from public.delivery_zones dz
+       where dz.delivery_id=p_delivery_id and dz.zone_id=p_zone_id and dz.active=true
+     ) then
+    select count(*)::integer into v_current
+    from public.delivery_zones dz
+    where dz.delivery_id=p_delivery_id and dz.active=true;
+
+    v_limit:=public.delivery_limit_value(p_delivery_id,'max_zones');
+    if v_limit is not null and v_current>=v_limit then
+      raise exception 'HTPWEB: alcanzó el máximo de zonas permitidas';
+    end if;
+  end if;
+
+  insert into public.delivery_zones(delivery_id,zone_id,active,created_at)
+  values(p_delivery_id,p_zone_id,coalesce(p_active,false),now())
+  on conflict(delivery_id,zone_id) do update
+    set active=excluded.active;
+
+  insert into public.delivery_zone_requests(delivery_id,zone_id,status,reviewed_by,updated_at)
+  values(
+    p_delivery_id,p_zone_id,
+    case when coalesce(p_active,false) then 'APPROVED' else 'SUSPENDED' end,
+    auth.uid(),now()
+  )
+  on conflict(delivery_id,zone_id) do update
+    set status=excluded.status,reviewed_by=auth.uid(),updated_at=now();
+end;
+$$;
+
+create or replace function public.request_delivery_zone(
+  p_delivery_id uuid,
+  p_zone_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path=''
+as $$
+begin
+  if auth.uid() is null
+     or public.current_role_code()<>'DELIVERY_ADMIN'
+     or not public.user_has_delivery(p_delivery_id)
+     or not public.has_permission('zones.assign')
+     or not public.delivery_has_capability(p_delivery_id,'zones.manage') then
+    raise exception 'Solicitud no autorizada';
+  end if;
+
+  if not exists(select 1 from public.deliveries d where d.id=p_delivery_id and d.active=true) then
+    raise exception 'DELIVERY inexistente o inactivo';
+  end if;
+  if not exists(select 1 from public.zones z where z.id=p_zone_id and z.active=true) then
+    raise exception 'Zona inexistente o inactiva';
+  end if;
+
+  if exists(
+    select 1 from public.delivery_zones
+    where delivery_id=p_delivery_id and zone_id=p_zone_id and active=true
+  ) then return; end if;
+
+  insert into public.delivery_zone_requests(delivery_id,zone_id,status,requested_by,updated_at)
+  values(p_delivery_id,p_zone_id,'PENDING',auth.uid(),now())
+  on conflict(delivery_id,zone_id) do update
+    set status='PENDING',requested_by=auth.uid(),reviewed_by=null,updated_at=now();
+end;
+$$;
+
+create or replace function public.htp_delivery_covers_local(
+  p_delivery uuid,
+  p_local uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path=''
+as $$
+  select exists(
+    select 1
+    from public.locals l
+    join public.zones z on z.id=l.zone_id and z.active
+    join public.delivery_zones dz on dz.zone_id=z.id and dz.active
+    join public.deliveries d on d.id=dz.delivery_id and d.active
+    where l.id=p_local and l.active and d.id=p_delivery
+  );
+$$;
+
+create or replace function public.htp_refresh_zone_links()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+begin
+  perform pg_advisory_xact_lock(880115);
+
+  update public.local_deliveries ld
+  set active=false
+  where active
+    and not public.htp_delivery_covers_local(ld.delivery_id,ld.local_id);
+
+  insert into public.local_deliveries(local_id,delivery_id,active)
+  select l.id,dz.delivery_id,true
+  from public.locals l
+  join public.zones z on z.id=l.zone_id and z.active
+  join public.delivery_zones dz on dz.zone_id=z.id and dz.active
+  join public.deliveries d on d.id=dz.delivery_id and d.active
+  where l.active
+  on conflict(local_id,delivery_id) do update
+    set active=true
+    where not public.local_deliveries.active;
+
+  return null;
+end;
+$$;
+
+revoke all on function public.delivery_zone_context(uuid) from public,anon;
+revoke all on function public.set_delivery_zone(uuid,uuid,boolean) from public,anon;
+revoke all on function public.request_delivery_zone(uuid,uuid) from public,anon;
+revoke all on function public.htp_delivery_covers_local(uuid,uuid) from public;
+
+grant execute on function public.delivery_zone_context(uuid) to authenticated;
+grant execute on function public.set_delivery_zone(uuid,uuid,boolean) to authenticated;
+grant execute on function public.request_delivery_zone(uuid,uuid) to authenticated;
+grant execute on function public.htp_delivery_covers_local(uuid,uuid) to anon,authenticated,service_role;
