@@ -16,10 +16,13 @@ test('one local editor embeds existing schedules/catalog/media',()=>{
  assert.match(js,/await loadStorageProducts/);assert.doesNotMatch(js,/p_delivery_ids/);
  assert.match(js,/p_zone_id/);assert.match(js,/data-edit-local/);
 });
-test('Google has explicit disabled state, duplicate guard and controlled place enrichment',()=>{
+test('Google has disabled state, duplicate guard, address autofill and reverse geocoding',()=>{
  const js=fs.readFileSync('admin/locales-master.js','utf8');
  assert.match(js,/pendiente de clave autorizada/);assert.match(js,/google_place_id===place.id/);
- assert.match(js,/masterLocalName/);assert.match(js,/formattedAddress/);
+ assert.match(js,/addressComponents/);assert.match(js,/formattedAddress/);
+ assert.match(js,/includedRegionCodes:\["ec"\]/);assert.match(js,/locationBias/);
+ assert.match(js,/importLibrary\("geocoding"\)/);assert.match(js,/reverseGeocodeLocalPoint/);
+ assert.match(js,/administrative_area_level_1/);assert.match(js,/administrative_area_level_2/);
  assert.match(js,/nationalPhoneNumber/);assert.match(js,/regularOpeningHours/);
  assert.match(js,/solo sugerencia/);
 });
