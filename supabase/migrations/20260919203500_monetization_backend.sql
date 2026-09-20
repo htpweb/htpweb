@@ -56,10 +56,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and upper(p.role::text) = 'MASTER'
-  );
+  select public.is_master();
 $$;
 
 revoke all on function public.monetization_is_master() from public;
