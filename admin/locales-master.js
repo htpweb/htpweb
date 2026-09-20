@@ -1,4 +1,4 @@
-const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false};
+const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
@@ -22,7 +22,7 @@ function bindMasterLocals(){
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
  <div class="workspace-note">Busca primero el establecimiento. Si no aparece, pulsa en el mapa y arrastra el marcador hasta su entrada. Confirma provincia, cantón y zona.</div>
- <div id="googlePlaceSearch"></div><p id="googlePlaceStatus" class="muted"></p>
+ <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" type="button" disabled>Completar teléfono y horario desde Google</button></div><p id="googlePlaceStatus" class="muted"></p>
  <button id="localUsePosition">Usar mi ubicación actual</button><div id="masterLocalMap" class="workspace-map" aria-label="Ubicación del local" tabindex="0"></div>
  <p id="localZoneDetection" role="status"></p><details><summary>Coordenadas — opción avanzada</summary><div class="form-grid">
  <div><label for="masterLocalLatitude">Latitud</label><input id="masterLocalLatitude" inputmode="decimal"></div>
@@ -40,7 +40,7 @@ function bindMasterLocals(){
  </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalEditor(true);}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalEditor(false);}};
- $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;
+ $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();};
  $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);};
  $("masterLocalZone").onchange=()=>{const z=masterLocalsState.zones.find(z=>z.id===$("masterLocalZone").value);
@@ -69,7 +69,7 @@ function fillMasterLocalForm(local){
  fillLocalCities(local?.city_id||"");fillLocalZones(local?.zone_id||"");
  $("masterLocalActive").checked=!!local?.active;$("masterLocalToggleBtn").disabled=!local;$("masterLocalDeleteBtn").disabled=!local;
  $("masterLocalToggleBtn").textContent=local?.active?"Inactivar":"Activar";
- masterLocalsState.source=local?.location_source||"MANUAL";masterLocalsState.dirty=false;
+ masterLocalsState.source=local?.location_source||"MANUAL";masterLocalsState.googlePlace=null;if($("googlePlaceDetailsBtn"))$("googlePlaceDetailsBtn").disabled=true;masterLocalsState.dirty=false;
  $("localSaveStatus").textContent=local?"Cambios guardados":"Nuevo local — todavía no guardado";
  openLocalTab("info");drawLocalMap();if(local?.latitude!=null)masterLocalsState.map?.center([Number(local.latitude),Number(local.longitude)]);
 }
@@ -131,10 +131,26 @@ async function initLocalMap(){
      if(!place.location)throw new Error("El establecimiento no tiene ubicación.");
      const duplicate=masterLocalsState.items.find(l=>l.google_place_id===place.id&&l.id!==$("masterLocalId").value);
      if(duplicate)throw new Error("Este local ya existe: "+duplicate.name+". Ábrelo desde el listado.");
-     $("googlePlaceStatus").textContent=place.displayName+" — "+place.formattedAddress+". Confirma el punto y escribe los datos propios del negocio.";
+     if(!$("masterLocalName").value.trim()&&place.displayName)$("masterLocalName").value=place.displayName;
+     if(!$("masterLocalAddress").value.trim()&&place.formattedAddress)$("masterLocalAddress").value=place.formattedAddress;
+     masterLocalsState.googlePlace=place;$("googlePlaceDetailsBtn").disabled=false;
+     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"dirección encontrada")+". Nombre, dirección y punto cargados; confirma el marcador.";
      $("masterLocalPlaceId").value=place.id;masterLocalsState.source="GOOGLE";setLocalPoint(place.location.lat(),place.location.lng(),true);
    }catch(err){message(err.message,"error");}});
  }catch(e){$("googlePlaceStatus").textContent=e.message;}finally{masterLocalsState.loadingMap=false;}
+}
+async function loadGooglePlaceDetails(){
+ const place=masterLocalsState.googlePlace;if(!place)return message("Selecciona primero un establecimiento de Google.","error");
+ const button=$("googlePlaceDetailsBtn");button.disabled=true;
+ try{
+   await place.fetchFields({fields:["nationalPhoneNumber","regularOpeningHours"]});
+   if(!$("masterLocalPhone").value.trim()&&place.nationalPhoneNumber)$("masterLocalPhone").value=place.nationalPhoneNumber;
+   const hours=place.regularOpeningHours?.weekdayDescriptions||[];
+   $("googlePlaceStatus").textContent="Datos ampliados revisados. "+(place.nationalPhoneNumber?"Teléfono disponible. ":"")+
+     (hours.length?"Horario de Google (solo sugerencia): "+hours.join(" · "):"Google no devolvió horario regular.");
+   masterLocalsState.dirty=true;
+ }catch(e){message(e.message||"No se pudieron cargar detalles de Google.","error");}
+ finally{button.disabled=false;}
 }
 async function saveMasterLocal(){
  if(masterLocalsState.busy)return;masterLocalsState.busy=true;$("masterLocalSaveBtn").disabled=true;
