@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
 select set_config('test.role','MASTER',false);
 select set_config('test.uid','00000000-0000-4000-8000-000000000001',false);
-do $$
-declare c uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; failed boolean;
+do $
+declare c uuid; c2 uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; failed boolean;
 begin
   assert public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',1,1);
   assert not public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',3,1);
@@ -18,6 +18,8 @@ begin
   assert not public.htp_zones_overlap('[[0,0],[0,2],[2,2],[2,0]]','[[0,2],[0,4],[2,4],[2,2]]');
   assert not public.htp_zones_overlap('[[0,0],[0,2],[2,2],[2,0]]','[[3,3],[3,4],[4,4],[4,3]]');
   insert into public.cities(name,province) values('Cantón Prueba','Provincia Prueba') returning id into c;
+  insert into public.cities(name,province) values('Otro Cantón','Provincia Prueba') returning id into c2;
+  perform public.master_save_zone_v2(null,c2,'X1','Centro Otro Cantón','','#2563eb','[[0,0],[0,2],[2,2],[2,0]]',true);
   insert into public.deliveries(name,city_id) values('DELIVERY prueba',c) returning id into d;
   z1:=public.master_save_zone_v2(null,c,'X1','Centro','','#2563eb','[[0,0],[0,2],[2,2],[2,0]]',true);
   z2:=public.master_save_zone_v2(null,c,'X10','Fuera','','#2563eb','[[3,3],[3,5],[5,5],[5,3]]',true);
