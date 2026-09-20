@@ -24,6 +24,10 @@ function mediaPathProduct(productId) {
   return `product/${productId}/image`;
 }
 
+function mediaPathLocalGallery(localId, imageId) {
+  return `local/${localId}/gallery/${imageId}`;
+}
+
 function pathDesdePublicUrlHTPWEB(url) {
   if (!url) return null;
   try {
