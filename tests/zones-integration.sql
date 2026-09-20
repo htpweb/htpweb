@@ -2,7 +2,7 @@
 select set_config('test.role','MASTER',false);
 select set_config('test.uid','00000000-0000-4000-8000-000000000001',false);
 do $$
-declare c uuid; c2 uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; failed boolean;
+declare c uuid; c2 uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; g1 uuid; failed boolean;
 begin
   assert public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',1,1);
   assert not public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',3,1);
@@ -26,6 +26,10 @@ begin
   perform public.set_delivery_zone(d,z1,true);
   l1:=public.master_save_local_v2(null,z1,'Local X1','','','',1,1,'','','place-test','','MAP',true);
   l2:=public.master_save_local_v2(null,z2,'Local X10','','','',4,4,'','',null,'','MAP',true);
+  g1:=public.save_local_gallery_image(l1,null,'https://example.invalid/local-x1.webp','local/test/gallery/one',0);
+  assert jsonb_array_length(public.list_local_gallery(l1))=1,'Gallery image should be listed';
+  assert public.delete_local_gallery_image(l1,g1)='local/test/gallery/one','Gallery delete must return storage path';
+  assert jsonb_array_length(public.list_local_gallery(l1))=0,'Gallery image should be removed';
   assert public.htp_delivery_covers_local(d,l1),'X1 should be visible';
   assert not public.htp_delivery_covers_local(d,l2),'X10 must not be visible';
   assert exists(select 1 from public.local_deliveries where local_id=l1 and delivery_id=d and active);
