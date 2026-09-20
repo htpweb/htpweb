@@ -10,10 +10,12 @@ test('concave polygon does not accept empty corner',()=>{
  const ring=[[0,0],[0,3],[1,3],[1,1],[3,1],[3,0]];
  assert.equal(maps.contains(ring,2,2),false);assert.equal(maps.contains(ring,2,.5),true);
 });
-test('one local editor embeds existing schedules/catalog/media',()=>{
+test('one local editor embeds schedules catalog and local-only media',()=>{
  const js=fs.readFileSync('admin/locales-master.js','utf8');
  assert.match(js,/restoreLocalPanels/);assert.match(js,/await loadSchedules/);assert.match(js,/await loadCatalog/);
- assert.match(js,/await loadStorageProducts/);assert.doesNotMatch(js,/p_delivery_ids/);
+ assert.match(js,/await refreshLocalMediaPreview/);assert.match(js,/await refreshLocalGallery/);
+ assert.doesNotMatch(js,/tab==="images"\?\[\$\("storageLocalCard"\),\$\("storageProductCard"\)\]/);
+ assert.doesNotMatch(js,/p_delivery_ids/);
  assert.match(js,/p_zone_id/);assert.match(js,/data-edit-local/);
 });
 test('Google has disabled state, duplicate guard, address autofill and reverse geocoding',()=>{
