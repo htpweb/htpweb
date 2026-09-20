@@ -2,7 +2,7 @@
 select set_config('test.role','MASTER',false);
 select set_config('test.uid','00000000-0000-4000-8000-000000000001',false);
 do $$
-declare c uuid; c2 uuid; d uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; g1 uuid; failed boolean;
+declare c uuid; c2 uuid; d uuid; d2 uuid; z1 uuid; z2 uuid; l1 uuid; l2 uuid; l3 uuid; g1 uuid; bc uuid; failed boolean;
 begin
   assert public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',1,1);
   assert not public.htp_zone_contains('[[0,0],[0,2],[2,2],[2,0]]',3,1);
@@ -19,13 +19,20 @@ begin
   assert not public.htp_zones_overlap('[[0,0],[0,2],[2,2],[2,0]]','[[3,3],[3,4],[4,4],[4,3]]');
   insert into public.cities(name,province) values('Cantón Prueba','Provincia Prueba') returning id into c;
   insert into public.cities(name,province) values('Otro Cantón','Provincia Prueba') returning id into c2;
-  perform public.master_save_zone_v2(null,c2,'X1','Centro Otro Cantón','','#2563eb','[[0,0],[0,2],[2,2],[2,0]]',true);
+  perform public.master_save_zone_v2(null,c2,'X20','Zona Otro Cantón','','#2563eb','[[6,6],[6,7],[7,7],[7,6]]',true);
   insert into public.deliveries(name,city_id) values('DELIVERY prueba',c) returning id into d;
+  insert into public.deliveries(name,city_id) values('DELIVERY otro cantón',c2) returning id into d2;
   z1:=public.master_save_zone_v2(null,c,'X1','Centro','','#2563eb','[[0,0],[0,2],[2,2],[2,0]]',true);
   z2:=public.master_save_zone_v2(null,c,'X10','Fuera','','#2563eb','[[3,3],[3,5],[5,5],[5,3]]',true);
   perform public.set_delivery_zone(d,z1,true);
   l1:=public.master_save_local_v2(null,z1,'Local X1','','','',1,1,'','','place-test','','MAP',true);
   l2:=public.master_save_local_v2(null,z2,'Local X10','','','',4,4,'','',null,'','MAP',true);
+  bc:=public.master_save_local_business_category(null,'Farmacias','Locales farmacéuticos',true);
+  l3:=public.master_save_local_v3(null,c2,z1,bc,'Local cruzado','','','Calle prueba',1.5,1.5,'099','','place-cross','','MAP',true);
+  assert exists(select 1 from public.locals where id=l3 and city_id=c2 and zone_id=z1 and business_category_id=bc),'LOCAL may use a zone whose reference canton differs';
+  perform public.set_delivery_zone(d2,z1,true);
+  assert public.htp_delivery_covers_local(d2,l3),'DELIVERY coverage follows selected zone, not delivery canton';
+  update public.locals set active=false where id=l3;
   g1:=public.save_local_gallery_image(l1,null,'https://example.invalid/local-x1.webp','local/test/gallery/one',0);
   assert jsonb_array_length(public.list_local_gallery(l1))=1,'Gallery image should be listed';
   assert public.delete_local_gallery_image(l1,g1)='local/test/gallery/one','Gallery delete must return storage path';
@@ -51,6 +58,9 @@ begin
   assert not exists(select 1 from public.local_deliveries where local_id=l1 and delivery_id=d and active);
   assert exists(select 1 from public.order_locals where local_id=l1),'Historical orders must survive';
   perform public.set_delivery_zone(d,z1,true);
+  failed:=false;
+  begin perform public.master_save_local_business_category(null,'farmacias','Duplicada',true); exception when others then failed:=true; end;
+  assert failed,'Duplicate LOCAL category names must fail case-insensitively';
   insert into public.user_deliveries values('00000000-0000-4000-8000-000000000002',d,true);
   perform set_config('test.role','DELIVERY_ADMIN',false);
   perform set_config('test.uid','00000000-0000-4000-8000-000000000002',false);

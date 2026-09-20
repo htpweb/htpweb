@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -143,6 +143,7 @@ function showSection(name) {
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
+  if (name === "categoriesmaster") loadMasterLocalBusinessCategories();
   if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
@@ -1811,8 +1812,8 @@ function renderCoverageZones() {
   const zones = Array.isArray(context.zones) ? context.zones : [];
   if (!zones.length) {
     container.innerHTML = state.role === "MASTER"
-      ? '<div class="muted">No existen zonas activas en esta ciudad. Créala en el catálogo de zonas.</div>'
-      : '<div class="muted">HTPWEB todavía no ha creado zonas activas para esta ciudad.</div>';
+      ? '<div class="muted">No existen zonas activas. Créala en el catálogo de zonas.</div>'
+      : '<div class="muted">HTPWEB todavía no ha creado zonas activas.</div>';
     return;
   }
 
@@ -1831,7 +1832,7 @@ function renderCoverageZones() {
         <tbody>
           ${zones.map(zone => `
             <tr>
-              <td>${esc(zone.name)}</td>
+              <td><strong>${esc(zone.code || "")} — ${esc(zone.name)}</strong>${zone.city_name ? `<div class="muted">Referencia: ${esc(zone.city_name)}${zone.province ? " · "+esc(zone.province) : ""}</div>` : ""}</td>
               <td>${zone.assigned ? "Asignada" : "Disponible"}</td>
               <td>
                 <button

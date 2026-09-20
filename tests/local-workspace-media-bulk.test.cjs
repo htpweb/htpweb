@@ -54,8 +54,19 @@ test("Locales muestra carga masiva Excel con plantilla validación e importació
   assert.match(bulk,/validateBulkLocalFile/);
   assert.match(bulk,/resolveBulkGooglePlace/);
   assert.match(bulk,/bulkLocalZoneFor/);
-  assert.match(bulk,/master_save_local_v2/);
+  assert.match(bulk,/master_save_local_v3/);
   assert.match(bulk,/p_active:false/);
+});
+
+test("carga masiva usa plantilla simple y deriva ubicación y zona",()=>{
+  assert.match(bulk,/\["NOMBRE","CATEGORIA","LINK_UBICACION","TELEFONO","WHATSAPP","DESCRIPCION"\]/);
+  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"LATITUD"/);
+  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"LONGITUD"/);
+  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"PROVINCIA"/);
+  assert.match(bulk,/CATEGORIAS_DISPONIBLES/);
+  assert.match(bulk,/businessCategories/);
+  assert.match(bulk,/localAddressPart/);
+  assert.match(bulk,/bulkFindCity/);
 });
 
 test("carga masiva reutiliza Google y límites geográficos",()=>{
