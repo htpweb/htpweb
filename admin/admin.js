@@ -3698,6 +3698,13 @@ function renderMenuPreview() {
   const local = preview.local || {};
   $("menuExistingLocal").innerHTML = menuLocalOptions();
   $("menuExistingLocal").value = state.menuImportJob.existing_local_id || "";
+  const zones = typeof masterLocalsState !== "undefined" ? masterLocalsState.zones.filter(z => z.active) : [];
+  $("menuLocalZone").innerHTML = '<option value="">Selecciona una zona…</option>' +
+    zones.map(z => '<option value="' + esc(z.id) + '">' +
+      esc((z.province || "") + " / " + (z.city_name || z.canton || "") + " · " + z.code + " — " + z.name) +
+      '</option>').join("");
+  $("menuLocalZone").value = local.zone_id || "";
+  $("menuLocalZone").disabled = Boolean($("menuExistingLocal").value);
   $("menuLocalName").value = local.name || "";
   $("menuLocalDescription").value = local.description || "";
   $("menuLocalPhone").value = local.phone || "";
@@ -3783,9 +3790,14 @@ function renderMenuCategories() {
 function collectMenuPreview(strict = true) {
   if (!state.menuImportPreview) throw new Error("No hay preview cargado.");
 
+  const existingLocalId = $("menuExistingLocal").value || null;
+  const zoneId = $("menuLocalZone").value || null;
   const latitude = menuParseNumber($("menuLocalLatitude").value, "Latitud");
   const longitude = menuParseNumber($("menuLocalLongitude").value, "Longitud");
 
+  if (strict && !existingLocalId && !zoneId) {
+    throw new Error("Selecciona la zona del LOCAL nuevo.");
+  }
   if ((latitude === null) !== (longitude === null)) {
     throw new Error("Latitud y longitud deben completarse juntas.");
   }
@@ -3795,7 +3807,7 @@ function collectMenuPreview(strict = true) {
   if (longitude !== null && (longitude < -180 || longitude > 180)) {
     throw new Error("Longitud fuera de rango.");
   }
-  if ($("menuLocalActive").checked && latitude === null) {
+  if (!existingLocalId && $("menuLocalActive").checked && latitude === null) {
     throw new Error("Para publicar un LOCAL nuevo debes completar latitud y longitud.");
   }
 
@@ -3806,6 +3818,7 @@ function collectMenuPreview(strict = true) {
       address: $("menuLocalAddress").value.trim() || null,
       phone: $("menuLocalPhone").value.trim() || null,
       whatsapp: $("menuLocalWhatsapp").value.trim() || null,
+      zone_id: zoneId,
       latitude,
       longitude,
       active: $("menuLocalActive").checked
@@ -3966,6 +3979,10 @@ function renderMenuImportJobs() {
 
 async function loadMenuImport() {
   if (state.role !== "MASTER") return;
+
+  if (typeof masterLocalsState !== "undefined" && !masterLocalsState.zones.length) {
+    masterLocalsState.zones = await rpc("master_list_zones");
+  }
 
   const deliverySelect = $("menuImportDelivery");
   const previous = deliverySelect.value;
@@ -4177,6 +4194,11 @@ function bindEvents() {
   $("orderScope").onchange = loadOrders;
   $("analyticsScope").onchange = loadAnalytics;
   $("menuImportDelivery").onchange = () => { $("menuImportStatus").textContent = "Selecciona de 1 a 5 imágenes para iniciar."; };
+  $("menuExistingLocal").onchange = () => {
+    const existing = Boolean($("menuExistingLocal").value);
+    $("menuLocalZone").disabled = existing;
+    if (existing) $("menuLocalZone").value = "";
+  };
   $("startMenuImportBtn").onclick = startMenuImageImport;
   $("reanalyzeMenuBtn").onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
   $("addMenuCategoryBtn").onclick = addMenuCategory;
