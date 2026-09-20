@@ -23,7 +23,7 @@ function bindMasterLocals(){
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
  <div class="workspace-note">Busca primero el establecimiento. Si no aparece, pulsa en el mapa y arrastra el marcador hasta su entrada. Confirma provincia, cantón y zona.</div>
- <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" type="button" disabled>Completar teléfono y horario desde Google</button></div><p id="googlePlaceStatus" class="muted"></p>
+ <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" type="button" disabled>Completar teléfono y horario desde Google</button><button id="googleMapsDiagnosticBtn" type="button">Probar conexión Google</button></div><p id="googlePlaceStatus" class="muted"></p>
  <button id="localUsePosition">Usar mi ubicación actual</button><div id="masterLocalMap" class="workspace-map" aria-label="Ubicación del local" tabindex="0"></div>
  <p id="localZoneDetection" role="status"></p><details><summary>Coordenadas — opción avanzada</summary><div class="form-grid">
  <div><label for="masterLocalLatitude">Latitud</label><input id="masterLocalLatitude" inputmode="decimal"></div>
@@ -43,7 +43,7 @@ function bindMasterLocals(){
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
  $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");}};
  bindMasterLocalBulk();
- $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;
+ $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;$("googleMapsDiagnosticBtn").onclick=diagnoseGoogleMaps;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
  $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);updateGoogleSearchBias();};
  $("masterLocalZone").onchange=()=>{const z=masterLocalsState.zones.find(z=>z.id===$("masterLocalZone").value);
@@ -148,6 +148,44 @@ function updateGoogleSearchBias(){
  const bounds=localCitySearchBounds();
  search.locationBias=bounds||null;
 }
+async function diagnoseGoogleMaps(){
+ const status=$("googlePlaceStatus");
+ const button=$("googleMapsDiagnosticBtn");
+ if(button)button.disabled=true;
+ try{
+   status.textContent="Probando Maps JavaScript…";
+   const g=await ZoneMaps.googleAPI();
+   if(!g?.maps)throw new Error("Maps JavaScript no cargó.");
+
+   status.textContent="Maps JavaScript cargó. Probando Places…";
+   await google.maps.importLibrary("places");
+
+   status.textContent="Maps y Places cargaron. Probando Geocoding…";
+   const {Geocoder}=await google.maps.importLibrary("geocoding");
+   const geocoder=new Geocoder();
+   const lat=Number($("masterLocalLatitude")?.value)||Number(window.HTPWEB_MAPS?.defaultCenter?.[0])||0.9592;
+   const lng=Number($("masterLocalLongitude")?.value)||Number(window.HTPWEB_MAPS?.defaultCenter?.[1])||-79.6539;
+   await geocoder.geocode({location:{lat,lng}});
+
+   status.textContent="Google OK: Maps JavaScript, Places y Geocoding están autorizados para HTPWEB.";
+   message("Conexión Google verificada.");
+ }catch(e){
+   const detail=e?.message||String(e);
+   if(/REQUEST_DENIED|not allowed to use the geocoder|referer|referrer/i.test(detail)){
+     status.textContent="Maps puede cargar, pero Google rechazó Geocoding. Revisa en Google Cloud: facturación activa, Geocoding API habilitada en el mismo proyecto y la restricción web de la clave para https://htpweb.github.io/*.";
+   }else{
+     status.textContent="Google no pasó el diagnóstico: "+detail;
+   }
+   message(status.textContent,"error");
+ }finally{
+   if(button)button.disabled=false;
+ }
+}
+window.addEventListener("htp-google-auth-failure",()=>{
+ const status=$("googlePlaceStatus");
+ if(status)status.textContent="Google rechazó la autenticación del mapa. Revisa facturación, clave API y dominio autorizado en Google Cloud.";
+});
+
 async function reverseGeocodeLocalPoint(lat,lng){
  if(!masterLocalsState.map?.google||!window.google?.maps)return;
  const seq=++masterLocalsState.geocodeSeq;
