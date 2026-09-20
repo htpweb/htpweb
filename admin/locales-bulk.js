@@ -10,6 +10,7 @@ function bulkLocalValue(row,key){
 
 function bindMasterLocalBulk(){
   $("downloadBulkLocalTemplateBtn").onclick=downloadBulkLocalTemplate;
+  $("downloadBulkLocalErrorsBtn").onclick=downloadBulkLocalErrors;
   $("validateBulkLocalBtn").onclick=validateBulkLocalFile;
   $("importBulkLocalBtn").onclick=importBulkLocals;
 }
@@ -53,6 +54,50 @@ function downloadBulkLocalTemplate(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(categoryRows),"CATEGORIAS_DISPONIBLES");
 
   XLSX.writeFile(wb,"HTPWEB_Plantilla_Carga_Masiva_Locales.xlsx");
+}
+
+function normalizeBulkLocalLink(value){
+  try{
+    const url=new URL(String(value||"").trim());
+    const pathname=url.pathname.replace(/\/+$/,"")||"/";
+    return url.protocol+"//"+url.hostname.toLowerCase()+pathname+url.search;
+  }catch{
+    return String(value||"").trim();
+  }
+}
+
+function downloadBulkLocalErrors(){
+  if(typeof XLSX==="undefined"){
+    return message("No se cargó el componente de Excel. Actualiza la página e inténtalo de nuevo.","error");
+  }
+  const rows=(masterLocalsState.bulkRows||[]).filter(function(r){return !r.valid&&!r.imported;});
+  if(!rows.length)return message("No hay observaciones para descargar.","error");
+
+  const data=rows.map(function(r){
+    return {
+      FILA:r.rowNumber,
+      NOMBRE:r.name||"",
+      CATEGORIA:r.categoryName||r.category?.name||"",
+      LINK_UBICACION:r.locationLink||"",
+      TELEFONO:r.phone||"",
+      WHATSAPP:r.whatsapp||"",
+      DESCRIPCION:r.description||"",
+      PROVINCIA_DETECTADA:r.province||"",
+      CANTON_DETECTADO:r.canton||"",
+      DIRECCION_DETECTADA:r.address||"",
+      ZONA_DETECTADA:r.zone?.code||"",
+      GOOGLE_PLACE_ID:r.placeId||"",
+      ERROR:r.error||"Revisar"
+    };
+  });
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws["!cols"]=[
+    {wch:8},{wch:28},{wch:22},{wch:58},{wch:18},{wch:18},{wch:42},
+    {wch:22},{wch:22},{wch:48},{wch:16},{wch:30},{wch:60}
+  ];
+  XLSX.utils.book_append_sheet(wb,ws,"OBSERVACIONES");
+  XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Masiva_Locales.xlsx");
 }
 
 function isGoogleMapsLink(value){
@@ -185,6 +230,7 @@ function renderBulkLocalPreview(){
     ? masterLocalsState.bulkFileName+" · "+rows.length+" filas revisadas"
     : "Todavía no has cargado una plantilla.";
   $("importBulkLocalBtn").disabled=masterLocalsState.bulkBusy||ok===0;
+  $("downloadBulkLocalErrorsBtn").disabled=masterLocalsState.bulkBusy||bad===0;
 
   if(!rows.length){
     $("bulkLocalPreview").innerHTML="";
@@ -239,6 +285,9 @@ async function validateBulkLocalFile(){
 
     masterLocalsState.bulkFileName=file.name;
     masterLocalsState.bulkRows=[];
+    const placeCache=new Map();
+    const seenPlaceIds=new Map();
+    const seenNameCity=new Map();
 
     for(let i=0;i<raw.length;i++){
       const row=raw[i];
@@ -266,7 +315,12 @@ async function validateBulkLocalFile(){
         }
 
         $("bulkLocalStatus").textContent="Validando con Google fila "+result.rowNumber+"…";
-        const place=await resolveBulkGooglePlace(result.locationLink);
+        const linkKey=normalizeBulkLocalLink(result.locationLink);
+        let place=placeCache.get(linkKey);
+        if(!place){
+          place=await resolveBulkGooglePlace(result.locationLink);
+          placeCache.set(linkKey,place);
+        }
         if(!place||!Number.isFinite(Number(place.lat))||!Number.isFinite(Number(place.lng))){
           throw new Error("Google no devolvió coordenadas válidas.");
         }
@@ -302,6 +356,17 @@ async function validateBulkLocalFile(){
         });
         if(duplicate)throw new Error("Posible duplicado: "+duplicate.name+" ya existe.");
 
+        const placeKey=String(result.placeId||"").trim();
+        if(placeKey&&seenPlaceIds.has(placeKey)){
+          throw new Error("Duplicado dentro del archivo: coincide con la fila "+seenPlaceIds.get(placeKey)+" por Google Place ID.");
+        }
+        const nameCityKey=result.city.id+"|"+normalizeLocalGeoText(result.name);
+        if(seenNameCity.has(nameCityKey)){
+          throw new Error("Duplicado dentro del archivo: coincide con la fila "+seenNameCity.get(nameCityKey)+" por nombre y cantón.");
+        }
+
+        if(placeKey)seenPlaceIds.set(placeKey,result.rowNumber);
+        seenNameCity.set(nameCityKey,result.rowNumber);
         result.source="GOOGLE";
         result.valid=true;
       }catch(e){
