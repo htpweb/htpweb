@@ -17,5 +17,5 @@ end;
 $$;
 
 create unique index if not exists locals_google_place_id_uidx
-  on public.locals(google_place_id)
+  on public.locals((btrim(google_place_id)))
   where google_place_id is not null and btrim(google_place_id)<>'';
