@@ -2323,7 +2323,17 @@ function renderScheduleEditor() {
     state.schedules.map(schedule => [Number(schedule.day_of_week), schedule])
   );
 
-  container.innerHTML = scheduleDayNames.map((dayName, day) => {
+  const copyTools = `
+    <div class="row between" style="margin-bottom:14px;gap:12px;flex-wrap:wrap">
+      <div>
+        <strong>Aplicar el horario del lunes</strong>
+        <div class="muted">Copia apertura, cierre o estado Cerrado a toda la semana. Puedes ajustar un día antes de guardar.</div>
+      </div>
+      <button type="button" class="btn-muted" onclick="copyMondayScheduleToAll()">Copiar horario del lunes a todos los días</button>
+    </div>
+  `;
+
+  container.innerHTML = copyTools + scheduleDayNames.map((dayName, day) => {
     const schedule = byDay.get(day);
     const isClosed = schedule ? Boolean(schedule.is_closed) : true;
     const opening = schedule?.opening_time ? String(schedule.opening_time).slice(0,5) : "";
@@ -2359,6 +2369,31 @@ function toggleScheduleDay(day) {
   const closed = $("scheduleClosed" + day).checked;
   $("scheduleOpen" + day).disabled = closed;
   $("scheduleClose" + day).disabled = closed;
+}
+
+function copyMondayScheduleToAll() {
+  const monday = 1;
+  const closed = $("scheduleClosed" + monday).checked;
+  const opening = $("scheduleOpen" + monday).value || "";
+  const closing = $("scheduleClose" + monday).value || "";
+
+  if (!closed) {
+    if (!opening || !closing) {
+      return message("Completa primero la hora de apertura y cierre del lunes.", "error");
+    }
+    if (opening >= closing) {
+      return message("El lunes: la apertura debe ser anterior al cierre.", "error");
+    }
+  }
+
+  scheduleDayNames.forEach((_, day) => {
+    $("scheduleClosed" + day).checked = closed;
+    $("scheduleOpen" + day).value = closed ? "" : opening;
+    $("scheduleClose" + day).value = closed ? "" : closing;
+    toggleScheduleDay(day);
+  });
+
+  message("Horario del lunes copiado a todos los días. Ajusta cualquier día que necesites y pulsa Guardar semana completa.");
 }
 
 async function loadSchedules() {
