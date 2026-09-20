@@ -1,11 +1,11 @@
-const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0};
+const masterLocalsState={items:[],zones:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,bulkRows:[],bulkFileName:"",bulkBusy:false};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
  if(masterLocalsState.bound)return;masterLocalsState.bound=true;
  $("section-localsmaster").innerHTML=`
  <div class="card workspace-title"><div><h2>Locales</h2><p>La cobertura se determina por la zona, sin asignar DELIVERY manualmente.</p></div>
- <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
+ <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalBulkBtn">Carga masiva</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
  <div id="masterLocalList" class="card"><h3>Listado de locales</h3><div class="form-grid">
  <div><label for="localFilterProvince">Provincia</label><select id="localFilterProvince"></select></div>
  <div><label for="localFilterCity">Cantón</label><select id="localFilterCity"></select></div>
@@ -13,6 +13,7 @@ function bindMasterLocals(){
  <div><label for="localFilterName">Nombre</label><input id="localFilterName" type="search"></div>
  <div><label for="localFilterStatus">Estado</label><select id="localFilterStatus"><option value="">Todos</option><option value="true">Activo</option><option value="false">Inactivo / borrador</option><option value="unzoned">Sin zona</option></select></div>
  </div><div id="masterLocalsSummary"></div></div>
+ <div id="masterLocalBulk" class="card hidden"> <div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Descarga la plantilla, complétala, súbela y valida antes de crear. Los locales importados quedan como borrador.</p></div> <button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla Excel</button></div> <div class="form-grid" style="margin-top:14px"><div><label>Archivo Excel</label><input id="bulkLocalFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div> <div><label>Proceso</label><button id="validateBulkLocalBtn" type="button" class="btn-primary">Validar archivo</button></div></div> <p id="bulkLocalStatus" class="muted">Todavía no has cargado una plantilla.</p><div id="bulkLocalPreview"></div> <div class="bulk-local-actions" style="margin-top:14px"><button id="importBulkLocalBtn" type="button" class="btn-primary" disabled>Importar locales válidos</button></div></div>
  <div id="masterLocalEditor" class="card hidden"><h3 id="masterLocalHeading">Crear local</h3>
  <p id="localSaveStatus" role="status"></p><input id="masterLocalId" type="hidden"><input id="masterLocalPlaceId" type="hidden">
  <div class="workspace-tabs" role="tablist" aria-label="Ficha del local"><button data-local-tab="info">Información y ubicación</button>
@@ -38,8 +39,10 @@ function bindMasterLocals(){
  <div class="row"><button id="masterLocalSaveBtn" class="btn-primary">Guardar local</button>
  <button id="masterLocalToggleBtn" class="btn-warn" disabled>Activar / inactivar</button><button id="masterLocalDeleteBtn" class="btn-danger" disabled>Eliminar</button></div>
  </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>`;
- $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalEditor(true);}};
- $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalEditor(false);}};
+ $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
+ $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
+ $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");}};
+ bindMasterLocalBulk();
  $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
  $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);updateGoogleSearchBias();};
@@ -73,7 +76,8 @@ function fillMasterLocalForm(local){
  $("localSaveStatus").textContent=local?"Cambios guardados":"Nuevo local — todavía no guardado";
  openLocalTab("info");drawLocalMap();if(local?.latitude!=null)masterLocalsState.map?.center([Number(local.latitude),Number(local.longitude)]);
 }
-function showLocalEditor(show){$("masterLocalList").classList.toggle("hidden",show);$("masterLocalEditor").classList.toggle("hidden",!show);if(show)initLocalMap();}
+function showLocalMode(mode){$("masterLocalList").classList.toggle("hidden",mode!=="list");$("masterLocalBulk").classList.toggle("hidden",mode!=="bulk");$("masterLocalEditor").classList.toggle("hidden",mode!=="editor");if(mode==="editor")initLocalMap();}
+function showLocalEditor(show){showLocalMode(show?"editor":"list");}
 function renderMasterLocalList(){
  const items=masterLocalsState.items.filter(l=>
  (!$("localFilterProvince").value||l.province===$("localFilterProvince").value)&&(!$("localFilterCity").value||l.city_id===$("localFilterCity").value)&&
@@ -270,12 +274,12 @@ async function openLocalTab(tab){
  document.querySelectorAll("[data-local-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.localTab===tab)));
  if(tab==="info"){masterLocalsState.map?.resize();return;}
  const source=tab==="schedules"?"section-schedules":tab==="catalog"?"section-catalog":"section-storage";
- const nodes=tab==="images"?[$("storageLocalCard"),$("storageProductCard")]:Array.from($(source).children);
+ const nodes=tab==="images"?[$("storageLocalCard")]:Array.from($(source).children);
  for(const node of nodes){masterLocalsState.panels.push({node,parent:node.parentNode,next:node.nextSibling});$("localRelatedPane").appendChild(node);}
  try{
    if(tab==="schedules"){$("scheduleLocal").value=id;await loadSchedules();}
    if(tab==="catalog"){$("catalogLocal").value=id;await loadCatalog();}
-   if(tab==="images"){await loadStorage();$("storageLocal").value=id;await refreshLocalMediaPreview();await loadStorageProducts();}
+   if(tab==="images"){await loadStorage();$("storageLocal").value=id;await refreshLocalMediaPreview();await refreshLocalGallery();}
    for(const sid of ["scheduleLocal","catalogLocal","storageLocal"]){$(sid).disabled=true;$(sid).dataset.localLocked="true";}
  }catch(e){message(e.message,"error");}
 }
