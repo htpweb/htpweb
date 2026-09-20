@@ -1,0 +1,45 @@
+name: Zones schema inspection
+on:
+  push:
+    branches: [codigo-88b-zonas-locales]
+    paths: [.github/workflows/zones-schema-check.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref hwfloywzqlgqieonuswl
+      - name: Read schema only (no business data)
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import subprocess, os
+          u=urlparse(Path('supabase/.temp/pooler-url').read_text().strip())
+          env=os.environ.copy()
+          env['PGPASSWORD']=os.environ['SUPABASE_DB_PASSWORD']
+          sql="""
+          begin read only;
+          select table_name,column_name,data_type,column_default,is_nullable from information_schema.columns
+          where table_schema='public' and table_name in ('zones','cities','delivery_zones','local_deliveries','order_locals') order by table_name,ordinal_position;
+          select tablename,policyname,permissive,roles,cmd,qual,with_check from pg_policies
+          where schemaname='public' and tablename in ('locals','products','categories','product_variants','local_deliveries','delivery_zones');
+          select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname in ('set_delivery_zone','user_has_local','user_has_delivery','is_master','master_save_zone');
+          select tgrelid::regclass,tgname,pg_get_triggerdef(oid) from pg_trigger
+          where not tgisinternal and tgrelid in ('public.local_deliveries'::regclass,'public.locals'::regclass,'public.delivery_zones'::regclass);
+          rollback;
+          """
+          subprocess.run(['psql','-h',u.hostname,'-p',str(u.port),'-U',u.username,'-d',u.path.lstrip('/'),'-At','-v','ON_ERROR_STOP=1','-c',sql],env=env,check=True)
+          PY

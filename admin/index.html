@@ -8,6 +8,10 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
 <link rel="stylesheet" href="../assets/admin.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/local-workspace.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../config/maps.js"></script>
 </head>
 <body>
 <div class="admin-shell">
@@ -22,7 +26,9 @@
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="requests">Solicitudes</button>
-      <button data-section="deliveries">Deliveries</button>\n      <button data-section="localsmaster">Locales</button>
+      <button data-section="deliveries">Deliveries</button>
+      <button data-section="localsmaster">Locales</button>
+      <button data-section="zonesmaster">Zonas</button>
       <button data-section="users">Usuarios</button>
       <button data-section="fees">Tarifas</button>
       <button data-section="coverage">Cobertura</button>
@@ -353,6 +359,7 @@
     </section>
 
 
+    <section id="section-zonesmaster" class="section"></section>
     <section id="section-localsmaster" class="section">
       <div class="card">
         <div class="row between">
@@ -568,7 +575,7 @@
         <div class="row between">
           <div>
             <h2>Cobertura del DELIVERY</h2>
-            <p class="muted">Define en qué zonas puede operar cada DELIVERY. Esto es independiente de los LOCAL vinculados.</p>
+            <p class="muted">Los locales disponibles se determinan por las zonas aprobadas para el DELIVERY.</p>
           </div>
           <select id="coverageDelivery" style="max-width:340px"></select>
         </div>
@@ -606,8 +613,8 @@
         <div id="coverageZonesList"></div>
       </div>
 
-      <div class="card master-only">
-        <h3>Catálogo de zonas — MASTER</h3>
+      <div class="card master-only" style="display:none">
+        <h3>Catálogo antiguo — sustituido por Zonas</h3>
         <input id="zoneEditId" type="hidden">
         <div class="form-grid">
           <div>
@@ -935,8 +942,9 @@
       <div class="card">
         <div class="form-grid">
           <div>
-            <label>DELIVERY donde quedará vinculado</label>
+            <label>DELIVERY de referencia para la importación</label>
             <select id="menuImportDelivery"></select>
+            <small class="muted">Organiza los archivos de la importación. La cobertura del LOCAL no se asigna aquí: se determina por su zona.</small>
           </div>
           <div>
             <label>Imágenes del menú (máx. 5)</label>
@@ -966,7 +974,7 @@
             <div>
               <label>Usar LOCAL existente</label>
               <select id="menuExistingLocal"></select>
-              <small class="muted">Si eliges uno existente, no se sobrescriben sus datos globales; solo se vincula al DELIVERY y se importa el catálogo.</small>
+              <small class="muted">Si eliges uno existente, no se sobrescriben sus datos globales ni su zona; solamente se importa el catálogo.</small>
             </div>
             <div>
               <label>Nombre detectado</label>
@@ -983,6 +991,11 @@
             <div>
               <label>Dirección</label>
               <input id="menuLocalAddress">
+            </div>
+            <div>
+              <label>Zona del LOCAL nuevo</label>
+              <select id="menuLocalZone"></select>
+              <small class="muted">Obligatoria al crear un LOCAL. Si usas un LOCAL existente, se conserva su zona actual.</small>
             </div>
             <div>
               <label>Latitud</label>
@@ -1036,6 +1049,9 @@
 
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
-<script src="./admin.js"></script>\n<script src="./locales-master.js"></script>
+<script src="./admin.js"></script>
+<script src="./zone-maps.js"></script>
+<script src="./locales-master.js"></script>
+<script src="./zones-master.js"></script>
 </body>
 </html>

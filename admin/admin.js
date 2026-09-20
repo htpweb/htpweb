@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -127,6 +127,7 @@ function configureNavigation() {
 }
 
 function showSection(name) {
+  if (typeof restoreLocalPanels === "function") restoreLocalPanels();
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
 
@@ -142,6 +143,7 @@ function showSection(name) {
   if (name === "deliveries") loadDeliveriesModule();
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
+  if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
   if (name === "catalog") loadCatalog();
@@ -1837,7 +1839,7 @@ function renderCoverageZones() {
                   onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
                   ${canAssign ? "" : "disabled"}
                 >
-                  ${zone.assigned ? "Quitar cobertura" : "Agregar cobertura"}
+                  ${zone.assigned ? (state.role === "MASTER" ? "Quitar cobertura" : "Aprobada") : (state.role === "MASTER" ? "Aprobar cobertura" : "Solicitar cobertura")}
                 </button>
               </td>
             </tr>
@@ -1983,6 +1985,12 @@ async function toggleDeliveryZone(zoneId, active) {
   if (!delivery) return;
 
   try {
+    if (state.role !== "MASTER") {
+      if (!active) throw new Error("Solicita al MASTER la suspensión de esta zona.");
+      await rpc("request_delivery_zone", {p_delivery_id: delivery.id, p_zone_id: zoneId});
+      message("Solicitud enviada. El MASTER debe aprobar la zona antes de habilitar sus locales.");
+      return;
+    }
     await rpc("set_delivery_zone", {
       p_delivery_id: delivery.id,
       p_zone_id: zoneId,
@@ -3690,6 +3698,13 @@ function renderMenuPreview() {
   const local = preview.local || {};
   $("menuExistingLocal").innerHTML = menuLocalOptions();
   $("menuExistingLocal").value = state.menuImportJob.existing_local_id || "";
+  const zones = typeof masterLocalsState !== "undefined" ? masterLocalsState.zones.filter(z => z.active) : [];
+  $("menuLocalZone").innerHTML = '<option value="">Selecciona una zona…</option>' +
+    zones.map(z => '<option value="' + esc(z.id) + '">' +
+      esc((z.province || "") + " / " + (z.city_name || z.canton || "") + " · " + z.code + " — " + z.name) +
+      '</option>').join("");
+  $("menuLocalZone").value = local.zone_id || "";
+  $("menuLocalZone").disabled = Boolean($("menuExistingLocal").value);
   $("menuLocalName").value = local.name || "";
   $("menuLocalDescription").value = local.description || "";
   $("menuLocalPhone").value = local.phone || "";
@@ -3775,9 +3790,14 @@ function renderMenuCategories() {
 function collectMenuPreview(strict = true) {
   if (!state.menuImportPreview) throw new Error("No hay preview cargado.");
 
+  const existingLocalId = $("menuExistingLocal").value || null;
+  const zoneId = $("menuLocalZone").value || null;
   const latitude = menuParseNumber($("menuLocalLatitude").value, "Latitud");
   const longitude = menuParseNumber($("menuLocalLongitude").value, "Longitud");
 
+  if (strict && !existingLocalId && !zoneId) {
+    throw new Error("Selecciona la zona del LOCAL nuevo.");
+  }
   if ((latitude === null) !== (longitude === null)) {
     throw new Error("Latitud y longitud deben completarse juntas.");
   }
@@ -3787,7 +3807,7 @@ function collectMenuPreview(strict = true) {
   if (longitude !== null && (longitude < -180 || longitude > 180)) {
     throw new Error("Longitud fuera de rango.");
   }
-  if ($("menuLocalActive").checked && latitude === null) {
+  if (!existingLocalId && $("menuLocalActive").checked && latitude === null) {
     throw new Error("Para publicar un LOCAL nuevo debes completar latitud y longitud.");
   }
 
@@ -3798,6 +3818,7 @@ function collectMenuPreview(strict = true) {
       address: $("menuLocalAddress").value.trim() || null,
       phone: $("menuLocalPhone").value.trim() || null,
       whatsapp: $("menuLocalWhatsapp").value.trim() || null,
+      zone_id: zoneId,
       latitude,
       longitude,
       active: $("menuLocalActive").checked
@@ -3958,6 +3979,10 @@ function renderMenuImportJobs() {
 
 async function loadMenuImport() {
   if (state.role !== "MASTER") return;
+
+  if (typeof masterLocalsState !== "undefined" && !masterLocalsState.zones.length) {
+    masterLocalsState.zones = await rpc("master_list_zones");
+  }
 
   const deliverySelect = $("menuImportDelivery");
   const previous = deliverySelect.value;
@@ -4169,6 +4194,11 @@ function bindEvents() {
   $("orderScope").onchange = loadOrders;
   $("analyticsScope").onchange = loadAnalytics;
   $("menuImportDelivery").onchange = () => { $("menuImportStatus").textContent = "Selecciona de 1 a 5 imágenes para iniciar."; };
+  $("menuExistingLocal").onchange = () => {
+    const existing = Boolean($("menuExistingLocal").value);
+    $("menuLocalZone").disabled = existing;
+    if (existing) $("menuLocalZone").value = "";
+  };
   $("startMenuImportBtn").onclick = startMenuImageImport;
   $("reanalyzeMenuBtn").onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
   $("addMenuCategoryBtn").onclick = addMenuCategory;
