@@ -34,7 +34,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","storage","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -2511,6 +2511,9 @@ function clearProductForm() {
   $("productActive").value = "true";
   $("productFormTitle").textContent = "Nuevo producto";
   $("saveProductBtn").textContent = "Crear producto";
+  if ($("catalogProductImageFile")) $("catalogProductImageFile").value = "";
+  if ($("catalogProductImagePreview")) setPreview("catalogProductImagePreview", "");
+  if ($("catalogDeleteProductImageBtn")) $("catalogDeleteProductImageBtn").disabled = true;
 }
 
 function renderCatalogCategories() {
@@ -2572,6 +2575,7 @@ function renderCatalogProducts() {
       <table>
         <thead>
           <tr>
+            <th>Imagen</th>
             <th>Producto</th>
             <th>Categoría</th>
             <th>Precio</th>
@@ -2583,6 +2587,9 @@ function renderCatalogProducts() {
         <tbody>
           ${state.products.map(product => `
             <tr>
+              <td>${product.image_url
+                ? `<img class="product-thumb" src="${esc(product.image_url)}" alt="">`
+                : '<span class="muted">Sin imagen</span>'}</td>
               <td>
                 <strong>${esc(product.name)}</strong>
                 ${product.description ? `<div class="muted">${esc(product.description)}</div>` : ""}
@@ -2594,7 +2601,6 @@ function renderCatalogProducts() {
               <td>
                 <div class="row">
                   <button class="btn-muted" onclick="editProduct('${product.id}')">Editar</button>
-                  <button class="btn-muted" onclick="openProductStorage('${product.id}')">Imagen</button>
                   ${product.active
                     ? `<button class="btn-danger" onclick="deactivateProduct('${product.id}')">Desactivar</button>`
                     : ""}
@@ -2752,6 +2758,9 @@ function editProduct(productId) {
   $("productActive").value = String(product.active);
   $("productFormTitle").textContent = "Editar producto";
   $("saveProductBtn").textContent = "Actualizar producto";
+  if ($("catalogProductImageFile")) $("catalogProductImageFile").value = "";
+  if ($("catalogProductImagePreview")) setPreview("catalogProductImagePreview", product.image_url || "");
+  if ($("catalogDeleteProductImageBtn")) $("catalogDeleteProductImageBtn").disabled = !product.image_url;
   $("productName").focus();
 }
 
@@ -2762,6 +2771,7 @@ async function saveProduct() {
     const name = $("productName").value.trim();
     const priceRaw = $("productPrice").value.trim();
     const orderRaw = $("productOrder").value.trim();
+    const imageFile = $("catalogProductImageFile")?.files?.[0] || null;
 
     if (!localId) throw new Error("Selecciona un LOCAL.");
     if (!name) throw new Error("Escribe el nombre del producto.");
@@ -2782,7 +2792,7 @@ async function saveProduct() {
       ? state.products.find(product => product.id === productId)
       : null;
 
-    await rpc("save_local_product", {
+    const saved = await rpc("save_local_product", {
       p_local_id: localId,
       p_product_id: productId,
       p_category_id: $("productCategory").value || null,
@@ -2794,11 +2804,73 @@ async function saveProduct() {
       p_active: $("productActive").value === "true"
     });
 
+    let savedId = typeof saved === "string" ? saved : (saved?.id || productId);
+    if (!savedId) {
+      const lookup = await supabaseClient
+        .from("products")
+        .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
+        .eq("local_id", localId)
+        .eq("name", name)
+        .limit(1);
+      if (lookup.error) throw lookup.error;
+      savedId = lookup.data?.[0]?.id || null;
+    }
+
+    if (imageFile) {
+      if (!savedId) throw new Error("El producto se guardó, pero no se pudo identificar para subir su imagen.");
+      const productForImage = {
+        id: savedId,
+        local_id: localId,
+        category_id: $("productCategory").value || null,
+        name,
+        description: $("productDescription").value.trim() || null,
+        price,
+        image_url: current?.image_url || null,
+        display_order: displayOrder,
+        active: $("productActive").value === "true"
+      };
+      const previousPath = pathDesdePublicUrlHTPWEB(productForImage.image_url);
+      let uploaded = null;
+      try {
+        uploaded = await subirImagenHTPWEB(mediaPathProduct(savedId), imageFile);
+        await saveProductImageUrl(productForImage, uploaded.url);
+        if (previousPath && previousPath !== uploaded.path) {
+          await eliminarObjetoMediaHTPWEB(previousPath).catch(() => {});
+        }
+      } catch (imageError) {
+        if (uploaded && previousPath !== uploaded.path) {
+          await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
+        }
+        throw new Error("El producto fue guardado, pero su imagen no pudo subirse: " + (imageError.message || imageError));
+      }
+    }
+
     message(productId ? "Producto actualizado." : "Producto creado.");
     clearProductForm();
     await loadCatalog();
   } catch (e) {
     message(e.message || "No se pudo guardar el producto.", "error");
+  }
+}
+
+async function deleteCatalogProductImage() {
+  const productId = $("productId")?.value || null;
+  const product = state.products.find(item => item.id === productId);
+  if (!product) return message("Edita primero el producto cuya imagen deseas eliminar.", "error");
+  if (!product.image_url) return message("Este producto no tiene imagen.", "error");
+  if (!confirm("¿Eliminar la imagen actual de este producto?")) return;
+
+  const oldPath = pathDesdePublicUrlHTPWEB(product.image_url) || mediaPathProduct(product.id);
+  try {
+    await saveProductImageUrl(product, null);
+    await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
+    product.image_url = null;
+    setPreview("catalogProductImagePreview", "");
+    $("catalogDeleteProductImageBtn").disabled = true;
+    message("Imagen del producto eliminada.");
+    await loadCatalog();
+  } catch (e) {
+    message(e.message || "No se pudo eliminar la imagen del producto.", "error");
   }
 }
 
@@ -2838,6 +2910,7 @@ async function openProductStorage(productId = null) {
   if ($("storageLocal")) {
     $("storageLocal").value = localId;
     await refreshLocalMediaPreview();
+    await refreshLocalGallery();
     await loadStorageProducts();
   }
 
@@ -3061,6 +3134,80 @@ async function refreshLocalMediaPreview() {
     setPreview("localBannerPreview", local?.banner_url || "");
   } catch (e) {
     message(e.message || "No se pudieron cargar las imágenes del LOCAL.", "error");
+  }
+}
+
+async function refreshLocalGallery() {
+  const grid = $("localGalleryGrid");
+  const localId = $("storageLocal")?.value || null;
+  if (!grid) return;
+  if (!localId) {
+    grid.innerHTML = '<div class="muted">Selecciona un LOCAL.</div>';
+    return;
+  }
+  try {
+    const items = await rpc("list_local_gallery", { p_local_id: localId });
+    const gallery = Array.isArray(items) ? items : [];
+    grid.innerHTML = gallery.length ? gallery.map(item => `
+      <div class="local-gallery-item">
+        <img src="${esc(item.image_url)}" alt="">
+        <button class="btn-danger" type="button" onclick="deleteLocalGalleryImage('${item.id}')">Eliminar</button>
+      </div>
+    `).join("") : '<div class="muted">La galería todavía no tiene fotos.</div>';
+  } catch (e) {
+    grid.innerHTML = '<div class="message error">' + esc(e.message || "No se pudo cargar la galería.") + '</div>';
+  }
+}
+
+async function uploadLocalGallery() {
+  const localId = $("storageLocal")?.value || null;
+  const input = $("localGalleryFiles");
+  const files = [...(input?.files || [])];
+  if (!localId) return message("Selecciona un LOCAL.", "error");
+  if (!files.length) return message("Selecciona una o más fotografías.", "error");
+  if (files.length > 12) return message("Puedes agregar hasta 12 fotografías por operación.", "error");
+
+  try {
+    for (const file of files) {
+      const imageId = crypto.randomUUID();
+      const path = mediaPathLocalGallery(localId, imageId);
+      let uploaded = null;
+      try {
+        uploaded = await subirImagenHTPWEB(path, file);
+        await rpc("save_local_gallery_image", {
+          p_local_id: localId,
+          p_image_id: imageId,
+          p_image_url: uploaded.url,
+          p_storage_path: uploaded.path,
+          p_display_order: 0
+        });
+      } catch (e) {
+        if (uploaded?.path) await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
+        throw e;
+      }
+    }
+    input.value = "";
+    await refreshLocalGallery();
+    message("Galería del LOCAL actualizada.");
+  } catch (e) {
+    message(e.message || "No se pudieron subir las fotos de la galería.", "error");
+  }
+}
+
+async function deleteLocalGalleryImage(imageId) {
+  const localId = $("storageLocal")?.value || null;
+  if (!localId || !imageId) return;
+  if (!confirm("¿Eliminar esta foto de la galería?")) return;
+  try {
+    const path = await rpc("delete_local_gallery_image", {
+      p_local_id: localId,
+      p_image_id: imageId
+    });
+    if (path) await eliminarObjetoMediaHTPWEB(path).catch(() => {});
+    await refreshLocalGallery();
+    message("Foto eliminada de la galería.");
+  } catch (e) {
+    message(e.message || "No se pudo eliminar la foto.", "error");
   }
 }
 
@@ -4291,7 +4438,7 @@ function bindEvents() {
   $("clearCategoryBtn").onclick = clearCategoryForm;
   $("saveProductBtn").onclick = saveProduct;
   $("clearProductBtn").onclick = clearProductForm;
-  $("productGoStorageBtn").onclick = () => openProductStorage();
+  $("catalogDeleteProductImageBtn").onclick = deleteCatalogProductImage;
   $("variantProduct").onchange = loadVariants;
   $("saveVariantBtn").onclick = saveVariant;
   $("clearVariantBtn").onclick = clearVariantForm;
@@ -4303,6 +4450,7 @@ function bindEvents() {
   $("storageDelivery").onchange = refreshDeliveryMediaPreview;
   $("storageLocal").onchange = async () => {
     await refreshLocalMediaPreview();
+    await refreshLocalGallery();
     await loadStorageProducts();
   };
   $("storageProduct").onchange = refreshProductMediaPreview;
@@ -4316,6 +4464,7 @@ function bindEvents() {
   $("uploadLocalBannerBtn").onclick = () => uploadLocalMedia("banner");
   $("deleteLocalBannerBtn").onclick = () => deleteLocalMedia("banner");
   $("enableLocalMediaBtn").onclick = enableLocalMedia;
+  $("uploadLocalGalleryBtn").onclick = uploadLocalGallery;
 
   $("uploadProductImageBtn").onclick = uploadProductImage;
   $("deleteProductImageBtn").onclick = deleteProductImage;

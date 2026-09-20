@@ -18,6 +18,7 @@ create table delivery_zones(delivery_id uuid references deliveries(id),zone_id u
 create table locals(id uuid primary key default gen_random_uuid(),zone_id uuid references zones(id),name text not null,slug text unique,description text,address text,latitude numeric,longitude numeric,phone text,whatsapp text,logo_url text,banner_url text,active boolean default false,created_at timestamptz default now(),updated_at timestamptz default now());
 create table local_deliveries(local_id uuid references locals(id),delivery_id uuid references deliveries(id),active boolean default true,created_at timestamptz default now(),primary key(local_id,delivery_id));
 create table user_deliveries(user_id uuid,delivery_id uuid references deliveries(id),active boolean default true);
+create table user_locals(user_id uuid,local_id uuid references locals(id),active boolean default true);
 create function public.user_has_delivery(p_id uuid) returns boolean language sql stable as $$
 select public.is_master() or exists(select 1 from public.user_deliveries where user_id=auth.uid() and delivery_id=p_id and active) $$;
 create table local_change_history(local_id uuid references locals(id),request_id uuid,change_type text,before_data jsonb,after_data jsonb,changed_by uuid,created_at timestamptz);
