@@ -1,11 +1,11 @@
-const masterLocalsState={items:[],zones:[],businessCategories:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false};
+const masterLocalsState={items:[],zones:[],businessCategories:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],menuPanels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false,productBulkRows:[],productBulkErrors:[],productBulkFileName:"",productBulkBusy:false};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
  if(masterLocalsState.bound)return;masterLocalsState.bound=true;
  $("section-localsmaster").innerHTML=`
- <div class="card workspace-title"><div><h2>Locales</h2><p>La cobertura se determina por la zona, sin asignar DELIVERY manualmente.</p></div>
- <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalBulkBtn">Carga masiva</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
+ <div class="card workspace-title"><div><h2>Locales</h2><p>Administra desde aquí la ficha completa del LOCAL: ubicación, horarios, imágenes, productos, variantes e importaciones.</p></div>
+ <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalBulkBtn">Cargas masivas</button><button id="masterLocalMenuImportBtn">Importar menú</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
  <div id="masterLocalList" class="card"><h3>Listado de locales</h3><div class="form-grid">
  <div><label for="localFilterProvince">Provincia</label><select id="localFilterProvince"></select></div>
  <div><label for="localFilterCity">Cantón</label><select id="localFilterCity"></select></div>
@@ -13,7 +13,18 @@ function bindMasterLocals(){
  <div><label for="localFilterName">Nombre</label><input id="localFilterName" type="search"></div>
  <div><label for="localFilterStatus">Estado</label><select id="localFilterStatus"><option value="">Todos</option><option value="true">Activo</option><option value="false">Inactivo / borrador</option><option value="unzoned">Sin zona</option></select></div>
  </div><div id="masterLocalsSummary"></div></div>
- <div id="masterLocalBulk" class="card hidden"> <div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Descarga la plantilla, complétala, súbela y valida antes de crear. Los locales importados quedan como borrador.</p></div> <button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla Excel</button></div> <div class="form-grid" style="margin-top:14px"><div><label>Archivo Excel</label><input id="bulkLocalFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div> <div><label>Proceso</label><button id="validateBulkLocalBtn" type="button" class="btn-primary">Validar archivo</button></div></div> <p id="bulkLocalStatus" class="muted">Todavía no has cargado una plantilla.</p><div id="bulkLocalPreview"></div> <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkLocalErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones</button><button id="importBulkLocalBtn" type="button" class="btn-primary" disabled>Importar locales válidos</button></div></div>
+ <div id="masterLocalBulk" class="hidden">
+ <div class="card"><div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Crea muchos LOCAL desde Excel. Se validan ubicación, categoría, zona, duplicados y datos Google antes de importar.</p></div><button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla de locales</button></div>
+ <div class="form-grid" style="margin-top:14px"><div><label>Archivo Excel de locales</label><input id="bulkLocalFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div><div><label>Proceso</label><button id="validateBulkLocalBtn" type="button" class="btn-primary">Validar locales</button></div></div>
+ <p id="bulkLocalStatus" class="muted">Todavía no has cargado una plantilla de locales.</p><div id="bulkLocalPreview"></div>
+ <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkLocalErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones</button><button id="importBulkLocalBtn" type="button" class="btn-primary" disabled>Importar locales válidos</button></div></div>
+ <div class="card"><div class="row between"><div><h3>Carga masiva de productos</h3><p class="muted">Selecciona un LOCAL y carga productos, categorías de menú y variantes desde Excel o CSV. Por defecto se importan como borrador.</p></div><button id="downloadBulkProductTemplateBtn" class="btn-muted" type="button">Descargar plantilla de productos</button></div>
+ <div class="form-grid" style="margin-top:14px"><div><label>LOCAL destino</label><select id="bulkProductLocal"></select></div><div><label>Archivo de productos</label><input id="bulkProductFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div></div>
+ <div class="row" style="margin-top:14px"><button id="validateBulkProductBtn" type="button" class="btn-primary">Validar productos</button><label class="row" style="margin:0"><input id="bulkProductPublish" type="checkbox" style="width:auto"> Publicar inmediatamente según ACTIVO</label></div>
+ <p id="bulkProductStatus" class="muted">Todavía no has cargado una plantilla de productos.</p><div id="bulkProductPreview"></div>
+ <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkProductErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones de productos</button><button id="importBulkProductBtn" type="button" class="btn-primary" disabled>Importar productos válidos</button></div></div>
+ </div>
+ <div id="masterLocalMenuImport" class="hidden"></div>
  <div id="masterLocalEditor" class="card hidden"><h3 id="masterLocalHeading">Crear local</h3>
  <p id="localSaveStatus" role="status"></p><input id="masterLocalId" type="hidden"><input id="masterLocalPlaceId" type="hidden">
  <div class="workspace-tabs" role="tablist" aria-label="Ficha del local"><button data-local-tab="info">Información y ubicación</button>
@@ -42,7 +53,8 @@ function bindMasterLocals(){
  </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
- $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");}};
+ $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");renderBulkProductLocalOptions();}};
+ $("masterLocalMenuImportBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();mountMasterLocalMenuImport();}};
  bindMasterLocalBulk();
  $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;$("googleMapsDiagnosticBtn").onclick=diagnoseGoogleMaps;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
@@ -85,7 +97,29 @@ function fillMasterLocalForm(local){
  $("localSaveStatus").textContent=local?"Cambios guardados":"Nuevo local — todavía no guardado";
  openLocalTab("info");drawLocalMap();if(local?.latitude!=null)masterLocalsState.map?.center([Number(local.latitude),Number(local.longitude)]);
 }
-function showLocalMode(mode){$("masterLocalList").classList.toggle("hidden",mode!=="list");$("masterLocalBulk").classList.toggle("hidden",mode!=="bulk");$("masterLocalEditor").classList.toggle("hidden",mode!=="editor");if(mode==="editor")initLocalMap();}
+function restoreMasterLocalMenuImport(){
+ for(const {node,parent,next} of [...masterLocalsState.menuPanels].reverse())parent.insertBefore(node,next?.parentNode===parent?next:null);
+ masterLocalsState.menuPanels=[];
+}
+async function mountMasterLocalMenuImport(){
+ restoreMasterLocalMenuImport();
+ const source=$("section-menuimport"),host=$("masterLocalMenuImport");
+ if(!source||!host)return message("No se encontró el importador de menú.","error");
+ for(const node of Array.from(source.children)){
+   masterLocalsState.menuPanels.push({node,parent:source,next:node.nextSibling});
+   host.appendChild(node);
+ }
+ showLocalMode("menuimport");
+ try{await loadMenuImport();}catch(e){message(e.message||"No se pudo abrir el importador de menú.","error");}
+}
+function showLocalMode(mode){
+ if(mode!=="menuimport")restoreMasterLocalMenuImport();
+ $("masterLocalList").classList.toggle("hidden",mode!=="list");
+ $("masterLocalBulk").classList.toggle("hidden",mode!=="bulk");
+ $("masterLocalMenuImport").classList.toggle("hidden",mode!=="menuimport");
+ $("masterLocalEditor").classList.toggle("hidden",mode!=="editor");
+ if(mode==="editor")initLocalMap();
+}
 function showLocalEditor(show){showLocalMode(show?"editor":"list");}
 function renderMasterLocalList(){
  const items=masterLocalsState.items.filter(l=>
@@ -105,7 +139,7 @@ async function loadMasterLocals(){
    for(const [id,data,label] of [["localFilterProvince",provinces.map(p=>({id:p})),p=>p.id],["localFilterCity",state.cities,c=>c.name],["localFilterZone",zones,z=>z.code+" — "+z.name]]){
      const value=$(id).value;$(id).innerHTML='<option value="">Todos</option>'+localOptions(data,label,value).replace('<option value="">Seleccionar…</option>',"");
    }
-   renderMasterLocalList();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
+   renderMasterLocalList();if(typeof renderBulkProductLocalOptions==="function")renderBulkProductLocalOptions();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
  }catch(e){message(e.message||"No se pudieron cargar los locales.","error");}
 }
 function nullableNumber(id){const raw=$(id).value.trim();if(raw==="")return null;const value=Number(raw);if(!Number.isFinite(value))throw new Error("Coordenada inválida.");return value;}
@@ -407,6 +441,7 @@ async function deleteMasterLocal(){
  }catch(e){message(e.message,"error");}
 }
 function restoreLocalPanels(){
+ restoreMasterLocalMenuImport();
  for(const {node,parent,next} of [...masterLocalsState.panels].reverse())parent.insertBefore(node,next?.parentNode===parent?next:null);
  masterLocalsState.panels=[];
  for(const id of ["scheduleLocal","catalogLocal","storageLocal"]){if($(id)){$(id).disabled=false;delete $(id).dataset.localLocked;}}
