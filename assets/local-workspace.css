@@ -1,0 +1,12 @@
+.workspace-map{height:380px;border-radius:12px;z-index:0;margin:12px 0;background:#edf2f7}
+.workspace-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.workspace-tabs button[aria-selected="true"]{background:#1d4ed8;color:white}
+.workspace-note{padding:12px;border-radius:8px;background:#eff6ff;color:#1e3a8a;margin:12px 0}
+.workspace-warning{background:#fff7ed;color:#9a3412}
+.workspace-title{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+.workspace-host .card{box-shadow:none;border:1px solid #dbe2eb}
+.workspace-host select[data-local-locked]{pointer-events:none;background:#eef2f7}
+.zone-vertex{background:#fff;border:2px solid #1d4ed8;border-radius:50%}
+.workspace-map:focus{outline:2px solid #2563eb}
+.workspace-status{min-height:1.5em}
+@media(max-width:640px){.workspace-map{height:300px}.workspace-tabs button{flex:1 1 130px}}
