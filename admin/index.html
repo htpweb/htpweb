@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HTPWEB Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
 <link rel="stylesheet" href="../assets/admin.css">
@@ -696,10 +697,20 @@
         </div>
         <label>Descripción</label>
         <textarea id="productDescription" rows="2" maxlength="1400"></textarea>
+        <div class="media-editor" style="margin-top:14px">
+          <div>
+            <strong>Imagen del producto</strong>
+            <div class="media-preview"><img id="catalogProductImagePreview" alt=""></div>
+          </div>
+          <div class="stack">
+            <input id="catalogProductImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+            <small class="muted">La imagen se comprime y se guarda automáticamente en Supabase Storage al guardar el producto.</small>
+            <button class="btn-danger" type="button" id="catalogDeleteProductImageBtn" disabled>Eliminar imagen actual</button>
+          </div>
+        </div>
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="saveProductBtn">Crear producto</button>
           <button class="btn-muted" id="clearProductBtn">Limpiar</button>
-          <button class="btn-muted" id="productGoStorageBtn">Gestionar imagen</button>
         </div>
       </div>
 
@@ -830,6 +841,21 @@
             </div>
           </div>
         </div>
+
+        <div style="margin-top:20px">
+          <div class="row between">
+            <div>
+              <h4 style="margin:0">Galería del LOCAL</h4>
+              <small class="muted">Fotos adicionales del establecimiento. Se almacenan en Supabase Storage.</small>
+            </div>
+            <input id="localGalleryFiles" type="file" multiple accept="image/jpeg,image/png,image/webp">
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-primary" id="uploadLocalGalleryBtn" type="button">Agregar fotos a la galería</button>
+          </div>
+          <div id="localGalleryGrid" class="local-gallery-grid" style="margin-top:14px"></div>
+        </div>
+
         <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión del LOCAL</button>
         <small class="muted">LOCAL_ADMIN requiere las capabilities correspondientes para información, imágenes, productos, variantes y horarios.</small>
       </div>
