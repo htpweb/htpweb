@@ -101,7 +101,7 @@ begin
   perform pg_advisory_xact_lock(880115);
   perform public.htp_zone_polygon(new.boundary);
   if new.active and new.boundary is not null then
-    for z in select id,code,boundary from public.zones where active and id<>new.id and boundary is not null loop
+    for z in select id,code,boundary from public.zones where active and city_id=new.city_id and id<>new.id and boundary is not null loop
       if public.htp_zones_overlap(new.boundary,z.boundary) then raise exception 'La zona se superpone con %',z.code; end if;
     end loop;
   end if;
