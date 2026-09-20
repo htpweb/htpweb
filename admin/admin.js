@@ -1812,8 +1812,8 @@ function renderCoverageZones() {
   const zones = Array.isArray(context.zones) ? context.zones : [];
   if (!zones.length) {
     container.innerHTML = state.role === "MASTER"
-      ? '<div class="muted">No existen zonas activas en esta ciudad. Créala en el catálogo de zonas.</div>'
-      : '<div class="muted">HTPWEB todavía no ha creado zonas activas para esta ciudad.</div>';
+      ? '<div class="muted">No existen zonas activas. Créala en el catálogo de zonas.</div>'
+      : '<div class="muted">HTPWEB todavía no ha creado zonas activas.</div>';
     return;
   }
 
@@ -1832,7 +1832,7 @@ function renderCoverageZones() {
         <tbody>
           ${zones.map(zone => `
             <tr>
-              <td>${esc(zone.name)}</td>
+              <td><strong>${esc(zone.code || "")} — ${esc(zone.name)}</strong>${zone.city_name ? `<div class="muted">Referencia: ${esc(zone.city_name)}${zone.province ? " · "+esc(zone.province) : ""}</div>` : ""}</td>
               <td>${zone.assigned ? "Asignada" : "Disponible"}</td>
               <td>
                 <button
