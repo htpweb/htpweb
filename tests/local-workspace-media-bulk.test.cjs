@@ -9,6 +9,7 @@ const bulk=fs.readFileSync("admin/locales-bulk.js","utf8");
 const maps=fs.readFileSync("admin/zone-maps.js","utf8");
 const storage=fs.readFileSync("config/storage.js","utf8");
 const gallerySql=fs.readFileSync("supabase/migrations/20260920040000_local_gallery.sql","utf8");
+const localGoogleUniqueSql=fs.readFileSync("supabase/migrations/20260920171000_local_google_place_unique.sql","utf8");
 
 test("MASTER no muestra Storage como módulo independiente",()=>{
   const match=admin.match(/MASTER:\s*\[([^\]]+)\]/);
@@ -87,6 +88,25 @@ test("carga masiva acepta enlaces cortos de Google Maps mediante Edge Function",
   assert.match(resolver,/extractLocation/);
   assert.match(resolver,/query_place_id/);
   assert.match(resolver,/Operación exclusiva de MASTER/);
+});
+
+test("carga masiva detecta duplicados internos y permite descargar observaciones",()=>{
+  assert.match(locals,/downloadBulkLocalErrorsBtn/);
+  assert.match(bulk,/downloadBulkLocalErrors/);
+  assert.match(bulk,/HTPWEB_Observaciones_Carga_Masiva_Locales\.xlsx/);
+  assert.match(bulk,/placeCache=new Map\(\)/);
+  assert.match(bulk,/seenPlaceIds=new Map\(\)/);
+  assert.match(bulk,/seenNameCity=new Map\(\)/);
+  assert.match(bulk,/Duplicado dentro del archivo/);
+  assert.match(bulk,/GOOGLE_PLACE_ID/);
+  assert.match(bulk,/ERROR:r\.error/);
+});
+
+test("PostgreSQL refuerza la unicidad de Google Place ID",()=>{
+  assert.match(localGoogleUniqueSql,/locals_google_place_id_uidx/);
+  assert.match(localGoogleUniqueSql,/create unique index if not exists/);
+  assert.match(localGoogleUniqueSql,/google_place_id is not null/);
+  assert.match(localGoogleUniqueSql,/having count\(\*\)>1/);
 });
 
 test("diagnóstico Google separa Maps Places y Geocoding",()=>{
