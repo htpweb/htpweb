@@ -209,29 +209,18 @@ function normalizeGoogleSchedule(openingHours){
 async function resolveBulkGooglePlace(query,province="",canton=""){
   if(!query)return null;
 
+  let linkFallback=null;
   if(isGoogleMapsLink(query)){
     const resolved=await resolveGoogleMapsLink(query);
     if(Number.isFinite(Number(resolved.latitude))&&Number.isFinite(Number(resolved.longitude))){
-      const lat=Number(resolved.latitude),lng=Number(resolved.longitude);
-      const reverse=await reverseBulkCoordinates(lat,lng);
-      if(reverse?.__error){
-        return {
-          placeId:resolved.place_id||null,
-          name:resolved.search_text||query,
-          address:resolved.search_text||query,
-          lat,lng,
-          resolvedUrl:resolved.resolved_url||query,
-          addressComponents:[],
-          geocodeError:reverse.__error.message||String(reverse.__error)
-        };
-      }
-      return {
-        placeId:resolved.place_id||reverse?.place_id||null,
+      linkFallback={
+        placeId:resolved.place_id||null,
         name:resolved.search_text||query,
-        address:reverse?.formatted_address||resolved.search_text||query,
-        lat,lng,
+        address:resolved.search_text||query,
+        lat:Number(resolved.latitude),
+        lng:Number(resolved.longitude),
         resolvedUrl:resolved.resolved_url||query,
-        addressComponents:reverse?.address_components||[]
+        addressComponents:[]
       };
     }
     query=resolved.search_text||query;
@@ -243,28 +232,70 @@ async function resolveBulkGooglePlace(query,province="",canton=""){
   const lib=await google.maps.importLibrary("places");
   const AutocompleteSuggestion=lib.AutocompleteSuggestion;
   const input=[query,canton,province,"Ecuador"].filter(Boolean).join(", ");
-  const response=await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+  const request={
     input:input,
     includedRegionCodes:["ec"],
     language:"es",
     region:"EC"
-  });
-  const prediction=(response&&response.suggestions||[]).map(function(s){return s.placePrediction;}).find(Boolean);
-  if(!prediction)throw new Error("Google no encontró el establecimiento o dirección.");
-  const place=prediction.toPlace();
-  await place.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","nationalPhoneNumber","regularOpeningHours"]});
-  if(!place.location)throw new Error("Google encontró el lugar, pero no devolvió coordenadas.");
-
-  return {
-    placeId:place.id||null,
-    name:place.displayName||query,
-    address:place.formattedAddress||query,
-    lat:place.location.lat(),
-    lng:place.location.lng(),
-    addressComponents:place.addressComponents||[],
-    phone:place.nationalPhoneNumber||"",
-    openingHours:place.regularOpeningHours||null
   };
+  if(linkFallback){
+    request.locationBias={
+      center:{lat:linkFallback.lat,lng:linkFallback.lng},
+      radius:5000
+    };
+  }
+
+  let response;
+  try{
+    response=await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+  }catch(error){
+    if(!linkFallback)throw error;
+    response=null;
+  }
+  const predictions=(response&&response.suggestions||[]).map(function(s){return s.placePrediction;}).filter(Boolean);
+  let best=null;
+
+  for(const prediction of predictions.slice(0,5)){
+    const candidate=prediction.toPlace();
+    await candidate.fetchFields({fields:["id","displayName","formattedAddress","addressComponents","location","nationalPhoneNumber","regularOpeningHours"]});
+    if(!candidate.location)continue;
+    const lat=candidate.location.lat(),lng=candidate.location.lng();
+    const distance=linkFallback
+      ?Math.hypot(lat-linkFallback.lat,lng-linkFallback.lng)
+      :0;
+    if(!best||distance<best.distance)best={place:candidate,distance};
+  }
+
+  if(best?.place){
+    const place=best.place;
+    return {
+      placeId:place.id||linkFallback?.placeId||null,
+      name:place.displayName||query,
+      address:place.formattedAddress||linkFallback?.address||query,
+      lat:place.location.lat(),
+      lng:place.location.lng(),
+      resolvedUrl:linkFallback?.resolvedUrl||null,
+      addressComponents:place.addressComponents||[],
+      phone:place.nationalPhoneNumber||"",
+      openingHours:place.regularOpeningHours||null
+    };
+  }
+
+  if(linkFallback){
+    return {
+      ...linkFallback,
+      addressComponents:[
+        {longText:"Esmeraldas",shortText:"Esmeraldas",types:["administrative_area_level_1"]},
+        {longText:"Esmeraldas",shortText:"Esmeraldas",types:["administrative_area_level_2"]},
+        {longText:"Esmeraldas",shortText:"Esmeraldas",types:["locality"]}
+      ],
+      geocodeFallback:true,
+      phone:"",
+      openingHours:null
+    };
+  }
+
+  throw new Error("Google no encontró el establecimiento o dirección.");
 }
 
 function bulkFindCity(province,canton,locality){
