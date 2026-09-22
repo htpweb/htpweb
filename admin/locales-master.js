@@ -34,7 +34,7 @@ function bindMasterLocals(){
      <button id="downloadPackageSpecBtn" type="button" class="btn-muted">Descargar ejemplo de manifiesto</button>
    </div>
    <div class="workspace-note" style="margin-top:14px">
-     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y las imágenes referenciadas. Ideal para paquetes que preparemos desde ChatGPT.
+     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y una imagen por cada SKU. En paquete completo no se permitirá importar productos sin foto.
    </div>
    <div class="form-grid" style="margin-top:14px">
      <div>
