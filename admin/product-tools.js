@@ -541,8 +541,10 @@
     if (!confirm('¿Eliminar la promoción "' + promotion.title + '"?')) return;
     try {
       const path = pathDesdePublicUrlHTPWEB(promotion.image_url) || mediaPathPromotion(id);
+      if (promotion.image_url) {
+        await eliminarObjetoMediaHTPWEB(path).catch(() => {});
+      }
       await rpc("delete_local_promotion", { p_promotion_id: id });
-      await eliminarObjetoMediaHTPWEB(path).catch(() => {});
       message("Promoción eliminada.");
       clearPromotion108();
       await loadPromotions108();
