@@ -47,59 +47,54 @@ test("galería usa Supabase Storage y RPC seguro",()=>{
   assert.match(gallerySql,/can_manage_local_gallery/);
 });
 
-test("Locales muestra carga masiva Excel con plantilla validación e importación",()=>{
+test("Locales muestra carga masiva Excel completa sin depender de Google",()=>{
   assert.match(locals,/masterLocalBulkBtn/);
-  assert.match(locals,/Descargar plantilla Excel/);
+  assert.match(locals,/Descargar plantilla completa de locales/);
   assert.match(html,/xlsx\.full\.min\.js/);
   assert.match(bulk,/HTPWEB_Plantilla_Carga_Masiva_Locales\.xlsx/);
   assert.match(bulk,/validateBulkLocalFile/);
-  assert.match(bulk,/resolveBulkGooglePlace/);
   assert.match(bulk,/bulkLocalZoneFor/);
-  assert.match(bulk,/master_save_local_v3/);
-  assert.match(bulk,/p_active:false/);
+  assert.match(bulk,/master_save_local_import_v1/);
+  assert.match(bulk,/importados como borrador sin consultar Google Maps/);
 });
 
-test("carga masiva usa plantilla simple y deriva ubicación y zona",()=>{
-  assert.match(bulk,/\["NOMBRE","CATEGORIA","LINK_UBICACION","TELEFONO","WHATSAPP","DESCRIPCION"\]/);
-  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"LATITUD"/);
-  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"LONGITUD"/);
-  assert.doesNotMatch(bulk,/const headers=\[[^\]]*"PROVINCIA"/);
+test("plantilla nueva contiene todos los campos necesarios para ubicación",()=>{
+  assert.match(bulk,/"NOMBRE","PROVINCIA","CANTON","CATEGORIA","DIRECCION_REFERENCIA"/);
+  assert.match(bulk,/"LATITUD","LONGITUD","TELEFONO","WHATSAPP","DESCRIPCION","LINK_UBICACION"/);
   assert.match(bulk,/CATEGORIAS_DISPONIBLES/);
-  assert.match(bulk,/businessCategories/);
-  assert.match(bulk,/localAddressPart/);
-  assert.match(bulk,/bulkFindCity/);
+  assert.match(bulk,/CANTONES_DISPONIBLES/);
+  assert.match(bulk,/ZONAS_REFERENCIA/);
+  assert.match(bulk,/LINK_UBICACION es opcional/);
+  assert.match(bulk,/LATITUD y LONGITUD determinan automáticamente la zona/);
 });
 
-test("carga masiva reutiliza Google y límites geográficos",()=>{
-  assert.match(maps,/return \{contains,create,googleAPI\}/);
-  assert.match(bulk,/AutocompleteSuggestion\.fetchAutocompleteSuggestions/);
+test("carga masiva valida coordenadas y zona sin consultar Google",()=>{
+  assert.match(maps,/provider:"OPENSTREETMAP"/);
+  assert.match(maps,/async function googleAPI\(\)\{ return null; \}/);
   assert.match(bulk,/ZoneMaps\.contains/);
+  assert.match(bulk,/result\.source="IMPORT"/);
+  assert.match(bulk,/Plantilla validada sin consultar Google Maps/);
+  assert.match(bulk,/normalizeBulkImportPhone/);
   assert.match(bulk,/Posible duplicado/);
-});
-
-
-test("carga masiva acepta enlaces cortos de Google Maps mediante Edge Function",()=>{
-  const resolver=fs.readFileSync("supabase/functions/resolver-google-maps/index.ts","utf8");
-  assert.match(bulk,/isGoogleMapsLink/);
-  assert.match(bulk,/resolver-google-maps/);
-  assert.match(bulk,/maps\.app\.goo\.gl/);
-  assert.match(resolver,/maps\.app\.goo\.gl/);
-  assert.match(resolver,/redirect:\s*"follow"/);
-  assert.match(resolver,/extractLocation/);
-  assert.match(resolver,/query_place_id/);
-  assert.match(resolver,/Operación exclusiva de MASTER/);
 });
 
 test("carga masiva detecta duplicados internos y permite descargar observaciones",()=>{
   assert.match(locals,/downloadBulkLocalErrorsBtn/);
   assert.match(bulk,/downloadBulkLocalErrors/);
   assert.match(bulk,/HTPWEB_Observaciones_Carga_Masiva_Locales\.xlsx/);
-  assert.match(bulk,/placeCache=new Map\(\)/);
-  assert.match(bulk,/seenPlaceIds=new Map\(\)/);
   assert.match(bulk,/seenNameCity=new Map\(\)/);
   assert.match(bulk,/Duplicado dentro del archivo/);
-  assert.match(bulk,/GOOGLE_PLACE_ID/);
+  assert.match(bulk,/ZONA_DETECTADA/);
   assert.match(bulk,/ERROR:r\.error/);
+});
+
+test("Supabase asigna autoritativamente la zona por coordenadas",()=>{
+  const importSql=fs.readFileSync("supabase/migrations/20260922005000_local_import_without_google.sql","utf8");
+  assert.match(importSql,/master_detect_local_zone/);
+  assert.match(importSql,/htp_zone_contains/);
+  assert.match(importSql,/master_save_local_import_v1/);
+  assert.match(importSql,/'IMPORT'/);
+  assert.match(importSql,/las coordenadas no pertenecen a ninguna zona activa dibujada/);
 });
 
 test("PostgreSQL refuerza la unicidad de Google Place ID",()=>{
@@ -109,12 +104,12 @@ test("PostgreSQL refuerza la unicidad de Google Place ID",()=>{
   assert.match(localGoogleUniqueSql,/having count\(\*\)>1/);
 });
 
-test("diagnóstico Google separa Maps Places y Geocoding",()=>{
-  assert.match(locals,/googleMapsDiagnosticBtn/);
-  assert.match(locals,/diagnoseGoogleMaps/);
-  assert.match(locals,/importLibrary\("places"\)/);
-  assert.match(locals,/importLibrary\("geocoding"\)/);
-  assert.match(locals,/REQUEST_DENIED/);
+test("ficha LOCAL usa OpenStreetMap y no muestra controles Google",()=>{
+  assert.match(locals,/Mapa OpenStreetMap/);
+  assert.match(locals,/OpenStreetMap activo/);
+  assert.doesNotMatch(locals,/id="googleMapsDiagnosticBtn"/);
+  assert.doesNotMatch(locals,/id="googlePlaceDetailsBtn"/);
+  assert.doesNotMatch(maps,/maps\.googleapis\.com/);
   assert.doesNotMatch(maps,/mapId:"DEMO_MAP_ID"/);
 });
 
