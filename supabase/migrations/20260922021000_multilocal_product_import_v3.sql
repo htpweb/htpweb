@@ -103,8 +103,8 @@ begin
         raise exception 'HTPWEB: cada fila requiere LOCAL o LOCAL_ID';
       end if;
 
-      select count(*),min(l.id)
-      into v_local_matches,v_local_id
+      select count(*)
+      into v_local_matches
       from public.locals l
       where lower(trim(l.name))=lower(v_local_name);
 
@@ -114,6 +114,11 @@ begin
       if v_local_matches>1 then
         raise exception 'HTPWEB: LOCAL ambiguo: %. Use LOCAL_ID',v_local_name;
       end if;
+
+      select l.id into v_local_id
+      from public.locals l
+      where lower(trim(l.name))=lower(v_local_name)
+      limit 1;
     end if;
 
     if not (v_local_id=any(v_seen_locals)) then
@@ -355,7 +360,7 @@ begin
     v_updated:=v_updated+1;
   end loop;
 
-  if v_updated<>(select count(distinct x) from unnest(p_product_ids) x where x is not null) then
+  if v_updated<>(select count(distinct x) from unnest(p_product_ids) as t(x) where x is not null) then
     raise exception 'HTPWEB: uno o más productos seleccionados no existen';
   end if;
 
