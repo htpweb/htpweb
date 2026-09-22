@@ -14,7 +14,7 @@ function bindMasterLocals(){
  <div><label for="localFilterStatus">Estado</label><select id="localFilterStatus"><option value="">Todos</option><option value="true">Activo</option><option value="false">Inactivo / borrador</option><option value="unzoned">Sin zona</option></select></div>
  </div><div id="masterLocalsSummary"></div></div>
  <div id="masterLocalBulk" class="hidden">
- <div class="card"><div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Crea muchos LOCAL desde Excel. Se validan ubicación, categoría, zona, duplicados y datos Google antes de importar.</p></div><button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla Excel de locales</button></div>
+ <div class="card"><div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Crea muchos LOCAL desde Excel sin consultar Google Maps. La plantilla incluye provincia, cantón, dirección/referencia, latitud y longitud; HTPWEB detecta la zona automáticamente.</p></div><button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla completa de locales</button></div>
  <div class="form-grid" style="margin-top:14px"><div><label>Archivo Excel de locales</label><input id="bulkLocalFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div><div><label>Proceso</label><button id="validateBulkLocalBtn" type="button" class="btn-primary">Validar locales</button></div></div>
  <p id="bulkLocalStatus" class="muted">Todavía no has cargado una plantilla de locales.</p><div id="bulkLocalPreview"></div>
  <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkLocalErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones</button><button id="importBulkLocalBtn" type="button" class="btn-primary" disabled>Importar locales válidos</button></div></div>
@@ -34,12 +34,12 @@ function bindMasterLocals(){
  <div><label for="masterLocalProvince">Provincia *</label><select id="masterLocalProvince"></select></div>
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
- <div class="workspace-note">Busca primero el establecimiento. Si no aparece, pulsa en el mapa y arrastra el marcador hasta su entrada. Confirma provincia, cantón y zona.</div>
- <div id="googlePlaceSearch"></div><div class="row"><button id="googlePlaceDetailsBtn" class="btn-primary" type="button" disabled>IMPORTAR DATOS DE GOOGLE</button><button id="googleMapsDiagnosticBtn" type="button">Probar conexión Google</button></div><p id="googlePlaceStatus" class="muted"></p>
- <button id="localUsePosition">Usar mi ubicación actual</button><div id="masterLocalMap" class="workspace-map" aria-label="Ubicación del local" tabindex="0"></div>
- <p id="localZoneDetection" role="status"></p><details><summary>Coordenadas — opción avanzada</summary><div class="form-grid">
- <div><label for="masterLocalLatitude">Latitud</label><input id="masterLocalLatitude" inputmode="decimal"></div>
- <div><label for="masterLocalLongitude">Longitud</label><input id="masterLocalLongitude" inputmode="decimal"></div></div><button id="localApplyCoordinates">Mostrar en mapa</button></details>
+ <div class="workspace-note">HTPWEB no necesita Google Maps para guardar el LOCAL. Completa provincia, cantón, dirección y coordenadas; la zona se detecta automáticamente por el punto geográfico.</div>
+ <p id="googlePlaceStatus" class="muted">Mapa OpenStreetMap. Puedes hacer clic o mover el marcador sin activar facturación de Google.</p>
+ <button id="localUsePosition">Usar mi ubicación actual</button><div id="masterLocalMap" class="workspace-map" aria-label="Ubicación del local en OpenStreetMap" tabindex="0"></div>
+ <p id="localZoneDetection" role="status"></p><div class="form-grid">
+ <div><label for="masterLocalLatitude">Latitud *</label><input id="masterLocalLatitude" inputmode="decimal" placeholder="0.0000000"></div>
+ <div><label for="masterLocalLongitude">Longitud *</label><input id="masterLocalLongitude" inputmode="decimal" placeholder="-79.0000000"></div></div><button id="localApplyCoordinates">Ubicar coordenadas y detectar zona</button>
  <div class="form-grid"><div><label for="masterLocalName">Nombre *</label><input id="masterLocalName" maxlength="160"></div>
  <div><label for="masterLocalAddress">Dirección y referencia</label><input id="masterLocalAddress" maxlength="240"></div>
  <div><label for="masterLocalPhone">Teléfono</label><input id="masterLocalPhone" maxlength="40"></div>
@@ -56,7 +56,7 @@ function bindMasterLocals(){
  $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");renderBulkProductLocalOptions();}};
  $("masterLocalMenuImportBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();mountMasterLocalMenuImport();}};
  bindMasterLocalBulk();
- $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;$("googlePlaceDetailsBtn").onclick=loadGooglePlaceDetails;$("googleMapsDiagnosticBtn").onclick=diagnoseGoogleMaps;
+ $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
  $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);updateGoogleSearchBias();};
  $("masterLocalZone").onchange=()=>{const z=masterLocalsState.zones.find(z=>z.id===$("masterLocalZone").value);
@@ -274,29 +274,20 @@ function drawLocalMap(){
  const a=nullableNumber("masterLocalLatitude"),b=nullableNumber("masterLocalLongitude");if(a!==null&&b!==null)map.marker([a,b],(lat,lng)=>setLocalPoint(lat,lng));
 }
 async function initLocalMap(){
- if(masterLocalsState.map){masterLocalsState.map.resize();drawLocalMap();updateGoogleSearchBias();return;}
+ if(masterLocalsState.map){masterLocalsState.map.resize();drawLocalMap();return;}
  if(masterLocalsState.loadingMap)return;
  masterLocalsState.loadingMap=true;
  try{
-   masterLocalsState.map=await ZoneMaps.create("masterLocalMap",(lat,lng)=>setLocalPoint(lat,lng,true,true));drawLocalMap();
-   const l=masterLocalSelected();if(l?.latitude!=null)masterLocalsState.map.center([Number(l.latitude),Number(l.longitude)]);
-   if(!masterLocalsState.map.google){$("googlePlaceStatus").textContent="Buscador Google pendiente de clave autorizada. Ya puedes seleccionar el punto en este mapa sin escribir coordenadas.";return;}
-   const {PlaceAutocompleteElement}=await google.maps.importLibrary("places");
-   const search=new PlaceAutocompleteElement({includedRegionCodes:["ec"],requestedLanguage:"es",requestedRegion:"EC"});
-   search.placeholder="Buscar establecimiento, dirección o sector en Google";
-   masterLocalsState.googleSearch=search;updateGoogleSearchBias();$("googlePlaceSearch").replaceChildren(search);
-   search.addEventListener("gmp-select",async e=>{try{
-     $("googlePlaceStatus").textContent="Comprobando establecimiento…";
-     const place=e.placePrediction.toPlace();
-     await place.fetchFields({fields:["id","displayName","formattedAddress","location","viewport"]});
-     if(!place.location)throw new Error("El establecimiento no tiene ubicación.");
-     const duplicate=masterLocalsState.items.find(l=>l.google_place_id===place.id&&l.id!==$("masterLocalId").value);
-     if(duplicate)throw new Error("Este local ya existe: "+duplicate.name+". Ábrelo desde el listado.");
-     masterLocalsState.googlePlace=place;
-     $("googlePlaceDetailsBtn").disabled=false;
-     $("googlePlaceStatus").textContent=(place.displayName||"Establecimiento")+" — "+(place.formattedAddress||"ubicación encontrada")+". Pulsa IMPORTAR DATOS DE GOOGLE para completar la ficha.";
-   }catch(err){masterLocalsState.googlePlace=null;$("googlePlaceDetailsBtn").disabled=true;message(err.message,"error");$("googlePlaceStatus").textContent=err.message;}}); 
- }catch(e){$("googlePlaceStatus").textContent=e.message;}finally{masterLocalsState.loadingMap=false;}
+   masterLocalsState.map=await ZoneMaps.create("masterLocalMap",(lat,lng)=>setLocalPoint(lat,lng,true,false));
+   drawLocalMap();
+   const l=masterLocalSelected();
+   if(l?.latitude!=null)masterLocalsState.map.center([Number(l.latitude),Number(l.longitude)]);
+   if($("googlePlaceStatus"))$("googlePlaceStatus").textContent="OpenStreetMap activo. HTPWEB detecta la zona por latitud y longitud sin consultar Google.";
+ }catch(e){
+   if($("googlePlaceStatus"))$("googlePlaceStatus").textContent=e.message||"No se pudo cargar OpenStreetMap.";
+ }finally{
+   masterLocalsState.loadingMap=false;
+ }
 }
 function googlePointTime(point){
  const hour=Number(point?.hour),minute=Number(point?.minute);
@@ -421,7 +412,7 @@ async function saveMasterLocal(){
      p_name:$("masterLocalName").value.trim(),p_slug:$("masterLocalSlug").value.trim(),
      p_description:$("masterLocalDescription").value.trim(),p_address:$("masterLocalAddress").value.trim(),p_phone:$("masterLocalPhone").value.trim(),p_whatsapp:$("masterLocalWhatsapp").value.trim(),
      p_latitude:lat,p_longitude:lng,p_google_place_id:$("masterLocalPlaceId").value||null,
-     p_google_maps_url:lat===null?null:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(lat+","+lng),p_location_source:masterLocalsState.source,p_active:$("masterLocalActive").checked
+     p_google_maps_url:lat===null?null:"https://www.openstreetmap.org/?mlat="+encodeURIComponent(lat)+"&mlon="+encodeURIComponent(lng)+"#map=18/"+encodeURIComponent(lat)+"/"+encodeURIComponent(lng),p_location_source:masterLocalsState.source,p_active:$("masterLocalActive").checked
    });
    if(masterLocalsState.googleScheduleDraft&&masterLocalsState.googleScheduleDraftLocalId===null)masterLocalsState.googleScheduleDraftLocalId=id;
    masterLocalsState.dirty=false;$("masterLocalId").value=id;await loadScopes();await loadMasterLocals();

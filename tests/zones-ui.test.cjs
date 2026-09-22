@@ -18,15 +18,14 @@ test('one local editor embeds schedules catalog and local-only media',()=>{
  assert.doesNotMatch(js,/p_delivery_ids/);
  assert.match(js,/p_zone_id/);assert.match(js,/data-edit-local/);
 });
-test('Google has disabled state, duplicate guard, address autofill and reverse geocoding',()=>{
+test('OpenStreetMap is primary and zone is derived from coordinates',()=>{
  const js=fs.readFileSync('admin/locales-master.js','utf8');
- assert.match(js,/pendiente de clave autorizada/);assert.match(js,/google_place_id===place.id/);
- assert.match(js,/addressComponents/);assert.match(js,/formattedAddress/);
- assert.match(js,/includedRegionCodes:\["ec"\]/);assert.match(js,/locationBias/);
- assert.match(js,/importLibrary\("geocoding"\)/);assert.match(js,/reverseGeocodeLocalPoint/);
- assert.match(js,/administrative_area_level_1/);assert.match(js,/administrative_area_level_2/);
- assert.match(js,/nationalPhoneNumber/);assert.match(js,/regularOpeningHours/);
- assert.match(js,/IMPORTAR DATOS DE GOOGLE/);assert.match(js,/Horario importado desde Google — pendiente de guardar/);
+ const mapJs=fs.readFileSync('admin/zone-maps.js','utf8');
+ const sql=fs.readFileSync('supabase/migrations/20260922005000_local_import_without_google.sql','utf8');
+ assert.match(js,/OpenStreetMap activo/);assert.match(js,/detectLocalZone/);
+ assert.match(js,/ZoneMaps\.contains/);assert.doesNotMatch(js,/id="googleMapsDiagnosticBtn"/);
+ assert.match(mapJs,/provider:"OPENSTREETMAP"/);assert.doesNotMatch(mapJs,/maps\.googleapis\.com/);
+ assert.match(sql,/master_detect_local_zone/);assert.match(sql,/htp_zone_contains/);
 });
 test('menu image import cannot recreate manual DELIVERY-local assignments',()=>{
  const sql=fs.readFileSync('supabase/migrations/20260920013000_zone_safe_menu_import.sql','utf8');
