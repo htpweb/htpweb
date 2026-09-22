@@ -2576,11 +2576,24 @@ function renderCatalogProducts() {
     return;
   }
 
+  const masterBulk = state.role === "MASTER";
   container.innerHTML = `
+    ${masterBulk ? `
+      <div class="row between" style="gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <label class="row" style="margin:0">
+          <input id="catalogSelectAllProducts" type="checkbox" style="width:auto">
+          Seleccionar todos
+        </label>
+        <div class="row">
+          <button id="catalogActivateSelectedBtn" class="btn-primary" type="button" disabled>Activar seleccionados</button>
+          <button id="catalogDeactivateSelectedBtn" class="btn-warn" type="button" disabled>Inactivar seleccionados</button>
+        </div>
+      </div>` : ""}
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            ${masterBulk ? "<th></th>" : ""}
             <th>Imagen</th>
             <th>Producto</th>
             <th>Categoría</th>
@@ -2593,11 +2606,13 @@ function renderCatalogProducts() {
         <tbody>
           ${state.products.map(product => `
             <tr>
+              ${masterBulk ? `<td><input class="catalog-product-bulk-check" type="checkbox" value="${esc(product.id)}" style="width:auto"></td>` : ""}
               <td>${product.image_url
                 ? `<img class="product-thumb" src="${esc(product.image_url)}" alt="">`
                 : '<span class="muted">Sin imagen</span>'}</td>
               <td>
                 <strong>${esc(product.name)}</strong>
+                ${product.sku ? `<div class="muted">SKU: ${esc(product.sku)}</div>` : ""}
                 ${product.description ? `<div class="muted">${esc(product.description)}</div>` : ""}
               </td>
               <td>${esc(catalogCategoryName(product.category_id))}</td>
@@ -2618,6 +2633,61 @@ function renderCatalogProducts() {
       </table>
     </div>
   `;
+
+  if (masterBulk) {
+    const checks = [...container.querySelectorAll(".catalog-product-bulk-check")];
+    const selectAll = $("catalogSelectAllProducts");
+    const activate = $("catalogActivateSelectedBtn");
+    const deactivate = $("catalogDeactivateSelectedBtn");
+    const refresh = () => {
+      const selected = checks.filter(check => check.checked);
+      activate.disabled = selected.length === 0;
+      deactivate.disabled = selected.length === 0;
+      selectAll.checked = checks.length > 0 && selected.length === checks.length;
+      selectAll.indeterminate = selected.length > 0 && selected.length < checks.length;
+    };
+    selectAll.onchange = () => {
+      checks.forEach(check => { check.checked = selectAll.checked; });
+      refresh();
+    };
+    checks.forEach(check => { check.onchange = refresh; });
+    activate.onclick = () => bulkSetCatalogProductsActive(true);
+    deactivate.onclick = () => bulkSetCatalogProductsActive(false);
+    refresh();
+  }
+}
+
+async function bulkSetCatalogProductsActive(active) {
+  if (state.role !== "MASTER") return;
+  const selected = [...document.querySelectorAll(".catalog-product-bulk-check:checked")]
+    .map(check => check.value)
+    .filter(Boolean);
+  if (!selected.length) return message("Selecciona al menos un producto.", "error");
+
+  const ids = selected.filter(id => {
+    const product = state.products.find(item => item.id === id);
+    return product && Boolean(product.active) !== Boolean(active);
+  });
+
+  if (!ids.length) {
+    return message(active
+      ? "Los productos seleccionados ya están activos."
+      : "Los productos seleccionados ya están inactivos.");
+  }
+
+  const action = active ? "activar" : "inactivar";
+  if (!confirm(`¿Deseas ${action} ${ids.length} productos seleccionados?`)) return;
+
+  try {
+    const result = await rpc("master_set_products_active", {
+      p_product_ids: ids,
+      p_active: active
+    });
+    await loadCatalog();
+    message(`${result?.updated || ids.length} productos ${active ? "activados" : "inactivados"} correctamente.`);
+  } catch (e) {
+    message(e.message || `No se pudieron ${action} los productos.`, "error");
+  }
 }
 
 async function loadCatalog() {
@@ -2644,7 +2714,7 @@ async function loadCatalog() {
 
     supabaseClient
       .from("products")
-      .select("id,category_id,name,description,price,image_url,display_order,active")
+      .select("id,category_id,name,sku,description,price,image_url,display_order,active")
       .eq("local_id", localId)
       .order("display_order")
       .order("name")
