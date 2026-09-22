@@ -126,9 +126,67 @@ function renderMasterLocalList(){
  (!$("localFilterProvince").value||l.province===$("localFilterProvince").value)&&(!$("localFilterCity").value||l.city_id===$("localFilterCity").value)&&
  (!$("localFilterZone").value||l.zone_id===$("localFilterZone").value)&&(!($("localFilterName").value)||l.name.toLowerCase().includes($("localFilterName").value.toLowerCase()))&&
  (!$("localFilterStatus").value||($("localFilterStatus").value==="unzoned"?!l.zone_id:String(l.active)===$("localFilterStatus").value)));
- $("masterLocalsSummary").innerHTML='<p>'+items.length+' locales</p><div class="table-wrap"><table><thead><tr><th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
- items.map(l=>'<tr><td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td><td>'+esc(l.business_category_name||"Sin categoría")+'</td><td>'+esc(l.name)+'</td><td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>';
- $("masterLocalsSummary").querySelectorAll("[data-edit-local]").forEach(b=>b.onclick=()=>{if(discardLocalChanges()){fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===b.dataset.editLocal));showLocalEditor(true);}});
+ $("masterLocalsSummary").innerHTML=
+ '<div class="row between" style="gap:12px;flex-wrap:wrap;margin:12px 0">'+
+   '<p style="margin:0">'+items.length+' locales</p>'+
+   '<div class="row" style="gap:8px;flex-wrap:wrap">'+
+     '<button id="activateSelectedLocalsBtn" class="btn-primary" type="button" disabled>Activar seleccionados</button>'+
+     '<button id="deactivateSelectedLocalsBtn" class="btn-warn" type="button" disabled>Inactivar seleccionados</button>'+
+   '</div>'+
+ '</div>'+
+ '<div class="table-wrap"><table><thead><tr>'+
+ '<th><input id="selectAllVisibleLocals" type="checkbox" aria-label="Seleccionar todos los locales visibles"></th>'+
+ '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
+ items.map(l=>'<tr>'+
+   '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'"></td>'+
+   '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
+   '<td>'+esc(l.business_category_name||"Sin categoría")+'</td><td>'+esc(l.name)+'</td>'+
+   '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+
+ '</tbody></table></div>';
+
+ const summary=$("masterLocalsSummary");
+ const selectAll=summary.querySelector("#selectAllVisibleLocals");
+ const checks=[...summary.querySelectorAll(".local-bulk-check")];
+ const activateBtn=summary.querySelector("#activateSelectedLocalsBtn");
+ const deactivateBtn=summary.querySelector("#deactivateSelectedLocalsBtn");
+ const refreshBulkButtons=()=>{
+   const selected=checks.filter(x=>x.checked);
+   activateBtn.disabled=selected.length===0;
+   deactivateBtn.disabled=selected.length===0;
+   if(selectAll){
+     selectAll.checked=checks.length>0&&selected.length===checks.length;
+     selectAll.indeterminate=selected.length>0&&selected.length<checks.length;
+   }
+ };
+ if(selectAll)selectAll.onchange=()=>{checks.forEach(x=>x.checked=selectAll.checked);refreshBulkButtons();};
+ checks.forEach(x=>x.onchange=refreshBulkButtons);
+ activateBtn.onclick=()=>bulkSetSelectedLocalsActive(true);
+ deactivateBtn.onclick=()=>bulkSetSelectedLocalsActive(false);
+ summary.querySelectorAll("[data-edit-local]").forEach(b=>b.onclick=()=>{if(discardLocalChanges()){fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===b.dataset.editLocal));showLocalEditor(true);}});
+ refreshBulkButtons();
+}
+async function bulkSetSelectedLocalsActive(active){
+ if(masterLocalsState.busy)return;
+ const checked=[...$("masterLocalsSummary").querySelectorAll(".local-bulk-check:checked")].map(x=>x.value);
+ const ids=checked.filter(id=>{
+   const local=masterLocalsState.items.find(l=>l.id===id);
+   return local&&Boolean(local.active)!==Boolean(active);
+ });
+ if(!checked.length)return message("Selecciona al menos un LOCAL.","error");
+ if(!ids.length)return message(active?"Los LOCAL seleccionados ya están activos.":"Los LOCAL seleccionados ya están inactivos.");
+ const action=active?"activar":"inactivar";
+ if(!confirm("¿Deseas "+action+" "+ids.length+" LOCAL seleccionados?"))return;
+ masterLocalsState.busy=true;
+ try{
+   const result=await rpc("master_set_locals_active",{p_local_ids:ids,p_active:active});
+   await loadScopes();
+   await loadMasterLocals();
+   message((result?.updated||ids.length)+" LOCAL "+(active?"activados":"inactivados")+" correctamente.");
+ }catch(e){
+   message(e.message||("No se pudieron "+action+" los LOCAL seleccionados."),"error");
+ }finally{
+   masterLocalsState.busy=false;
+ }
 }
 async function loadMasterLocals(){
  if(state.role!=="MASTER")return;bindMasterLocals();
