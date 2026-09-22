@@ -201,7 +201,40 @@
     const sheet = workbook.Sheets.PRODUCTOS || workbook.Sheets[workbook.SheetNames[0]];
     if (!sheet) throw new Error("El Excel no contiene una hoja de productos.");
 
+    // Algunos generadores XLSX válidos omiten el metadato <dimension>,
+    // por lo que SheetJS no crea !ref aunque las celdas sí existan.
+    // Reconstruimos el rango a partir de las claves A1, B2, etc.
+    if (!sheet["!ref"]) {
+      const cells = Object.keys(sheet).filter(key => /^[A-Z]+[1-9][0-9]*$/i.test(key));
+      if (!cells.length) {
+        throw new Error("La hoja PRODUCTOS existe, pero no contiene celdas legibles.");
+      }
+
+      let minRow = Infinity;
+      let minCol = Infinity;
+      let maxRow = -1;
+      let maxCol = -1;
+
+      cells.forEach(key => {
+        const cell = XLSX.utils.decode_cell(key);
+        minRow = Math.min(minRow, cell.r);
+        minCol = Math.min(minCol, cell.c);
+        maxRow = Math.max(maxRow, cell.r);
+        maxCol = Math.max(maxCol, cell.c);
+      });
+
+      sheet["!ref"] = XLSX.utils.encode_range({
+        s: { r: minRow, c: minCol },
+        e: { r: maxRow, c: maxCol }
+      });
+    }
+
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    if (!rows.length) {
+      throw new Error(
+        "La hoja PRODUCTOS se abrió correctamente, pero no se detectaron filas de datos."
+      );
+    }
     return { rows, file: entry.name };
   }
 
