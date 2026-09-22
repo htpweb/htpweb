@@ -554,10 +554,48 @@
   }
 
   function bind113() {
-    byId("validateCompletePackageBtn")?.addEventListener("click", validatePackage113);
-    byId("clearCompletePackageBtn")?.addEventListener("click", () => clearPackage113(true));
-    byId("importCompletePackageBtn")?.addEventListener("click", importPackage113);
-    byId("downloadPackageSpecBtn")?.addEventListener("click", downloadSpec113);
+    // El workspace de Locales se construye dinámicamente. Por eso usamos
+    // delegación de eventos: los botones pueden no existir cuando este script carga.
+    document.addEventListener("click", event => {
+      const button = event.target?.closest?.("button");
+      if (!button) return;
+
+      if (button.id === "validateCompletePackageBtn") {
+        event.preventDefault();
+        validatePackage113();
+        return;
+      }
+
+      if (button.id === "clearCompletePackageBtn") {
+        event.preventDefault();
+        clearPackage113(true);
+        return;
+      }
+
+      if (button.id === "importCompletePackageBtn") {
+        event.preventDefault();
+        importPackage113();
+        return;
+      }
+
+      if (button.id === "downloadPackageSpecBtn") {
+        event.preventDefault();
+        downloadSpec113();
+      }
+    });
+
+    document.addEventListener("change", event => {
+      if (event.target?.id !== "completePackageFile") return;
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (byId("completePackageStatus")) {
+        byId("completePackageStatus").textContent =
+          file.name + " seleccionado · pulsa Validar paquete.";
+      }
+      if (byId("clearCompletePackageBtn")) {
+        byId("clearCompletePackageBtn").disabled = false;
+      }
+    });
   }
 
   bind113();
