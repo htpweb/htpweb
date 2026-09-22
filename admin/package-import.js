@@ -461,12 +461,12 @@
     if (state113.busy) return;
     const file = byId("completePackageFile")?.files?.[0];
     if (!file) return message("Selecciona un archivo ZIP.", "error");
-    if (typeof JSZip === "undefined") return message("No se cargó el lector ZIP.", "error");
+    if (typeof HTPWEBZip === "undefined") return message("No se cargó el lector ZIP local de HTPWEB.", "error");
 
     state113.busy = true;
     byId("validateCompletePackageBtn").disabled = true;
     try {
-      const zip = await JSZip.loadAsync(file);
+      const zip = await HTPWEBZip.loadAsync(file);
       const manifestEntry = findZipEntry113(zip, "HTPWEB_PACKAGE.json");
       if (!manifestEntry) throw new Error("El ZIP no contiene HTPWEB_PACKAGE.json.");
 
