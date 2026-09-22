@@ -2718,7 +2718,7 @@ async function loadCatalog() {
 
     supabaseClient
       .from("products")
-      .select("id,category_id,name,sku,description,price,image_url,display_order,active")
+      .select("id,local_id,category_id,name,sku,description,price,image_url,display_order,active")
       .eq("local_id", localId)
       .order("display_order")
       .order("name")
