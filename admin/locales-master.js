@@ -23,7 +23,7 @@ function bindMasterLocals(){
  <div class="form-grid" style="margin-top:14px"><div><label>Archivo de productos</label><input id="bulkProductFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div><label>Modo de publicación</label><label class="row" style="margin:0"><input id="bulkProductPublish" type="checkbox" style="width:auto"> Publicar inmediatamente según ACTIVO</label></div></div>
  <div class="row" style="margin-top:14px"><button id="validateBulkProductBtn" type="button" class="btn-primary">Validar productos</button></div>
  <p id="bulkProductStatus" class="muted">Todavía no has cargado una plantilla de productos.</p><div id="bulkProductPreview"></div>
- <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkProductErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones de productos</button><button id="importBulkProductBtn" type="button" class="btn-primary" disabled>Importar productos válidos</button></div></div>
+ <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkProductErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones de productos</button><button id="clearBulkProductBtn" type="button" class="btn-muted" disabled>Cancelar / limpiar carga</button><button id="importBulkProductBtn" type="button" class="btn-primary" disabled>Importar productos válidos</button></div></div>
  </div>
  <div id="masterLocalMenuImport" class="hidden"></div>
  <div id="masterLocalEditor" class="card hidden"><h3 id="masterLocalHeading">Crear local</h3>
