@@ -34,7 +34,7 @@ function bindMasterLocals(){
      <button id="downloadPackageSpecBtn" type="button" class="btn-muted">Descargar ejemplo de manifiesto</button>
    </div>
    <div class="workspace-note" style="margin-top:14px">
-     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y una imagen por cada SKU. Si el LOCAL no existe, el manifiesto puede declararlo en <code>locals</code>; HTPWEB lo creará como borrador antes del catálogo.
+     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y una imagen por cada SKU. Si el paquete incluye la ficha en <code>locals</code>, HTPWEB la valida y la aplica tanto para LOCAL nuevos como existentes. Con coordenadas válidas detecta la zona automáticamente; al aprobar se crea/actualiza, activa y luego carga el catálogo.
    </div>
    <div class="form-grid" style="margin-top:14px">
      <div>
@@ -43,7 +43,7 @@ function bindMasterLocals(){
      </div>
      <div>
        <label>Modo de publicación de productos</label>
-       <label class="row" style="margin:0"><input id="completePackagePublish" type="checkbox" style="width:auto"> Publicar productos según ACTIVO</label>
+       <label class="row" style="margin:0"><input id="completePackagePublish" type="checkbox" style="width:auto" checked> Publicar productos según ACTIVO</label>
      </div>
    </div>
    <div class="row" style="margin-top:14px">
@@ -53,7 +53,7 @@ function bindMasterLocals(){
    <p id="completePackageStatus" class="muted">Todavía no has cargado un paquete.</p>
    <div id="completePackagePreview"></div>
    <div class="bulk-local-actions" style="margin-top:14px">
-     <button id="importCompletePackageBtn" type="button" class="btn-primary" disabled>Importar paquete completo</button>
+     <button id="importCompletePackageBtn" type="button" class="btn-primary" disabled>Aprobar ficha e importar todo</button>
    </div>
  </div>
  </div>
