@@ -160,14 +160,27 @@
 
     for (const row of rows) {
       try {
-        const product = row.product;
+        const product = {
+          ...row.product,
+          local_id: row.product?.local_id || selectedLocalId108()
+        };
+        if (!product.local_id) throw new Error("No se pudo identificar el LOCAL del producto.");
+
         const previousPath = pathDesdePublicUrlHTPWEB(product.image_url);
-        const uploaded = await subirImagenHTPWEB(mediaPathProduct(product.id), row.file);
-        await saveProductImageUrl(product, uploaded.url);
-        if (previousPath && previousPath !== uploaded.path) {
-          await eliminarObjetoMediaHTPWEB(previousPath).catch(() => {});
+        let uploaded = null;
+        try {
+          uploaded = await subirImagenHTPWEB(mediaPathProduct(product.id), row.file);
+          await saveProductImageUrl(product, uploaded.url);
+          if (previousPath && previousPath !== uploaded.path) {
+            await eliminarObjetoMediaHTPWEB(previousPath).catch(() => {});
+          }
+          ok++;
+        } catch (innerError) {
+          if (uploaded && previousPath !== uploaded.path) {
+            await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
+          }
+          throw innerError;
         }
-        ok++;
       } catch (e) {
         errors.push(row.sku + ": " + (e.message || e));
       }
