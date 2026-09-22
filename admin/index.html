@@ -750,8 +750,8 @@
         <input id="promotionImageUrl" type="hidden">
 
         <div class="form-grid" style="margin-top:12px">
-          <div><label>Título</label><input id="promotionTitle" maxlength="180" placeholder="Ej. Lunes de Hot Dogs"></div>
-          <div><label>Producto vinculado (opcional)</label><select id="promotionProduct"></select></div>
+          <div><label>Título</label><input id="promotionTitle" maxlength="180" placeholder="Ej. Combo Supremo"></div>
+          <div><label>Precio total promocional (opcional)</label><input id="promotionPrice" type="number" min="0" step="0.01" placeholder="Ej. 10.00"></div>
           <div><label>Inicio</label><input id="promotionStartsAt" type="datetime-local"></div>
           <div><label>Fin</label><input id="promotionEndsAt" type="datetime-local"></div>
           <div><label>Orden</label><input id="promotionOrder" type="number" min="0" step="1" value="0"></div>
@@ -765,7 +765,19 @@
         </div>
 
         <label>Descripción / condiciones</label>
-        <textarea id="promotionBody" rows="3" maxlength="1200" placeholder="Ej. Lleva la segunda a mitad de precio. Solo los lunes."></textarea>
+        <textarea id="promotionBody" rows="3" maxlength="1200" placeholder="Ej. Incluye 6 alitas + 1 hamburguesa sencilla + 1 hot dog sencillo."></textarea>
+
+        <div class="card" style="margin:14px 0 0">
+          <div class="row between">
+            <div>
+              <strong>Productos de la promoción</strong>
+              <p class="muted" style="margin:.35rem 0 0">Selecciona productos existentes, su variante, cantidad y un precio promocional opcional para cada línea.</p>
+            </div>
+            <button id="addPromotionItemBtn" type="button" class="btn-muted">+ Agregar producto</button>
+          </div>
+          <div id="promotionItemsEditor" style="margin-top:12px"></div>
+          <small class="muted">Puedes repetir un producto y elegir variantes diferentes. Si defines “Precio total promocional”, ese valor representa el precio del combo/oferta completa.</small>
+        </div>
 
         <div style="margin-top:12px">
           <label>Días de vigencia</label>
