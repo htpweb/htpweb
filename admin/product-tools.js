@@ -245,8 +245,9 @@
       return;
     }
 
+    const optionsMode=promotionType108()==="OPTIONS";
     container.innerHTML='<div class="table-wrap"><table><thead><tr>'+
-      '<th>Producto</th><th>Variante</th><th>Cantidad</th><th>Precio normal</th><th>Precio promocional línea</th><th></th>'+
+      '<th>Producto</th><th>Variante</th><th>Cantidad</th><th>Precio normal base</th><th>'+(optionsMode?'Precio final de la opción':'Precio promocional línea (opcional)')+'</th><th></th>'+
       '</tr></thead><tbody>'+
       items.map((item,index)=>{
         const product=state.products.find(row=>row.id===item.product_id)||null;
@@ -265,7 +266,7 @@
           '<td><select data-promo-variant="'+index+'">'+variantOptions+'</select></td>'+
           '<td><input data-promo-qty="'+index+'" type="number" min="1" max="999" step="1" value="'+esc(item.quantity||1)+'"></td>'+
           '<td>$'+regular.toFixed(2)+'</td>'+
-          '<td><input data-promo-price="'+index+'" type="number" min="0" step="0.01" value="'+esc(item.promo_price??"")+'" placeholder="Opcional"></td>'+
+          '<td><input data-promo-price="'+index+'" type="number" min="0" step="0.01" value="'+esc(item.promo_price??"")+'" placeholder="'+(optionsMode?'Obligatorio':'Opcional')+'"></td>'+
           '<td><button class="btn-danger" type="button" data-promo-remove="'+index+'">Quitar</button></td>'+
         '</tr>';
       }).join("")+'</tbody></table></div>';
@@ -308,12 +309,32 @@
     return [...document.querySelectorAll(".promotion-day:checked")].map(input => Number(input.value));
   }
 
+  function promotionType108(){
+    return $("promotionType")?.value === "COMBO" ? "COMBO" : "OPTIONS";
+  }
+
+  function updatePromotionTypeUI108(){
+    const type=promotionType108();
+    const priceField=$("promotionPriceField");
+    const price=$("promotionPrice");
+    const help=$("promotionItemsHelp");
+    if(priceField)priceField.classList.toggle("hidden",type!=="COMBO");
+    if(type!=="COMBO"&&price)price.value="";
+    if(help){
+      help.textContent=type==="OPTIONS"
+        ?"Cada fila es una opción independiente: cantidad + precio final de esa opción."
+        :"Cada fila es un componente del combo. El precio total del paquete se define arriba.";
+    }
+    renderPromotionItemsEditor108();
+  }
+
   function clearPromotion108() {
     if (!$("promotionId")) return;
     $("promotionId").value = "";
     $("promotionImageUrl").value = "";
     $("promotionTitle").value = "";
     $("promotionBody").value = "";
+    $("promotionType").value = "OPTIONS";
     $("promotionPrice").value = "";
     $("promotionStartsAt").value = "";
     $("promotionEndsAt").value = "";
@@ -323,7 +344,7 @@
     state.promotionDraftItems=[];
     document.querySelectorAll(".promotion-day").forEach(input => { input.checked = false; });
     setPreview("promotionImagePreview", "");
-    renderPromotionItemsEditor108();
+    updatePromotionTypeUI108();
   }
 
   function promotionItemsSummary108(items){
@@ -353,15 +374,17 @@
         : "Todos los días";
       const start = promotion.starts_at ? new Date(promotion.starts_at).toLocaleString() : "Sin inicio";
       const end = promotion.ends_at ? new Date(promotion.ends_at).toLocaleString() : "Sin fin";
-      const total=promotion.promotion_price!==null&&promotion.promotion_price!==undefined
-        ? '<div><strong>Precio total promocional: $'+Number(promotion.promotion_price).toFixed(2)+'</strong></div>'
+      const typeLabel = promotion.promotion_type === "OPTIONS" ? "Opciones alternativas" : "Combo / paquete";
+      const total = promotion.promotion_price !== null && promotion.promotion_price !== undefined
+        ? '<div><strong>Precio total promocional: $' + Number(promotion.promotion_price).toFixed(2) + '</strong></div>'
         : "";
+
       return '<div class="card" style="margin:0 0 10px">' +
         '<div class="row between"><div><strong>' + esc(promotion.title) + '</strong>' +
-        '<div class="muted">' + esc(days) + ' · ' + esc(start) + ' → ' + esc(end) + '</div></div>' +
+        '<div class="muted">' + esc(typeLabel) + ' · ' + esc(days) + ' · ' + esc(start) + ' → ' + esc(end) + '</div></div>' +
         '<span class="badge">' + (promotion.active ? "ACTIVA" : "INACTIVA") + '</span></div>' +
-        total+
-        '<div class="muted" style="margin-top:6px">'+esc(promotionItemsSummary108(promotion.items))+'</div>'+
+        total +
+        '<div class="muted" style="margin-top:6px">' + esc(promotionItemsSummary108(promotion.items)) + '</div>' +
         (promotion.body ? '<p>' + esc(promotion.body) + '</p>' : '') +
         (promotion.image_url ? '<img src="' + esc(promotion.image_url) + '" alt="" style="max-width:260px;max-height:150px;object-fit:cover;border-radius:10px">' : '') +
         '<div class="row" style="margin-top:10px"><button class="btn-muted" data-edit-promotion="' + esc(promotion.id) + '">Editar</button>' +
@@ -386,7 +409,7 @@
 
     const { data, error } = await supabaseClient
       .from("local_promotions")
-      .select("id,local_id,title,body,image_url,starts_at,ends_at,days_of_week,display_order,active,promotion_price,created_at,updated_at")
+      .select("id,local_id,title,body,image_url,starts_at,ends_at,days_of_week,display_order,active,promotion_type,promotion_price,created_at,updated_at")
       .eq("local_id", localId)
       .order("display_order")
       .order("created_at", { ascending: false });
@@ -419,6 +442,7 @@
     $("promotionImageUrl").value = promotion.image_url || "";
     $("promotionTitle").value = promotion.title || "";
     $("promotionBody").value = promotion.body || "";
+    $("promotionType").value = promotion.promotion_type || "COMBO";
     $("promotionPrice").value = promotion.promotion_price ?? "";
     $("promotionStartsAt").value = toDatetimeLocal(promotion.starts_at);
     $("promotionEndsAt").value = toDatetimeLocal(promotion.ends_at);
@@ -435,7 +459,7 @@
     });
     $("promotionImageFile").value = "";
     setPreview("promotionImagePreview", promotion.image_url || "");
-    renderPromotionItemsEditor108();
+    updatePromotionTypeUI108();
     $("promotionTitle").focus();
   }
 
@@ -459,6 +483,9 @@
           throw new Error("Precio promocional inválido en la línea "+(index+1)+".");
         }
       }
+      if(promotionType108()==="OPTIONS"&&promoPrice===null){
+        throw new Error("Cada opción debe tener un precio promocional. Revisa la línea "+(index+1)+".");
+      }
       return {
         product_id:item.product_id,
         variant_id:item.variant_id||null,
@@ -480,8 +507,9 @@
       return message("La fecha final debe ser posterior al inicio.", "error");
     }
 
+    const promotionType=promotionType108();
     let promotionPrice=null;
-    if($("promotionPrice").value.trim()!==""){
+    if(promotionType==="COMBO"&&$("promotionPrice").value.trim()!==""){
       promotionPrice=Number($("promotionPrice").value);
       if(!Number.isFinite(promotionPrice)||promotionPrice<0){
         return message("El precio total promocional no es válido.","error");
@@ -505,6 +533,7 @@
       p_days_of_week: promotionDays108(),
       p_display_order: Math.max(0, Number.parseInt($("promotionOrder").value, 10) || 0),
       p_active: $("promotionActive").value === "true",
+      p_promotion_type: promotionType,
       p_promotion_price: promotionPrice,
       p_items: items
     };
@@ -512,13 +541,13 @@
     $("savePromotionBtn").disabled = true;
     let uploaded = null;
     try {
-      const id = await rpc("save_local_promotion_v2", args);
+      const id = await rpc("save_local_promotion_v3", args);
       const file = $("promotionImageFile").files?.[0];
       if (file) {
         uploaded = await subirImagenHTPWEB(mediaPathPromotion(id), file);
         args.p_promotion_id = id;
         args.p_image_url = uploaded.url;
-        await rpc("save_local_promotion_v2", args);
+        await rpc("save_local_promotion_v3", args);
         const oldPath = pathDesdePublicUrlHTPWEB(oldImageUrl);
         if (oldPath && oldPath !== uploaded.path) {
           await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
@@ -560,6 +589,7 @@
   $("uploadProductPhotoBatchBtn")?.addEventListener("click", uploadProductPhotoBatch108);
   $("clearProductPhotoBatchBtn")?.addEventListener("click", clearProductPhotoBatch108);
   $("addPromotionItemBtn")?.addEventListener("click", () => addPromotionItem108());
+  $("promotionType")?.addEventListener("change", updatePromotionTypeUI108);
   $("savePromotionBtn")?.addEventListener("click", savePromotion108);
   $("clearPromotionBtn")?.addEventListener("click", clearPromotion108);
 })();

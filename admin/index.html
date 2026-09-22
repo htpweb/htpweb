@@ -750,8 +750,15 @@
         <input id="promotionImageUrl" type="hidden">
 
         <div class="form-grid" style="margin-top:12px">
-          <div><label>Título</label><input id="promotionTitle" maxlength="180" placeholder="Ej. Combo Supremo"></div>
-          <div><label>Precio total promocional (opcional)</label><input id="promotionPrice" type="number" min="0" step="0.01" placeholder="Ej. 10.00"></div>
+          <div><label>Título</label><input id="promotionTitle" maxlength="180" placeholder="Ej. Más alitas al mismo precio"></div>
+          <div>
+            <label>Tipo de promoción</label>
+            <select id="promotionType">
+              <option value="OPTIONS">Opciones alternativas</option>
+              <option value="COMBO">Combo / paquete</option>
+            </select>
+          </div>
+          <div id="promotionPriceField"><label>Precio total promocional (solo combo)</label><input id="promotionPrice" type="number" min="0" step="0.01" placeholder="Ej. 10.00"></div>
           <div><label>Inicio</label><input id="promotionStartsAt" type="datetime-local"></div>
           <div><label>Fin</label><input id="promotionEndsAt" type="datetime-local"></div>
           <div><label>Orden</label><input id="promotionOrder" type="number" min="0" step="1" value="0"></div>
@@ -771,12 +778,12 @@
           <div class="row between">
             <div>
               <strong>Productos de la promoción</strong>
-              <p class="muted" style="margin:.35rem 0 0">Selecciona productos existentes, su variante, cantidad y un precio promocional opcional para cada línea.</p>
+              <p id="promotionItemsHelp" class="muted" style="margin:.35rem 0 0">Cada fila representa una opción que el cliente puede elegir.</p>
             </div>
             <button id="addPromotionItemBtn" type="button" class="btn-muted">+ Agregar producto</button>
           </div>
           <div id="promotionItemsEditor" style="margin-top:12px"></div>
-          <small class="muted">Puedes repetir un producto y elegir variantes diferentes. Si defines “Precio total promocional”, ese valor representa el precio del combo/oferta completa.</small>
+          <small id="promotionItemsFootnote" class="muted">En “Opciones alternativas”, cada fila lleva su propia cantidad y precio final. En “Combo”, las filas son componentes del paquete y puedes definir un precio total arriba.</small>
         </div>
 
         <div style="margin-top:12px">
