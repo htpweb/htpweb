@@ -29,12 +29,12 @@ function bindMasterLocals(){
    <div class="row between">
      <div>
        <h3>Importar paquete completo HTPWEB</h3>
-       <p class="muted">Carga un solo ZIP con Excel de productos, fotos por SKU y promociones. HTPWEB valida todo antes de escribir.</p>
+       <p class="muted">Carga un solo ZIP para LOCAL existentes o nuevos, con datos del establecimiento, Excel de productos, fotos por SKU y promociones. HTPWEB valida todo antes de escribir.</p>
      </div>
      <button id="downloadPackageSpecBtn" type="button" class="btn-muted">Descargar ejemplo de manifiesto</button>
    </div>
    <div class="workspace-note" style="margin-top:14px">
-     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y una imagen por cada SKU. En paquete completo no se permitirá importar productos sin foto.
+     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y una imagen por cada SKU. Si el LOCAL no existe, el manifiesto puede declararlo en <code>locals</code>; HTPWEB lo creará como borrador antes del catálogo.
    </div>
    <div class="form-grid" style="margin-top:14px">
      <div>
