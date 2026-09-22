@@ -84,6 +84,13 @@ begin
     raise exception 'HTPWEB: LOCAL inexistente';
   end if;
 
+  if p_promotion_id is not null and exists(
+    select 1 from public.local_promotions p
+    where p.id=p_promotion_id and p.local_id<>p_local_id
+  ) then
+    raise exception 'HTPWEB: la promoción no pertenece al LOCAL seleccionado';
+  end if;
+
   if nullif(trim(coalesce(p_title,'')),'') is null then
     raise exception 'HTPWEB: título de promoción requerido';
   end if;
@@ -275,8 +282,13 @@ begin
     end if;
 
     if to_regclass('public.advertisements') is not null then
-      execute 'update public.advertisements set product_id=null where product_id=$1'
-      using v_id;
+      begin
+        execute 'delete from public.advertisements where product_id=$1'
+        using v_id;
+      exception when foreign_key_violation then
+        execute 'update public.advertisements set active=false where product_id=$1'
+        using v_id;
+      end;
     end if;
 
     begin
