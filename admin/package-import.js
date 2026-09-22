@@ -11,7 +11,12 @@
     localProfiles: [],
     errors: [],
     fileName: "",
-    busy: false
+    busy: false,
+    resume: false,
+    lastStage: "",
+    profileEditors: new Set(),
+    profileMaps: new Map(),
+    completedPromotionKeys: new Set()
   };
 
   const byId = id => document.getElementById(id);
@@ -56,6 +61,11 @@
     state113.errors = [];
     state113.fileName = "";
     state113.busy = false;
+    state113.resume = false;
+    state113.lastStage = "";
+    state113.profileEditors = new Set();
+    state113.profileMaps = new Map();
+    state113.completedPromotionKeys = new Set();
 
     if (byId("completePackageFile")) byId("completePackageFile").value = "";
     if (byId("completePackagePublish")) byId("completePackagePublish").checked = true;
@@ -296,7 +306,8 @@
       zone_code: zone.code || "",
       zone_name: zone.name || "",
       needs_location: false,
-      active_after_approval: true
+      active_after_approval: true,
+      was_active: existing?.active === true
     };
   }
 
@@ -444,6 +455,135 @@
     return { rows, file: entry.name };
   }
 
+  function packageCategoryOptions113(selectedId) {
+    return (masterLocalsState.businessCategories || [])
+      .filter(row => row.active || row.id === selectedId)
+      .map(row =>
+        '<option value="' + esc113(row.id) + '"' +
+        (row.id === selectedId ? ' selected' : '') + '>' +
+        esc113(row.name) + '</option>'
+      ).join("");
+  }
+
+  function packageProfileEditorHtml113(local, index) {
+    if (!state113.profileEditors.has(index)) return "";
+    return '<div class="workspace-note" style="margin-top:10px">' +
+      '<strong>Corregir ficha antes de aprobar</strong>' +
+      '<div class="form-grid" style="margin-top:10px">' +
+        '<div><label>Dirección / referencia</label><input id="packageLocalAddress113_' + index + '" value="' + esc113(local.address) + '"></div>' +
+        '<div><label>Categoría</label><select id="packageLocalCategory113_' + index + '">' + packageCategoryOptions113(local.business_category_id) + '</select></div>' +
+        '<div><label>Teléfono</label><input id="packageLocalPhone113_' + index + '" value="' + esc113(local.phone || "") + '"></div>' +
+        '<div><label>WhatsApp</label><input id="packageLocalWhatsapp113_' + index + '" value="' + esc113(local.whatsapp || "") + '"></div>' +
+      '</div>' +
+      '<div style="margin-top:12px"><strong>Ubicación</strong></div>' +
+      '<div class="muted">No se editan latitud/longitud manualmente. Haz clic en el mapa o arrastra el marcador al punto correcto.</div>' +
+      '<div id="packageLocalCoords113_' + index + '" class="muted" style="margin:6px 0">Lat ' + esc113(local.latitude) + ' · Long ' + esc113(local.longitude) +
+        ' · Zona <span id="packageLocalZone113_' + index + '">' + esc113(local.zone_code || local.zone_name || "") + '</span></div>' +
+      '<div id="packageLocalMap113_' + index + '" style="height:320px;border-radius:12px;overflow:hidden;border:1px solid #dbe3ee"></div>' +
+      '<div class="row" style="margin-top:10px">' +
+        '<button type="button" class="btn-primary" data-package-save-profile="' + index + '">Guardar corrección</button>' +
+        '<button type="button" class="btn-muted" data-package-cancel-profile="' + index + '">Cerrar</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function drawPackageProfileMap113(index) {
+    const local = state113.localProfiles[index];
+    const map = state113.profileMaps.get(index);
+    if (!local || !map) return;
+
+    map.clear();
+    (masterLocalsState.zones || [])
+      .filter(zone => zone.active && Array.isArray(zone.boundary) && zone.boundary.length >= 3)
+      .forEach(zone => map.polygon(zone.boundary, zone.color));
+
+    if (Number.isFinite(Number(local.latitude)) && Number.isFinite(Number(local.longitude))) {
+      map.marker([Number(local.latitude), Number(local.longitude)], (lat, lng) => {
+        void setPackageLocalPoint113(index, lat, lng);
+      });
+    }
+  }
+
+  async function mountPackageProfileMaps113() {
+    if (typeof ZoneMaps === "undefined") return;
+    for (const index of state113.profileEditors) {
+      const local = state113.localProfiles[index];
+      const host = byId("packageLocalMap113_" + index);
+      if (!local || !host || host.dataset.ready === "1") continue;
+      host.dataset.ready = "1";
+      try {
+        const map = await ZoneMaps.create("packageLocalMap113_" + index, (lat, lng) => {
+          void setPackageLocalPoint113(index, lat, lng);
+        });
+        state113.profileMaps.set(index, map);
+        drawPackageProfileMap113(index);
+        if (Number.isFinite(Number(local.latitude)) && Number.isFinite(Number(local.longitude))) {
+          map.center([Number(local.latitude), Number(local.longitude)], 17);
+        }
+      } catch (e) {
+        host.innerHTML = '<div class="message error">No se pudo abrir el mapa: ' + esc113(e.message || e) + '</div>';
+      }
+    }
+  }
+
+  async function setPackageLocalPoint113(index, lat, lng) {
+    const local = state113.localProfiles[index];
+    if (!local || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return message("Ubicación inválida.", "error");
+
+    try {
+      const zone = await rpc("master_detect_local_zone", {
+        p_latitude: lat,
+        p_longitude: lng
+      });
+      if (!zone?.id) {
+        return message("Ese punto no pertenece a una zona activa de HTPWEB. Selecciona otro punto.", "error");
+      }
+
+      local.latitude = Number(lat.toFixed(7));
+      local.longitude = Number(lng.toFixed(7));
+      local.zone_id = zone.id;
+      local.zone_code = zone.code || "";
+      local.zone_name = zone.name || "";
+      local.location_url = "https://www.google.com/maps?q=" + local.latitude + "," + local.longitude;
+
+      const coords = byId("packageLocalCoords113_" + index);
+      const zoneNode = byId("packageLocalZone113_" + index);
+      if (coords) {
+        coords.firstChild.textContent = "Lat " + local.latitude + " · Long " + local.longitude + " · Zona ";
+      }
+      if (zoneNode) zoneNode.textContent = local.zone_code || local.zone_name || "";
+      drawPackageProfileMap113(index);
+      state113.profileMaps.get(index)?.center([local.latitude, local.longitude], 17);
+      message("Ubicación corregida en el mapa. La zona se actualizó automáticamente.");
+    } catch (e) {
+      message(e.message || "No se pudo validar la nueva ubicación.", "error");
+    }
+  }
+
+  function savePackageProfileEdits113(index) {
+    const local = state113.localProfiles[index];
+    if (!local) return;
+
+    const address = byId("packageLocalAddress113_" + index)?.value.trim() || "";
+    const categoryId = byId("packageLocalCategory113_" + index)?.value || "";
+    const category = (masterLocalsState.businessCategories || []).find(row => row.id === categoryId && row.active);
+
+    if (!address) return message("La dirección / referencia no puede quedar vacía.", "error");
+    if (!category) return message("Selecciona una categoría activa existente en MASTER.", "error");
+
+    local.address = address;
+    local.phone = byId("packageLocalPhone113_" + index)?.value.trim() || "";
+    local.whatsapp = byId("packageLocalWhatsapp113_" + index)?.value.trim() || "";
+    local.business_category_id = category.id;
+    local.business_category_name = category.name;
+
+    state113.profileEditors.delete(index);
+    state113.profileMaps.delete(index);
+    renderPackage113();
+    message("Corrección guardada en la ficha pendiente. Aún no se ha importado nada.");
+  }
+
   function renderPackage113() {
     const valid = state113.productRows.length;
     const bad = state113.productErrors.length;
@@ -482,18 +622,22 @@
 
     const profileHtml = state113.localProfiles.length
       ? '<div class="card" style="margin-top:12px"><strong>Ficha del LOCAL a aprobar</strong>' +
-        state113.localProfiles.map(local =>
+        state113.localProfiles.map((local, index) =>
           '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">' +
-            '<div><strong>' + esc113(local.name) + '</strong> · ' + (local.is_new ? 'NUEVO' : 'ACTUALIZAR') + '</div>' +
+            '<div class="row between" style="gap:10px;flex-wrap:wrap">' +
+              '<div><strong>' + esc113(local.name) + '</strong> · ' + (local.is_new ? 'NUEVO' : 'ACTUALIZAR') + '</div>' +
+              '<button type="button" class="btn-muted" data-package-edit-profile="' + index + '">Editar ficha / ubicación</button>' +
+            '</div>' +
             '<div class="muted">' + esc113(local.province) + ' · ' + esc113(local.canton) +
               ' · ' + esc113(local.business_category_name) + '</div>' +
             '<div>' + esc113(local.address) + '</div>' +
             '<div class="muted">Lat ' + esc113(local.latitude) + ' · Long ' + esc113(local.longitude) +
               ' · Zona ' + esc113(local.zone_code || local.zone_name || '') + '</div>' +
             (local.phone ? '<div class="muted">Tel. ' + esc113(local.phone) + '</div>' : '') +
+            packageProfileEditorHtml113(local, index) +
           '</div>'
         ).join('') +
-        '<div class="workspace-note" style="margin-top:12px">Al pulsar <strong>Aprobar ficha e importar todo</strong>, HTPWEB aplicará estos datos, activará el LOCAL y después cargará productos, fotos y promociones.</div>' +
+        '<div class="workspace-note" style="margin-top:12px">HTPWEB guardará primero el LOCAL como borrador, cargará catálogo, fotos y promociones y <strong>solo lo activará al terminar correctamente</strong>. Si algo falla, podrás reanudar sin crear otro LOCAL.</div>' +
       '</div>'
       : '';
 
@@ -505,7 +649,14 @@
         '<span>Promociones: <strong>' + promoOk + '</strong></span>' +
       '</div>' +
       profileHtml +
-      (errorsHtml ? '<div class="message error" style="margin-top:12px"><strong>Revisar antes de importar:</strong><ul>' + errorsHtml + '</ul></div>' : '<div class="message success" style="margin-top:12px">Paquete completo validado. Revisa la ficha y aprueba una sola vez para cargar todo.</div>');
+      (errorsHtml ? '<div class="message error" style="margin-top:12px"><strong>Revisar antes de importar:</strong><ul>' + errorsHtml + '</ul></div>' :
+        (state113.resume
+          ? '<div class="message" style="margin-top:12px"><strong>Importación pendiente de completar.</strong> Puedes reanudar: HTPWEB reutilizará el LOCAL y los productos ya guardados.</div>'
+          : '<div class="message success" style="margin-top:12px">Paquete completo validado. Revisa la ficha y aprueba una sola vez para cargar todo.</div>'));
+
+    const importButton = byId("importCompletePackageBtn");
+    if (importButton) importButton.textContent = state113.resume ? "Reanudar importación" : "Aprobar ficha e importar todo";
+    setTimeout(() => { void mountPackageProfileMaps113(); }, 0);
   }
 
   async function validatePackage113() {
@@ -653,24 +804,61 @@
     return new File([blob], base, { type: extMime113(base) });
   }
 
-  async function fetchImportedProducts113(rows) {
-    const localIds = [...new Set(rows.map(row => row.local_id).filter(Boolean))];
-    const skus = [...new Set(rows.map(row => row.sku).filter(Boolean))];
-    if (!localIds.length || !skus.length) return [];
-
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select("id,local_id,category_id,name,sku,description,price,image_url,display_order,active")
-      .in("local_id", localIds)
-      .in("sku", skus);
-
-    if (error) throw error;
-    return data || [];
+  function delay113(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   function productFromSku113(products, localId, sku) {
     const key = bulkProductNormalizeKey(sku);
-    return products.find(row => row.local_id === localId && bulkProductNormalizeKey(row.sku) === key) || null;
+    const exact = products.find(row =>
+      row.local_id === localId && bulkProductNormalizeKey(row.sku) === key
+    );
+    if (exact) return exact;
+
+    // Rescate seguro: si el RPC acaba de crear/actualizar el producto pero el SKU
+    // todavía no aparece en la lectura, usamos el nombre del mismo renglón validado.
+    const source = state113.productRows.find(row =>
+      row.local_id === localId && bulkProductNormalizeKey(row.sku) === key
+    );
+    if (!source) return null;
+
+    const nameKey = bulkProductNormalizeKey(source.producto);
+    const matches = products.filter(row =>
+      row.local_id === localId && bulkProductNormalizeKey(row.name) === nameKey
+    );
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  async function fetchImportedProducts113(rows) {
+    const localIds = [...new Set(rows.map(row => row.local_id).filter(Boolean))];
+    if (!localIds.length) return [];
+
+    let products = [];
+    // Leemos todo el catálogo de esos LOCAL y reintentamos brevemente para cubrir
+    // propagación/lectura inmediatamente posterior al RPC de importación.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("id,local_id,category_id,name,sku,description,price,image_url,display_order,active")
+        .in("local_id", localIds);
+
+      if (error) throw error;
+      products = data || [];
+
+      const refs = [...new Map(
+        rows.filter(row => row.sku).map(row => [
+          row.local_id + "|" + bulkProductNormalizeKey(row.sku),
+          { local_id: row.local_id, sku: row.sku }
+        ])
+      ).values()];
+
+      if (refs.every(ref => productFromSku113(products, ref.local_id, ref.sku))) {
+        return products;
+      }
+      if (attempt < 3) await delay113(250 * (attempt + 1));
+    }
+
+    return products;
   }
 
   async function uploadPackageProductImages113(products) {
@@ -725,6 +913,8 @@
 
     for (const promo of state113.promotions) {
       const raw = promo.raw;
+      const promoKey = (promo.local?.id || "") + "|" + normalizeKey113(promo.title) + "|" + promo.type;
+      if (state113.completedPromotionKeys.has(promoKey)) continue;
       const local = promo.local;
       const type = promo.type;
 
@@ -782,6 +972,7 @@
           args.p_image_url = uploaded.url;
           await rpc("save_local_promotion_v3", args);
         }
+        state113.completedPromotionKeys.add(promoKey);
         created++;
       } catch (e) {
         if (uploaded) await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
@@ -817,7 +1008,7 @@
         p_phone: local.phone || "",
         p_whatsapp: local.whatsapp || "",
         p_location_url: local.location_url || null,
-        p_activate: true
+        p_activate: local.was_active === true
       });
 
       if (!result?.id) {
@@ -894,9 +1085,11 @@
     )) return;
 
     state113.busy = true;
+    state113.resume = false;
     renderPackage113();
 
     try {
+      state113.lastStage = "ficha del LOCAL";
       const localApplication = await applyPackageLocalProfiles113();
 
       const payload = state113.productRows.map(row => {
@@ -905,15 +1098,42 @@
         return copy;
       });
 
+      state113.lastStage = "catálogo de productos";
       const result = await rpc("bulk_import_catalog_multilocal_v3", {
         p_rows: payload,
         p_publish: publish
       });
 
+      state113.lastStage = "verificación del catálogo";
       const products = await fetchImportedProducts113(state113.productRows);
+
+      const unresolved = state113.productImages.filter(ref =>
+        !productFromSku113(products, ref.local_id, ref.sku)
+      );
+      if (unresolved.length) {
+        throw new Error(
+          "El catálogo se guardó, pero faltan por resolver " + unresolved.length +
+          " SKU para sus fotos: " + unresolved.slice(0, 5).map(row => row.sku).join(", ")
+        );
+      }
+
+      state113.lastStage = "fotos de productos";
       const photoCount = await uploadPackageProductImages113(products);
+
+      state113.lastStage = "promociones";
       const variants = await fetchPromotionVariants113(products);
       const promoCount = await importPromotions113(products, variants);
+
+      state113.lastStage = "activación final";
+      const localIds = [...new Set(state113.localProfiles.map(local => local.id).filter(Boolean))];
+      let activatedNow = 0;
+      if (localIds.length) {
+        const activation = await rpc("master_set_locals_active", {
+          p_local_ids: localIds,
+          p_active: true
+        });
+        activatedNow = Number(activation?.updated || localIds.length);
+      }
 
       message(
         "Paquete completo importado: " +
@@ -922,15 +1142,16 @@
         photoCount + " fotos y " + promoCount + " promociones." +
         (localApplication.created ? " LOCAL nuevos creados: " + localApplication.created + "." : "") +
         (localApplication.updated ? " Fichas de LOCAL actualizadas: " + localApplication.updated + "." : "") +
-        (localApplication.activated ? " LOCAL aprobados/activos: " + localApplication.activated + "." : "")
+        (activatedNow ? " LOCAL aprobados/activos: " + activatedNow + "." : "")
       );
 
       await loadMasterLocals();
       clearPackage113(false);
     } catch (e) {
+      state113.resume = true;
       message(
-        "La importación se detuvo: " + (e.message || e) +
-        ". Los pasos ya completados permanecen guardados; revisa el resumen antes de repetir.",
+        "La importación se detuvo en " + (state113.lastStage || "el proceso") + ": " + (e.message || e) +
+        ". El LOCAL no se duplicará. Corrige si hace falta y pulsa Reanudar importación.",
         "error"
       );
     } finally {
@@ -949,7 +1170,7 @@
           name: "LOCAL NUEVO DE EJEMPLO",
           province: "Esmeraldas",
           canton: "Esmeraldas",
-          category: "Restaurantes",
+          category: "Restaurante",
           address: "Dirección y referencia",
           description: "Descripción opcional",
           phone: "",
@@ -1013,6 +1234,29 @@
       if (button.id === "importCompletePackageBtn") {
         event.preventDefault();
         importPackage113();
+        return;
+      }
+
+      if (button.dataset.packageEditProfile !== undefined) {
+        event.preventDefault();
+        const index = Number(button.dataset.packageEditProfile);
+        state113.profileEditors.add(index);
+        renderPackage113();
+        return;
+      }
+
+      if (button.dataset.packageCancelProfile !== undefined) {
+        event.preventDefault();
+        const index = Number(button.dataset.packageCancelProfile);
+        state113.profileEditors.delete(index);
+        state113.profileMaps.delete(index);
+        renderPackage113();
+        return;
+      }
+
+      if (button.dataset.packageSaveProfile !== undefined) {
+        event.preventDefault();
+        savePackageProfileEdits113(Number(button.dataset.packageSaveProfile));
         return;
       }
 
