@@ -226,20 +226,43 @@
       const normalized = normalizeBulkProductRows(productData.rows);
       if (!normalized.valid.length) throw new Error("El paquete no contiene productos válidos.");
 
+      const packageErrors = [];
       const uniqueImages = new Map();
       normalized.valid.forEach(row => {
-        const imageFile = normalizePath113(row.imagen_archivo || "");
-        if (!imageFile || !row.sku) return;
-        const key = row.local_id + "|" + bulkProductNormalizeKey(row.sku);
-        if (!uniqueImages.has(key)) {
-          uniqueImages.set(key, {
+        if (uniqueImages.has(row.productKey)) return;
+
+        if (!String(row.sku || "").trim()) {
+          packageErrors.push(
+            "Producto sin SKU: " + row.producto +
+            " (" + row.local + "). En paquete completo cada producto necesita SKU para enlazar su foto."
+          );
+          uniqueImages.set(row.productKey, {
             local_id: row.local_id,
             local: row.local,
-            sku: row.sku,
-            image_file: imageFile,
-            entry: findZipEntry113(zip, imageFile)
+            sku: "",
+            product: row.producto,
+            image_file: "",
+            entry: null
           });
+          return;
         }
+
+        const imageFile = normalizePath113(row.imagen_archivo || "");
+        if (!imageFile) {
+          packageErrors.push(
+            "Producto sin IMAGEN_ARCHIVO: " + row.producto +
+            " · " + row.sku + ". Cada producto del paquete debe tener una foto."
+          );
+        }
+
+        uniqueImages.set(row.productKey, {
+          local_id: row.local_id,
+          local: row.local,
+          sku: row.sku,
+          product: row.producto,
+          image_file: imageFile,
+          entry: imageFile ? findZipEntry113(zip, imageFile) : null
+        });
       });
 
       const promotions = (Array.isArray(manifest.promotions) ? manifest.promotions : [])
@@ -257,7 +280,7 @@
       state113.productErrors = normalized.bad;
       state113.productImages = [...uniqueImages.values()];
       state113.promotions = promotions;
-      state113.errors = [];
+      state113.errors = packageErrors;
       state113.fileName = file.name;
 
       renderPackage113();
@@ -496,6 +519,7 @@
   function downloadSpec113() {
     const example = {
       version: 1,
+      image_policy: "REQUIRED_PER_SKU",
       products_file: "HTPWEB_Productos.xlsx",
       promotions: [
         {
