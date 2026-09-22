@@ -341,7 +341,69 @@ function overviewStatusLabel(status) {
   return labels[status] || status || "—";
 }
 
-function overviewGo(action) {
+async function overviewOpenProductIssue(issue) {
+  try {
+    let query = supabaseClient
+      .from("products")
+      .select("id,local_id,name,sku,active,image_url")
+      .order("name")
+      .limit(1);
+
+    if (issue === "inactive") {
+      query = query.eq("active", false);
+    } else if (issue === "without-image") {
+      query = query.or("image_url.is.null,image_url.eq.");
+    } else {
+      throw new Error("Tipo de revisión de producto no reconocido.");
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const product = data?.[0] || null;
+    if (!product) {
+      message("Ese pendiente ya no existe. Actualiza el resumen.");
+      await loadOverview();
+      return;
+    }
+
+    // El catálogo necesita primero el LOCAL correcto. No enviamos al usuario
+    // al listado de LOCAL: seleccionamos el establecimiento y abrimos el
+    // producto exacto que originó la alerta.
+    showSection("catalog");
+
+    const select = $("catalogLocal");
+    if (!select) throw new Error("No se encontró el selector de LOCAL del catálogo.");
+
+    if (![...select.options].some(option => option.value === product.local_id)) {
+      await loadScopes();
+    }
+
+    select.value = product.local_id;
+    await loadCatalog();
+
+    const loaded = state.products.find(row => row.id === product.id);
+    if (!loaded) {
+      throw new Error("El producto existe, pero no se pudo abrir dentro de su catálogo.");
+    }
+
+    editProduct(product.id);
+
+    setTimeout(() => {
+      $("productFormTitle")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      $("productName")?.focus();
+    }, 60);
+
+    message(
+      (issue === "inactive" ? "Producto inactivo" : "Producto sin foto") +
+      ': "' + (product.name || product.sku || product.id) + '".'
+    );
+  } catch (e) {
+    message(e.message || "No se pudo abrir el producto pendiente.", "error");
+  }
+}
+
+async function overviewGo(action) {
   if (action === "orders") {
     showSection("orders");
     return;
@@ -362,6 +424,14 @@ function overviewGo(action) {
     showSection("localsmaster");
     return;
   }
+  if (action === "products-inactive") {
+    await overviewOpenProductIssue("inactive");
+    return;
+  }
+  if (action === "products-without-image") {
+    await overviewOpenProductIssue("without-image");
+    return;
+  }
   if (action === "new-local") {
     showSection("localsmaster");
     setTimeout(() => $("masterLocalNewBtn")?.click(), 40);
@@ -378,9 +448,9 @@ function overviewGo(action) {
 
 function bindOverviewActions() {
   document.querySelectorAll("[data-overview-action]").forEach(button => {
-    button.onclick = () => overviewGo(button.dataset.overviewAction);
+    button.onclick = () => { void overviewGo(button.dataset.overviewAction); };
   });
-  if ($("overviewGoOrdersBtn")) $("overviewGoOrdersBtn").onclick = () => overviewGo("orders");
+  if ($("overviewGoOrdersBtn")) $("overviewGoOrdersBtn").onclick = () => { void overviewGo("orders"); };
 }
 
 function renderOverviewAttention(items) {
@@ -594,13 +664,13 @@ async function loadOverview() {
       label: "Productos sin foto",
       detail: "Productos que reducen la calidad visual del catálogo.",
       value: productsWithoutImage,
-      action: "locals"
+      action: "products-without-image"
     },
     {
       label: "Productos inactivos",
       detail: "Productos existentes que no están publicados.",
       value: inactiveProducts,
-      action: "locals"
+      action: "products-inactive"
     }
   ]);
 
