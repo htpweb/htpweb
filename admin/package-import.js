@@ -58,7 +58,7 @@
     state113.busy = false;
 
     if (byId("completePackageFile")) byId("completePackageFile").value = "";
-    if (byId("completePackagePublish")) byId("completePackagePublish").checked = false;
+    if (byId("completePackagePublish")) byId("completePackagePublish").checked = true;
     if (byId("completePackagePreview")) byId("completePackagePreview").innerHTML = "";
     if (byId("completePackageStatus")) byId("completePackageStatus").textContent = "Todavía no has cargado un paquete.";
     if (byId("importCompletePackageBtn")) byId("importCompletePackageBtn").disabled = true;
@@ -480,6 +480,23 @@
     const imageOk = state113.productImages.filter(row => row.entry).length;
     const promoOk = state113.promotions.filter(row => !row.errors.length).length;
 
+    const profileHtml = state113.localProfiles.length
+      ? '<div class="card" style="margin-top:12px"><strong>Ficha del LOCAL a aprobar</strong>' +
+        state113.localProfiles.map(local =>
+          '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">' +
+            '<div><strong>' + esc113(local.name) + '</strong> · ' + (local.is_new ? 'NUEVO' : 'ACTUALIZAR') + '</div>' +
+            '<div class="muted">' + esc113(local.province) + ' · ' + esc113(local.canton) +
+              ' · ' + esc113(local.business_category_name) + '</div>' +
+            '<div>' + esc113(local.address) + '</div>' +
+            '<div class="muted">Lat ' + esc113(local.latitude) + ' · Long ' + esc113(local.longitude) +
+              ' · Zona ' + esc113(local.zone_code || local.zone_name || '') + '</div>' +
+            (local.phone ? '<div class="muted">Tel. ' + esc113(local.phone) + '</div>' : '') +
+          '</div>'
+        ).join('') +
+        '<div class="workspace-note" style="margin-top:12px">Al pulsar <strong>Aprobar ficha e importar todo</strong>, HTPWEB aplicará estos datos, activará el LOCAL y después cargará productos, fotos y promociones.</div>' +
+      '</div>'
+      : '';
+
     byId("completePackagePreview").innerHTML =
       '<div class="bulk-local-summary">' +
         '<span>LOCAL: <strong>' + localCount + '</strong>' + (newLocalCount ? ' · ' + newLocalCount + ' nuevo' + (newLocalCount === 1 ? '' : 's') : '') + '</span>' +
@@ -487,10 +504,8 @@
         '<span>Fotos listas: <strong>' + imageOk + '</strong></span>' +
         '<span>Promociones: <strong>' + promoOk + '</strong></span>' +
       '</div>' +
-      (state113.newLocals.length ? '<div class="workspace-note" style="margin-top:12px"><strong>LOCAL nuevos:</strong> ' +
-        state113.newLocals.map(local => esc113(local.name) + (local.needs_location ? ' · ubicación/zona pendiente; se creará como borrador' : ' · zona ' + esc113(local.zone_code || local.zone_name || 'detectada'))).join(' | ') +
-        '</div>' : '') +
-      (errorsHtml ? '<div class="message error" style="margin-top:12px"><strong>Revisar antes de importar:</strong><ul>' + errorsHtml + '</ul></div>' : '<div class="message success" style="margin-top:12px">Paquete completo validado y listo para importar.</div>');
+      profileHtml +
+      (errorsHtml ? '<div class="message error" style="margin-top:12px"><strong>Revisar antes de importar:</strong><ul>' + errorsHtml + '</ul></div>' : '<div class="message success" style="margin-top:12px">Paquete completo validado. Revisa la ficha y aprueba una sola vez para cargar todo.</div>');
   }
 
   async function validatePackage113() {
@@ -596,6 +611,7 @@
 
       renderPackage113();
       if (
+        !state113.errors.length &&
         !state113.productErrors.length &&
         !state113.productImages.some(row => !row.entry) &&
         !state113.promotions.some(row => row.errors.length)
@@ -856,12 +872,11 @@
     const publish = byId("completePackagePublish")?.checked === true;
 
     if (!confirm(
-      "Se importarán " + productCount + " productos, " +
-      state113.productImages.length + " fotos y " +
-      state113.promotions.length + " promociones en " +
-      localCount + " LOCAL" +
-      (newLocalCount ? " (" + newLocalCount + " se crearán como nuevos)" : "") +
-      ". ¿Continuar?"
+      "Se aprobará/aplicará la ficha de " + localCount + " LOCAL y se importarán " +
+      productCount + " productos, " + state113.productImages.length + " fotos y " +
+      state113.promotions.length + " promociones" +
+      (newLocalCount ? ". " + newLocalCount + " LOCAL se crearán como nuevos" : "") +
+      ". ¿Aprobar e importar todo?"
     )) return;
 
     state113.busy = true;
