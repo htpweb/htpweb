@@ -100,7 +100,7 @@ function validateOptionalLocationUrl(value){
   return raw;
 }
 
-function normalizeBulkLocalLink(value){function normalizeBulkLocalLink(value){
+function normalizeBulkLocalLink(value){
   try{
     const url=new URL(String(value||"").trim());
     const pathname=url.pathname.replace(/\/+$/,"")||"/";
@@ -145,7 +145,7 @@ function downloadBulkLocalErrors(){
   XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Masiva_Locales.xlsx");
 }
 
-function isGoogleMapsLink(value){function isGoogleMapsLink(value){
+function isGoogleMapsLink(value){
   try{
     const url=new URL(String(value||"").trim());
     const host=url.hostname.toLowerCase();
@@ -546,7 +546,7 @@ async function importBulkLocals(){
 }
 
 
-function renderBulkGoogleReviews(items){function renderBulkGoogleReviews(items){
+function renderBulkGoogleReviews(items){
   const panel=document.getElementById("bulkGoogleReviewPanel");
   const approve=document.getElementById("approveGoogleReviewsBtn");
   if(!panel)return;
