@@ -143,3 +143,16 @@ body.has-htpweb-ad{padding-bottom:104px}
   font-weight:700;
   background:#f3f4f6;
 }
+
+
+/* HTPWEB Código 110 — detalle estructurado de promociones */
+.promotion-total{
+  margin:.55rem 0;
+  font-weight:800;
+  font-size:1.05rem;
+}
+.promotion-items{
+  display:grid;
+  gap:4px;
+  margin:.45rem 0;
+}
