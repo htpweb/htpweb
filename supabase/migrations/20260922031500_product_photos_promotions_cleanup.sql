@@ -201,6 +201,11 @@ as $$
   from public.local_promotions p
   where p.local_id=p_local_id
     and p.active=true
+    and exists(select 1 from public.locals l where l.id=p.local_id and l.active=true)
+    and (
+      p.product_id is null
+      or exists(select 1 from public.products pr where pr.id=p.product_id and pr.active=true)
+    )
     and (p.starts_at is null or p.starts_at<=now())
     and (p.ends_at is null or p.ends_at>=now())
     and (
@@ -274,12 +279,21 @@ begin
       using v_id;
     end if;
 
-    delete from public.product_variants where product_id=v_id;
-    delete from public.products where id=v_id;
+    begin
+      delete from public.product_variants where product_id=v_id;
+      delete from public.products where id=v_id;
 
-    v_deleted:=v_deleted||jsonb_build_array(
-      jsonb_build_object('id',v_id,'name',v_name)
-    );
+      v_deleted:=v_deleted||jsonb_build_array(
+        jsonb_build_object('id',v_id,'name',v_name)
+      );
+    exception
+      when foreign_key_violation then
+        update public.products set active=false,updated_at=now() where id=v_id;
+        update public.product_variants set active=false,updated_at=now() where product_id=v_id;
+        v_blocked:=v_blocked||jsonb_build_array(
+          jsonb_build_object('id',v_id,'name',v_name,'reason','HISTORY_REFERENCE')
+        );
+    end;
   end loop;
 
   return jsonb_build_object(
