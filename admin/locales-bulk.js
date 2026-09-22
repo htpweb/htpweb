@@ -16,6 +16,7 @@ function bindMasterLocalBulk(){
   $("downloadBulkProductTemplateBtn").onclick=downloadBulkProductTemplate;
   $("downloadBulkProductErrorsBtn").onclick=downloadBulkProductErrors;
   $("validateBulkProductBtn").onclick=validateBulkProductFile;
+  $("clearBulkProductBtn").onclick=clearBulkProductLoad;
   $("importBulkProductBtn").onclick=importBulkProducts;
 }
 
@@ -800,6 +801,7 @@ function renderBulkProductPreview(){
     : "Todavía no has cargado una plantilla de productos.";
   $("importBulkProductBtn").disabled=masterLocalsState.productBulkBusy||valid.length===0;
   $("downloadBulkProductErrorsBtn").disabled=masterLocalsState.productBulkBusy||bad.length===0;
+  $("clearBulkProductBtn").disabled=masterLocalsState.productBulkBusy||(!masterLocalsState.productBulkFileName&&!valid.length&&!bad.length);
 
   if(!all.length){
     $("bulkProductPreview").innerHTML="";
@@ -813,7 +815,7 @@ function renderBulkProductPreview(){
       '<span>Filas listas: <strong>'+valid.length+'</strong></span>'+
       '<span>Observaciones: <strong>'+bad.length+'</strong></span>'+
     '</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>LOCAL</th><th>SKU</th><th>Categoría</th><th>Producto</th><th>Precio</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
+    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>LOCAL</th><th>SKU</th><th>Categoría</th><th>Producto</th><th>Precio base / desde</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
     all.slice(0,300).map(function(row){
       return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.local||row.local_id||"")+'</td><td>'+esc(row.sku||"—")+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
     }).join("")+
@@ -921,10 +923,30 @@ function downloadBulkProductErrors(){
   XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Multilocal_Productos.xlsx");
 }
 
+function clearBulkProductLoad(){
+  if(masterLocalsState.productBulkBusy)return;
+  masterLocalsState.productBulkRows=[];
+  masterLocalsState.productBulkErrors=[];
+  masterLocalsState.productBulkFileName="";
+  if($("bulkProductFile"))$("bulkProductFile").value="";
+  if($("bulkProductPublish"))$("bulkProductPublish").checked=false;
+  renderBulkProductPreview();
+  message("Carga de productos descartada. No se modificó ningún producto en HTPWEB.");
+}
+
 async function importBulkProducts(){
   if(masterLocalsState.productBulkBusy)return;
   const rows=masterLocalsState.productBulkRows||[];
   if(!rows.length)return message("Primero valida un archivo de productos.","error");
+
+  const localCount=new Set(rows.map(row=>row.local_id).filter(Boolean)).size;
+  const productCount=new Set(rows.map(row=>row.productKey).filter(Boolean)).size;
+  const publish=$("bulkProductPublish")?.checked===true;
+  const confirmation=
+    "Se importarán "+productCount+" productos desde "+rows.length+" filas en "+localCount+" LOCAL."+
+    (publish?" Se publicarán según la columna ACTIVO.":" Quedarán como borrador/inactivos para revisión.")+
+    " ¿Confirmar importación?";
+  if(!confirm(confirmation))return;
 
   masterLocalsState.productBulkBusy=true;
   $("importBulkProductBtn").disabled=true;
@@ -934,7 +956,6 @@ async function importBulkProducts(){
       for(const key of ["rowNumber","valid","error","localObj","productKey"])delete copy[key];
       return copy;
     });
-    const publish=$("bulkProductPublish")?.checked===true;
     const result=await rpc("bulk_import_catalog_multilocal_v3",{
       p_rows:payload,p_publish:publish
     });
