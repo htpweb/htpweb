@@ -62,10 +62,55 @@
     <div id="message" class="message hidden"></div>
 
     <section id="section-overview" class="section active">
-      <div id="metrics" class="grid"></div>
-      <div class="card">
-        <h2>Ámbito actual</h2>
-        <div id="scopeInfo" class="muted">Cargando...</div>
+      <div class="overview-heading card">
+        <div>
+          <h2 style="margin:0">Estado de HTPWEB</h2>
+          <p id="scopeInfo" class="muted" style="margin:.35rem 0 0">Cargando ámbito...</p>
+        </div>
+        <div id="overviewUpdatedAt" class="muted"></div>
+      </div>
+
+      <div id="metrics" class="overview-kpis"></div>
+
+      <div class="overview-layout">
+        <div class="card">
+          <div class="row between">
+            <div>
+              <h3 style="margin:0">Requiere atención</h3>
+              <p class="muted" style="margin:.35rem 0 0">Pendientes que pueden afectar la operación o la calidad del catálogo.</p>
+            </div>
+          </div>
+          <div id="overviewAttention" class="overview-attention"></div>
+        </div>
+
+        <div class="card">
+          <div>
+            <h3 style="margin:0">Salud de la plataforma</h3>
+            <p class="muted" style="margin:.35rem 0 0">Qué tan completo y publicado está HTPWEB.</p>
+          </div>
+          <div id="overviewHealth" class="overview-health"></div>
+        </div>
+      </div>
+
+      <div class="overview-layout">
+        <div class="card">
+          <div class="row between">
+            <div>
+              <h3 style="margin:0">Actividad reciente</h3>
+              <p class="muted" style="margin:.35rem 0 0">Últimos pedidos visibles.</p>
+            </div>
+            <button id="overviewGoOrdersBtn" class="btn-muted" type="button">Ver pedidos</button>
+          </div>
+          <div id="overviewActivity" class="overview-activity"></div>
+        </div>
+
+        <div class="card">
+          <div>
+            <h3 style="margin:0">Acciones rápidas</h3>
+            <p class="muted" style="margin:.35rem 0 0">Tareas frecuentes del MASTER.</p>
+          </div>
+          <div id="overviewQuickActions" class="overview-quick-actions"></div>
+        </div>
       </div>
     </section>
 

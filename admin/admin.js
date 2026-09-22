@@ -266,10 +266,22 @@ function renderScopeSelectors() {
     }
   }
 
-  $("scopeInfo").innerHTML = [
-    state.deliveries.length ? `<div><strong>Deliveries:</strong> ${state.deliveries.map(d => esc(d.name)).join(", ")}</div>` : "",
-    state.locals.length ? `<div><strong>Locales:</strong> ${state.locals.map(l => esc(l.name)).join(", ")}</div>` : ""
-  ].filter(Boolean).join("") || "Ámbito global MASTER.";
+  if ($("scopeInfo")) {
+    const deliveryCount = state.deliveries.length;
+    const localCount = state.locals.length;
+    if (state.role === "MASTER") {
+      $("scopeInfo").textContent =
+        "Vista global MASTER · " + deliveryCount + " DELIVERY · " + localCount + " LOCAL";
+    } else if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) {
+      $("scopeInfo").textContent =
+        "Ámbito DELIVERY · " + deliveryCount + " asignado" + (deliveryCount === 1 ? "" : "s");
+    } else if (state.role === "LOCAL_ADMIN") {
+      $("scopeInfo").textContent =
+        "Ámbito LOCAL · " + localCount + " asignado" + (localCount === 1 ? "" : "s");
+    } else {
+      $("scopeInfo").textContent = "Ámbito de operación actual";
+    }
+  }
 }
 
 async function refreshAll() {
@@ -281,26 +293,352 @@ async function refreshAll() {
   ]);
 }
 
-async function countVisible(table) {
-  const { count, error } = await supabaseClient
-    .from(table)
-    .select("*", { count: "exact", head: true });
+async function overviewCount(table, configure = null) {
+  try {
+    let query = supabaseClient
+      .from(table)
+      .select("*", { count: "exact", head: true });
+    if (configure) query = configure(query);
+    const { count, error } = await query;
+    if (error) return null;
+    return count ?? 0;
+  } catch {
+    return null;
+  }
+}
 
-  if (error) return null;
-  return count ?? 0;
+async function overviewRows(table, columns, configure = null) {
+  try {
+    let query = supabaseClient.from(table).select(columns);
+    if (configure) query = configure(query);
+    const { data, error } = await query;
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+function overviewPct(value, total) {
+  if (!Number.isFinite(Number(value)) || !Number(total)) return 0;
+  return Math.max(0, Math.min(100, Math.round((Number(value) / Number(total)) * 100)));
+}
+
+function overviewMoney(value) {
+  return "$" + Number(value || 0).toFixed(2);
+}
+
+function overviewStatusLabel(status) {
+  const labels = {
+    PENDING: "Pendiente",
+    CONFIRMED: "Confirmado",
+    PREPARING: "Preparando",
+    READY: "Listo",
+    EN_ROUTE: "En ruta",
+    DELIVERED: "Entregado",
+    CANCELLED: "Cancelado"
+  };
+  return labels[status] || status || "—";
+}
+
+function overviewGo(action) {
+  if (action === "orders") {
+    showSection("orders");
+    return;
+  }
+  if (action === "requests") {
+    showSection("requests");
+    return;
+  }
+  if (action === "advertising") {
+    showSection("advertising");
+    return;
+  }
+  if (action === "zones") {
+    showSection("zonesmaster");
+    return;
+  }
+  if (action === "locals") {
+    showSection("localsmaster");
+    return;
+  }
+  if (action === "new-local") {
+    showSection("localsmaster");
+    setTimeout(() => $("masterLocalNewBtn")?.click(), 40);
+    return;
+  }
+  if (action === "package") {
+    showSection("localsmaster");
+    setTimeout(() => {
+      $("masterLocalBulkBtn")?.click();
+      setTimeout(() => $("completePackageFile")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    }, 40);
+  }
+}
+
+function bindOverviewActions() {
+  document.querySelectorAll("[data-overview-action]").forEach(button => {
+    button.onclick = () => overviewGo(button.dataset.overviewAction);
+  });
+  if ($("overviewGoOrdersBtn")) $("overviewGoOrdersBtn").onclick = () => overviewGo("orders");
+}
+
+function renderOverviewAttention(items) {
+  const container = $("overviewAttention");
+  if (!container) return;
+
+  const relevant = items.filter(item => item.value === null || Number(item.value) > 0);
+  if (!relevant.length) {
+    container.innerHTML = `
+      <div class="overview-all-good">
+        <strong>Sin pendientes críticos</strong>
+        <span>Los controles principales no muestran elementos que requieran atención.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = relevant.map(item => `
+    <div class="overview-attention-row">
+      <div>
+        <strong>${esc(item.label)}</strong>
+        <span class="muted">${esc(item.detail)}</span>
+      </div>
+      <div class="row">
+        <span class="overview-attention-value">${item.value === null ? "—" : esc(item.value)}</span>
+        ${item.action ? `<button class="btn-muted" type="button" data-overview-action="${esc(item.action)}">Revisar</button>` : ""}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderOverviewHealth(items) {
+  const container = $("overviewHealth");
+  if (!container) return;
+
+  container.innerHTML = items.map(item => {
+    const pct = overviewPct(item.value, item.total);
+    return `
+      <div class="overview-health-row">
+        <div class="row between">
+          <strong>${esc(item.label)}</strong>
+          <span>${item.value === null || item.total === null ? "—" : esc(item.value + " / " + item.total)} · ${pct}%</span>
+        </div>
+        <div class="overview-progress"><span style="width:${pct}%"></span></div>
+        <small class="muted">${esc(item.detail)}</small>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderOverviewRecentOrders(rows) {
+  const container = $("overviewActivity");
+  if (!container) return;
+
+  if (!rows.length) {
+    container.innerHTML = `
+      <div class="overview-empty">
+        <strong>Aún no hay pedidos recientes</strong>
+        <span>Cuando entren pedidos aparecerán aquí con estado, cliente y total.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = rows.map(order => `
+    <div class="overview-order-row">
+      <div>
+        <strong>${esc(order.customer_name || "Cliente")}</strong>
+        <span class="muted">${esc(new Date(order.created_at).toLocaleString())}</span>
+      </div>
+      <div class="overview-order-meta">
+        <span class="badge status-${esc(order.status)}">${esc(overviewStatusLabel(order.status))}</span>
+        <strong>${esc(overviewMoney(order.total))}</strong>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderOverviewQuickActions() {
+  const container = $("overviewQuickActions");
+  if (!container) return;
+
+  const masterActions = [
+    ["package","Importar paquete completo","Productos + fotos + promociones en un ZIP"],
+    ["new-local","Crear LOCAL","Alta manual de un establecimiento"],
+    ["orders","Revisar pedidos","Operación y estados de pedidos"],
+    ["advertising","Publicidad","Campañas y espacios publicitarios"],
+    ["zones","Zonas","Cobertura geográfica de HTPWEB"]
+  ];
+
+  const generalActions = state.role === "MASTER"
+    ? masterActions
+    : [
+        ["orders","Revisar pedidos","Operación visible para tu cuenta"],
+        ["locals","Gestionar catálogo","Productos y contenido de tus LOCAL"]
+      ];
+
+  container.innerHTML = generalActions.map(([action,label,detail]) => `
+    <button class="overview-action-card" type="button" data-overview-action="${esc(action)}">
+      <strong>${esc(label)}</strong>
+      <span>${esc(detail)}</span>
+    </button>
+  `).join("");
 }
 
 async function loadOverview() {
-  const tables = ["orders","locals","products","customers"];
-  const values = await Promise.all(tables.map(countVisible));
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayIso = today.toISOString();
 
-  const labels = ["Pedidos visibles","Locales visibles","Productos visibles","Clientes visibles"];
-  $("metrics").innerHTML = values.map((value, i) => `
-    <div class="card metric">
-      <span class="muted">${labels[i]}</span>
-      <strong>${value === null ? "—" : value}</strong>
-    </div>
-  `).join("");
+  const openStatuses = ["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"];
+
+  const [
+    ordersToday,
+    deliveredToday,
+    recentOrders,
+    openOrders,
+    localsTotal,
+    localsActive,
+    productsTotal,
+    productsActive,
+    productsWithImage,
+    deliveriesTotal,
+    deliveriesActive,
+    pendingRequests,
+    customersTotal,
+    activePromotions
+  ] = await Promise.all([
+    overviewCount("orders", q => q.gte("created_at", todayIso)),
+    overviewRows("orders", "id,total,status,created_at", q =>
+      q.gte("created_at", todayIso).eq("status", "DELIVERED").limit(1000)
+    ),
+    overviewRows("orders", "id,status,total,customer_name,created_at", q =>
+      q.order("created_at", { ascending: false }).limit(5)
+    ),
+    overviewCount("orders", q => q.in("status", openStatuses)),
+    overviewCount("locals"),
+    overviewCount("locals", q => q.eq("active", true)),
+    overviewCount("products"),
+    overviewCount("products", q => q.eq("active", true)),
+    overviewCount("products", q => q.not("image_url", "is", null).neq("image_url", "")),
+    overviewCount("deliveries"),
+    overviewCount("deliveries", q => q.eq("active", true)),
+    overviewCount("local_requests", q => q.in("status", ["PENDING","NEEDS_INFO"])),
+    overviewCount("customers"),
+    overviewCount("local_promotions", q => q.eq("active", true))
+  ]);
+
+  const deliveredValue = deliveredToday.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const inactiveLocals = localsTotal === null || localsActive === null ? null : Math.max(0, localsTotal - localsActive);
+  const inactiveProducts = productsTotal === null || productsActive === null ? null : Math.max(0, productsTotal - productsActive);
+  const productsWithoutImage = productsTotal === null || productsWithImage === null ? null : Math.max(0, productsTotal - productsWithImage);
+
+  const kpis = [
+    {
+      label: "Pedidos hoy",
+      value: ordersToday === null ? "—" : ordersToday,
+      detail: openOrders === null ? "Pedidos recibidos hoy" : openOrders + " abiertos ahora",
+      tone: openOrders > 0 ? "attention" : "neutral"
+    },
+    {
+      label: "Ventas entregadas hoy",
+      value: overviewMoney(deliveredValue),
+      detail: deliveredToday.length + " pedido" + (deliveredToday.length === 1 ? "" : "s") + " entregado" + (deliveredToday.length === 1 ? "" : "s"),
+      tone: "success"
+    },
+    {
+      label: "Locales publicados",
+      value: localsActive === null ? "—" : localsActive,
+      detail: localsTotal === null ? "Total no disponible" : "de " + localsTotal + " locales",
+      tone: inactiveLocals > 0 ? "attention" : "success"
+    },
+    {
+      label: "Productos publicados",
+      value: productsActive === null ? "—" : productsActive,
+      detail: productsTotal === null ? "Total no disponible" : "de " + productsTotal + " productos",
+      tone: productsWithoutImage > 0 ? "attention" : "success"
+    }
+  ];
+
+  if ($("metrics")) {
+    $("metrics").innerHTML = kpis.map(kpi => `
+      <div class="overview-kpi overview-kpi-${esc(kpi.tone)}">
+        <span>${esc(kpi.label)}</span>
+        <strong>${esc(kpi.value)}</strong>
+        <small>${esc(kpi.detail)}</small>
+      </div>
+    `).join("");
+  }
+
+  renderOverviewAttention([
+    {
+      label: "Pedidos abiertos",
+      detail: "Pedidos que todavía no están entregados ni cancelados.",
+      value: openOrders,
+      action: "orders"
+    },
+    {
+      label: "Solicitudes pendientes",
+      detail: "Solicitudes de LOCAL que esperan revisión o información.",
+      value: pendingRequests,
+      action: "requests"
+    },
+    {
+      label: "Locales inactivos",
+      detail: "Establecimientos cargados pero aún no publicados.",
+      value: inactiveLocals,
+      action: "locals"
+    },
+    {
+      label: "Productos sin foto",
+      detail: "Productos que reducen la calidad visual del catálogo.",
+      value: productsWithoutImage,
+      action: "locals"
+    },
+    {
+      label: "Productos inactivos",
+      detail: "Productos existentes que no están publicados.",
+      value: inactiveProducts,
+      action: "locals"
+    }
+  ]);
+
+  renderOverviewHealth([
+    {
+      label: "Productos con foto",
+      value: productsWithImage,
+      total: productsTotal,
+      detail: "Cobertura visual del catálogo."
+    },
+    {
+      label: "Locales activos",
+      value: localsActive,
+      total: localsTotal,
+      detail: "LOCAL actualmente visibles para clientes."
+    },
+    {
+      label: "DELIVERY activos",
+      value: deliveriesActive,
+      total: deliveriesTotal,
+      detail: "Operadores de entrega habilitados."
+    }
+  ]);
+
+  renderOverviewRecentOrders(recentOrders);
+  renderOverviewQuickActions();
+
+  if ($("overviewUpdatedAt")) {
+    const extras = [
+      customersTotal === null ? null : customersTotal + " clientes",
+      activePromotions === null ? null : activePromotions + " promociones activas"
+    ].filter(Boolean).join(" · ");
+    $("overviewUpdatedAt").textContent =
+      "Actualizado " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+      (extras ? " · " + extras : "");
+  }
+
+  bindOverviewActions();
 }
 
 async function loadDeliveryProfile() {
