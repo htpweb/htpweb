@@ -3,41 +3,40 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 
 const locals=fs.readFileSync("admin/locales-master.js","utf8");
-const admin=fs.readFileSync("admin/admin.js","utf8");
+const bulk=fs.readFileSync("admin/locales-bulk.js","utf8");
+const maps=fs.readFileSync("admin/zone-maps.js","utf8");
+const importSql=fs.readFileSync("supabase/migrations/20260922005000_local_import_without_google.sql","utf8");
 
-test("Google import is explicit and fills full local data",()=>{
-  assert.match(locals,/IMPORTAR DATOS DE GOOGLE/);
-  assert.match(locals,/fetchFields\(\{fields:\["id","displayName","formattedAddress","addressComponents","location","nationalPhoneNumber","regularOpeningHours"\]\}\)/);
-  assert.match(locals,/masterLocalName/);
-  assert.match(locals,/applyLocalGoogleAddress/);
-  assert.match(locals,/masterLocalPhone/);
-  assert.match(locals,/masterLocalPlaceId/);
-  assert.match(locals,/setLocalPoint/);
+test("LOCAL manual no depende de controles Google",()=>{
+  assert.match(locals,/Mapa OpenStreetMap/);
+  assert.match(locals,/Latitud \*/);
+  assert.match(locals,/Longitud \*/);
+  assert.match(locals,/Ubicar coordenadas y detectar zona/);
+  assert.doesNotMatch(locals,/id="googlePlaceDetailsBtn"/);
+  assert.doesNotMatch(locals,/id="googleMapsDiagnosticBtn"/);
 });
 
-test("Google schedule is staged and never auto-saved",()=>{
-  assert.match(locals,/googleScheduleDraft/);
-  assert.match(locals,/buildGoogleScheduleDraft/);
-  assert.match(locals,/applyGoogleScheduleDraftToEditor/);
-  assert.match(locals,/Horario importado desde Google — pendiente de guardar/);
-  assert.doesNotMatch(locals,/save_local_schedule_week/);
-  assert.match(admin,/clearGoogleScheduleDraftForLocal/);
-  assert.match(admin,/save_local_schedule_week/);
+test("mapa administrativo no carga scripts de Google",()=>{
+  assert.match(maps,/provider:"OPENSTREETMAP"/);
+  assert.match(maps,/async function googleAPI\(\)\{ return null; \}/);
+  assert.doesNotMatch(maps,/maps\.googleapis\.com/);
+  assert.match(maps,/tile\.openstreetmap\.org/);
 });
 
-test("unsupported Google hours require manual review",()=>{
-  assert.match(locals,/Google tiene .* franjas/);
-  assert.match(locals,/cruza medianoche/);
-  assert.match(locals,/Google indica atención 24 horas/);
-  assert.match(locals,/00:00/);
-  assert.match(locals,/23:59/);
+test("carga masiva usa datos completos del Excel",()=>{
+  assert.match(bulk,/DIRECCION_REFERENCIA/);
+  assert.match(bulk,/LATITUD/);
+  assert.match(bulk,/LONGITUD/);
+  assert.match(bulk,/CANTONES_DISPONIBLES/);
+  assert.match(bulk,/LINK_UBICACION es opcional/);
+  assert.match(bulk,/Plantilla validada sin consultar Google Maps/);
 });
 
-test("selecting a place does not auto-import before button click",()=>{
-  const selectStart=locals.indexOf('search.addEventListener("gmp-select"');
-  const importStart=locals.indexOf("async function loadGooglePlaceDetails");
-  assert.ok(selectStart>=0&&importStart>selectStart);
-  const selectedBlock=locals.slice(selectStart,importStart);
-  assert.doesNotMatch(selectedBlock,/masterLocalName"\)\.value=place\.displayName/);
-  assert.match(selectedBlock,/Pulsa IMPORTAR DATOS DE GOOGLE/);
+test("Supabase vuelve a calcular la zona antes de guardar",()=>{
+  assert.match(importSql,/master_detect_local_zone/);
+  assert.match(importSql,/htp_zone_contains/);
+  assert.match(importSql,/master_save_local_import_v1/);
+  assert.match(importSql,/location_source/);
+  assert.match(importSql,/'IMPORT'/);
+  assert.match(importSql,/false,/);
 });
