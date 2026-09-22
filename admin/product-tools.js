@@ -540,24 +540,48 @@
 
     $("savePromotionBtn").disabled = true;
     let uploaded = null;
+    let savedId = currentId;
+    const file = $("promotionImageFile").files?.[0] || null;
+
     try {
-      const id = await rpc("save_local_promotion_v3", args);
-      const file = $("promotionImageFile").files?.[0];
+      savedId = await rpc("save_local_promotion_v3", args);
+
       if (file) {
-        uploaded = await subirImagenHTPWEB(mediaPathPromotion(id), file);
-        args.p_promotion_id = id;
-        args.p_image_url = uploaded.url;
-        await rpc("save_local_promotion_v3", args);
-        const oldPath = pathDesdePublicUrlHTPWEB(oldImageUrl);
-        if (oldPath && oldPath !== uploaded.path) {
-          await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
+        try {
+          uploaded = await subirImagenHTPWEB(mediaPathPromotion(savedId), file);
+          args.p_promotion_id = savedId;
+          args.p_image_url = uploaded.url;
+          await rpc("save_local_promotion_v3", args);
+
+          const oldPath = pathDesdePublicUrlHTPWEB(oldImageUrl);
+          if (oldPath && oldPath !== uploaded.path) {
+            await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
+          }
+        } catch (imageError) {
+          if (uploaded) {
+            await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
+          }
+
+          if (!currentId && savedId) {
+            await rpc("delete_local_promotion", { p_promotion_id: savedId }).catch(() => {});
+            savedId = null;
+            throw new Error(
+              "No se pudo subir la imagen. La promoción nueva fue cancelada para no dejarla incompleta. " +
+              (imageError?.message || imageError)
+            );
+          }
+
+          throw new Error(
+            "La promoción existente conservó su imagen anterior, pero no se pudo subir la nueva. " +
+            (imageError?.message || imageError)
+          );
         }
       }
+
       message(currentId ? "Promoción actualizada." : "Promoción creada.");
       clearPromotion108();
       await loadPromotions108();
     } catch (e) {
-      if (uploaded) await eliminarObjetoMediaHTPWEB(uploaded.path).catch(() => {});
       message(e.message || "No se pudo guardar la promoción.", "error");
     } finally {
       $("savePromotionBtn").disabled = false;
