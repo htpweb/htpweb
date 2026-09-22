@@ -517,6 +517,20 @@
     state113.busy = true;
     byId("validateCompletePackageBtn").disabled = true;
     try {
+      // Supabase es la fuente de verdad. Refrescamos LOCAL y categorías justo
+      // antes de validar para evitar usar datos vacíos o desactualizados si el
+      // usuario abre "Importar paquete completo" antes de que termine de cargar
+      // el módulo MASTER → Locales.
+      const [freshLocals, freshBusinessCategories] = await Promise.all([
+        rpc("master_list_locals"),
+        rpc("master_list_local_business_categories")
+      ]);
+      masterLocalsState.items = freshLocals || [];
+      masterLocalsState.businessCategories = freshBusinessCategories || [];
+      if (typeof localBusinessCategoriesState !== "undefined") {
+        localBusinessCategoriesState.items = masterLocalsState.businessCategories;
+      }
+
       const zip = await HTPWEBZip.loadAsync(file);
       const manifestEntry = findZipEntry113(zip, "HTPWEB_PACKAGE.json");
       if (!manifestEntry) throw new Error("El ZIP no contiene HTPWEB_PACKAGE.json.");
