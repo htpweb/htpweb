@@ -612,48 +612,84 @@ function bulkProductBoolText(value){
   return ["si","sí","true","1"].includes(String(value||"si").toLowerCase())?"si":"no";
 }
 
-function renderBulkProductLocalOptions(){
-  const select=$("bulkProductLocal");
-  if(!select)return;
-  const current=select.value;
-  select.innerHTML=(masterLocalsState.items||[]).map(function(local){
-    return '<option value="'+esc(local.id)+'">'+esc(local.name)+(local.active?"":" · borrador")+'</option>';
-  }).join("")||'<option value="">Sin LOCAL disponible</option>';
-  if(current&&masterLocalsState.items.some(l=>l.id===current))select.value=current;
+// Compatibilidad con llamadas anteriores del workspace. La carga de productos
+// ya no necesita un selector de LOCAL: cada fila define su propio destino.
+function renderBulkProductLocalOptions(){}
+
+function resolveBulkProductLocal(out){
+  const items=masterLocalsState.items||[];
+  const localId=String(out.local_id||"").trim();
+  const localName=String(out.local||"").trim();
+  let local=null;
+
+  if(localId){
+    local=items.find(item=>item.id===localId)||null;
+    if(!local)throw new Error("LOCAL_ID no existe en HTPWEB.");
+    if(localName&&bulkProductNormalizeKey(local.name)!==bulkProductNormalizeKey(localName)){
+      throw new Error("LOCAL y LOCAL_ID no corresponden al mismo establecimiento.");
+    }
+  }else{
+    if(!localName)throw new Error("Completa LOCAL o LOCAL_ID.");
+    const matches=items.filter(item=>bulkProductNormalizeKey(item.name)===bulkProductNormalizeKey(localName));
+    if(matches.length===0)throw new Error("LOCAL no encontrado: "+localName+".");
+    if(matches.length>1)throw new Error("Hay más de un LOCAL con ese nombre. Usa LOCAL_ID.");
+    local=matches[0];
+  }
+
+  out.local_id=local.id;
+  out.local=local.name;
+  out.localObj=local;
+  return local;
 }
 
 function normalizeBulkProductRows(input){
   const aliases={
+    local:"local",local_id:"local_id",id_local:"local_id",
     categoria:"categoria",category:"categoria",
     producto:"producto",product:"producto",nombre:"producto",
+    sku:"sku",codigo:"sku",codigo_producto:"sku",
     descripcion:"descripcion",description:"descripcion",
     precio:"precio",price:"precio",
     imagen_url:"imagen_url",imagen:"imagen_url",image_url:"imagen_url",
     variante:"variante",variant:"variante",
     precio_variante:"precio_variante",variant_price:"precio_variante",
-    orden:"orden",order:"orden",activo:"activo",active:"activo"
+    orden:"orden_producto",orden_producto:"orden_producto",product_order:"orden_producto",
+    orden_variante:"orden_variante",variant_order:"orden_variante",
+    activo:"activo",active:"activo"
   };
-  const valid=[],bad=[],seen=new Map();
+  const valid=[],bad=[],seenVariants=new Map(),productBases=new Map();
 
   (input||[]).forEach(function(raw,index){
     const rowNumber=index+2;
-    const out={categoria:"",producto:"",descripcion:"",precio:"",imagen_url:"",variante:"",precio_variante:"",orden:"0",activo:"si",rowNumber,valid:false,error:""};
+    const out={
+      local:"",local_id:"",categoria:"",producto:"",sku:"",descripcion:"",precio:"",
+      imagen_url:"",variante:"",precio_variante:"",orden_producto:"0",orden_variante:"0",
+      activo:"si",rowNumber,valid:false,error:""
+    };
     try{
       Object.entries(raw||{}).forEach(function(entry){
-        const key=aliases[bulkProductNormalizeKey(entry[0])];
+        const key=aliases[bulkProductNormalizeKey(entry[0]).replace(/\s+/g,"_")];
         if(key)out[key]=String(entry[1]??"").trim();
       });
-      if(!out.producto)throw new Error("Producto vacío.");
+
+      resolveBulkProductLocal(out);
+      if(!out.producto)throw new Error("PRODUCTO vacío.");
+      if(out.sku.length>80)throw new Error("SKU debe tener máximo 80 caracteres.");
+
       const price=Number(out.precio.replace(",","."));
-      if(!Number.isFinite(price)||price<0)throw new Error("Precio inválido.");
+      if(!Number.isFinite(price)||price<0)throw new Error("PRECIO inválido.");
       out.precio=price.toFixed(2);
 
-      const order=Number(out.orden||0);
-      if(!Number.isInteger(order)||order<0)throw new Error("Orden inválido.");
-      out.orden=String(order);
+      const productOrder=Number(out.orden_producto||0);
+      if(!Number.isInteger(productOrder)||productOrder<0)throw new Error("ORDEN_PRODUCTO inválido.");
+      out.orden_producto=String(productOrder);
+
+      const variantOrder=Number(out.orden_variante||0);
+      if(!Number.isInteger(variantOrder)||variantOrder<0)throw new Error("ORDEN_VARIANTE inválido.");
+      out.orden_variante=String(variantOrder);
 
       if(!["si","sí","true","1","no","false","0"].includes(out.activo.toLowerCase())){
-        throw new Error("Activo debe ser Sí/No.");
+        throw new Error("ACTIVO debe ser Sí/No.");
       }
       out.activo=bulkProductBoolText(out.activo);
 
@@ -671,13 +707,40 @@ function normalizeBulkProductRows(input){
         out.precio_variante=variantPrice.toFixed(2);
       }else{
         out.precio_variante="";
+        out.orden_variante="0";
       }
 
-      const duplicateKey=bulkProductNormalizeKey(out.producto)+"|"+bulkProductNormalizeKey(out.variante);
-      if(seen.has(duplicateKey)){
-        throw new Error("Duplicado dentro del archivo: coincide con la fila "+seen.get(duplicateKey)+".");
+      const identity=out.sku
+        ?"sku:"+bulkProductNormalizeKey(out.sku)
+        :"nombre:"+bulkProductNormalizeKey(out.producto);
+      const productKey=out.local_id+"|"+identity;
+      const baseSignature=[
+        bulkProductNormalizeKey(out.producto),
+        bulkProductNormalizeKey(out.categoria),
+        out.descripcion.trim(),
+        out.precio,
+        out.imagen_url.trim(),
+        out.orden_producto,
+        out.activo
+      ].join("|");
+
+      if(productBases.has(productKey)&&productBases.get(productKey).signature!==baseSignature){
+        throw new Error(
+          "Los datos base del producto no coinciden con la fila "+
+          productBases.get(productKey).row+". Para varias variantes repite los mismos datos del producto."
+        );
       }
-      seen.set(duplicateKey,rowNumber);
+      if(!productBases.has(productKey)){
+        productBases.set(productKey,{signature:baseSignature,row:rowNumber});
+      }
+
+      const variantKey=productKey+"|"+(out.variante?"variante:"+bulkProductNormalizeKey(out.variante):"sin-variante");
+      if(seenVariants.has(variantKey)){
+        throw new Error("Duplicado dentro del archivo: coincide con la fila "+seenVariants.get(variantKey)+".");
+      }
+      seenVariants.set(variantKey,rowNumber);
+
+      out.productKey=productKey;
       out.valid=true;
       valid.push(out);
     }catch(e){
@@ -729,8 +792,11 @@ function renderBulkProductPreview(){
   const valid=masterLocalsState.productBulkRows||[];
   const bad=masterLocalsState.productBulkErrors||[];
   const all=[...valid,...bad].sort((a,b)=>a.rowNumber-b.rowNumber);
+  const localCount=new Set(valid.map(r=>r.local_id).filter(Boolean)).size;
+  const productCount=new Set(valid.map(r=>r.productKey).filter(Boolean)).size;
+
   $("bulkProductStatus").textContent=masterLocalsState.productBulkFileName
-    ? masterLocalsState.productBulkFileName+" · "+valid.length+" válidas · "+bad.length+" con observaciones"
+    ? masterLocalsState.productBulkFileName+" · "+localCount+" LOCAL · "+productCount+" productos · "+valid.length+" filas válidas · "+bad.length+" con observaciones"
     : "Todavía no has cargado una plantilla de productos.";
   $("importBulkProductBtn").disabled=masterLocalsState.productBulkBusy||valid.length===0;
   $("downloadBulkProductErrorsBtn").disabled=masterLocalsState.productBulkBusy||bad.length===0;
@@ -741,12 +807,18 @@ function renderBulkProductPreview(){
   }
 
   $("bulkProductPreview").innerHTML=
-    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>Categoría</th><th>Producto</th><th>Precio</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
-    all.slice(0,200).map(function(row){
-      return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
+    '<div class="bulk-local-summary">'+
+      '<span>LOCAL: <strong>'+localCount+'</strong></span>'+
+      '<span>Productos: <strong>'+productCount+'</strong></span>'+
+      '<span>Filas listas: <strong>'+valid.length+'</strong></span>'+
+      '<span>Observaciones: <strong>'+bad.length+'</strong></span>'+
+    '</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>LOCAL</th><th>SKU</th><th>Categoría</th><th>Producto</th><th>Precio</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
+    all.slice(0,300).map(function(row){
+      return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.local||row.local_id||"")+'</td><td>'+esc(row.sku||"—")+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
     }).join("")+
     '</tbody></table></div>'+
-    (all.length>200?'<p class="muted">Mostrando las primeras 200 filas.</p>':"");
+    (all.length>300?'<p class="muted">Mostrando las primeras 300 filas.</p>':"");
 }
 
 async function validateBulkProductFile(){
@@ -757,14 +829,14 @@ async function validateBulkProductFile(){
   try{
     const parsed=normalizeBulkProductRows(await readBulkProductFile(file));
     if(parsed.valid.length+parsed.bad.length===0)throw new Error("El archivo no contiene filas.");
-    if(parsed.valid.length+parsed.bad.length>1000)throw new Error("Máximo 1000 filas por importación.");
+    if(parsed.valid.length+parsed.bad.length>3000)throw new Error("Máximo 3000 filas por importación.");
     masterLocalsState.productBulkFileName=file.name;
     masterLocalsState.productBulkRows=parsed.valid;
     masterLocalsState.productBulkErrors=parsed.bad;
     renderBulkProductPreview();
     message(parsed.bad.length
-      ?"Productos revisados. Puedes importar únicamente las filas válidas y descargar las observaciones."
-      :"Productos validados. Revisa la vista previa antes de importar.");
+      ?"Productos revisados. Importa las filas válidas y descarga las observaciones para corregir el resto."
+      :"Productos validados. Revisa LOCAL, SKU, precios y variantes antes de importar.");
   }catch(e){
     masterLocalsState.productBulkRows=[];
     masterLocalsState.productBulkErrors=[];
@@ -780,25 +852,55 @@ async function validateBulkProductFile(){
 
 function downloadBulkProductTemplate(){
   if(typeof XLSX==="undefined")return message("No se cargó el componente de Excel.","error");
-  const data=[
-    {categoria:"Hamburguesas",producto:"Clásica",descripcion:"Carne, queso y vegetales",precio:"4.50",imagen_url:"",variante:"Normal",precio_variante:"4.50",orden:"0",activo:"Sí"},
-    {categoria:"Hamburguesas",producto:"Clásica",descripcion:"Carne, queso y vegetales",precio:"4.50",imagen_url:"",variante:"Grande",precio_variante:"6.00",orden:"1",activo:"Sí"},
-    {categoria:"Bebidas",producto:"Cola 500 ml",descripcion:"",precio:"1.25",imagen_url:"",variante:"",precio_variante:"",orden:"0",activo:"Sí"}
+  const locals=(masterLocalsState.items||[]).slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+  if(!locals.length)return message("Primero debe existir al menos un LOCAL en HTPWEB.","error");
+
+  const first=locals[0];
+  const second=locals[1]||first;
+  const headers=[
+    "LOCAL","LOCAL_ID","CATEGORIA","PRODUCTO","SKU","DESCRIPCION","PRECIO",
+    "VARIANTE","PRECIO_VARIANTE","ORDEN_PRODUCTO","ORDEN_VARIANTE","ACTIVO","IMAGEN_URL"
   ];
+  const data=[
+    headers,
+    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Normal","8.00","0","0","Sí",""],
+    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Grande","11.00","0","1","Sí",""],
+    [second.name,second.id,"Bebidas","Cola 500 ml","BEB-001","","1.25","","","0","0","Sí",""]
+  ];
+
   const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.json_to_sheet(data);
-  ws["!cols"]=[{wch:22},{wch:28},{wch:42},{wch:12},{wch:45},{wch:22},{wch:18},{wch:10},{wch:10}];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws["!cols"]=[
+    {wch:32},{wch:38},{wch:24},{wch:30},{wch:18},{wch:45},{wch:12},
+    {wch:22},{wch:18},{wch:16},{wch:16},{wch:10},{wch:48}
+  ];
   XLSX.utils.book_append_sheet(wb,ws,"PRODUCTOS");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-    ["HTPWEB — Carga masiva de productos"],
-    ["1","Selecciona el LOCAL destino antes de importar."],
-    ["2","Cada fila representa un producto o una variante."],
-    ["3","Para varias variantes, repite PRODUCTO y usa una VARIANTE distinta."],
-    ["4","Si el producto ya existe en el LOCAL, se actualiza en lugar de duplicarse."],
-    ["5","Sin marcar Publicar, productos y variantes quedan inactivos para revisión."],
-    ["6","IMAGEN_URL es opcional y debe usar HTTP o HTTPS."]
-  ]),"INSTRUCCIONES");
-  XLSX.writeFile(wb,"HTPWEB_Plantilla_Carga_Masiva_Productos.xlsx");
+
+  const instructions=[
+    ["HTPWEB — Carga masiva multilocal de productos"],
+    ["1","Cada fila debe identificar el establecimiento con LOCAL y/o LOCAL_ID."],
+    ["2","Recomendado: copia LOCAL y LOCAL_ID desde la hoja LOCALES_DISPONIBLES."],
+    ["3","SKU es opcional, pero recomendado. Dentro de un LOCAL identifica de forma estable al producto para futuras actualizaciones."],
+    ["4","Si no hay SKU, HTPWEB identifica el producto por LOCAL + nombre del PRODUCTO."],
+    ["5","Para varias variantes, repite LOCAL, LOCAL_ID, PRODUCTO, SKU y los mismos datos base; cambia VARIANTE, PRECIO_VARIANTE y ORDEN_VARIANTE."],
+    ["6","CATEGORIA es la categoría del menú dentro de ese LOCAL. Si no existe, HTPWEB la crea."],
+    ["7","Sin marcar Publicar inmediatamente, productos, variantes y categorías nuevas quedan como borrador."],
+    ["8","IMAGEN_URL es opcional y debe usar HTTP o HTTPS. Las imágenes también pueden cargarse manualmente después."],
+    ["9","Máximo 3000 filas por archivo. Las filas con observaciones pueden descargarse para corregirlas."]
+  ];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(instructions),"INSTRUCCIONES");
+
+  const localRows=[["LOCAL_ID","LOCAL","PROVINCIA","CANTON","ZONA","ESTADO"]].concat(
+    locals.map(local=>[
+      local.id,local.name,local.province||"",local.canton||"",local.zone_code||"",
+      local.active?"Activo":"Inactivo / borrador"
+    ])
+  );
+  const localSheet=XLSX.utils.aoa_to_sheet(localRows);
+  localSheet["!cols"]=[{wch:38},{wch:34},{wch:20},{wch:20},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,localSheet,"LOCALES_DISPONIBLES");
+
+  XLSX.writeFile(wb,"HTPWEB_Plantilla_Multilocal_Productos.xlsx");
 }
 
 function downloadBulkProductErrors(){
@@ -807,38 +909,42 @@ function downloadBulkProductErrors(){
   if(typeof XLSX==="undefined")return message("No se cargó el componente de Excel.","error");
   const data=rows.map(function(row){
     return {
-      FILA:row.rowNumber,CATEGORIA:row.categoria,PRODUCTO:row.producto,DESCRIPCION:row.descripcion,
-      PRECIO:row.precio,IMAGEN_URL:row.imagen_url,VARIANTE:row.variante,
-      PRECIO_VARIANTE:row.precio_variante,ORDEN:row.orden,ACTIVO:row.activo,ERROR:row.error
+      FILA:row.rowNumber,LOCAL:row.local||"",LOCAL_ID:row.local_id||"",CATEGORIA:row.categoria||"",
+      PRODUCTO:row.producto||"",SKU:row.sku||"",DESCRIPCION:row.descripcion||"",PRECIO:row.precio||"",
+      VARIANTE:row.variante||"",PRECIO_VARIANTE:row.precio_variante||"",
+      ORDEN_PRODUCTO:row.orden_producto||"",ORDEN_VARIANTE:row.orden_variante||"",
+      ACTIVO:row.activo||"",IMAGEN_URL:row.imagen_url||"",ERROR:row.error||"Revisar"
     };
   });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"OBSERVACIONES");
-  XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Masiva_Productos.xlsx");
+  XLSX.writeFile(wb,"HTPWEB_Observaciones_Carga_Multilocal_Productos.xlsx");
 }
 
 async function importBulkProducts(){
   if(masterLocalsState.productBulkBusy)return;
-  const localId=$("bulkProductLocal")?.value;
   const rows=masterLocalsState.productBulkRows||[];
-  if(!localId)return message("Selecciona el LOCAL destino.","error");
   if(!rows.length)return message("Primero valida un archivo de productos.","error");
 
   masterLocalsState.productBulkBusy=true;
   $("importBulkProductBtn").disabled=true;
   try{
     const payload=rows.map(function(row){
-      const copy={...row};delete copy.rowNumber;delete copy.valid;delete copy.error;return copy;
+      const copy={...row};
+      for(const key of ["rowNumber","valid","error","localObj","productKey"])delete copy[key];
+      return copy;
     });
     const publish=$("bulkProductPublish")?.checked===true;
-    const result=await rpc("bulk_import_local_catalog_v2",{
-      p_local_id:localId,p_rows:payload,p_publish:publish
+    const result=await rpc("bulk_import_catalog_multilocal_v3",{
+      p_rows:payload,p_publish:publish
     });
     message(
-      "Importación completada: "+(result?.products_created||0)+" productos creados, "+
-      (result?.products_updated||0)+" actualizados, "+(result?.variants_created||0)+" variantes creadas, "+
+      "Importación completada en "+(result?.locals||0)+" LOCAL: "+
+      (result?.products_created||0)+" productos creados, "+
+      (result?.products_updated||0)+" actualizados, "+
+      (result?.variants_created||0)+" variantes creadas y "+
       (result?.variants_updated||0)+" variantes actualizadas"+
-      (publish?". Publicados según la columna ACTIVO.":". Quedaron en borrador/inactivos para revisión.")
+      (publish?". Publicados según ACTIVO.":". Quedaron en borrador para revisión.")
     );
     masterLocalsState.productBulkRows=[];
     masterLocalsState.productBulkErrors=[];
@@ -846,7 +952,7 @@ async function importBulkProducts(){
     if($("bulkProductFile"))$("bulkProductFile").value="";
     renderBulkProductPreview();
   }catch(e){
-    message(e.message||"No se pudo importar el catálogo.","error");
+    message(e.message||"No se pudo importar el catálogo multilocal.","error");
   }finally{
     masterLocalsState.productBulkBusy=false;
     renderBulkProductPreview();
