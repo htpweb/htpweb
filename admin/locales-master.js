@@ -24,6 +24,38 @@ function bindMasterLocals(){
  <div class="row" style="margin-top:14px"><button id="validateBulkProductBtn" type="button" class="btn-primary">Validar productos</button></div>
  <p id="bulkProductStatus" class="muted">Todavía no has cargado una plantilla de productos.</p><div id="bulkProductPreview"></div>
  <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkProductErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones de productos</button><button id="clearBulkProductBtn" type="button" class="btn-muted" disabled>Cancelar / limpiar carga</button><button id="importBulkProductBtn" type="button" class="btn-primary" disabled>Importar productos válidos</button></div></div>
+
+ <div class="card">
+   <div class="row between">
+     <div>
+       <h3>Importar paquete completo HTPWEB</h3>
+       <p class="muted">Carga un solo ZIP con Excel de productos, fotos por SKU y promociones. HTPWEB valida todo antes de escribir.</p>
+     </div>
+     <button id="downloadPackageSpecBtn" type="button" class="btn-muted">Descargar ejemplo de manifiesto</button>
+   </div>
+   <div class="workspace-note" style="margin-top:14px">
+     El ZIP debe incluir <code>HTPWEB_PACKAGE.json</code>, un Excel de productos y las imágenes referenciadas. Ideal para paquetes que preparemos desde ChatGPT.
+   </div>
+   <div class="form-grid" style="margin-top:14px">
+     <div>
+       <label>Paquete ZIP</label>
+       <input id="completePackageFile" type="file" accept=".zip,application/zip,application/x-zip-compressed">
+     </div>
+     <div>
+       <label>Modo de publicación de productos</label>
+       <label class="row" style="margin:0"><input id="completePackagePublish" type="checkbox" style="width:auto"> Publicar productos según ACTIVO</label>
+     </div>
+   </div>
+   <div class="row" style="margin-top:14px">
+     <button id="validateCompletePackageBtn" type="button" class="btn-primary">Validar paquete</button>
+     <button id="clearCompletePackageBtn" type="button" class="btn-muted" disabled>Limpiar paquete</button>
+   </div>
+   <p id="completePackageStatus" class="muted">Todavía no has cargado un paquete.</p>
+   <div id="completePackagePreview"></div>
+   <div class="bulk-local-actions" style="margin-top:14px">
+     <button id="importCompletePackageBtn" type="button" class="btn-primary" disabled>Importar paquete completo</button>
+   </div>
+ </div>
  </div>
  <div id="masterLocalMenuImport" class="hidden"></div>
  <div id="masterLocalEditor" class="card hidden"><h3 id="masterLocalHeading">Crear local</h3>
