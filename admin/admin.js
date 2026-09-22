@@ -21,6 +21,8 @@ const state = {
   categories: [],
   products: [],
   variants: [],
+  promotions: [],
+  productPhotoBatch: [],
   schedules: [],
   shareLocals: [],
   shareProducts: [],
@@ -2587,6 +2589,8 @@ function renderCatalogProducts() {
         <div class="row">
           <button id="catalogActivateSelectedBtn" class="btn-primary" type="button" disabled>Activar seleccionados</button>
           <button id="catalogDeactivateSelectedBtn" class="btn-warn" type="button" disabled>Inactivar seleccionados</button>
+          <button id="catalogDeleteSelectedBtn" class="btn-danger" type="button" disabled>Eliminar seleccionados</button>
+          <button id="catalogCleanBtn" class="btn-danger" type="button">Limpiar catálogo</button>
         </div>
       </div>` : ""}
     <div class="table-wrap">
