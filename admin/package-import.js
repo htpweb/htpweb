@@ -138,6 +138,50 @@
     };
   }
 
+  function normalizeKey113(value) {
+    return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  }
+
+  function resolvePackageLocal113(name, id) {
+    const locals = masterLocalsState?.items || [];
+    const localId = String(id || "").trim();
+    const localName = String(name || "").trim();
+
+    if (localId) {
+      const local = locals.find(row => row.id === localId);
+      if (!local) return null;
+      return local;
+    }
+
+    if (!localName) return null;
+    const key = normalizeKey113(localName);
+
+    const exact = locals.filter(row => normalizeKey113(row.name) === key);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) return null;
+
+    const fuzzy = locals.filter(row => {
+      const candidate = normalizeKey113(row.name);
+      return candidate.includes(key) || key.includes(candidate);
+    });
+    return fuzzy.length === 1 ? fuzzy[0] : null;
+  }
+
+  function preparePackageProductRows113(rows) {
+    return (rows || []).map(raw => {
+      const out = { ...raw };
+      const localName = raw.LOCAL ?? raw.Local ?? raw.local ?? "";
+      const localId = raw.LOCAL_ID ?? raw.local_id ?? raw.ID_LOCAL ?? "";
+      const resolved = resolvePackageLocal113(localName, localId);
+
+      if (resolved) {
+        out.LOCAL = resolved.name;
+        out.LOCAL_ID = resolved.id;
+      }
+      return out;
+    });
+  }
+
   async function readProductRowsFromPackage113(zip, manifest) {
     if (typeof XLSX === "undefined") throw new Error("No se cargó XLSX.");
     const requested = normalizePath113(manifest.products_file || "");
@@ -223,8 +267,17 @@
       if (Number(manifest.version || 0) !== 1) throw new Error("Versión de paquete no compatible.");
 
       const productData = await readProductRowsFromPackage113(zip, manifest);
-      const normalized = normalizeBulkProductRows(productData.rows);
-      if (!normalized.valid.length) throw new Error("El paquete no contiene productos válidos.");
+      const preparedRows = preparePackageProductRows113(productData.rows);
+      const normalized = normalizeBulkProductRows(preparedRows);
+      if (!normalized.valid.length) {
+        const reasons = normalized.bad.slice(0, 8).map(row =>
+          "Fila " + row.rowNumber + ": " + (row.error || "Error desconocido")
+        ).join(" | ");
+        throw new Error(
+          "El paquete no contiene productos válidos." +
+          (reasons ? " Motivos: " + reasons : "")
+        );
+      }
 
       const packageErrors = [];
       const uniqueImages = new Map();
