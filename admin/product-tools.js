@@ -374,15 +374,17 @@
         : "Todos los días";
       const start = promotion.starts_at ? new Date(promotion.starts_at).toLocaleString() : "Sin inicio";
       const end = promotion.ends_at ? new Date(promotion.ends_at).toLocaleString() : "Sin fin";
-      const typeLabel=promotion.promotion_type==="OPTIONS"?"Opciones alternativas":"Combo / paquete";
-      const total=promotion.promotion_price!==null&&promotion.promotion_price!==undefined
-        ? '<div><strong>Precio total promocional: 
+      const typeLabel = promotion.promotion_type === "OPTIONS" ? "Opciones alternativas" : "Combo / paquete";
+      const total = promotion.promotion_price !== null && promotion.promotion_price !== undefined
+        ? '<div><strong>Precio total promocional: $' + Number(promotion.promotion_price).toFixed(2) + '</strong></div>'
+        : "";
+
       return '<div class="card" style="margin:0 0 10px">' +
         '<div class="row between"><div><strong>' + esc(promotion.title) + '</strong>' +
         '<div class="muted">' + esc(typeLabel) + ' · ' + esc(days) + ' · ' + esc(start) + ' → ' + esc(end) + '</div></div>' +
         '<span class="badge">' + (promotion.active ? "ACTIVA" : "INACTIVA") + '</span></div>' +
-        total+
-        '<div class="muted" style="margin-top:6px">'+esc(promotionItemsSummary108(promotion.items))+'</div>'+
+        total +
+        '<div class="muted" style="margin-top:6px">' + esc(promotionItemsSummary108(promotion.items)) + '</div>' +
         (promotion.body ? '<p>' + esc(promotion.body) + '</p>' : '') +
         (promotion.image_url ? '<img src="' + esc(promotion.image_url) + '" alt="" style="max-width:260px;max-height:150px;object-fit:cover;border-radius:10px">' : '') +
         '<div class="row" style="margin-top:10px"><button class="btn-muted" data-edit-promotion="' + esc(promotion.id) + '">Editar</button>' +
