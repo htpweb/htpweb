@@ -99,3 +99,47 @@ body.has-htpweb-ad{padding-bottom:104px}
   #htpwebAdDescription{font-size:12px}
   .htpweb-ad-cta{padding:8px 9px}
 }
+
+
+/* HTPWEB Código 108 — promociones del LOCAL */
+.promotions-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:14px;
+}
+.promotion-card{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  overflow:hidden;
+  background:#fff;
+  color:inherit;
+  text-decoration:none;
+}
+.promotion-card img{
+  width:100%;
+  aspect-ratio:16/9;
+  object-fit:cover;
+  display:block;
+}
+.promotion-card-copy{
+  padding:14px;
+}
+.promotion-card-copy strong{
+  display:block;
+  font-size:1.05rem;
+}
+.promotion-card-copy p{
+  margin:.45rem 0 0;
+}
+.promotion-badge{
+  display:inline-block;
+  margin-bottom:7px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:.72rem;
+  font-weight:700;
+  background:#f3f4f6;
+}

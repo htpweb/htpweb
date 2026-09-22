@@ -27,6 +27,10 @@
 
 <main>
   <section id="localCard" class="card"></section>
+  <section id="promotionsCard" class="card hidden">
+    <h2>Promociones</h2>
+    <div id="promotionsListPublic" class="promotions-grid"></div>
+  </section>
   <section class="card">
     <h2>Productos</h2>
     <div id="products"></div>
@@ -284,5 +288,6 @@ function updateCartCount() {
 window.addEventListener("htpweb:cart", updateCartCount);
 init();
 </script>
+<script src="../config/promotions.js"></script>
 </body>
 </html>

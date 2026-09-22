@@ -24,6 +24,10 @@ function mediaPathProduct(productId) {
   return `product/${productId}/image`;
 }
 
+function mediaPathPromotion(promotionId) {
+  return `promotion/${promotionId}/image`;
+}
+
 function mediaPathLocalGallery(localId, imageId) {
   return `local/${localId}/gallery/${imageId}`;
 }

@@ -652,6 +652,7 @@ function normalizeBulkProductRows(input){
     descripcion:"descripcion",description:"descripcion",
     precio:"precio",price:"precio",
     imagen_url:"imagen_url",imagen:"imagen_url",image_url:"imagen_url",
+    imagen_archivo:"imagen_archivo",archivo_imagen:"imagen_archivo",foto_archivo:"imagen_archivo",
     variante:"variante",variant:"variante",
     precio_variante:"precio_variante",variant_price:"precio_variante",
     orden:"orden_producto",orden_producto:"orden_producto",product_order:"orden_producto",
@@ -664,7 +665,7 @@ function normalizeBulkProductRows(input){
     const rowNumber=index+2;
     const out={
       local:"",local_id:"",categoria:"",producto:"",sku:"",descripcion:"",precio:"",
-      imagen_url:"",variante:"",precio_variante:"",orden_producto:"0",orden_variante:"0",
+      imagen_url:"",imagen_archivo:"",variante:"",precio_variante:"",orden_producto:"0",orden_variante:"0",
       activo:"si",rowNumber,valid:false,error:""
     };
     try{
@@ -721,6 +722,7 @@ function normalizeBulkProductRows(input){
         out.descripcion.trim(),
         out.precio,
         out.imagen_url.trim(),
+        out.imagen_archivo.trim(),
         out.orden_producto,
         out.activo
       ].join("|");
@@ -815,9 +817,9 @@ function renderBulkProductPreview(){
       '<span>Filas listas: <strong>'+valid.length+'</strong></span>'+
       '<span>Observaciones: <strong>'+bad.length+'</strong></span>'+
     '</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>LOCAL</th><th>SKU</th><th>Categoría</th><th>Producto</th><th>Precio base / desde</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
+    '<div class="table-wrap"><table><thead><tr><th>Fila</th><th>LOCAL</th><th>SKU</th><th>Categoría</th><th>Producto</th><th>Precio base / desde</th><th>Imagen archivo</th><th>Variante</th><th>Precio variante</th><th>Estado</th></tr></thead><tbody>'+
     all.slice(0,300).map(function(row){
-      return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.local||row.local_id||"")+'</td><td>'+esc(row.sku||"—")+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
+      return '<tr><td>'+esc(row.rowNumber)+'</td><td>'+esc(row.local||row.local_id||"")+'</td><td>'+esc(row.sku||"—")+'</td><td>'+esc(row.categoria||"")+'</td><td>'+esc(row.producto||"")+'</td><td>'+esc(row.precio||"")+'</td><td>'+esc(row.imagen_archivo||"—")+'</td><td>'+esc(row.variante||"—")+'</td><td>'+esc(row.precio_variante||"—")+'</td><td class="'+(row.valid?"bulk-status-ok":"bulk-status-error")+'">'+esc(row.valid?"Lista":row.error||"Revisar")+'</td></tr>';
     }).join("")+
     '</tbody></table></div>'+
     (all.length>300?'<p class="muted">Mostrando las primeras 300 filas.</p>':"");
@@ -861,20 +863,20 @@ function downloadBulkProductTemplate(){
   const second=locals[1]||first;
   const headers=[
     "LOCAL","LOCAL_ID","CATEGORIA","PRODUCTO","SKU","DESCRIPCION","PRECIO",
-    "VARIANTE","PRECIO_VARIANTE","ORDEN_PRODUCTO","ORDEN_VARIANTE","ACTIVO","IMAGEN_URL"
+    "VARIANTE","PRECIO_VARIANTE","ORDEN_PRODUCTO","ORDEN_VARIANTE","ACTIVO","IMAGEN_ARCHIVO","IMAGEN_URL"
   ];
   const data=[
     headers,
-    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Normal","8.00","0","0","Sí",""],
-    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Grande","11.00","0","1","Sí",""],
-    [second.name,second.id,"Bebidas","Cola 500 ml","BEB-001","","1.25","","","0","0","Sí",""]
+    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Normal","8.00","0","0","Sí","PLATO-001.jpg",""],
+    [first.name,first.id,"Platos fuertes","Arroz marinero","PLATO-001","Arroz, mariscos y vegetales","8.00","Grande","11.00","0","1","Sí","PLATO-001.jpg",""],
+    [second.name,second.id,"Bebidas","Cola 500 ml","BEB-001","","1.25","","","0","0","Sí","BEB-001.jpg",""]
   ];
 
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws["!cols"]=[
     {wch:32},{wch:38},{wch:24},{wch:30},{wch:18},{wch:45},{wch:12},
-    {wch:22},{wch:18},{wch:16},{wch:16},{wch:10},{wch:48}
+    {wch:22},{wch:18},{wch:16},{wch:16},{wch:10},{wch:24},{wch:48}
   ];
   XLSX.utils.book_append_sheet(wb,ws,"PRODUCTOS");
 
@@ -887,8 +889,9 @@ function downloadBulkProductTemplate(){
     ["5","Para varias variantes, repite LOCAL, LOCAL_ID, PRODUCTO, SKU y los mismos datos base; cambia VARIANTE, PRECIO_VARIANTE y ORDEN_VARIANTE."],
     ["6","CATEGORIA es la categoría del menú dentro de ese LOCAL. Si no existe, HTPWEB la crea."],
     ["7","Sin marcar Publicar inmediatamente, productos, variantes y categorías nuevas quedan como borrador."],
-    ["8","IMAGEN_URL es opcional y debe usar HTTP o HTTPS. Las imágenes también pueden cargarse manualmente después."],
-    ["9","Máximo 3000 filas por archivo. Las filas con observaciones pueden descargarse para corregirlas."]
+    ["8","IMAGEN_ARCHIVO identifica la foto que se cargará después. Recomendado: usa el SKU como nombre, por ejemplo PLATO-001.jpg."],
+    ["9","IMAGEN_URL es opcional y debe usar HTTP o HTTPS. Si usarás fotos por SKU, déjala vacía."],
+    ["10","Máximo 3000 filas por archivo. Las filas con observaciones pueden descargarse para corregirlas."]
   ];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(instructions),"INSTRUCCIONES");
 
@@ -915,7 +918,7 @@ function downloadBulkProductErrors(){
       PRODUCTO:row.producto||"",SKU:row.sku||"",DESCRIPCION:row.descripcion||"",PRECIO:row.precio||"",
       VARIANTE:row.variante||"",PRECIO_VARIANTE:row.precio_variante||"",
       ORDEN_PRODUCTO:row.orden_producto||"",ORDEN_VARIANTE:row.orden_variante||"",
-      ACTIVO:row.activo||"",IMAGEN_URL:row.imagen_url||"",ERROR:row.error||"Revisar"
+      ACTIVO:row.activo||"",IMAGEN_ARCHIVO:row.imagen_archivo||"",IMAGEN_URL:row.imagen_url||"",ERROR:row.error||"Revisar"
     };
   });
   const wb=XLSX.utils.book_new();

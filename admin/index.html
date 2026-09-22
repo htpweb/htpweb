@@ -724,6 +724,84 @@
       <div class="card">
         <div class="row between">
           <div>
+            <h3>Importar fotos de productos por SKU</h3>
+            <p class="muted">Selecciona varias fotos. El nombre del archivo debe coincidir con el SKU, por ejemplo <code>MIG-PIZ-001.jpg</code>.</p>
+          </div>
+        </div>
+        <input id="productPhotoBatchFiles" type="file" multiple accept="image/jpeg,image/png,image/webp">
+        <div class="row" style="margin-top:12px">
+          <button id="validateProductPhotoBatchBtn" type="button" class="btn-muted">Validar fotos</button>
+          <button id="uploadProductPhotoBatchBtn" type="button" class="btn-primary" disabled>Subir fotos válidas</button>
+          <button id="clearProductPhotoBatchBtn" type="button" class="btn-muted" disabled>Limpiar selección</button>
+        </div>
+        <div id="productPhotoBatchSummary" class="muted" style="margin-top:10px">No hay fotos seleccionadas.</div>
+        <div id="productPhotoBatchPreview" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h3>Promociones del LOCAL</h3>
+            <p class="muted">Crea promociones temporales sin modificar el precio normal del producto.</p>
+          </div>
+        </div>
+
+        <input id="promotionId" type="hidden">
+        <input id="promotionImageUrl" type="hidden">
+
+        <div class="form-grid" style="margin-top:12px">
+          <div><label>Título</label><input id="promotionTitle" maxlength="180" placeholder="Ej. Lunes de Hot Dogs"></div>
+          <div><label>Producto vinculado (opcional)</label><select id="promotionProduct"></select></div>
+          <div><label>Inicio</label><input id="promotionStartsAt" type="datetime-local"></div>
+          <div><label>Fin</label><input id="promotionEndsAt" type="datetime-local"></div>
+          <div><label>Orden</label><input id="promotionOrder" type="number" min="0" step="1" value="0"></div>
+          <div>
+            <label>Estado</label>
+            <select id="promotionActive">
+              <option value="true">Activa</option>
+              <option value="false">Inactiva</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Descripción / condiciones</label>
+        <textarea id="promotionBody" rows="3" maxlength="1200" placeholder="Ej. Lleva la segunda a mitad de precio. Solo los lunes."></textarea>
+
+        <div style="margin-top:12px">
+          <label>Días de vigencia</label>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <label class="row"><input class="promotion-day" type="checkbox" value="1" style="width:auto"> Lunes</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="2" style="width:auto"> Martes</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="3" style="width:auto"> Miércoles</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="4" style="width:auto"> Jueves</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="5" style="width:auto"> Viernes</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="6" style="width:auto"> Sábado</label>
+            <label class="row"><input class="promotion-day" type="checkbox" value="0" style="width:auto"> Domingo</label>
+          </div>
+          <small class="muted">Si no marcas ningún día, la promoción aplica todos los días dentro del rango de fechas.</small>
+        </div>
+
+        <div class="media-editor" style="margin-top:14px">
+          <div>
+            <strong>Imagen de promoción</strong>
+            <div class="media-preview media-preview-wide"><img id="promotionImagePreview" alt=""></div>
+          </div>
+          <div class="stack">
+            <input id="promotionImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+            <small class="muted">Ideal para artes como “Lunes de Hot Dogs”, combos o promociones semanales.</small>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button id="savePromotionBtn" type="button" class="btn-primary">Guardar promoción</button>
+          <button id="clearPromotionBtn" type="button" class="btn-muted">Limpiar</button>
+        </div>
+        <div id="promotionsList" style="margin-top:16px"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div>
             <h3>Variantes de producto</h3>
             <p class="muted">Ejemplos: Normal, Grande, 500 ml, Familiar.</p>
           </div>
@@ -1083,5 +1161,6 @@
 <script src="./locales-master.js"></script>
 <script src="./local-categories-master.js"></script>
 <script src="./zones-master.js"></script>
+<script src="./product-tools.js"></script>
 </body>
 </html>
