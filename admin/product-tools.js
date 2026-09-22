@@ -37,10 +37,11 @@
   renderCatalogProducts = function() {
     baseRenderCatalogProducts();
     enhanceProductCleanup108();
-    refreshPromotionProductOptions108();
-    loadPromotions108().catch(error => {
-      if ($("promotionsList")) $("promotionsList").innerHTML = '<div class="message error">' + esc(error.message || "No se pudieron cargar promociones.") + '</div>';
-    });
+    loadPromotionSupport108()
+      .then(loadPromotions108)
+      .catch(error => {
+        if ($("promotionsList")) $("promotionsList").innerHTML = '<div class="message error">' + esc(error.message || "No se pudieron cargar promociones.") + '</div>';
+      });
   };
 
   async function deleteCatalogProducts108(ids) {
@@ -196,16 +197,111 @@
     }
   }
 
-  function refreshPromotionProductOptions108() {
-    const select = $("promotionProduct");
-    if (!select) return;
-    const previous = select.value;
-    select.innerHTML = '<option value="">Promoción general del LOCAL</option>' +
-      state.products.map(product =>
-        '<option value="' + esc(product.id) + '">' + esc(product.name) +
-        (product.sku ? " · " + esc(product.sku) : "") + '</option>'
-      ).join("");
-    if (previous && state.products.some(product => product.id === previous)) select.value = previous;
+  async function loadPromotionSupport108() {
+    const ids=(state.products||[]).map(product=>product.id).filter(Boolean);
+    state.promotionVariants=[];
+    if(ids.length){
+      const {data,error}=await supabaseClient
+        .from("product_variants")
+        .select("id,product_id,name,price,display_order,active")
+        .in("product_id",ids)
+        .order("display_order")
+        .order("name");
+      if(error)throw error;
+      state.promotionVariants=data||[];
+    }
+    if(!Array.isArray(state.promotionDraftItems))state.promotionDraftItems=[];
+    renderPromotionItemsEditor108();
+  }
+
+  function variantsForPromotionProduct108(productId){
+    return (state.promotionVariants||[]).filter(variant=>variant.product_id===productId);
+  }
+
+  function addPromotionItem108(seed={}){
+    const firstProduct=state.products?.[0]||null;
+    state.promotionDraftItems=Array.isArray(state.promotionDraftItems)?state.promotionDraftItems:[];
+    state.promotionDraftItems.push({
+      product_id:seed.product_id||firstProduct?.id||"",
+      variant_id:seed.variant_id||"",
+      quantity:Number(seed.quantity||1),
+      promo_price:seed.promo_price===null||seed.promo_price===undefined?"":String(seed.promo_price)
+    });
+    renderPromotionItemsEditor108();
+  }
+
+  function removePromotionItem108(index){
+    state.promotionDraftItems.splice(index,1);
+    renderPromotionItemsEditor108();
+  }
+
+  function renderPromotionItemsEditor108(){
+    const container=$("promotionItemsEditor");
+    if(!container)return;
+    const items=Array.isArray(state.promotionDraftItems)?state.promotionDraftItems:[];
+
+    if(!items.length){
+      container.innerHTML='<div class="muted">Aún no has agregado productos a esta promoción.</div>';
+      return;
+    }
+
+    container.innerHTML='<div class="table-wrap"><table><thead><tr>'+
+      '<th>Producto</th><th>Variante</th><th>Cantidad</th><th>Precio normal</th><th>Precio promocional línea</th><th></th>'+
+      '</tr></thead><tbody>'+
+      items.map((item,index)=>{
+        const product=state.products.find(row=>row.id===item.product_id)||null;
+        const variants=variantsForPromotionProduct108(item.product_id);
+        const selectedVariant=variants.find(row=>row.id===item.variant_id)||null;
+        const regular=selectedVariant?Number(selectedVariant.price||0):Number(product?.price||0);
+        const productOptions=state.products.map(row=>
+          '<option value="'+esc(row.id)+'" '+(row.id===item.product_id?'selected':'')+'>'+esc(row.name)+(row.sku?' · '+esc(row.sku):'')+'</option>'
+        ).join("");
+        const variantOptions='<option value="">Precio base / sin variante</option>'+
+          variants.map(row=>
+            '<option value="'+esc(row.id)+'" '+(row.id===item.variant_id?'selected':'')+'>'+esc(row.name)+' · $'+Number(row.price||0).toFixed(2)+'</option>'
+          ).join("");
+        return '<tr data-promo-item="'+index+'">'+
+          '<td><select data-promo-product="'+index+'">'+productOptions+'</select></td>'+
+          '<td><select data-promo-variant="'+index+'">'+variantOptions+'</select></td>'+
+          '<td><input data-promo-qty="'+index+'" type="number" min="1" max="999" step="1" value="'+esc(item.quantity||1)+'"></td>'+
+          '<td>$'+regular.toFixed(2)+'</td>'+
+          '<td><input data-promo-price="'+index+'" type="number" min="0" step="0.01" value="'+esc(item.promo_price??"")+'" placeholder="Opcional"></td>'+
+          '<td><button class="btn-danger" type="button" data-promo-remove="'+index+'">Quitar</button></td>'+
+        '</tr>';
+      }).join("")+'</tbody></table></div>';
+
+    container.querySelectorAll("[data-promo-product]").forEach(select=>{
+      select.onchange=()=>{
+        const index=Number(select.dataset.promoProduct);
+        const item=state.promotionDraftItems[index];
+        if(!item)return;
+        item.product_id=select.value;
+        item.variant_id="";
+        renderPromotionItemsEditor108();
+      };
+    });
+    container.querySelectorAll("[data-promo-variant]").forEach(select=>{
+      select.onchange=()=>{
+        const item=state.promotionDraftItems[Number(select.dataset.promoVariant)];
+        if(item)item.variant_id=select.value;
+        renderPromotionItemsEditor108();
+      };
+    });
+    container.querySelectorAll("[data-promo-qty]").forEach(input=>{
+      input.oninput=()=>{
+        const item=state.promotionDraftItems[Number(input.dataset.promoQty)];
+        if(item)item.quantity=input.value;
+      };
+    });
+    container.querySelectorAll("[data-promo-price]").forEach(input=>{
+      input.oninput=()=>{
+        const item=state.promotionDraftItems[Number(input.dataset.promoPrice)];
+        if(item)item.promo_price=input.value;
+      };
+    });
+    container.querySelectorAll("[data-promo-remove]").forEach(button=>{
+      button.onclick=()=>removePromotionItem108(Number(button.dataset.promoRemove));
+    });
   }
 
   function promotionDays108() {
@@ -218,14 +314,29 @@
     $("promotionImageUrl").value = "";
     $("promotionTitle").value = "";
     $("promotionBody").value = "";
+    $("promotionPrice").value = "";
     $("promotionStartsAt").value = "";
     $("promotionEndsAt").value = "";
     $("promotionOrder").value = "0";
     $("promotionActive").value = "true";
     $("promotionImageFile").value = "";
+    state.promotionDraftItems=[];
     document.querySelectorAll(".promotion-day").forEach(input => { input.checked = false; });
     setPreview("promotionImagePreview", "");
-    refreshPromotionProductOptions108();
+    renderPromotionItemsEditor108();
+  }
+
+  function promotionItemsSummary108(items){
+    if(!Array.isArray(items)||!items.length)return "Sin productos específicos";
+    return items.map(item=>{
+      const product=state.products.find(row=>row.id===item.product_id);
+      const variant=(state.promotionVariants||[]).find(row=>row.id===item.variant_id);
+      const label=(product?.name||"Producto")+(variant?" · "+variant.name:"");
+      const price=item.promo_price!==null&&item.promo_price!==undefined
+        ?" · promo $"+Number(item.promo_price).toFixed(2)
+        :"";
+      return item.quantity+"× "+label+price;
+    }).join(" | ");
   }
 
   function renderPromotions108() {
@@ -237,17 +348,20 @@
     }
 
     container.innerHTML = state.promotions.map(promotion => {
-      const product = state.products.find(product => product.id === promotion.product_id);
       const days = promotion.days_of_week?.length
         ? promotion.days_of_week.map(day => dayNames[Number(day)]).join(", ")
         : "Todos los días";
       const start = promotion.starts_at ? new Date(promotion.starts_at).toLocaleString() : "Sin inicio";
       const end = promotion.ends_at ? new Date(promotion.ends_at).toLocaleString() : "Sin fin";
+      const total=promotion.promotion_price!==null&&promotion.promotion_price!==undefined
+        ? '<div><strong>Precio total promocional: $'+Number(promotion.promotion_price).toFixed(2)+'</strong></div>'
+        : "";
       return '<div class="card" style="margin:0 0 10px">' +
         '<div class="row between"><div><strong>' + esc(promotion.title) + '</strong>' +
-        '<div class="muted">' + esc(product ? "Producto: " + product.name : "Promoción general") + '</div>' +
         '<div class="muted">' + esc(days) + ' · ' + esc(start) + ' → ' + esc(end) + '</div></div>' +
         '<span class="badge">' + (promotion.active ? "ACTIVA" : "INACTIVA") + '</span></div>' +
+        total+
+        '<div class="muted" style="margin-top:6px">'+esc(promotionItemsSummary108(promotion.items))+'</div>'+
         (promotion.body ? '<p>' + esc(promotion.body) + '</p>' : '') +
         (promotion.image_url ? '<img src="' + esc(promotion.image_url) + '" alt="" style="max-width:260px;max-height:150px;object-fit:cover;border-radius:10px">' : '') +
         '<div class="row" style="margin-top:10px"><button class="btn-muted" data-edit-promotion="' + esc(promotion.id) + '">Editar</button>' +
@@ -272,14 +386,29 @@
 
     const { data, error } = await supabaseClient
       .from("local_promotions")
-      .select("id,local_id,product_id,title,body,image_url,starts_at,ends_at,days_of_week,display_order,active,created_at,updated_at")
+      .select("id,local_id,title,body,image_url,starts_at,ends_at,days_of_week,display_order,active,promotion_price,created_at,updated_at")
       .eq("local_id", localId)
       .order("display_order")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    state.promotions = data || [];
-    refreshPromotionProductOptions108();
+    const promotions=data||[];
+    const ids=promotions.map(row=>row.id);
+    let items=[];
+    if(ids.length){
+      const itemRes=await supabaseClient
+        .from("local_promotion_items")
+        .select("id,promotion_id,product_id,variant_id,quantity,promo_price,display_order")
+        .in("promotion_id",ids)
+        .order("display_order");
+      if(itemRes.error)throw itemRes.error;
+      items=itemRes.data||[];
+    }
+
+    state.promotions=promotions.map(promotion=>({
+      ...promotion,
+      items:items.filter(item=>item.promotion_id===promotion.id)
+    }));
     renderPromotions108();
   }
 
@@ -290,17 +419,53 @@
     $("promotionImageUrl").value = promotion.image_url || "";
     $("promotionTitle").value = promotion.title || "";
     $("promotionBody").value = promotion.body || "";
-    $("promotionProduct").value = promotion.product_id || "";
+    $("promotionPrice").value = promotion.promotion_price ?? "";
     $("promotionStartsAt").value = toDatetimeLocal(promotion.starts_at);
     $("promotionEndsAt").value = toDatetimeLocal(promotion.ends_at);
     $("promotionOrder").value = String(promotion.display_order || 0);
     $("promotionActive").value = String(promotion.active === true);
+    state.promotionDraftItems=(promotion.items||[]).map(item=>({
+      product_id:item.product_id,
+      variant_id:item.variant_id||"",
+      quantity:item.quantity||1,
+      promo_price:item.promo_price??""
+    }));
     document.querySelectorAll(".promotion-day").forEach(input => {
       input.checked = (promotion.days_of_week || []).includes(Number(input.value));
     });
     $("promotionImageFile").value = "";
     setPreview("promotionImagePreview", promotion.image_url || "");
+    renderPromotionItemsEditor108();
     $("promotionTitle").focus();
+  }
+
+  function normalizedPromotionItems108(){
+    return (state.promotionDraftItems||[]).map((item,index)=>{
+      if(!item.product_id)throw new Error("Selecciona el producto de la línea "+(index+1)+".");
+      const product=state.products.find(row=>row.id===item.product_id);
+      if(!product)throw new Error("Producto inválido en la línea "+(index+1)+".");
+      const quantity=Number(item.quantity);
+      if(!Number.isInteger(quantity)||quantity<1||quantity>999){
+        throw new Error("Cantidad inválida en la línea "+(index+1)+".");
+      }
+      if(item.variant_id){
+        const variant=variantsForPromotionProduct108(item.product_id).find(row=>row.id===item.variant_id);
+        if(!variant)throw new Error("Variante inválida en la línea "+(index+1)+".");
+      }
+      let promoPrice=null;
+      if(String(item.promo_price??"").trim()!==""){
+        promoPrice=Number(item.promo_price);
+        if(!Number.isFinite(promoPrice)||promoPrice<0){
+          throw new Error("Precio promocional inválido en la línea "+(index+1)+".");
+        }
+      }
+      return {
+        product_id:item.product_id,
+        variant_id:item.variant_id||null,
+        quantity,
+        promo_price:promoPrice
+      };
+    });
   }
 
   async function savePromotion108() {
@@ -315,12 +480,23 @@
       return message("La fecha final debe ser posterior al inicio.", "error");
     }
 
+    let promotionPrice=null;
+    if($("promotionPrice").value.trim()!==""){
+      promotionPrice=Number($("promotionPrice").value);
+      if(!Number.isFinite(promotionPrice)||promotionPrice<0){
+        return message("El precio total promocional no es válido.","error");
+      }
+    }
+
+    let items;
+    try{items=normalizedPromotionItems108();}
+    catch(e){return message(e.message,"error");}
+
     const currentId = $("promotionId").value || null;
     const oldImageUrl = $("promotionImageUrl").value || null;
     const args = {
       p_promotion_id: currentId,
       p_local_id: localId,
-      p_product_id: $("promotionProduct").value || null,
       p_title: title,
       p_body: $("promotionBody").value.trim() || null,
       p_image_url: oldImageUrl,
@@ -328,19 +504,21 @@
       p_ends_at: endsAt,
       p_days_of_week: promotionDays108(),
       p_display_order: Math.max(0, Number.parseInt($("promotionOrder").value, 10) || 0),
-      p_active: $("promotionActive").value === "true"
+      p_active: $("promotionActive").value === "true",
+      p_promotion_price: promotionPrice,
+      p_items: items
     };
 
     $("savePromotionBtn").disabled = true;
     let uploaded = null;
     try {
-      const id = await rpc("save_local_promotion", args);
+      const id = await rpc("save_local_promotion_v2", args);
       const file = $("promotionImageFile").files?.[0];
       if (file) {
         uploaded = await subirImagenHTPWEB(mediaPathPromotion(id), file);
         args.p_promotion_id = id;
         args.p_image_url = uploaded.url;
-        await rpc("save_local_promotion", args);
+        await rpc("save_local_promotion_v2", args);
         const oldPath = pathDesdePublicUrlHTPWEB(oldImageUrl);
         if (oldPath && oldPath !== uploaded.path) {
           await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
@@ -362,8 +540,8 @@
     if (!promotion) return;
     if (!confirm('¿Eliminar la promoción "' + promotion.title + '"?')) return;
     try {
-      await rpc("delete_local_promotion", { p_promotion_id: id });
       const path = pathDesdePublicUrlHTPWEB(promotion.image_url) || mediaPathPromotion(id);
+      await rpc("delete_local_promotion", { p_promotion_id: id });
       await eliminarObjetoMediaHTPWEB(path).catch(() => {});
       message("Promoción eliminada.");
       clearPromotion108();
@@ -379,6 +557,7 @@
   $("validateProductPhotoBatchBtn")?.addEventListener("click", validateProductPhotoBatch108);
   $("uploadProductPhotoBatchBtn")?.addEventListener("click", uploadProductPhotoBatch108);
   $("clearProductPhotoBatchBtn")?.addEventListener("click", clearProductPhotoBatch108);
+  $("addPromotionItemBtn")?.addEventListener("click", () => addPromotionItem108());
   $("savePromotionBtn")?.addEventListener("click", savePromotion108);
   $("clearPromotionBtn")?.addEventListener("click", clearPromotion108);
 })();
