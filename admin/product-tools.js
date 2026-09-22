@@ -245,8 +245,9 @@
       return;
     }
 
+    const optionsMode=promotionType108()==="OPTIONS";
     container.innerHTML='<div class="table-wrap"><table><thead><tr>'+
-      '<th>Producto</th><th>Variante</th><th>Cantidad</th><th>Precio normal</th><th>Precio promocional línea</th><th></th>'+
+      '<th>Producto</th><th>Variante</th><th>Cantidad</th><th>Precio normal base</th><th>'+(optionsMode?'Precio final de la opción':'Precio promocional línea (opcional)')+'</th><th></th>'+
       '</tr></thead><tbody>'+
       items.map((item,index)=>{
         const product=state.products.find(row=>row.id===item.product_id)||null;
@@ -265,7 +266,7 @@
           '<td><select data-promo-variant="'+index+'">'+variantOptions+'</select></td>'+
           '<td><input data-promo-qty="'+index+'" type="number" min="1" max="999" step="1" value="'+esc(item.quantity||1)+'"></td>'+
           '<td>$'+regular.toFixed(2)+'</td>'+
-          '<td><input data-promo-price="'+index+'" type="number" min="0" step="0.01" value="'+esc(item.promo_price??"")+'" placeholder="Opcional"></td>'+
+          '<td><input data-promo-price="'+index+'" type="number" min="0" step="0.01" value="'+esc(item.promo_price??"")+'" placeholder="'+(optionsMode?'Obligatorio':'Opcional')+'"></td>'+
           '<td><button class="btn-danger" type="button" data-promo-remove="'+index+'">Quitar</button></td>'+
         '</tr>';
       }).join("")+'</tbody></table></div>';
