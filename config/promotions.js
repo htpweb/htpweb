@@ -24,49 +24,23 @@
 
       list.innerHTML = promotions.map(promotion => {
         const items = Array.isArray(promotion.items) ? promotion.items : [];
+
         const itemHtml = items.length
           ? '<div class="promotion-items">' + items.map(item => {
-              const label = item.product_name + (item.variant_name ? ' · ' + item.variant_name : '');
+              const label = String(item.product_name || "Producto") +
+                (item.variant_name ? " · " + item.variant_name : "");
               const price = item.promo_price !== null && item.promo_price !== undefined
-                ? ' — promo 
-
-      card.classList.remove("hidden");
-    } catch (error) {
-      console.warn("Promociones no disponibles:", error?.message || error);
-      card.classList.add("hidden");
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadPublicPromotions, { once: true });
-  } else {
-    loadPublicPromotions();
-  }
-})();
- + Number(item.promo_price).toFixed(2)
-                : '';
-              return '<div><strong>' + escPromo(item.quantity) + '×</strong> ' + escPromo(label) + escPromo(price) + '</div>';
-            }).join('') + '</div>'
-          : '';
+                ? " — promo $" + Number(item.promo_price).toFixed(2)
+                : "";
+              return '<div><strong>' + escPromo(item.quantity) + '×</strong> ' +
+                escPromo(label + price) + '</div>';
+            }).join("") + '</div>'
+          : "";
 
         const total = promotion.promotion_price !== null && promotion.promotion_price !== undefined
-          ? '<div class="promotion-total">Precio promocional: 
-
-      card.classList.remove("hidden");
-    } catch (error) {
-      console.warn("Promociones no disponibles:", error?.message || error);
-      card.classList.add("hidden");
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadPublicPromotions, { once: true });
-  } else {
-    loadPublicPromotions();
-  }
-})();
- + Number(promotion.promotion_price).toFixed(2) + '</div>'
-          : '';
+          ? '<div class="promotion-total">Precio promocional: $' +
+            Number(promotion.promotion_price).toFixed(2) + '</div>'
+          : "";
 
         const content =
           '<div class="promotion-card-copy">' +
@@ -79,7 +53,7 @@
 
         const image = promotion.image_url
           ? '<img src="' + escPromo(promotion.image_url) + '" alt="' + escPromo(promotion.title) + '">'
-          : '';
+          : "";
 
         return '<div class="promotion-card">' + image + content + '</div>';
       }).join("");
