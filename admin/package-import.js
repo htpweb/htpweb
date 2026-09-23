@@ -168,6 +168,13 @@
     return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   }
 
+  function normalizeLocalIdentity113(value) {
+    return normalizeKey113(value)
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function uniqueLocalMatch113(list, value, label) {
     const key = normalizeKey113(value);
     if (!key) return null;
@@ -311,6 +318,66 @@
     };
   }
 
+  async function findStrongPackageDuplicate113(definition, fallbackName) {
+    if (!definition) return null;
+
+    const name = String(definition?.name || definition?.local || fallbackName || "").trim();
+    const province = String(definition?.province || definition?.provincia || "").trim();
+    const canton = String(definition?.canton || definition?.city || "").trim();
+
+    let cityId = null;
+    const cityMatches = (state.cities || []).filter(city =>
+      city.active &&
+      (!province || normalizeKey113(city.province) === normalizeKey113(province)) &&
+      (!canton || normalizeKey113(city.name) === normalizeKey113(canton))
+    );
+    if (cityMatches.length === 1) cityId = cityMatches[0].id;
+
+    const latRaw = definition?.latitude ?? definition?.latitud ?? null;
+    const lngRaw = definition?.longitude ?? definition?.longitud ?? null;
+    const latitude = latRaw === null || latRaw === undefined || String(latRaw).trim() === ""
+      ? null
+      : Number(latRaw);
+    const longitude = lngRaw === null || lngRaw === undefined || String(lngRaw).trim() === ""
+      ? null
+      : Number(lngRaw);
+
+    const matches = await rpc("master_find_local_duplicates_v1", {
+      p_name: name || null,
+      p_address: String(definition?.address || definition?.direccion || "").trim() || null,
+      p_phone: String(definition?.phone || definition?.telefono || "").trim() || null,
+      p_whatsapp: String(definition?.whatsapp || "").trim() || null,
+      p_latitude: Number.isFinite(latitude) ? latitude : null,
+      p_longitude: Number.isFinite(longitude) ? longitude : null,
+      p_city_id: cityId
+    });
+
+    const strong = (Array.isArray(matches) ? matches : [])
+      .filter(row => row?.strong_match === true)
+      .sort((a,b) => Number(b.score || 0) - Number(a.score || 0));
+
+    if (!strong.length) return null;
+
+    if (
+      strong.length > 1 &&
+      Number(strong[1].score || 0) >= Number(strong[0].score || 0) - 15
+    ) {
+      throw new Error(
+        "Posible LOCAL duplicado ambiguo para " + (name || fallbackName || "sin nombre") +
+        ": " + strong.slice(0, 2).map(row => row.name).join(" / ") +
+        ". Revisa antes de importar."
+      );
+    }
+
+    const match = strong[0];
+    return {
+      ...match,
+      google_maps_url: match.google_maps_url || "",
+      duplicate_score: Number(match.score || 0),
+      duplicate_reasons: Array.isArray(match.reasons) ? match.reasons : []
+    };
+  }
+
   async function buildPackageLocalContext113(rows, manifest) {
     const existing = masterLocalsState?.items || [];
     const result = [...existing];
@@ -324,8 +391,12 @@
       const lookupKey = localId ? "id:" + localId : "name:" + normalizeKey113(localName);
       if (seen.has(lookupKey)) continue;
 
-      const existingLocal = resolvePackageLocal113(localName, localId, existing);
+      let existingLocal = resolvePackageLocal113(localName, localId, existing);
       const definition = manifestLocalDefinition113(manifest, localName, localId);
+
+      if (!existingLocal && definition) {
+        existingLocal = await findStrongPackageDuplicate113(definition, localName);
+      }
 
       if (!existingLocal && !definition) {
         throw new Error(
@@ -371,14 +442,15 @@
     }
 
     if (!localName) return null;
-    const key = normalizeKey113(localName);
+    const key = normalizeLocalIdentity113(localName);
 
-    const exact = locals.filter(row => normalizeKey113(row.name) === key);
+    const exact = locals.filter(row => normalizeLocalIdentity113(row.name) === key);
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) return null;
 
     const fuzzy = locals.filter(row => {
-      const candidate = normalizeKey113(row.name);
+      const candidate = normalizeLocalIdentity113(row.name);
+      if (!candidate || !key) return false;
       return candidate.includes(key) || key.includes(candidate);
     });
     return fuzzy.length === 1 ? fuzzy[0] : null;
@@ -996,7 +1068,7 @@
 
     for (const local of state113.localProfiles) {
       const oldId = local.id;
-      const result = await rpc("master_apply_local_package_profile_v1", {
+      const result = await rpc("master_apply_local_package_profile_v2", {
         p_local_id: local.is_new ? null : local.existing_id,
         p_city_id: local.city_id,
         p_business_category_id: local.business_category_id,
@@ -1017,7 +1089,8 @@
 
       if (local.is_new) {
         idMap.set(oldId, result.id);
-        created++;
+        if (result.duplicate_reused === true) updated++;
+        else created++;
       } else {
         updated++;
       }
