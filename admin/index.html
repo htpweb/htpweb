@@ -72,6 +72,53 @@
 
       <div id="metrics" class="overview-kpis"></div>
 
+      <div class="card master-only" id="overviewResourcesCard">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Capacidad y consumo de Supabase</h3>
+            <p class="muted" style="margin:.35rem 0 0">Espacio de imágenes/datos y referencia de ancho de banda para decidir cuándo optimizar o ampliar capacidad.</p>
+          </div>
+          <button id="overviewResourceSettingsBtn" class="btn-muted" type="button">Configurar referencia</button>
+        </div>
+
+        <div id="overviewResources" class="overview-resource-grid" style="margin-top:14px">
+          <div class="muted">Calculando uso de recursos…</div>
+        </div>
+
+        <div id="overviewResourceAdvice" class="workspace-note" style="margin-top:14px">
+          Cargando recomendación…
+        </div>
+
+        <div id="overviewResourceSettings" class="resource-settings hidden">
+          <div class="form-grid">
+            <div>
+              <label>Plan de referencia</label>
+              <select id="overviewResourcePlan">
+                <option value="FREE">Free</option>
+                <option value="PRO">Pro</option>
+                <option value="TEAM">Team</option>
+                <option value="ENTERPRISE">Enterprise / personalizado</option>
+              </select>
+            </div>
+            <div>
+              <label>Egress usado este ciclo (GB)</label>
+              <input id="overviewEgressUsed" inputmode="decimal" placeholder="Ej. 1.25">
+            </div>
+            <div>
+              <label>Egress cacheado usado (GB)</label>
+              <input id="overviewCachedEgressUsed" inputmode="decimal" placeholder="Ej. 0.80">
+            </div>
+          </div>
+          <p class="muted" style="margin:10px 0 0">
+            Storage y base de datos se miden automáticamente. El egress facturable se toma del panel Usage de Supabase; esos bytes no están disponibles de forma exacta desde Postgres.
+          </p>
+          <div class="row" style="margin-top:12px">
+            <button id="saveOverviewResourceSettingsBtn" class="btn-primary" type="button">Guardar referencia</button>
+            <button id="cancelOverviewResourceSettingsBtn" class="btn-muted" type="button">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <div class="overview-layout">
         <div class="card">
           <div class="row between">
