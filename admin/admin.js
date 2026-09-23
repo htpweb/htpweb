@@ -328,6 +328,206 @@ function overviewMoney(value) {
   return "$" + Number(value || 0).toFixed(2);
 }
 
+function overviewFormatBytes(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const bytes = Math.max(0, Number(value));
+  const units = ["B","KB","MB","GB","TB"];
+  let n = bytes;
+  let unit = 0;
+  while (n >= 1024 && unit < units.length - 1) {
+    n /= 1024;
+    unit++;
+  }
+  const decimals = unit <= 1 ? 0 : (n >= 100 ? 0 : n >= 10 ? 1 : 2);
+  return n.toFixed(decimals) + " " + units[unit];
+}
+
+function overviewResourceTone(percent) {
+  if (!Number.isFinite(Number(percent))) return "resource-unknown";
+  if (Number(percent) >= 90) return "resource-danger";
+  if (Number(percent) >= 70) return "resource-watch";
+  return "resource-ok";
+}
+
+function overviewResourceCard({label,value,percent,detail}) {
+  const pct = Number.isFinite(Number(percent))
+    ? Math.max(0, Math.min(100, Number(percent)))
+    : null;
+  return `
+    <div class="overview-resource-card ${overviewResourceTone(pct)}">
+      <span class="muted">${esc(label)}</span>
+      <strong>${esc(value)}</strong>
+      <div class="resource-meter"><span style="width:${pct === null ? 0 : pct}%"></span></div>
+      <small>${esc(detail)}</small>
+    </div>
+  `;
+}
+
+function renderOverviewResources(data) {
+  const container = $("overviewResources");
+  const advice = $("overviewResourceAdvice");
+  if (!container || !advice) return;
+
+  const storagePct = Number(data?.storage_percent);
+  const dbPct = Number(data?.database_percent);
+  const egressPct = data?.egress_percent === null || data?.egress_percent === undefined ? null : Number(data.egress_percent);
+  const cachedPct = data?.cached_egress_percent === null || data?.cached_egress_percent === undefined ? null : Number(data.cached_egress_percent);
+  const storageFreePct = Number.isFinite(storagePct) ? Math.max(0, 100 - storagePct) : null;
+  const dbFreePct = Number.isFinite(dbPct) ? Math.max(0, 100 - dbPct) : null;
+  const capacityFreePct = [storageFreePct, dbFreePct].filter(Number.isFinite).length
+    ? Math.min(...[storageFreePct, dbFreePct].filter(Number.isFinite))
+    : null;
+
+  const imageCount = Number(data?.image_objects || 0);
+  const largeImages = Number(data?.large_images || 0);
+  const heavyPct = imageCount > 0 ? (largeImages / imageCount) * 100 : 0;
+
+  let egressValue = "Sin sincronizar";
+  let egressDetail = "Cuota " + overviewFormatBytes(data?.egress_quota_bytes) +
+    " + cache " + overviewFormatBytes(data?.cached_egress_quota_bytes);
+  let egressMeter = null;
+  if (egressPct !== null || cachedPct !== null) {
+    egressMeter = Math.max(...[egressPct,cachedPct].filter(Number.isFinite));
+    egressValue = overviewFormatBytes(data?.egress_used_bytes);
+    egressDetail =
+      "Libre " + overviewFormatBytes(data?.egress_free_bytes) +
+      " · Cache usado " + overviewFormatBytes(data?.cached_egress_used_bytes) +
+      " / " + overviewFormatBytes(data?.cached_egress_quota_bytes);
+  }
+
+  container.innerHTML = [
+    overviewResourceCard({
+      label: "Storage usado",
+      value: overviewFormatBytes(data?.storage_bytes),
+      percent: storagePct,
+      detail: Number.isFinite(storagePct)
+        ? storagePct.toFixed(1) + "% de " + overviewFormatBytes(data?.storage_quota_bytes) + " · " + Number(data?.storage_objects || 0) + " archivos"
+        : "Uso live de archivos"
+    }),
+    overviewResourceCard({
+      label: "Base de datos",
+      value: overviewFormatBytes(data?.database_bytes),
+      percent: dbPct,
+      detail: Number.isFinite(dbPct)
+        ? dbPct.toFixed(1) + "% de " + overviewFormatBytes(data?.database_quota_bytes)
+        : "Uso live de Postgres"
+    }),
+    overviewResourceCard({
+      label: "Capacidad libre",
+      value: capacityFreePct === null ? "—" : capacityFreePct.toFixed(1) + "%",
+      percent: capacityFreePct === null ? null : 100 - capacityFreePct,
+      detail: "Storage libre " + overviewFormatBytes(data?.storage_free_bytes) +
+        " · DB libre " + overviewFormatBytes(data?.database_free_bytes)
+    }),
+    overviewResourceCard({
+      label: "Imágenes pesadas > 1 MB",
+      value: String(largeImages),
+      percent: heavyPct,
+      detail: imageCount + " imágenes · mayor " + overviewFormatBytes(data?.largest_image_bytes)
+    }),
+    overviewResourceCard({
+      label: "Ancho de banda / egress",
+      value: egressValue,
+      percent: egressMeter,
+      detail: egressDetail
+    })
+  ].join("");
+
+  const known = [storagePct, dbPct, egressPct, cachedPct].filter(Number.isFinite);
+  const highest = known.length ? Math.max(...known) : 0;
+  let recommendation = "Capacidad holgada. No hace falta ampliar espacio por ahora.";
+  if (highest >= 95) {
+    recommendation = "Uso crítico: conviene liberar/optimizar recursos de inmediato y revisar ampliación del plan.";
+  } else if (highest >= 85) {
+    recommendation = "Uso alto: optimiza imágenes/datos y prepara una ampliación si el crecimiento continúa.";
+  } else if (highest >= 70) {
+    recommendation = "Uso en vigilancia: todavía hay margen, pero revisa crecimiento y archivos pesados.";
+  } else if (largeImages > 0) {
+    recommendation = "Capacidad holgada, pero hay " + largeImages + " imágenes de más de 1 MB que conviene comprimir para ahorrar Storage y egress.";
+  }
+
+  if (egressPct === null && cachedPct === null) {
+    recommendation += " El consumo exacto de egress aún no está sincronizado; puedes registrar el valor del ciclo desde Usage de Supabase en Configurar referencia.";
+  }
+
+  advice.innerHTML =
+    "<strong>Recomendación:</strong> " + esc(recommendation) +
+    '<div class="muted" style="margin-top:5px">Referencia de cuota: plan ' + esc(data?.plan_code || "—") +
+    " · Verde &lt;70% · Vigilar 70–84% · Alto 85–94% · Crítico ≥95%.</div>";
+
+  if ($("overviewResourcePlan")) $("overviewResourcePlan").value = data?.plan_code || "FREE";
+  if ($("overviewEgressUsed")) {
+    $("overviewEgressUsed").value = data?.egress_used_bytes == null
+      ? ""
+      : (Number(data.egress_used_bytes) / 1073741824).toFixed(3).replace(/0+$/,"").replace(/\.$/,"");
+  }
+  if ($("overviewCachedEgressUsed")) {
+    $("overviewCachedEgressUsed").value = data?.cached_egress_used_bytes == null
+      ? ""
+      : (Number(data.cached_egress_used_bytes) / 1073741824).toFixed(3).replace(/0+$/,"").replace(/\.$/,"");
+  }
+}
+
+async function loadOverviewResources() {
+  if (state.role !== "MASTER") return;
+  const container = $("overviewResources");
+  if (!container) return;
+
+  try {
+    const data = await rpc("master_resource_usage_summary");
+    state.resourceUsage = data || null;
+    renderOverviewResources(data || {});
+  } catch (e) {
+    container.innerHTML =
+      '<div class="message error" style="grid-column:1/-1">No se pudieron calcular los recursos: ' +
+      esc(e.message || e) + '</div>';
+    if ($("overviewResourceAdvice")) {
+      $("overviewResourceAdvice").textContent = "El indicador se habilitará cuando termine de aplicarse la migración de Supabase.";
+    }
+  }
+}
+
+async function saveOverviewResourceSettings() {
+  if (state.role !== "MASTER") return;
+  const plan = $("overviewResourcePlan")?.value || "FREE";
+  const parseOptional = id => {
+    const raw = $(id)?.value.trim() || "";
+    if (!raw) return null;
+    const n = Number(raw.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) throw new Error("Escribe un valor válido en GB.");
+    return n;
+  };
+
+  const button = $("saveOverviewResourceSettingsBtn");
+  if (button) button.disabled = true;
+  try {
+    const data = await rpc("master_save_resource_usage_settings", {
+      p_plan_code: plan,
+      p_egress_used_gb: parseOptional("overviewEgressUsed"),
+      p_cached_egress_used_gb: parseOptional("overviewCachedEgressUsed")
+    });
+    state.resourceUsage = data || null;
+    renderOverviewResources(data || {});
+    $("overviewResourceSettings")?.classList.add("hidden");
+    message("Referencia de capacidad actualizada.");
+  } catch (e) {
+    message(e.message || "No se pudo guardar la referencia de recursos.", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function bindOverviewResourceActions() {
+  const open = $("overviewResourceSettingsBtn");
+  const panel = $("overviewResourceSettings");
+  const close = $("cancelOverviewResourceSettingsBtn");
+  const save = $("saveOverviewResourceSettingsBtn");
+
+  if (open && panel) open.onclick = () => panel.classList.toggle("hidden");
+  if (close && panel) close.onclick = () => panel.classList.add("hidden");
+  if (save) save.onclick = () => { void saveOverviewResourceSettings(); };
+}
+
 function overviewStatusLabel(status) {
   const labels = {
     PENDING: "Pendiente",
@@ -451,6 +651,7 @@ function bindOverviewActions() {
     button.onclick = () => { void overviewGo(button.dataset.overviewAction); };
   });
   if ($("overviewGoOrdersBtn")) $("overviewGoOrdersBtn").onclick = () => { void overviewGo("orders"); };
+  bindOverviewResourceActions();
 }
 
 function renderOverviewAttention(items) {
@@ -708,6 +909,7 @@ async function loadOverview() {
       (extras ? " · " + extras : "");
   }
 
+  await loadOverviewResources();
   bindOverviewActions();
 }
 
