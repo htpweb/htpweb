@@ -258,3 +258,54 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5
   .overview-attention-row,.overview-order-row{align-items:flex-start;flex-direction:column}
   .overview-order-meta{width:100%;justify-content:space-between}
 }
+
+
+/* HTPWEB Código 122 — capacidad y consumo */
+.overview-resource-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(150px,1fr));
+  gap:12px;
+}
+.overview-resource-card{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:14px;
+  background:#f8fafc;
+  display:grid;
+  gap:7px;
+}
+.overview-resource-card strong{
+  font-size:22px;
+  line-height:1.1;
+}
+.overview-resource-card small{
+  color:#6b7280;
+  line-height:1.35;
+}
+.resource-meter{
+  width:100%;
+  height:8px;
+  background:#e5e7eb;
+  border-radius:999px;
+  overflow:hidden;
+}
+.resource-meter span{
+  display:block;
+  height:100%;
+  border-radius:999px;
+}
+.resource-ok .resource-meter span{background:#15803d}
+.resource-watch .resource-meter span{background:#b45309}
+.resource-danger .resource-meter span{background:#b91c1c}
+.resource-unknown .resource-meter span{background:#94a3b8}
+.resource-settings{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #e5e7eb;
+}
+@media(max-width:1250px){
+  .overview-resource-grid{grid-template-columns:repeat(3,minmax(170px,1fr))}
+}
+@media(max-width:760px){
+  .overview-resource-grid{grid-template-columns:1fr}
+}
