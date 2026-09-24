@@ -403,6 +403,10 @@ function renderOverviewResources(data) {
   const storageProjectionPct = valueOrNull(data?.storage_egress_projected_percent);
   const storage24hBytes = valueOrNull(data?.storage_egress_24h_bytes);
   const storageProjectionBytes = valueOrNull(data?.storage_egress_30d_projected_bytes);
+  const readShare = valueOrNull(data?.api_read_share_percent);
+  const readRequests = Number(data?.api_read_requests_24h || 0);
+  const writeRequests = Number(data?.api_write_requests_24h || 0);
+  const writeShare = readShare === null ? null : Math.max(0, 100 - readShare);
 
   const imageCount = Number(data?.image_objects || 0);
   const largeImages = Number(data?.large_images || 0);
@@ -441,7 +445,69 @@ function renderOverviewResources(data) {
       " · actualizado " + syncLabel;
   }
 
+  let scaleDecision = "NO COMPRAR NADA";
+  let scaleDetail = "Los recursos actuales tienen margen suficiente.";
+  let scalePercent = 20;
+
+  const readReplicaCandidate =
+    readShare !== null && readShare >= 80 &&
+    connPct !== null && connPct >= 70 &&
+    apiP95 !== null && apiP95 >= 1000;
+
+  if ((storagePct !== null && storagePct >= 95) || (dbPct !== null && dbPct >= 95)) {
+    scaleDecision = "AMPLIAR CAPACIDAD";
+    scaleDetail = "Storage o base de datos están en nivel crítico.";
+    scalePercent = 100;
+  } else if (storageProjectionPct !== null && storageProjectionPct >= 95) {
+    scaleDecision = "AMPLIAR PLAN / EGRESS";
+    scaleDetail = "La proyección de tráfico de Storage está cerca o por encima de la cuota.";
+    scalePercent = 100;
+  } else if (readReplicaCandidate) {
+    scaleDecision = "EVALUAR READ REPLICA";
+    scaleDetail = "La carga es mayormente de lectura y ya existe presión de conexiones/latencia.";
+    scalePercent = 90;
+  } else if ((connPct !== null && connPct >= 85) ||
+             (apiP95 !== null && apiP95 >= 1800 && connPct !== null && connPct >= 70)) {
+    scaleDecision = "AMPLIAR COMPUTE";
+    scaleDetail = "La base está bajo presión suficiente como para justificar más capacidad de servidor.";
+    scalePercent = 90;
+  } else if ((storagePct !== null && storagePct >= 85) || (dbPct !== null && dbPct >= 85)) {
+    scaleDecision = "PREPARAR AMPLIACIÓN";
+    scaleDetail = "La capacidad disponible está entrando en zona alta.";
+    scalePercent = 85;
+  } else if (storageProjectionPct !== null && storageProjectionPct >= 85) {
+    scaleDecision = "PREPARAR MÁS EGRESS";
+    scaleDetail = "La tendencia de tráfico está acercándose a la cuota mensual.";
+    scalePercent = 85;
+  } else if ((apiP95 !== null && apiP95 >= 1000) || largeImages > 0) {
+    scaleDecision = "OPTIMIZAR PRIMERO";
+    scaleDetail = "Hay margen de infraestructura; conviene optimizar antes de comprar más capacidad.";
+    scalePercent = 65;
+  }
+
+  const workloadLabel = readShare === null
+    ? "SIN DATOS"
+    : (readShare >= 80 ? "MUY ORIENTADA A LECTURAS" :
+       readShare >= 65 ? "MAYORMENTE LECTURAS" :
+       readShare <= 35 ? "MAYORMENTE ESCRITURAS" :
+       "MIXTA");
+
   container.innerHTML = [
+    overviewResourceCard({
+      label: "Diagnóstico de capacidad",
+      value: scaleDecision,
+      percent: scalePercent,
+      detail: scaleDetail
+    }),
+    overviewResourceCard({
+      label: "Patrón de carga API",
+      value: workloadLabel,
+      percent: readShare,
+      detail: (readShare === null
+        ? "Lecturas/escrituras sin sincronizar"
+        : readShare.toFixed(1) + "% lecturas · " + writeShare.toFixed(1) + "% escrituras") +
+        " · " + readRequests + " lecturas · " + writeRequests + " escrituras / 24 h"
+    }),
     overviewResourceCard({
       label: "Storage usado",
       value: overviewFormatBytes(data?.storage_bytes),
@@ -548,6 +614,12 @@ function renderOverviewResources(data) {
 
   if (!snapshotFresh && storage24hBytes !== null) {
     recommendations.push("La lectura de observabilidad tiene más de 2 horas; el monitor horario debe actualizarla.");
+  }
+
+  if (readReplicaCandidate) {
+    recommendations.push("La carga ya cumple el patrón para evaluar una Read Replica: mayoría clara de lecturas junto con presión de conexiones y latencia.");
+  } else if (readShare !== null && readShare >= 80) {
+    recommendations.push("La carga es muy orientada a lecturas, pero todavía no hay presión suficiente para justificar una Read Replica.");
   }
 
   if (!recommendations.length) {
