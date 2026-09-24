@@ -349,6 +349,16 @@ function overviewFormatDuration(value) {
   return (ms / 1000).toFixed(ms >= 10000 ? 1 : 2).replace(/0+$/,"").replace(/\.$/,"") + " s";
 }
 
+function overviewLatencyStatus(value) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms)) return { label: "SIN DATO", percent: null };
+  if (ms < 700) return { label: "EXCELENTE", percent: Math.min(35, ms / 20) };
+  if (ms < 1000) return { label: "BUENA", percent: 45 };
+  if (ms < 1800) return { label: "VIGILAR", percent: 68 };
+  if (ms < 2500) return { label: "LENTA", percent: 85 };
+  return { label: "CRÍTICA", percent: 100 };
+}
+
 function overviewResourceTone(percent) {
   if (!Number.isFinite(Number(percent))) return "resource-unknown";
   if (Number(percent) >= 90) return "resource-danger";
@@ -407,9 +417,8 @@ function renderOverviewResources(data) {
     ? syncedAt.toLocaleString()
     : "sin lectura";
 
-  const apiStress = apiP95 === null ? null : Math.min(100, apiP95 / 20);
+  const apiLatency = overviewLatencyStatus(apiP95);
   const clientStress = clientRpcMs === null ? null : Math.min(100, clientRpcMs / 10);
-  const errorStress = apiErrorRate === null ? null : Math.min(100, apiErrorRate * 20);
 
   let bandwidthValue = "Pendiente";
   let bandwidthPercent = null;
@@ -457,12 +466,12 @@ function renderOverviewResources(data) {
         Number(data?.long_queries || 0) + " consultas > 2 s"
     }),
     overviewResourceCard({
-      label: "Latencia API p95",
-      value: overviewFormatDuration(apiP95),
-      percent: apiStress,
-      detail: Number(data?.api_requests_24h || 0) + " solicitudes / 24 h · " +
+      label: "Velocidad API",
+      value: overviewFormatDuration(apiP95) + (apiLatency.label ? " · " + apiLatency.label : ""),
+      percent: apiLatency.percent,
+      detail: "p95 · " + Number(data?.api_requests_24h || 0) + " solicitudes / 24 h · " +
         (apiErrorRate === null ? "errores —" : apiErrorRate.toFixed(2) + "% errores 5xx") +
-        " · actualizado " + syncLabel
+        " · la barra indica velocidad, no una cuota · actualizado " + syncLabel
     }),
     overviewResourceCard({
       label: "Ancho de banda / egress",
