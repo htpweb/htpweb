@@ -949,43 +949,104 @@ async function loadOverview() {
 
   const openStatuses = ["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"];
 
-  const [
-    ordersToday,
-    deliveredToday,
-    recentOrders,
-    openOrders,
-    localsTotal,
-    localsActive,
-    productsTotal,
-    productsActive,
-    productsWithImage,
-    deliveriesTotal,
-    deliveriesActive,
-    pendingRequests,
-    customersTotal,
-    activePromotions
-  ] = await Promise.all([
-    overviewCount("orders", q => q.gte("created_at", todayIso)),
-    overviewRows("orders", "id,total,status,created_at", q =>
-      q.gte("created_at", todayIso).eq("status", "DELIVERED").limit(1000)
-    ),
-    overviewRows("orders", "id,status,total,customer_name,created_at", q =>
-      q.order("created_at", { ascending: false }).limit(5)
-    ),
-    overviewCount("orders", q => q.in("status", openStatuses)),
-    overviewCount("locals"),
-    overviewCount("locals", q => q.eq("active", true)),
-    overviewCount("products"),
-    overviewCount("products", q => q.eq("active", true)),
-    overviewCount("products", q => q.not("image_url", "is", null).neq("image_url", "")),
-    overviewCount("deliveries"),
-    overviewCount("deliveries", q => q.eq("active", true)),
-    overviewCount("local_requests", q => q.in("status", ["PENDING","NEEDS_INFO"])),
-    overviewCount("customers"),
-    overviewCount("local_promotions", q => q.eq("active", true))
-  ]);
+  let ordersToday = null;
+  let recentOrders = [];
+  let openOrders = null;
+  let localsTotal = null;
+  let localsActive = null;
+  let productsTotal = null;
+  let productsActive = null;
+  let productsWithImage = null;
+  let deliveriesTotal = null;
+  let deliveriesActive = null;
+  let pendingRequests = null;
+  let customersTotal = null;
+  let activePromotions = null;
+  let deliveredTodayCount = 0;
+  let deliveredValue = 0;
+  let masterSnapshotLoaded = false;
 
-  const deliveredValue = deliveredToday.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  // MASTER usa un solo snapshot del servidor para evitar múltiples HEAD COUNT
+  // sobre tablas con RLS. Esto elimina especialmente tres conteos completos
+  // de products que eran el principal cuello de botella del dashboard.
+  if (state.role === "MASTER") {
+    try {
+      const started = performance.now();
+      const snapshot = await rpc("master_overview_snapshot", {
+        p_today_start: todayIso
+      });
+      const clientRpcMs = Math.round(performance.now() - started);
+
+      ordersToday = Number(snapshot?.orders_today ?? 0);
+      deliveredTodayCount = Number(snapshot?.delivered_today_count ?? 0);
+      deliveredValue = Number(snapshot?.delivered_today_value ?? 0);
+      recentOrders = Array.isArray(snapshot?.recent_orders) ? snapshot.recent_orders : [];
+      openOrders = Number(snapshot?.open_orders ?? 0);
+      localsTotal = Number(snapshot?.locals_total ?? 0);
+      localsActive = Number(snapshot?.locals_active ?? 0);
+      productsTotal = Number(snapshot?.products_total ?? 0);
+      productsActive = Number(snapshot?.products_active ?? 0);
+      productsWithImage = Number(snapshot?.products_with_image ?? 0);
+      deliveriesTotal = Number(snapshot?.deliveries_total ?? 0);
+      deliveriesActive = Number(snapshot?.deliveries_active ?? 0);
+      pendingRequests = Number(snapshot?.pending_requests ?? 0);
+      customersTotal = Number(snapshot?.customers_total ?? 0);
+      activePromotions = Number(snapshot?.active_promotions ?? 0);
+
+      state.resourceUsage = {
+        ...(snapshot?.resource || {}),
+        client_rpc_ms: clientRpcMs
+      };
+      renderOverviewResources(state.resourceUsage);
+      masterSnapshotLoaded = true;
+    } catch (e) {
+      console.warn("Snapshot MASTER optimizado no disponible; usando consultas compatibles.", e);
+    }
+  }
+
+  // Fallback y roles no MASTER: conserva el comportamiento anterior.
+  if (!masterSnapshotLoaded) {
+    let deliveredToday = [];
+    [
+      ordersToday,
+      deliveredToday,
+      recentOrders,
+      openOrders,
+      localsTotal,
+      localsActive,
+      productsTotal,
+      productsActive,
+      productsWithImage,
+      deliveriesTotal,
+      deliveriesActive,
+      pendingRequests,
+      customersTotal,
+      activePromotions
+    ] = await Promise.all([
+      overviewCount("orders", q => q.gte("created_at", todayIso)),
+      overviewRows("orders", "id,total,status,created_at", q =>
+        q.gte("created_at", todayIso).eq("status", "DELIVERED").limit(1000)
+      ),
+      overviewRows("orders", "id,status,total,customer_name,created_at", q =>
+        q.order("created_at", { ascending: false }).limit(5)
+      ),
+      overviewCount("orders", q => q.in("status", openStatuses)),
+      overviewCount("locals"),
+      overviewCount("locals", q => q.eq("active", true)),
+      overviewCount("products"),
+      overviewCount("products", q => q.eq("active", true)),
+      overviewCount("products", q => q.not("image_url", "is", null).neq("image_url", "")),
+      overviewCount("deliveries"),
+      overviewCount("deliveries", q => q.eq("active", true)),
+      overviewCount("local_requests", q => q.in("status", ["PENDING","NEEDS_INFO"])),
+      overviewCount("customers"),
+      overviewCount("local_promotions", q => q.eq("active", true))
+    ]);
+
+    deliveredTodayCount = deliveredToday.length;
+    deliveredValue = deliveredToday.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  }
+
   const inactiveLocals = localsTotal === null || localsActive === null ? null : Math.max(0, localsTotal - localsActive);
   const inactiveProducts = productsTotal === null || productsActive === null ? null : Math.max(0, productsTotal - productsActive);
   const productsWithoutImage = productsTotal === null || productsWithImage === null ? null : Math.max(0, productsTotal - productsWithImage);
@@ -1000,7 +1061,7 @@ async function loadOverview() {
     {
       label: "Ventas entregadas hoy",
       value: overviewMoney(deliveredValue),
-      detail: deliveredToday.length + " pedido" + (deliveredToday.length === 1 ? "" : "s") + " entregado" + (deliveredToday.length === 1 ? "" : "s"),
+      detail: deliveredTodayCount + " pedido" + (deliveredTodayCount === 1 ? "" : "s") + " entregado" + (deliveredTodayCount === 1 ? "" : "s"),
       tone: "success"
     },
     {
@@ -1094,7 +1155,9 @@ async function loadOverview() {
       (extras ? " · " + extras : "");
   }
 
-  await loadOverviewResources();
+  if (!masterSnapshotLoaded) {
+    await loadOverviewResources();
+  }
   bindOverviewActions();
 }
 
