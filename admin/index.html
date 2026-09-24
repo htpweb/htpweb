@@ -75,10 +75,13 @@
       <div class="card master-only" id="overviewResourcesCard">
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
-            <h3 style="margin:0">Capacidad y consumo de Supabase</h3>
-            <p class="muted" style="margin:.35rem 0 0">Espacio de imágenes/datos y referencia de ancho de banda para decidir cuándo optimizar o ampliar capacidad.</p>
+            <h3 style="margin:0">Capacidad, rendimiento y ancho de banda</h3>
+            <p class="muted" style="margin:.35rem 0 0">Monitoreo operativo de Storage, base de datos, conexiones, latencia y tráfico para decidir cuándo optimizar o ampliar capacidad.</p>
           </div>
-          <button id="overviewResourceSettingsBtn" class="btn-muted" type="button">Configurar referencia</button>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <button id="overviewResourceRefreshBtn" class="btn-muted" type="button">Actualizar ahora</button>
+            <button id="overviewResourceSettingsBtn" class="btn-muted" type="button">Plan / egress exacto</button>
+          </div>
         </div>
 
         <div id="overviewResources" class="overview-resource-grid" style="margin-top:14px">
@@ -110,7 +113,7 @@
             </div>
           </div>
           <p class="muted" style="margin:10px 0 0">
-            Storage y base de datos se miden automáticamente. El egress facturable se toma del panel Usage de Supabase; esos bytes no están disponibles de forma exacta desde Postgres.
+            HTPWEB mide automáticamente Storage, base de datos, conexiones y latencia. El tráfico de Storage de 24 h se sincroniza desde los logs para estimar tendencia. Si quieres comparar contra el egress total exacto de facturación de Supabase, puedes registrar aquí el valor del ciclo.
           </p>
           <div class="row" style="margin-top:12px">
             <button id="saveOverviewResourceSettingsBtn" class="btn-primary" type="button">Guardar referencia</button>
