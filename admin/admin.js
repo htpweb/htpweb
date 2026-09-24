@@ -342,6 +342,13 @@ function overviewFormatBytes(value) {
   return n.toFixed(decimals) + " " + units[unit];
 }
 
+function overviewFormatDuration(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const ms = Math.max(0, Number(value));
+  if (ms < 1000) return Math.round(ms) + " ms";
+  return (ms / 1000).toFixed(ms >= 10000 ? 1 : 2).replace(/0+$/,"").replace(/\.$/,"") + " s";
+}
+
 function overviewResourceTone(percent) {
   if (!Number.isFinite(Number(percent))) return "resource-unknown";
   if (Number(percent) >= 90) return "resource-danger";
@@ -368,31 +375,61 @@ function renderOverviewResources(data) {
   const advice = $("overviewResourceAdvice");
   if (!container || !advice) return;
 
-  const storagePct = Number(data?.storage_percent);
-  const dbPct = Number(data?.database_percent);
-  const egressPct = data?.egress_percent === null || data?.egress_percent === undefined ? null : Number(data.egress_percent);
-  const cachedPct = data?.cached_egress_percent === null || data?.cached_egress_percent === undefined ? null : Number(data.cached_egress_percent);
-  const storageFreePct = Number.isFinite(storagePct) ? Math.max(0, 100 - storagePct) : null;
-  const dbFreePct = Number.isFinite(dbPct) ? Math.max(0, 100 - dbPct) : null;
-  const capacityFreePct = [storageFreePct, dbFreePct].filter(Number.isFinite).length
-    ? Math.min(...[storageFreePct, dbFreePct].filter(Number.isFinite))
-    : null;
+  const valueOrNull = value =>
+    value === null || value === undefined || !Number.isFinite(Number(value))
+      ? null
+      : Number(value);
+
+  const storagePct = valueOrNull(data?.storage_percent);
+  const dbPct = valueOrNull(data?.database_percent);
+  const connPct = valueOrNull(data?.connections_percent);
+  const cacheHit = valueOrNull(data?.database_cache_hit_percent);
+  const apiP95 = valueOrNull(data?.api_p95_ms);
+  const apiErrorRate = valueOrNull(data?.api_error_rate_24h);
+  const storageP95 = valueOrNull(data?.storage_p95_ms);
+  const clientRpcMs = valueOrNull(data?.client_rpc_ms);
+  const egressPct = valueOrNull(data?.egress_percent);
+  const cachedPct = valueOrNull(data?.cached_egress_percent);
+  const storageProjectionPct = valueOrNull(data?.storage_egress_projected_percent);
+  const storage24hBytes = valueOrNull(data?.storage_egress_24h_bytes);
+  const storageProjectionBytes = valueOrNull(data?.storage_egress_30d_projected_bytes);
 
   const imageCount = Number(data?.image_objects || 0);
   const largeImages = Number(data?.large_images || 0);
   const heavyPct = imageCount > 0 ? (largeImages / imageCount) * 100 : 0;
 
-  let egressValue = "Sin sincronizar";
-  let egressDetail = "Cuota " + overviewFormatBytes(data?.egress_quota_bytes) +
-    " + cache " + overviewFormatBytes(data?.cached_egress_quota_bytes);
-  let egressMeter = null;
+  const syncedAt = data?.observability_synced_at ? new Date(data.observability_synced_at) : null;
+  const syncAgeMinutes = syncedAt && !Number.isNaN(syncedAt.valueOf())
+    ? Math.max(0, (Date.now() - syncedAt.getTime()) / 60000)
+    : null;
+  const snapshotFresh = Number.isFinite(syncAgeMinutes) && syncAgeMinutes <= 120;
+  const syncLabel = syncedAt && !Number.isNaN(syncedAt.valueOf())
+    ? syncedAt.toLocaleString()
+    : "sin lectura";
+
+  const apiStress = apiP95 === null ? null : Math.min(100, apiP95 / 20);
+  const clientStress = clientRpcMs === null ? null : Math.min(100, clientRpcMs / 10);
+  const errorStress = apiErrorRate === null ? null : Math.min(100, apiErrorRate * 20);
+
+  let bandwidthValue = "Pendiente";
+  let bandwidthPercent = null;
+  let bandwidthDetail = "Aún no hay lectura de tráfico.";
   if (egressPct !== null || cachedPct !== null) {
-    egressMeter = Math.max(...[egressPct,cachedPct].filter(Number.isFinite));
-    egressValue = overviewFormatBytes(data?.egress_used_bytes);
-    egressDetail =
-      "Libre " + overviewFormatBytes(data?.egress_free_bytes) +
-      " · Cache usado " + overviewFormatBytes(data?.cached_egress_used_bytes) +
+    bandwidthPercent = Math.max(...[egressPct,cachedPct].filter(Number.isFinite));
+    bandwidthValue = overviewFormatBytes(data?.egress_used_bytes);
+    bandwidthDetail =
+      "Egress total de facturación · libre " + overviewFormatBytes(data?.egress_free_bytes) +
+      " · cache usado " + overviewFormatBytes(data?.cached_egress_used_bytes) +
       " / " + overviewFormatBytes(data?.cached_egress_quota_bytes);
+  } else if (storage24hBytes !== null) {
+    bandwidthPercent = storageProjectionPct;
+    bandwidthValue = overviewFormatBytes(storage24hBytes) + " / 24 h";
+    bandwidthDetail =
+      (snapshotFresh ? "Conectado" : "Datos atrasados") +
+      " · " + Number(data?.storage_requests_24h || 0) + " descargas" +
+      " · proyección Storage 30 días " + overviewFormatBytes(storageProjectionBytes) +
+      " / " + overviewFormatBytes(data?.egress_quota_bytes) +
+      " · actualizado " + syncLabel;
   }
 
   container.innerHTML = [
@@ -400,60 +437,122 @@ function renderOverviewResources(data) {
       label: "Storage usado",
       value: overviewFormatBytes(data?.storage_bytes),
       percent: storagePct,
-      detail: Number.isFinite(storagePct)
-        ? storagePct.toFixed(1) + "% de " + overviewFormatBytes(data?.storage_quota_bytes) + " · " + Number(data?.storage_objects || 0) + " archivos"
-        : "Uso live de archivos"
+      detail: storagePct === null
+        ? "Uso live de archivos"
+        : storagePct.toFixed(1) + "% de " + overviewFormatBytes(data?.storage_quota_bytes) +
+          " · " + Number(data?.storage_objects || 0) + " archivos"
     }),
     overviewResourceCard({
       label: "Base de datos",
       value: overviewFormatBytes(data?.database_bytes),
       percent: dbPct,
-      detail: Number.isFinite(dbPct)
-        ? dbPct.toFixed(1) + "% de " + overviewFormatBytes(data?.database_quota_bytes)
-        : "Uso live de Postgres"
+      detail: (dbPct === null ? "Uso live de Postgres" : dbPct.toFixed(1) + "% de " + overviewFormatBytes(data?.database_quota_bytes)) +
+        " · cache hit " + (cacheHit === null ? "—" : cacheHit.toFixed(2) + "%")
     }),
     overviewResourceCard({
-      label: "Capacidad libre",
-      value: capacityFreePct === null ? "—" : capacityFreePct.toFixed(1) + "%",
-      percent: capacityFreePct === null ? null : 100 - capacityFreePct,
-      detail: "Storage libre " + overviewFormatBytes(data?.storage_free_bytes) +
-        " · DB libre " + overviewFormatBytes(data?.database_free_bytes)
+      label: "Conexiones de base de datos",
+      value: String(Number(data?.connections_current || 0)) + " / " + String(Number(data?.connections_max || 0)),
+      percent: connPct,
+      detail: Number(data?.active_queries || 0) + " activas · " +
+        Number(data?.long_queries || 0) + " consultas > 2 s"
+    }),
+    overviewResourceCard({
+      label: "Latencia API p95",
+      value: overviewFormatDuration(apiP95),
+      percent: apiStress,
+      detail: Number(data?.api_requests_24h || 0) + " solicitudes / 24 h · " +
+        (apiErrorRate === null ? "errores —" : apiErrorRate.toFixed(2) + "% errores 5xx") +
+        " · actualizado " + syncLabel
+    }),
+    overviewResourceCard({
+      label: "Ancho de banda / egress",
+      value: bandwidthValue,
+      percent: bandwidthPercent,
+      detail: bandwidthDetail
+    }),
+    overviewResourceCard({
+      label: "Respuesta de Storage p95",
+      value: overviewFormatDuration(storageP95),
+      percent: storageP95 === null ? null : Math.min(100, storageP95 / 12),
+      detail: Number(data?.storage_requests_24h || 0) + " solicitudes / 24 h"
+    }),
+    overviewResourceCard({
+      label: "Conexión actual del panel",
+      value: overviewFormatDuration(clientRpcMs),
+      percent: clientStress,
+      detail: "Tiempo real de esta consulta desde tu navegador hasta Supabase"
     }),
     overviewResourceCard({
       label: "Imágenes pesadas > 1 MB",
       value: String(largeImages),
       percent: heavyPct,
       detail: imageCount + " imágenes · mayor " + overviewFormatBytes(data?.largest_image_bytes)
-    }),
-    overviewResourceCard({
-      label: "Ancho de banda / egress",
-      value: egressValue,
-      percent: egressMeter,
-      detail: egressDetail
     })
   ].join("");
 
-  const known = [storagePct, dbPct, egressPct, cachedPct].filter(Number.isFinite);
-  const highest = known.length ? Math.max(...known) : 0;
-  let recommendation = "Capacidad holgada. No hace falta ampliar espacio por ahora.";
-  if (highest >= 95) {
-    recommendation = "Uso crítico: conviene liberar/optimizar recursos de inmediato y revisar ampliación del plan.";
-  } else if (highest >= 85) {
-    recommendation = "Uso alto: optimiza imágenes/datos y prepara una ampliación si el crecimiento continúa.";
-  } else if (highest >= 70) {
-    recommendation = "Uso en vigilancia: todavía hay margen, pero revisa crecimiento y archivos pesados.";
-  } else if (largeImages > 0) {
-    recommendation = "Capacidad holgada, pero hay " + largeImages + " imágenes de más de 1 MB que conviene comprimir para ahorrar Storage y egress.";
+  const recommendations = [];
+  if (storagePct !== null && storagePct >= 85) {
+    recommendations.push("Storage está alto; libera/comprime archivos o prepara ampliación de capacidad.");
+  } else if (storagePct !== null && storagePct >= 70) {
+    recommendations.push("Storage en vigilancia; revisa el crecimiento semanal.");
   }
 
-  if (egressPct === null && cachedPct === null) {
-    recommendation += " El consumo exacto de egress aún no está sincronizado; puedes registrar el valor del ciclo desde Usage de Supabase en Configurar referencia.";
+  if (dbPct !== null && dbPct >= 85) {
+    recommendations.push("La base de datos está cerca de su cuota; prepara ampliación o limpieza.");
+  }
+
+  if (connPct !== null && connPct >= 85) {
+    recommendations.push("Conexiones de base de datos altas; revisa pooling y considera más compute si se mantiene.");
+  } else if (connPct !== null && connPct >= 70) {
+    recommendations.push("Conexiones de base de datos en vigilancia.");
+  }
+
+  if (apiP95 !== null && apiP95 >= 1800) {
+    if ((connPct === null || connPct < 70) && (cacheHit === null || cacheHit >= 98)) {
+      recommendations.push("La API está lenta, pero la base aún tiene margen: optimiza consultas, payloads e imágenes antes de comprar más servidor.");
+    } else {
+      recommendations.push("Latencia API alta junto con presión de base; si persiste, considera ampliar compute.");
+    }
+  } else if (apiP95 !== null && apiP95 >= 1000) {
+    recommendations.push("Latencia API en vigilancia; revisa consultas y respuestas grandes antes de escalar servidor.");
+  }
+
+  if (apiErrorRate !== null && apiErrorRate >= 2) {
+    recommendations.push("La tasa de errores 5xx requiere revisión antes de ampliar capacidad.");
+  }
+
+  if (storageProjectionPct !== null && storageProjectionPct >= 95) {
+    recommendations.push("La proyección de tráfico de Storage está crítica frente a la cuota; amplía plan o reduce egress.");
+  } else if (storageProjectionPct !== null && storageProjectionPct >= 85) {
+    recommendations.push("La proyección de tráfico de Storage es alta; prepara ampliación de ancho de banda/plan.");
+  } else if (storageProjectionPct !== null && storageProjectionPct >= 70) {
+    recommendations.push("El tráfico de Storage está en vigilancia; observa la tendencia antes de ampliar.");
+  }
+
+  if (clientRpcMs !== null && clientRpcMs >= 1200) {
+    recommendations.push("La conexión actual desde tu navegador está lenta; confirma si se repite antes de atribuirlo al servidor.");
+  }
+
+  if (largeImages > 0) {
+    recommendations.push("Hay " + largeImages + " imágenes de más de 1 MB; comprimirlas mejora velocidad y reduce egress.");
+  }
+
+  if (!snapshotFresh && storage24hBytes !== null) {
+    recommendations.push("La lectura de observabilidad tiene más de 2 horas; el monitor horario debe actualizarla.");
+  }
+
+  if (!recommendations.length) {
+    recommendations.push("Capacidad y rendimiento con margen. No hace falta ampliar servidor, Storage ni ancho de banda por ahora.");
   }
 
   advice.innerHTML =
-    "<strong>Recomendación:</strong> " + esc(recommendation) +
-    '<div class="muted" style="margin-top:5px">Referencia de cuota: plan ' + esc(data?.plan_code || "—") +
-    " · Verde &lt;70% · Vigilar 70–84% · Alto 85–94% · Crítico ≥95%.</div>";
+    "<strong>Recomendación:</strong> " + esc(recommendations.join(" ")) +
+    '<div class="muted" style="margin-top:5px">' +
+      "Plan " + esc(data?.plan_code || "—") +
+      " · Capacidad: vigilar 70%, preparar 85%, crítico 95%" +
+      " · Compute: vigilar conexiones ≥70%" +
+      " · API: revisar p95 ≥1 s; escalar solo si además hay presión de recursos." +
+    "</div>";
 
   if ($("overviewResourcePlan")) $("overviewResourcePlan").value = data?.plan_code || "FREE";
   if ($("overviewEgressUsed")) {
@@ -474,15 +573,17 @@ async function loadOverviewResources() {
   if (!container) return;
 
   try {
+    const started = performance.now();
     const data = await rpc("master_resource_usage_summary");
-    state.resourceUsage = data || null;
-    renderOverviewResources(data || {});
+    const clientRpcMs = Math.round(performance.now() - started);
+    state.resourceUsage = { ...(data || {}), client_rpc_ms: clientRpcMs };
+    renderOverviewResources(state.resourceUsage);
   } catch (e) {
     container.innerHTML =
       '<div class="message error" style="grid-column:1/-1">No se pudieron calcular los recursos: ' +
       esc(e.message || e) + '</div>';
     if ($("overviewResourceAdvice")) {
-      $("overviewResourceAdvice").textContent = "El indicador se habilitará cuando termine de aplicarse la migración de Supabase.";
+      $("overviewResourceAdvice").textContent = "No se pudo consultar la salud de HTPWEB. Revisa la conexión con Supabase.";
     }
   }
 }
@@ -523,9 +624,12 @@ function bindOverviewResourceActions() {
   const close = $("cancelOverviewResourceSettingsBtn");
   const save = $("saveOverviewResourceSettingsBtn");
 
+  const refresh = $("overviewResourceRefreshBtn");
+
   if (open && panel) open.onclick = () => panel.classList.toggle("hidden");
   if (close && panel) close.onclick = () => panel.classList.add("hidden");
   if (save) save.onclick = () => { void saveOverviewResourceSettings(); };
+  if (refresh) refresh.onclick = () => { void loadOverviewResources(); };
 }
 
 function overviewStatusLabel(status) {
