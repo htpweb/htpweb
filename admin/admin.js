@@ -482,7 +482,7 @@ function renderOverviewResources(data) {
   } else if ((apiP95 !== null && apiP95 >= 1000) || largeImages > 0) {
     scaleDecision = "OPTIMIZAR PRIMERO";
     scaleDetail = "Hay margen de infraestructura; conviene optimizar antes de comprar más capacidad.";
-    scalePercent = 65;
+    scalePercent = 75;
   }
 
   const workloadLabel = readShare === null
