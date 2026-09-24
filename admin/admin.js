@@ -353,9 +353,9 @@ function overviewLatencyStatus(value) {
   const ms = Number(value);
   if (!Number.isFinite(ms)) return { label: "SIN DATO", percent: null };
   if (ms < 700) return { label: "EXCELENTE", percent: Math.min(35, ms / 20) };
-  if (ms < 1000) return { label: "BUENA", percent: 45 };
-  if (ms < 1800) return { label: "VIGILAR", percent: 68 };
-  if (ms < 2500) return { label: "LENTA", percent: 85 };
+  if (ms < 1000) return { label: "BUENA", percent: 55 };
+  if (ms < 1800) return { label: "VIGILAR", percent: 75 };
+  if (ms < 2500) return { label: "LENTA", percent: 92 };
   return { label: "CRÍTICA", percent: 100 };
 }
 
