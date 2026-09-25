@@ -5791,6 +5791,1530 @@ function renderDriverOrders(){
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
       '<p><strong>Total:</strong> 
+function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
+
+function networkModeOptions(selected){
+  const caps=networkState.capabilities||{};
+  const options=[
+    ["OPEN","Abierta"]
+  ];
+  if(caps.private)options.push(["PRIVATE","Solo contactos/referidos"]);
+  if(caps.approval)options.push(["APPROVAL_REQUIRED","Solo aprobados"]);
+  return options.map(([value,label])=>
+    '<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>'
+  ).join("");
+}
+
+function renderNetworkRules(){
+  const box=$("networkRules");if(!box)return;
+  const rules=networkState.rules||[];
+  if(!rules.length){
+    box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';
+    return;
+  }
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
+    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+
+      [0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+
+      '</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+
+      '"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+
+      '"></td><td><select data-net-mode="'+i+'">'+networkModeOptions(r.access_mode||"PRIVATE")+
+      '</select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{
+    networkState.rules.splice(Number(b.dataset.netRemove),1);
+    renderNetworkRules();
+  });
+}
+
+function collectNetworkRules(){
+  return (networkState.rules||[]).map((r,i)=>({
+    day_of_week:Number(document.querySelector('[data-net-day="'+i+'"]')?.value??r.day_of_week),
+    start_time:document.querySelector('[data-net-start="'+i+'"]')?.value||"18:00",
+    end_time:document.querySelector('[data-net-end="'+i+'"]')?.value||"06:00",
+    access_mode:document.querySelector('[data-net-mode="'+i+'"]')?.value||"PRIVATE",
+    priority:100
+  }));
+}
+
+function networkDeliveryRecord(){
+  const id=networkDeliveryId();
+  return state.deliveries.find(d=>d.id===id)||null;
+}
+
+function referralLinkFor(code){
+  const url=new URL("../app/acceso.html",location.href);
+  const delivery=networkDeliveryRecord();
+  if(delivery?.slug)url.searchParams.set("delivery",delivery.slug);
+  url.searchParams.set("ref",code);
+  return url.toString();
+}
+
+async function copyReferralLink(code){
+  try{
+    await navigator.clipboard.writeText(referralLinkFor(code));
+    message("Enlace de referido copiado.");
+  }catch(e){
+    message(e.message||"No se pudo copiar el enlace de referido.","error");
+  }
+}
+
+function renderNetworkReferrals(){
+  const box=$("networkReferrals");if(!box)return;
+  const items=networkState.referrals||[];
+  const caps=networkState.capabilities||{};
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr></thead><tbody>'+
+      items.map(r=>'<tr><td><strong>'+(caps.referralCodes?esc(r.code):"—")+'</strong></td><td>'+esc(r.label||"—")+
+        '</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+
+        '</td><td><div class="row">'+
+        (caps.referralLinks&&r.active?'<button class="btn-muted" type="button" data-ref-link="'+esc(r.code)+'">Copiar enlace</button>':"")+
+        '<button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+
+        (r.active?"Desactivar":"Activar")+'</button></div></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay referidos configurados.</div>';
+
+  box.querySelectorAll("[data-ref-link]").forEach(b=>b.onclick=()=>copyReferralLink(b.dataset.refLink));
+  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_referral_code_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_referral_id:b.dataset.refToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+function parseNetworkContacts(){
+  const raw=$("networkContactsInput")?.value||"";
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)throw new Error("Escribe al menos un contacto.");
+  if(lines.length>500)throw new Error("Puedes importar máximo 500 contactos por lote.");
+
+  return lines.map((line,index)=>{
+    const parts=line.split(/[;,]/).map(x=>x.trim());
+    let name=parts[0]||"";
+    let phone=parts[1]||"";
+    let email=parts[2]||"";
+
+    if(parts.length===1){
+      if(parts[0].includes("@")){email=parts[0];name="";}
+      else {phone=parts[0];name="";}
+    }else if(parts.length===2){
+      if(parts[1].includes("@")){email=parts[1];phone="";}
+    }
+
+    if(!phone&&!email)throw new Error("Contacto "+(index+1)+": agrega teléfono o correo.");
+    return {name:name||null,phone:phone||null,email:email||null};
+  });
+}
+
+function renderNetworkContacts(){
+  const box=$("networkContacts");if(!box)return;
+  const items=networkState.contacts||[];
+  const enabled=Boolean(networkState.capabilities?.contacts);
+  box.innerHTML=items.length
+    ? '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Contacto")+'</strong></td><td>'+esc(x.phone||"—")+'</td><td>'+esc(x.email||"—")+
+        '</td><td>'+(x.active?"Activo":"Inactivo")+'</td><td><button class="'+(x.active?"btn-danger":"btn-muted")+
+        '" type="button" data-contact-toggle="'+esc(x.id)+'" data-active="'+String(x.active)+'" '+(!enabled&&!x.active?'disabled':'')+'>'+
+        (x.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted" style="margin-top:12px">Todavía no hay contactos importados.</div>';
+
+  box.querySelectorAll("[data-contact-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_contact_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_contact_id:b.dataset.contactToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function importNetworkContacts(){
+  try{
+    const contacts=parseNetworkContacts();
+    const result=await rpc("delivery_import_contacts",{
+      p_delivery_id:networkDeliveryId(),
+      p_contacts:contacts
+    });
+    message("Contactos procesados: "+esc(result?.processed??contacts.length)+".");
+    $("networkContactsInput").value="";
+    await loadCustomerNetwork();
+  }catch(e){message(e.message||"No se pudieron importar los contactos.","error");}
+}
+
+function renderNetworkCustomers(){
+  const box=$("networkCustomers");if(!box)return;
+  const items=networkState.customers||[];
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+
+        '</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+
+        '</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+
+        '" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+
+        (x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay clientes vinculados.</div>';
+
+  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_customer_order_access",{
+        p_delivery_id:networkDeliveryId(),
+        p_customer_id:b.dataset.customerAccess,
+        p_allow_orders:b.dataset.allow!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function loadCustomerNetwork(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("networkDelivery");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  const deliveryId=networkDeliveryId();if(!deliveryId)return;
+
+  try{
+    const [snapshot,refs,customers,contacts,plan]=await Promise.all([
+      rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_contacts_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+    ]);
+
+    const ent=plan?.current?.entitlements||{};
+    const privateEnabled=ent["customers.private_network"]===true;
+    const scheduleEnabled=ent["customers.access_schedule"]===true;
+    const referralCodesEnabled=ent["referrals.codes"]===true;
+    const referralLinksEnabled=ent["referrals.links"]===true;
+    const contactsEnabled=ent["contacts.import"]===true;
+    const approvalEnabled=ent["customers.approval"]===true;
+
+    networkState.snapshot=snapshot||{};
+    networkState.referrals=Array.isArray(refs)?refs:[];
+    networkState.customers=Array.isArray(customers)?customers:[];
+    networkState.contacts=Array.isArray(contacts)?contacts:[];
+    networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
+    networkState.capabilities={
+      private:privateEnabled,
+      schedule:scheduleEnabled,
+      referralCodes:referralCodesEnabled,
+      referralLinks:referralLinksEnabled,
+      contacts:contactsEnabled,
+      approval:approvalEnabled
+    };
+
+    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+    const approvalOption=[...$("networkDefaultMode").options].find(o=>o.value==="APPROVAL_REQUIRED");
+    if(approvalOption)approvalOption.disabled=!approvalEnabled;
+
+    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong>'+
+      ' · Red privada: '+(privateEnabled?"Sí":"No")+
+      ' · Horarios: '+(scheduleEnabled?"Sí":"No")+
+      ' · Contactos: '+(contactsEnabled?"Sí":"No")+
+      ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
+      ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
+      ' · Aprobación: '+(approvalEnabled?"Sí":"No");
+
+    $("networkDefaultMode").disabled=!privateEnabled;
+    $("networkSaveDefault").disabled=!privateEnabled;
+    $("networkAddRule").disabled=!scheduleEnabled;
+    $("networkSaveRules").disabled=!scheduleEnabled;
+    $("networkCreateReferral").disabled=!(referralCodesEnabled||referralLinksEnabled);
+    if($("networkImportContacts"))$("networkImportContacts").disabled=!contactsEnabled;
+    if($("networkContactsInput"))$("networkContactsInput").disabled=!contactsEnabled;
+
+    renderNetworkRules();
+    renderNetworkReferrals();
+    renderNetworkContacts();
+    renderNetworkCustomers();
+  }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
+}
+
+async function saveNetworkDefault(){
+  try{
+    await rpc("delivery_save_customer_access_settings",{
+      p_delivery_id:networkDeliveryId(),
+      p_default_mode:$("networkDefaultMode").value
+    });
+    message("Modo de clientes actualizado.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function saveNetworkRules(){
+  try{
+    await rpc("delivery_replace_customer_access_rules",{
+      p_delivery_id:networkDeliveryId(),
+      p_rules:collectNetworkRules()
+    });
+    message("Horarios de clientes actualizados.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function createNetworkReferral(){
+  try{
+    const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";
+    const result=await rpc("delivery_create_referral_code",{
+      p_delivery_id:networkDeliveryId(),
+      p_label:label,
+      p_expires_at:null
+    });
+    message("Referido creado: "+result.code);
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+const securityState={context:null,points:[],rules:[],map:null};
+function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
+function renderRestrictedAreaMap(){
+  if(!securityState.map)return;
+  securityState.map.clear();
+  const zoneId=$("restrictedAreaZone")?.value;
+  const zone=securityState.context?.zones?.find(z=>z.id===zoneId);
+  if(zone?.boundary)securityState.map.polygon(zone.boundary,"#2563eb");
+  if(securityState.points.length>=3)securityState.map.polygon(securityState.points,"#dc2626");
+  securityState.points.forEach((p,i)=>securityState.map.marker(p,(lat,lng)=>{securityState.points[i]=[lat,lng];renderRestrictedAreaMap();}));
+  if($("restrictedAreaPointCount"))$("restrictedAreaPointCount").textContent=securityState.points.length+" puntos.";
+}
+function renderRestrictedAreaRules(){
+  const box=$("restrictedAreaRules");if(!box)return;
+  const show=$("restrictedAreaMode")?.value==="SCHEDULE";$("restrictedAreaSchedule")?.classList.toggle("hidden",!show);
+  if(!show)return;
+  const rules=securityState.rules||[];
+  box.innerHTML=rules.length?'<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+rules.map((r,i)=>'<tr><td><select data-sec-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-sec-start="'+i+'" value="'+esc(String(r.start_time||"19:00").slice(0,5))+'"></td><td><input type="time" data-sec-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><button class="btn-danger" data-sec-remove="'+i+'" type="button">Quitar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Agrega al menos una regla horaria.</div>';
+  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{securityState.rules.splice(Number(b.dataset.secRemove),1);renderRestrictedAreaRules();});
+}
+function collectRestrictedRules(){return (securityState.rules||[]).map((r,i)=>({day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week),start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||"19:00",end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||"06:00"}));}
+function clearRestrictedArea(){
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
+}
+function renderRestrictedAreasList(){
+  const box=$("restrictedAreasList");if(!box)return;const items=securityState.context?.areas||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode)+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">No hay áreas restringidas configuradas.</div>';
+  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{const a=items.find(x=>x.id===b.dataset.secEdit);if(!a)return;$("restrictedAreaId").value=a.id;$("restrictedAreaZone").value=a.zone_id;$("restrictedAreaName").value=a.name||"";$("restrictedAreaReason").value=a.reason||"";$("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";$("restrictedAreaActive").value=String(a.active);securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));securityState.rules=(a.rules||[]).map(r=>({...r}));renderRestrictedAreaRules();renderRestrictedAreaMap();if(securityState.points.length)securityState.map?.center(securityState.points[0],15);});
+}
+async function loadRestrictedAreas(){
+  if(state.role!=="DELIVERY_ADMIN")return;const sel=$("securityDelivery");if(!sel)return;const previous=sel.value;sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;const id=securityDeliveryId();if(!id)return;
+  try{const [context,plan]=await Promise.all([rpc("delivery_restricted_area_context",{p_delivery_id:id}),rpc("delivery_plan_snapshot",{p_delivery_id:id})]);securityState.context=context||{};$("restrictedAreaZone").innerHTML=(context?.zones||[]).map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>').join("");const ent=plan?.current?.entitlements||{};const manage=ent["restricted_areas.manage"]===true,schedule=ent["restricted_areas.schedule"]===true;$("securityPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Áreas: '+esc(context?.used||0)+' / '+esc(context?.limit??0)+' · Por horario: '+(schedule?"Sí":"No");$("restrictedAreaSave").disabled=!manage;$("restrictedAreaMode").disabled=!manage;if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";renderRestrictedAreaRules();renderRestrictedAreasList();if(!securityState.map){securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{securityState.points.push([lat,lng]);renderRestrictedAreaMap();});}securityState.map.resize();renderRestrictedAreaMap();}catch(e){message(e.message||"No se pudo cargar Seguridad.","error");}
+}
+async function saveRestrictedArea(){
+  try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
+}
+function bindEvents() {
+  if ($("driversDelivery")) $("driversDelivery").onchange = loadDriverWorkspace;
+  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
+  if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
+  if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
+  if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
+  if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
+  if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
+  if ($("myPlanGoDrivers")) $("myPlanGoDrivers").onclick = () => openMyPlanResource("drivers","driversDelivery");
+  if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
+  if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
+  if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
+  if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
+  if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = () => { securityState.points.pop(); renderRestrictedAreaMap(); };
+  if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = () => { securityState.points=[]; renderRestrictedAreaMap(); };
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = () => { securityState.rules.push({day_of_week:1,start_time:"19:00",end_time:"06:00"}); renderRestrictedAreaRules(); };
+  if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
+  if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedArea;
+  if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
+  if ($("networkSaveDefault")) $("networkSaveDefault").onclick = saveNetworkDefault;
+  if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
+  if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
+  if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
+  if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
+  $("logoutBtn").onclick = async () => {
+    try {
+      await cerrarSesion();
+      location.href = "../app/acceso.html";
+    } catch (e) {
+      message(e.message || "No se pudo cerrar sesión.", "error");
+    }
+  };
+
+  $("refreshBtn").onclick = refreshAll;
+  if ($("orderScope")) $("orderScope").onchange = loadOrders;
+  if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
+  const menuImportDelivery = $("menuImportDelivery");
+  const menuExistingLocal = $("menuExistingLocal");
+  const menuImportStatus = $("menuImportStatus");
+  const menuLocalZone = $("menuLocalZone");
+  const startMenuImportBtn = $("startMenuImportBtn");
+  const reanalyzeMenuBtn = $("reanalyzeMenuBtn");
+  const addMenuCategoryBtn = $("addMenuCategoryBtn");
+  const applyMenuImportBtn = $("applyMenuImportBtn");
+
+  if (menuImportDelivery) {
+    menuImportDelivery.onchange = () => {
+      if (menuImportStatus) menuImportStatus.textContent = "Selecciona de 1 a 5 imágenes para iniciar.";
+    };
+  }
+  if (menuExistingLocal) {
+    menuExistingLocal.onchange = () => {
+      const existing = Boolean(menuExistingLocal.value);
+      if (menuLocalZone) {
+        menuLocalZone.disabled = existing;
+        if (existing) menuLocalZone.value = "";
+      }
+    };
+  }
+  if (startMenuImportBtn) startMenuImportBtn.onclick = startMenuImageImport;
+  if (reanalyzeMenuBtn) reanalyzeMenuBtn.onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
+  if (addMenuCategoryBtn) addMenuCategoryBtn.onclick = addMenuCategory;
+  if (applyMenuImportBtn) applyMenuImportBtn.onclick = applyMenuImport;
+  if ($("advertisementScope")) $("advertisementScope").onchange = loadAdvertisingTargets;
+  if ($("advertisementDelivery")) $("advertisementDelivery").onchange = loadAdvertisingTargets;
+  if ($("advertisementLocal")) $("advertisementLocal").onchange = loadAdvertisingProducts;
+  $("saveAdvertisementBtn").onclick = saveAdvertisement;
+  $("clearAdvertisementBtn").onclick = clearAdvertisementForm;
+  $("previewAdvertisementBtn").onclick = previewAdvertisementDestination;
+  if ($("catalogLocal")) $("catalogLocal").onchange = loadCatalog;
+
+  $("submitRequestBtn").onclick = submitRequest;
+  if ($("requestType")) $("requestType").onchange = updateRequestForm;
+  if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
+  if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
+  $("profileGoStorageBtn").onclick = openDeliveryStorage;
+  if ($("shareDelivery")) $("shareDelivery").onchange = loadShareLocals;
+  if ($("shareLocal")) $("shareLocal").onchange = loadShareProducts;
+  if ($("shareProduct")) $("shareProduct").onchange = renderShareLinks;
+  $("shareLocalNativeBtn").onclick = () => nativeShare("local");
+  $("shareLocalWhatsappBtn").onclick = () => shareWhatsApp("local");
+  $("shareLocalFacebookBtn").onclick = () => shareFacebook("local");
+  $("copyLocalLinkBtn").onclick = () => copyShareLink("local");
+  $("shareProductNativeBtn").onclick = () => nativeShare("product");
+  $("shareProductWhatsappBtn").onclick = () => shareWhatsApp("product");
+  $("shareProductFacebookBtn").onclick = () => shareFacebook("product");
+  $("copyProductLinkBtn").onclick = () => copyShareLink("product");
+  if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
+  $("saveLocalProfileBtn").onclick = saveLocalProfile;
+  $("profileLocalGoStorageBtn").onclick = openLocalStorage;
+  $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
+  $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
+  $("userManagerSearch").oninput = renderUserOptions;
+  if ($("userManagerUser")) $("userManagerUser").onchange = renderManagedUser;
+  $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
+  $("assignLocalUserBtn").onclick = assignLocalUser;
+  if ($("feeDelivery")) $("feeDelivery").onchange = loadFeeDelivery;
+  if ($("feeMode")) $("feeMode").onchange = updateFeeModeUI;
+  $("saveFeeConfigBtn").onclick = saveFeeConfig;
+  $("saveFeeScheduleBtn").onclick = saveFeeSchedule;
+  if ($("feeRatePeriod")) $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
+  $("saveFeeRateBtn").onclick = saveFeeRate;
+  if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
+  $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
+  $("saveZoneBtn").onclick = saveZone;
+  $("clearZoneBtn").onclick = clearZoneForm;
+  $("saveDeliveryBtn").onclick = saveDelivery;
+  $("saveCategoryBtn").onclick = saveCategory;
+  $("clearCategoryBtn").onclick = clearCategoryForm;
+  $("saveProductBtn").onclick = saveProduct;
+  $("clearProductBtn").onclick = clearProductForm;
+  $("catalogDeleteProductImageBtn").onclick = deleteCatalogProductImage;
+  if ($("variantProduct")) $("variantProduct").onchange = loadVariants;
+  $("saveVariantBtn").onclick = saveVariant;
+  $("clearVariantBtn").onclick = clearVariantForm;
+  $("enableCatalogManagementBtn").onclick = enableCatalogManagement;
+  if ($("scheduleLocal")) $("scheduleLocal").onchange = loadSchedules;
+  $("saveSchedulesBtn").onclick = saveSchedules;
+  $("enableScheduleManagementBtn").onclick = enableScheduleManagement;
+
+  if ($("storageDelivery")) $("storageDelivery").onchange = refreshDeliveryMediaPreview;
+  if ($("storageLocal")) $("storageLocal").onchange = async () => {
+    await refreshLocalMediaPreview();
+    await refreshLocalGallery();
+    await loadStorageProducts();
+  };
+  if ($("storageProduct")) $("storageProduct").onchange = refreshProductMediaPreview;
+
+  $("uploadDeliveryLogoBtn").onclick = uploadDeliveryLogo;
+  $("deleteDeliveryLogoBtn").onclick = deleteDeliveryLogo;
+  $("enableDeliveryMediaBtn").onclick = enableDeliveryMedia;
+
+  $("uploadLocalLogoBtn").onclick = () => uploadLocalMedia("logo");
+  $("deleteLocalLogoBtn").onclick = () => deleteLocalMedia("logo");
+  $("uploadLocalBannerBtn").onclick = () => uploadLocalMedia("banner");
+  $("deleteLocalBannerBtn").onclick = () => deleteLocalMedia("banner");
+  $("enableLocalMediaBtn").onclick = enableLocalMedia;
+  $("uploadLocalGalleryBtn").onclick = uploadLocalGallery;
+
+  $("uploadProductImageBtn").onclick = uploadProductImage;
+  $("deleteProductImageBtn").onclick = deleteProductImage;
+}
+
+init();
+
+
+let masterDeliveryWorkspaceBound=false;
+let masterDeliveryWorkspacePanels=[];
+
+function masterDeliveryWorkspaceSelectedId(){
+  return document.getElementById("deliveryWorkspaceSelect")?.value || "";
+}
+
+function deliveryAuthorizationStatusLabel(item){
+  if(item?.status==="CLAIMED"&&item?.active_access)return "Activo";
+  if(item?.status==="PENDING")return "Pendiente";
+  if(item?.status==="EXPIRED")return "Vencido";
+  if(item?.status==="REVOKED")return "Revocado";
+  return item?.status||"—";
+}
+
+function deliveryAuthorizationRoleLabel(role){
+  return role==="DELIVERY_OPERATOR" ? "Operador" : "Administrador";
+}
+
+function renderMasterDeliveryAuthorizations(){
+  const box=document.getElementById("deliveryWorkspaceAssignments");
+  if(!box)return;
+  const items=Array.isArray(state.deliveryAuthorizations)?state.deliveryAuthorizations:[];
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">Este DELIVERY todavía no tiene representantes autorizados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const status=deliveryAuthorizationStatusLabel(item);
+    const expires=item.expires_at?new Date(item.expires_at).toLocaleString():"—";
+    const claimed=item.claimed_at?new Date(item.claimed_at).toLocaleString():"";
+    const canRevoke=item.status==="PENDING"||(item.status==="CLAIMED"&&item.active_access);
+    return '<div class="card" style="margin:10px 0;padding:14px">'+
+      '<div class="row between"><div>'+
+      '<strong>'+esc(item.representative_name||"Representante")+'</strong>'+
+      '<div>'+esc(item.email||"")+'</div>'+
+      '<div class="muted">CI ••••••'+esc(item.national_id_last4||"")+
+      ' · '+esc(deliveryAuthorizationRoleLabel(item.role_code))+
+      (item.phone?' · '+esc(item.phone):'')+'</div>'+
+      '</div><span class="badge">'+esc(status)+'</span></div>'+
+      '<div class="muted" style="margin-top:8px">'+
+      (item.status==="PENDING"?'Debe registrarse o iniciar sesión con este mismo correo y confirmar su email. Vence: '+esc(expires):
+       item.status==="CLAIMED"&&item.active_access?'Acceso habilitado'+(claimed?' desde '+esc(claimed):''):
+       item.status==="EXPIRED"?'La autorización venció sin ser utilizada.':
+       item.status==="REVOKED"?'El acceso fue revocado.':'')+
+      '</div>'+
+      (canRevoke?'<button class="btn-danger" type="button" data-dw-revoke="'+esc(item.id)+'" style="margin-top:10px">Revocar acceso</button>':'')+
+      '</div>';
+  }).join("");
+
+  box.querySelectorAll("[data-dw-revoke]").forEach(btn=>{
+    btn.onclick=()=>revokeMasterDeliveryAuthorization(btn.dataset.dwRevoke);
+  });
+}
+
+async function loadMasterDeliveryAuthorizations(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  if(!deliveryId){
+    state.deliveryAuthorizations=[];
+    renderMasterDeliveryAuthorizations();
+    return;
+  }
+
+  try{
+    const data=await rpc("master_list_delivery_authorizations",{p_delivery_id:deliveryId});
+    state.deliveryAuthorizations=Array.isArray(data)?data:[];
+    renderMasterDeliveryAuthorizations();
+  }catch(e){
+    state.deliveryAuthorizations=[];
+    const box=document.getElementById("deliveryWorkspaceAssignments");
+    if(box)box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron cargar los accesos.")+'</div>';
+  }
+}
+
+async function authorizeMasterDeliveryRepresentative(){
+  try{
+    const deliveryId=masterDeliveryWorkspaceSelectedId();
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+
+    const name=document.getElementById("deliveryWorkspaceRepresentativeName")?.value.trim()||"";
+    const nationalId=document.getElementById("deliveryWorkspaceRepresentativeId")?.value.trim()||"";
+    const email=document.getElementById("deliveryWorkspaceRepresentativeEmail")?.value.trim()||"";
+    const phone=document.getElementById("deliveryWorkspaceRepresentativePhone")?.value.trim()||"";
+    const role=document.getElementById("deliveryWorkspaceRepresentativeRole")?.value||"DELIVERY_ADMIN";
+
+    if(!name)throw new Error("Escribe el nombre del representante.");
+    if(!/^[0-9]{10}$/.test(nationalId.replace(/\D/g,"")))throw new Error("La cédula debe contener 10 dígitos.");
+    if(!email)throw new Error("Escribe el correo autorizado.");
+
+    const result=await rpc("master_authorize_delivery_representative",{
+      p_delivery_id:deliveryId,
+      p_representative_name:name,
+      p_national_id:nationalId,
+      p_email:email,
+      p_phone:phone||null,
+      p_role_code:role
+    });
+
+    if(result?.status==="CLAIMED"){
+      message("Acceso habilitado: ese correo ya tenía una cuenta confirmada.");
+    }else{
+      message("Correo autorizado. La persona debe registrarse o iniciar sesión con ese mismo correo.");
+    }
+
+    document.getElementById("deliveryWorkspaceRepresentativeId").value="";
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo autorizar al representante.","error");
+  }
+}
+
+async function revokeMasterDeliveryAuthorization(authorizationId){
+  if(!authorizationId)return;
+  if(!confirm("¿Revocar este acceso al DELIVERY? Si ya estaba activo, perderá el acceso administrativo inmediatamente."))return;
+
+  try{
+    await rpc("master_revoke_delivery_authorization",{p_authorization_id:authorizationId});
+    message("Acceso revocado.");
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo revocar el acceso.","error");
+  }
+}
+
+async function loadMasterDeliveryPlanSummary(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const box=document.getElementById("deliveryWorkspacePlanSummary");
+  if(!box)return;
+  if(!deliveryId){box.textContent="Selecciona un DELIVERY.";return;}
+  try{
+    const snapshot=await rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId});
+    const current=snapshot?.current;
+    if(!current){box.innerHTML='<strong>Sin plan vigente</strong>'+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');return;}
+    box.innerHTML='<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong> · vence '+esc(formatServiceDate(current.ends_at))+(snapshot?.expiring_soon?' · <strong>vence en '+esc(snapshot.days_remaining)+' día(s)</strong>':'')+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');
+  }catch(e){box.textContent=e.message||"No se pudo consultar el plan.";}
+}
+function openMasterDeliveryWorkspaceTab(tab){
+  ["base","access","zones"].forEach(name=>{
+    document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
+  });
+  document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
+}
+
+async function syncMasterDeliveryWorkspace(){
+  const id=masterDeliveryWorkspaceSelectedId();
+  if(!id)return;
+  for(const selectId of ["coverageDelivery","userManagerDelivery"]){
+    const s=document.getElementById(selectId);
+    if(s){
+      s.value=[...s.options].some(o=>o.value===id)?id:"";
+    }
+  }
+
+  await Promise.all([
+    loadMasterDeliveryAuthorizations(),
+    loadMasterDeliveryPlanSummary(),
+    typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
+  ]);
+}
+
+function refreshMasterDeliveryWorkspaceSelector(preferred=""){
+  const select=document.getElementById("deliveryWorkspaceSelect");
+  if(!select)return;
+  const previous=preferred||select.value;
+  const list=(state.deliveries||[]);
+  select.innerHTML=list.length
+    ? list.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+(d.active===false?' — Inactivo':'')+'</option>').join("")
+    : '<option value="">No hay DELIVERY registrados</option>';
+  if(previous&&list.some(d=>d.id===previous))select.value=previous;
+}
+
+function bindMasterDeliveryWorkspace(){
+  if(masterDeliveryWorkspaceBound||state.role!=="MASTER")return;
+  const section=document.getElementById("section-deliveries");
+  if(!section)return;
+
+  const original=[...section.children];
+  const toolbar=document.createElement("div");
+  toolbar.className="card workspace-title";
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado y zonas en un solo ambiente. Las tarifas las configura el propio DELIVERY.</p></div>'+
+    '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
+    '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
+    '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
+    '<button type="button" data-delivery-workspace-tab="base">Listado y ficha</button>'+
+    '<button type="button" data-delivery-workspace-tab="access">Cuenta</button>'+
+    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button></div>';
+  section.insertBefore(toolbar,section.firstChild);
+
+  const base=document.createElement("div");
+  base.id="deliveryWorkspacePane-base";
+  section.insertBefore(base,toolbar.nextSibling);
+  original.forEach(x=>base.appendChild(x));
+
+  const access=document.createElement("div");
+  access.id="deliveryWorkspacePane-access";
+  access.className="hidden";
+  access.innerHTML='<div class="card"><h3>Plan y suscripción</h3>'+
+    '<p class="muted">La vigencia, capacidad y funciones provienen del plan comercial. No se configuran fechas ni prestaciones manualmente desde DELIVERY.</p>'+
+    '<div id="deliveryWorkspacePlanSummary" class="workspace-note">Consultando plan…</div>'+
+    '<a class="btn-primary" href="./monetizacion.html" style="display:inline-block;margin-top:12px;text-decoration:none">Abrir Planes y suscripciones</a></div>'+
+    '<div class="card"><h3>Representante autorizado</h3>'+
+    '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
+    '<div class="form-grid">'+
+    '<div><label>Nombre completo</label><input id="deliveryWorkspaceRepresentativeName" maxlength="180" placeholder="Nombre del representante"></div>'+
+    '<div><label>Cédula</label><input id="deliveryWorkspaceRepresentativeId" inputmode="numeric" maxlength="10" placeholder="10 dígitos"></div>'+
+    '<div><label>Correo autorizado</label><input id="deliveryWorkspaceRepresentativeEmail" type="email" maxlength="240" placeholder="correo@ejemplo.com"></div>'+
+    '<div><label>Teléfono</label><input id="deliveryWorkspaceRepresentativePhone" type="tel" maxlength="40"></div>'+
+    '<div><label>Tipo de acceso</label><select id="deliveryWorkspaceRepresentativeRole"><option value="DELIVERY_ADMIN">Administrador</option><option value="DELIVERY_OPERATOR">Operador</option></select></div>'+
+    '</div>'+
+    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña.</p>'+
+    '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
+  section.appendChild(access);
+
+  const zones=document.createElement("div");
+  zones.id="deliveryWorkspacePane-zones";
+  zones.className="hidden";
+  section.appendChild(zones);
+
+  const usersSection=document.getElementById("section-users");
+  if(usersSection){
+    const legacyDeliveryCard=[...usersSection.children].find(node=>node.querySelector("h3")?.textContent.trim()==="Asignar a un DELIVERY");
+    if(legacyDeliveryCard)legacyDeliveryCard.classList.add("hidden");
+  }
+
+  const coverage=document.getElementById("section-coverage");
+  if(coverage){
+    [...coverage.children].forEach(node=>{
+      masterDeliveryWorkspacePanels.push({node,parent:coverage});
+      zones.appendChild(node);
+    });
+  }
+
+  toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
+  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
+  document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
+  document.getElementById("deliveryWorkspaceNew").onclick=()=>{
+    if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
+    for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){
+      const input=document.getElementById(id);
+      if(input)input.value="";
+    }
+    if(document.getElementById("deliveryActive"))document.getElementById("deliveryActive").value="true";
+    if(document.getElementById("saveDeliveryBtn"))document.getElementById("saveDeliveryBtn").textContent="Crear delivery";
+    openMasterDeliveryWorkspaceTab("base");
+    document.getElementById("deliveryName")?.focus();
+  };
+
+  masterDeliveryWorkspaceBound=true;
+  openMasterDeliveryWorkspaceTab("base");
+}
+
+async function loadDeliveryMasterWorkspace(){
+  if(state.role!=="MASTER")return;
+  bindMasterDeliveryWorkspace();
+  await loadDeliveriesModule();
+  await loadCoverage();
+  refreshMasterDeliveryWorkspaceSelector();
+  await syncMasterDeliveryWorkspace();
+}
+
+window.loadDeliveryMasterWorkspace=loadDeliveryMasterWorkspace;
+window.refreshMasterDeliveryWorkspaceSelector=refreshMasterDeliveryWorkspaceSelector;
++Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
+  }).join("");
+  box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
+}
+
+async function loadDriverOrders(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    const items=await rpc("driver_my_orders");
+    state.driverOrders=Array.isArray(items)?items:[];
+    renderDriverOrders();
+  }catch(e){message(e.message||"No se pudieron cargar tus entregas.","error");}
+}
+
+async function driverChangeStatus(orderId,next){
+  try{
+    await rpc("driver_set_order_status",{
+      p_order_id:orderId,
+      p_new_status:next,
+      p_note:null
+    });
+    message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo actualizar la entrega.","error");}
+}
+
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
+
+function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
+function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
+
+function networkModeOptions(selected){
+  const caps=networkState.capabilities||{};
+  const options=[
+    ["OPEN","Abierta"]
+  ];
+  if(caps.private)options.push(["PRIVATE","Solo contactos/referidos"]);
+  if(caps.approval)options.push(["APPROVAL_REQUIRED","Solo aprobados"]);
+  return options.map(([value,label])=>
+    '<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>'
+  ).join("");
+}
+
+function renderNetworkRules(){
+  const box=$("networkRules");if(!box)return;
+  const rules=networkState.rules||[];
+  if(!rules.length){
+    box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';
+    return;
+  }
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
+    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+
+      [0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+
+      '</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+
+      '"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+
+      '"></td><td><select data-net-mode="'+i+'">'+networkModeOptions(r.access_mode||"PRIVATE")+
+      '</select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{
+    networkState.rules.splice(Number(b.dataset.netRemove),1);
+    renderNetworkRules();
+  });
+}
+
+function collectNetworkRules(){
+  return (networkState.rules||[]).map((r,i)=>({
+    day_of_week:Number(document.querySelector('[data-net-day="'+i+'"]')?.value??r.day_of_week),
+    start_time:document.querySelector('[data-net-start="'+i+'"]')?.value||"18:00",
+    end_time:document.querySelector('[data-net-end="'+i+'"]')?.value||"06:00",
+    access_mode:document.querySelector('[data-net-mode="'+i+'"]')?.value||"PRIVATE",
+    priority:100
+  }));
+}
+
+function networkDeliveryRecord(){
+  const id=networkDeliveryId();
+  return state.deliveries.find(d=>d.id===id)||null;
+}
+
+function referralLinkFor(code){
+  const url=new URL("../app/acceso.html",location.href);
+  const delivery=networkDeliveryRecord();
+  if(delivery?.slug)url.searchParams.set("delivery",delivery.slug);
+  url.searchParams.set("ref",code);
+  return url.toString();
+}
+
+async function copyReferralLink(code){
+  try{
+    await navigator.clipboard.writeText(referralLinkFor(code));
+    message("Enlace de referido copiado.");
+  }catch(e){
+    message(e.message||"No se pudo copiar el enlace de referido.","error");
+  }
+}
+
+function renderNetworkReferrals(){
+  const box=$("networkReferrals");if(!box)return;
+  const items=networkState.referrals||[];
+  const caps=networkState.capabilities||{};
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr></thead><tbody>'+
+      items.map(r=>'<tr><td><strong>'+(caps.referralCodes?esc(r.code):"—")+'</strong></td><td>'+esc(r.label||"—")+
+        '</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+
+        '</td><td><div class="row">'+
+        (caps.referralLinks&&r.active?'<button class="btn-muted" type="button" data-ref-link="'+esc(r.code)+'">Copiar enlace</button>':"")+
+        '<button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+
+        (r.active?"Desactivar":"Activar")+'</button></div></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay referidos configurados.</div>';
+
+  box.querySelectorAll("[data-ref-link]").forEach(b=>b.onclick=()=>copyReferralLink(b.dataset.refLink));
+  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_referral_code_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_referral_id:b.dataset.refToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+function parseNetworkContacts(){
+  const raw=$("networkContactsInput")?.value||"";
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)throw new Error("Escribe al menos un contacto.");
+  if(lines.length>500)throw new Error("Puedes importar máximo 500 contactos por lote.");
+
+  return lines.map((line,index)=>{
+    const parts=line.split(/[;,]/).map(x=>x.trim());
+    let name=parts[0]||"";
+    let phone=parts[1]||"";
+    let email=parts[2]||"";
+
+    if(parts.length===1){
+      if(parts[0].includes("@")){email=parts[0];name="";}
+      else {phone=parts[0];name="";}
+    }else if(parts.length===2){
+      if(parts[1].includes("@")){email=parts[1];phone="";}
+    }
+
+    if(!phone&&!email)throw new Error("Contacto "+(index+1)+": agrega teléfono o correo.");
+    return {name:name||null,phone:phone||null,email:email||null};
+  });
+}
+
+function renderNetworkContacts(){
+  const box=$("networkContacts");if(!box)return;
+  const items=networkState.contacts||[];
+  const enabled=Boolean(networkState.capabilities?.contacts);
+  box.innerHTML=items.length
+    ? '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Contacto")+'</strong></td><td>'+esc(x.phone||"—")+'</td><td>'+esc(x.email||"—")+
+        '</td><td>'+(x.active?"Activo":"Inactivo")+'</td><td><button class="'+(x.active?"btn-danger":"btn-muted")+
+        '" type="button" data-contact-toggle="'+esc(x.id)+'" data-active="'+String(x.active)+'" '+(!enabled&&!x.active?'disabled':'')+'>'+
+        (x.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted" style="margin-top:12px">Todavía no hay contactos importados.</div>';
+
+  box.querySelectorAll("[data-contact-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_contact_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_contact_id:b.dataset.contactToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function importNetworkContacts(){
+  try{
+    const contacts=parseNetworkContacts();
+    const result=await rpc("delivery_import_contacts",{
+      p_delivery_id:networkDeliveryId(),
+      p_contacts:contacts
+    });
+    message("Contactos procesados: "+esc(result?.processed??contacts.length)+".");
+    $("networkContactsInput").value="";
+    await loadCustomerNetwork();
+  }catch(e){message(e.message||"No se pudieron importar los contactos.","error");}
+}
+
+function renderNetworkCustomers(){
+  const box=$("networkCustomers");if(!box)return;
+  const items=networkState.customers||[];
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+
+        '</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+
+        '</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+
+        '" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+
+        (x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay clientes vinculados.</div>';
+
+  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_customer_order_access",{
+        p_delivery_id:networkDeliveryId(),
+        p_customer_id:b.dataset.customerAccess,
+        p_allow_orders:b.dataset.allow!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function loadCustomerNetwork(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("networkDelivery");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  const deliveryId=networkDeliveryId();if(!deliveryId)return;
+
+  try{
+    const [snapshot,refs,customers,contacts,plan]=await Promise.all([
+      rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_contacts_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+    ]);
+
+    const ent=plan?.current?.entitlements||{};
+    const privateEnabled=ent["customers.private_network"]===true;
+    const scheduleEnabled=ent["customers.access_schedule"]===true;
+    const referralCodesEnabled=ent["referrals.codes"]===true;
+    const referralLinksEnabled=ent["referrals.links"]===true;
+    const contactsEnabled=ent["contacts.import"]===true;
+    const approvalEnabled=ent["customers.approval"]===true;
+
+    networkState.snapshot=snapshot||{};
+    networkState.referrals=Array.isArray(refs)?refs:[];
+    networkState.customers=Array.isArray(customers)?customers:[];
+    networkState.contacts=Array.isArray(contacts)?contacts:[];
+    networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
+    networkState.capabilities={
+      private:privateEnabled,
+      schedule:scheduleEnabled,
+      referralCodes:referralCodesEnabled,
+      referralLinks:referralLinksEnabled,
+      contacts:contactsEnabled,
+      approval:approvalEnabled
+    };
+
+    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+    const approvalOption=[...$("networkDefaultMode").options].find(o=>o.value==="APPROVAL_REQUIRED");
+    if(approvalOption)approvalOption.disabled=!approvalEnabled;
+
+    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong>'+
+      ' · Red privada: '+(privateEnabled?"Sí":"No")+
+      ' · Horarios: '+(scheduleEnabled?"Sí":"No")+
+      ' · Contactos: '+(contactsEnabled?"Sí":"No")+
+      ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
+      ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
+      ' · Aprobación: '+(approvalEnabled?"Sí":"No");
+
+    $("networkDefaultMode").disabled=!privateEnabled;
+    $("networkSaveDefault").disabled=!privateEnabled;
+    $("networkAddRule").disabled=!scheduleEnabled;
+    $("networkSaveRules").disabled=!scheduleEnabled;
+    $("networkCreateReferral").disabled=!(referralCodesEnabled||referralLinksEnabled);
+    if($("networkImportContacts"))$("networkImportContacts").disabled=!contactsEnabled;
+    if($("networkContactsInput"))$("networkContactsInput").disabled=!contactsEnabled;
+
+    renderNetworkRules();
+    renderNetworkReferrals();
+    renderNetworkContacts();
+    renderNetworkCustomers();
+  }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
+}
+
+async function saveNetworkDefault(){
+  try{
+    await rpc("delivery_save_customer_access_settings",{
+      p_delivery_id:networkDeliveryId(),
+      p_default_mode:$("networkDefaultMode").value
+    });
+    message("Modo de clientes actualizado.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function saveNetworkRules(){
+  try{
+    await rpc("delivery_replace_customer_access_rules",{
+      p_delivery_id:networkDeliveryId(),
+      p_rules:collectNetworkRules()
+    });
+    message("Horarios de clientes actualizados.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function createNetworkReferral(){
+  try{
+    const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";
+    const result=await rpc("delivery_create_referral_code",{
+      p_delivery_id:networkDeliveryId(),
+      p_label:label,
+      p_expires_at:null
+    });
+    message("Referido creado: "+result.code);
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+const securityState={context:null,points:[],rules:[],map:null};
+function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
+function renderRestrictedAreaMap(){
+  if(!securityState.map)return;
+  securityState.map.clear();
+  const zoneId=$("restrictedAreaZone")?.value;
+  const zone=securityState.context?.zones?.find(z=>z.id===zoneId);
+  if(zone?.boundary)securityState.map.polygon(zone.boundary,"#2563eb");
+  if(securityState.points.length>=3)securityState.map.polygon(securityState.points,"#dc2626");
+  securityState.points.forEach((p,i)=>securityState.map.marker(p,(lat,lng)=>{securityState.points[i]=[lat,lng];renderRestrictedAreaMap();}));
+  if($("restrictedAreaPointCount"))$("restrictedAreaPointCount").textContent=securityState.points.length+" puntos.";
+}
+function renderRestrictedAreaRules(){
+  const box=$("restrictedAreaRules");if(!box)return;
+  const show=$("restrictedAreaMode")?.value==="SCHEDULE";$("restrictedAreaSchedule")?.classList.toggle("hidden",!show);
+  if(!show)return;
+  const rules=securityState.rules||[];
+  box.innerHTML=rules.length?'<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+rules.map((r,i)=>'<tr><td><select data-sec-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-sec-start="'+i+'" value="'+esc(String(r.start_time||"19:00").slice(0,5))+'"></td><td><input type="time" data-sec-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><button class="btn-danger" data-sec-remove="'+i+'" type="button">Quitar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Agrega al menos una regla horaria.</div>';
+  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{securityState.rules.splice(Number(b.dataset.secRemove),1);renderRestrictedAreaRules();});
+}
+function collectRestrictedRules(){return (securityState.rules||[]).map((r,i)=>({day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week),start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||"19:00",end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||"06:00"}));}
+function clearRestrictedArea(){
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
+}
+function renderRestrictedAreasList(){
+  const box=$("restrictedAreasList");if(!box)return;const items=securityState.context?.areas||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode)+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">No hay áreas restringidas configuradas.</div>';
+  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{const a=items.find(x=>x.id===b.dataset.secEdit);if(!a)return;$("restrictedAreaId").value=a.id;$("restrictedAreaZone").value=a.zone_id;$("restrictedAreaName").value=a.name||"";$("restrictedAreaReason").value=a.reason||"";$("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";$("restrictedAreaActive").value=String(a.active);securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));securityState.rules=(a.rules||[]).map(r=>({...r}));renderRestrictedAreaRules();renderRestrictedAreaMap();if(securityState.points.length)securityState.map?.center(securityState.points[0],15);});
+}
+async function loadRestrictedAreas(){
+  if(state.role!=="DELIVERY_ADMIN")return;const sel=$("securityDelivery");if(!sel)return;const previous=sel.value;sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;const id=securityDeliveryId();if(!id)return;
+  try{const [context,plan]=await Promise.all([rpc("delivery_restricted_area_context",{p_delivery_id:id}),rpc("delivery_plan_snapshot",{p_delivery_id:id})]);securityState.context=context||{};$("restrictedAreaZone").innerHTML=(context?.zones||[]).map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>').join("");const ent=plan?.current?.entitlements||{};const manage=ent["restricted_areas.manage"]===true,schedule=ent["restricted_areas.schedule"]===true;$("securityPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Áreas: '+esc(context?.used||0)+' / '+esc(context?.limit??0)+' · Por horario: '+(schedule?"Sí":"No");$("restrictedAreaSave").disabled=!manage;$("restrictedAreaMode").disabled=!manage;if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";renderRestrictedAreaRules();renderRestrictedAreasList();if(!securityState.map){securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{securityState.points.push([lat,lng]);renderRestrictedAreaMap();});}securityState.map.resize();renderRestrictedAreaMap();}catch(e){message(e.message||"No se pudo cargar Seguridad.","error");}
+}
+async function saveRestrictedArea(){
+  try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
+}
+function bindEvents() {
+  if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
+  if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
+  if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
+  if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
+  if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
+  if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
+  if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
+  if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
+  if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = () => { securityState.points.pop(); renderRestrictedAreaMap(); };
+  if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = () => { securityState.points=[]; renderRestrictedAreaMap(); };
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = () => { securityState.rules.push({day_of_week:1,start_time:"19:00",end_time:"06:00"}); renderRestrictedAreaRules(); };
+  if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
+  if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedArea;
+  if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
+  if ($("networkSaveDefault")) $("networkSaveDefault").onclick = saveNetworkDefault;
+  if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
+  if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
+  if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
+  if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
+  $("logoutBtn").onclick = async () => {
+    try {
+      await cerrarSesion();
+      location.href = "../app/acceso.html";
+    } catch (e) {
+      message(e.message || "No se pudo cerrar sesión.", "error");
+    }
+  };
+
+  $("refreshBtn").onclick = refreshAll;
+  if ($("orderScope")) $("orderScope").onchange = loadOrders;
+  if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
+  const menuImportDelivery = $("menuImportDelivery");
+  const menuExistingLocal = $("menuExistingLocal");
+  const menuImportStatus = $("menuImportStatus");
+  const menuLocalZone = $("menuLocalZone");
+  const startMenuImportBtn = $("startMenuImportBtn");
+  const reanalyzeMenuBtn = $("reanalyzeMenuBtn");
+  const addMenuCategoryBtn = $("addMenuCategoryBtn");
+  const applyMenuImportBtn = $("applyMenuImportBtn");
+
+  if (menuImportDelivery) {
+    menuImportDelivery.onchange = () => {
+      if (menuImportStatus) menuImportStatus.textContent = "Selecciona de 1 a 5 imágenes para iniciar.";
+    };
+  }
+  if (menuExistingLocal) {
+    menuExistingLocal.onchange = () => {
+      const existing = Boolean(menuExistingLocal.value);
+      if (menuLocalZone) {
+        menuLocalZone.disabled = existing;
+        if (existing) menuLocalZone.value = "";
+      }
+    };
+  }
+  if (startMenuImportBtn) startMenuImportBtn.onclick = startMenuImageImport;
+  if (reanalyzeMenuBtn) reanalyzeMenuBtn.onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
+  if (addMenuCategoryBtn) addMenuCategoryBtn.onclick = addMenuCategory;
+  if (applyMenuImportBtn) applyMenuImportBtn.onclick = applyMenuImport;
+  if ($("advertisementScope")) $("advertisementScope").onchange = loadAdvertisingTargets;
+  if ($("advertisementDelivery")) $("advertisementDelivery").onchange = loadAdvertisingTargets;
+  if ($("advertisementLocal")) $("advertisementLocal").onchange = loadAdvertisingProducts;
+  $("saveAdvertisementBtn").onclick = saveAdvertisement;
+  $("clearAdvertisementBtn").onclick = clearAdvertisementForm;
+  $("previewAdvertisementBtn").onclick = previewAdvertisementDestination;
+  if ($("catalogLocal")) $("catalogLocal").onchange = loadCatalog;
+
+  $("submitRequestBtn").onclick = submitRequest;
+  if ($("requestType")) $("requestType").onchange = updateRequestForm;
+  if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
+  if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
+  $("profileGoStorageBtn").onclick = openDeliveryStorage;
+  if ($("shareDelivery")) $("shareDelivery").onchange = loadShareLocals;
+  if ($("shareLocal")) $("shareLocal").onchange = loadShareProducts;
+  if ($("shareProduct")) $("shareProduct").onchange = renderShareLinks;
+  $("shareLocalNativeBtn").onclick = () => nativeShare("local");
+  $("shareLocalWhatsappBtn").onclick = () => shareWhatsApp("local");
+  $("shareLocalFacebookBtn").onclick = () => shareFacebook("local");
+  $("copyLocalLinkBtn").onclick = () => copyShareLink("local");
+  $("shareProductNativeBtn").onclick = () => nativeShare("product");
+  $("shareProductWhatsappBtn").onclick = () => shareWhatsApp("product");
+  $("shareProductFacebookBtn").onclick = () => shareFacebook("product");
+  $("copyProductLinkBtn").onclick = () => copyShareLink("product");
+  if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
+  $("saveLocalProfileBtn").onclick = saveLocalProfile;
+  $("profileLocalGoStorageBtn").onclick = openLocalStorage;
+  $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
+  $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
+  $("userManagerSearch").oninput = renderUserOptions;
+  if ($("userManagerUser")) $("userManagerUser").onchange = renderManagedUser;
+  $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
+  $("assignLocalUserBtn").onclick = assignLocalUser;
+  if ($("feeDelivery")) $("feeDelivery").onchange = loadFeeDelivery;
+  if ($("feeMode")) $("feeMode").onchange = updateFeeModeUI;
+  $("saveFeeConfigBtn").onclick = saveFeeConfig;
+  $("saveFeeScheduleBtn").onclick = saveFeeSchedule;
+  if ($("feeRatePeriod")) $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
+  $("saveFeeRateBtn").onclick = saveFeeRate;
+  if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
+  $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
+  $("saveZoneBtn").onclick = saveZone;
+  $("clearZoneBtn").onclick = clearZoneForm;
+  $("saveDeliveryBtn").onclick = saveDelivery;
+  $("saveCategoryBtn").onclick = saveCategory;
+  $("clearCategoryBtn").onclick = clearCategoryForm;
+  $("saveProductBtn").onclick = saveProduct;
+  $("clearProductBtn").onclick = clearProductForm;
+  $("catalogDeleteProductImageBtn").onclick = deleteCatalogProductImage;
+  if ($("variantProduct")) $("variantProduct").onchange = loadVariants;
+  $("saveVariantBtn").onclick = saveVariant;
+  $("clearVariantBtn").onclick = clearVariantForm;
+  $("enableCatalogManagementBtn").onclick = enableCatalogManagement;
+  if ($("scheduleLocal")) $("scheduleLocal").onchange = loadSchedules;
+  $("saveSchedulesBtn").onclick = saveSchedules;
+  $("enableScheduleManagementBtn").onclick = enableScheduleManagement;
+
+  if ($("storageDelivery")) $("storageDelivery").onchange = refreshDeliveryMediaPreview;
+  if ($("storageLocal")) $("storageLocal").onchange = async () => {
+    await refreshLocalMediaPreview();
+    await refreshLocalGallery();
+    await loadStorageProducts();
+  };
+  if ($("storageProduct")) $("storageProduct").onchange = refreshProductMediaPreview;
+
+  $("uploadDeliveryLogoBtn").onclick = uploadDeliveryLogo;
+  $("deleteDeliveryLogoBtn").onclick = deleteDeliveryLogo;
+  $("enableDeliveryMediaBtn").onclick = enableDeliveryMedia;
+
+  $("uploadLocalLogoBtn").onclick = () => uploadLocalMedia("logo");
+  $("deleteLocalLogoBtn").onclick = () => deleteLocalMedia("logo");
+  $("uploadLocalBannerBtn").onclick = () => uploadLocalMedia("banner");
+  $("deleteLocalBannerBtn").onclick = () => deleteLocalMedia("banner");
+  $("enableLocalMediaBtn").onclick = enableLocalMedia;
+  $("uploadLocalGalleryBtn").onclick = uploadLocalGallery;
+
+  $("uploadProductImageBtn").onclick = uploadProductImage;
+  $("deleteProductImageBtn").onclick = deleteProductImage;
+}
+
+init();
+
+
+let masterDeliveryWorkspaceBound=false;
+let masterDeliveryWorkspacePanels=[];
+
+function masterDeliveryWorkspaceSelectedId(){
+  return document.getElementById("deliveryWorkspaceSelect")?.value || "";
+}
+
+function deliveryAuthorizationStatusLabel(item){
+  if(item?.status==="CLAIMED"&&item?.active_access)return "Activo";
+  if(item?.status==="PENDING")return "Pendiente";
+  if(item?.status==="EXPIRED")return "Vencido";
+  if(item?.status==="REVOKED")return "Revocado";
+  return item?.status||"—";
+}
+
+function deliveryAuthorizationRoleLabel(role){
+  return role==="DELIVERY_OPERATOR" ? "Operador" : "Administrador";
+}
+
+function renderMasterDeliveryAuthorizations(){
+  const box=document.getElementById("deliveryWorkspaceAssignments");
+  if(!box)return;
+  const items=Array.isArray(state.deliveryAuthorizations)?state.deliveryAuthorizations:[];
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">Este DELIVERY todavía no tiene representantes autorizados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const status=deliveryAuthorizationStatusLabel(item);
+    const expires=item.expires_at?new Date(item.expires_at).toLocaleString():"—";
+    const claimed=item.claimed_at?new Date(item.claimed_at).toLocaleString():"";
+    const canRevoke=item.status==="PENDING"||(item.status==="CLAIMED"&&item.active_access);
+    return '<div class="card" style="margin:10px 0;padding:14px">'+
+      '<div class="row between"><div>'+
+      '<strong>'+esc(item.representative_name||"Representante")+'</strong>'+
+      '<div>'+esc(item.email||"")+'</div>'+
+      '<div class="muted">CI ••••••'+esc(item.national_id_last4||"")+
+      ' · '+esc(deliveryAuthorizationRoleLabel(item.role_code))+
+      (item.phone?' · '+esc(item.phone):'')+'</div>'+
+      '</div><span class="badge">'+esc(status)+'</span></div>'+
+      '<div class="muted" style="margin-top:8px">'+
+      (item.status==="PENDING"?'Debe registrarse o iniciar sesión con este mismo correo y confirmar su email. Vence: '+esc(expires):
+       item.status==="CLAIMED"&&item.active_access?'Acceso habilitado'+(claimed?' desde '+esc(claimed):''):
+       item.status==="EXPIRED"?'La autorización venció sin ser utilizada.':
+       item.status==="REVOKED"?'El acceso fue revocado.':'')+
+      '</div>'+
+      (canRevoke?'<button class="btn-danger" type="button" data-dw-revoke="'+esc(item.id)+'" style="margin-top:10px">Revocar acceso</button>':'')+
+      '</div>';
+  }).join("");
+
+  box.querySelectorAll("[data-dw-revoke]").forEach(btn=>{
+    btn.onclick=()=>revokeMasterDeliveryAuthorization(btn.dataset.dwRevoke);
+  });
+}
+
+async function loadMasterDeliveryAuthorizations(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  if(!deliveryId){
+    state.deliveryAuthorizations=[];
+    renderMasterDeliveryAuthorizations();
+    return;
+  }
+
+  try{
+    const data=await rpc("master_list_delivery_authorizations",{p_delivery_id:deliveryId});
+    state.deliveryAuthorizations=Array.isArray(data)?data:[];
+    renderMasterDeliveryAuthorizations();
+  }catch(e){
+    state.deliveryAuthorizations=[];
+    const box=document.getElementById("deliveryWorkspaceAssignments");
+    if(box)box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron cargar los accesos.")+'</div>';
+  }
+}
+
+async function authorizeMasterDeliveryRepresentative(){
+  try{
+    const deliveryId=masterDeliveryWorkspaceSelectedId();
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+
+    const name=document.getElementById("deliveryWorkspaceRepresentativeName")?.value.trim()||"";
+    const nationalId=document.getElementById("deliveryWorkspaceRepresentativeId")?.value.trim()||"";
+    const email=document.getElementById("deliveryWorkspaceRepresentativeEmail")?.value.trim()||"";
+    const phone=document.getElementById("deliveryWorkspaceRepresentativePhone")?.value.trim()||"";
+    const role=document.getElementById("deliveryWorkspaceRepresentativeRole")?.value||"DELIVERY_ADMIN";
+
+    if(!name)throw new Error("Escribe el nombre del representante.");
+    if(!/^[0-9]{10}$/.test(nationalId.replace(/\D/g,"")))throw new Error("La cédula debe contener 10 dígitos.");
+    if(!email)throw new Error("Escribe el correo autorizado.");
+
+    const result=await rpc("master_authorize_delivery_representative",{
+      p_delivery_id:deliveryId,
+      p_representative_name:name,
+      p_national_id:nationalId,
+      p_email:email,
+      p_phone:phone||null,
+      p_role_code:role
+    });
+
+    if(result?.status==="CLAIMED"){
+      message("Acceso habilitado: ese correo ya tenía una cuenta confirmada.");
+    }else{
+      message("Correo autorizado. La persona debe registrarse o iniciar sesión con ese mismo correo.");
+    }
+
+    document.getElementById("deliveryWorkspaceRepresentativeId").value="";
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo autorizar al representante.","error");
+  }
+}
+
+async function revokeMasterDeliveryAuthorization(authorizationId){
+  if(!authorizationId)return;
+  if(!confirm("¿Revocar este acceso al DELIVERY? Si ya estaba activo, perderá el acceso administrativo inmediatamente."))return;
+
+  try{
+    await rpc("master_revoke_delivery_authorization",{p_authorization_id:authorizationId});
+    message("Acceso revocado.");
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo revocar el acceso.","error");
+  }
+}
+
+async function loadMasterDeliveryPlanSummary(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const box=document.getElementById("deliveryWorkspacePlanSummary");
+  if(!box)return;
+  if(!deliveryId){box.textContent="Selecciona un DELIVERY.";return;}
+  try{
+    const snapshot=await rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId});
+    const current=snapshot?.current;
+    if(!current){box.innerHTML='<strong>Sin plan vigente</strong>'+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');return;}
+    box.innerHTML='<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong> · vence '+esc(formatServiceDate(current.ends_at))+(snapshot?.expiring_soon?' · <strong>vence en '+esc(snapshot.days_remaining)+' día(s)</strong>':'')+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');
+  }catch(e){box.textContent=e.message||"No se pudo consultar el plan.";}
+}
+function openMasterDeliveryWorkspaceTab(tab){
+  ["base","access","zones"].forEach(name=>{
+    document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
+  });
+  document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
+}
+
+async function syncMasterDeliveryWorkspace(){
+  const id=masterDeliveryWorkspaceSelectedId();
+  if(!id)return;
+  for(const selectId of ["coverageDelivery","userManagerDelivery"]){
+    const s=document.getElementById(selectId);
+    if(s){
+      s.value=[...s.options].some(o=>o.value===id)?id:"";
+    }
+  }
+
+  await Promise.all([
+    loadMasterDeliveryAuthorizations(),
+    loadMasterDeliveryPlanSummary(),
+    typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
+  ]);
+}
+
+function refreshMasterDeliveryWorkspaceSelector(preferred=""){
+  const select=document.getElementById("deliveryWorkspaceSelect");
+  if(!select)return;
+  const previous=preferred||select.value;
+  const list=(state.deliveries||[]);
+  select.innerHTML=list.length
+    ? list.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+(d.active===false?' — Inactivo':'')+'</option>').join("")
+    : '<option value="">No hay DELIVERY registrados</option>';
+  if(previous&&list.some(d=>d.id===previous))select.value=previous;
+}
+
+function bindMasterDeliveryWorkspace(){
+  if(masterDeliveryWorkspaceBound||state.role!=="MASTER")return;
+  const section=document.getElementById("section-deliveries");
+  if(!section)return;
+
+  const original=[...section.children];
+  const toolbar=document.createElement("div");
+  toolbar.className="card workspace-title";
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado y zonas en un solo ambiente. Las tarifas las configura el propio DELIVERY.</p></div>'+
+    '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
+    '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
+    '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
+    '<button type="button" data-delivery-workspace-tab="base">Listado y ficha</button>'+
+    '<button type="button" data-delivery-workspace-tab="access">Cuenta</button>'+
+    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button></div>';
+  section.insertBefore(toolbar,section.firstChild);
+
+  const base=document.createElement("div");
+  base.id="deliveryWorkspacePane-base";
+  section.insertBefore(base,toolbar.nextSibling);
+  original.forEach(x=>base.appendChild(x));
+
+  const access=document.createElement("div");
+  access.id="deliveryWorkspacePane-access";
+  access.className="hidden";
+  access.innerHTML='<div class="card"><h3>Plan y suscripción</h3>'+
+    '<p class="muted">La vigencia, capacidad y funciones provienen del plan comercial. No se configuran fechas ni prestaciones manualmente desde DELIVERY.</p>'+
+    '<div id="deliveryWorkspacePlanSummary" class="workspace-note">Consultando plan…</div>'+
+    '<a class="btn-primary" href="./monetizacion.html" style="display:inline-block;margin-top:12px;text-decoration:none">Abrir Planes y suscripciones</a></div>'+
+    '<div class="card"><h3>Representante autorizado</h3>'+
+    '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
+    '<div class="form-grid">'+
+    '<div><label>Nombre completo</label><input id="deliveryWorkspaceRepresentativeName" maxlength="180" placeholder="Nombre del representante"></div>'+
+    '<div><label>Cédula</label><input id="deliveryWorkspaceRepresentativeId" inputmode="numeric" maxlength="10" placeholder="10 dígitos"></div>'+
+    '<div><label>Correo autorizado</label><input id="deliveryWorkspaceRepresentativeEmail" type="email" maxlength="240" placeholder="correo@ejemplo.com"></div>'+
+    '<div><label>Teléfono</label><input id="deliveryWorkspaceRepresentativePhone" type="tel" maxlength="40"></div>'+
+    '<div><label>Tipo de acceso</label><select id="deliveryWorkspaceRepresentativeRole"><option value="DELIVERY_ADMIN">Administrador</option><option value="DELIVERY_OPERATOR">Operador</option></select></div>'+
+    '</div>'+
+    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña.</p>'+
+    '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
+  section.appendChild(access);
+
+  const zones=document.createElement("div");
+  zones.id="deliveryWorkspacePane-zones";
+  zones.className="hidden";
+  section.appendChild(zones);
+
+  const usersSection=document.getElementById("section-users");
+  if(usersSection){
+    const legacyDeliveryCard=[...usersSection.children].find(node=>node.querySelector("h3")?.textContent.trim()==="Asignar a un DELIVERY");
+    if(legacyDeliveryCard)legacyDeliveryCard.classList.add("hidden");
+  }
+
+  const coverage=document.getElementById("section-coverage");
+  if(coverage){
+    [...coverage.children].forEach(node=>{
+      masterDeliveryWorkspacePanels.push({node,parent:coverage});
+      zones.appendChild(node);
+    });
+  }
+
+  toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
+  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
+  document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
+  document.getElementById("deliveryWorkspaceNew").onclick=()=>{
+    if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
+    for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){
+      const input=document.getElementById(id);
+      if(input)input.value="";
+    }
+    if(document.getElementById("deliveryActive"))document.getElementById("deliveryActive").value="true";
+    if(document.getElementById("saveDeliveryBtn"))document.getElementById("saveDeliveryBtn").textContent="Crear delivery";
+    openMasterDeliveryWorkspaceTab("base");
+    document.getElementById("deliveryName")?.focus();
+  };
+
+  masterDeliveryWorkspaceBound=true;
+  openMasterDeliveryWorkspaceTab("base");
+}
+
+async function loadDeliveryMasterWorkspace(){
+  if(state.role!=="MASTER")return;
+  bindMasterDeliveryWorkspace();
+  await loadDeliveriesModule();
+  await loadCoverage();
+  refreshMasterDeliveryWorkspaceSelector();
+  await syncMasterDeliveryWorkspace();
+}
+
+window.loadDeliveryMasterWorkspace=loadDeliveryMasterWorkspace;
+window.refreshMasterDeliveryWorkspaceSelector=refreshMasterDeliveryWorkspaceSelector;
++Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
+  }).join("");
+  box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
+}
+
+async function loadDriverOrders(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    const items=await rpc("driver_my_orders");
+    state.driverOrders=Array.isArray(items)?items:[];
+    renderDriverOrders();
+  }catch(e){message(e.message||"No se pudieron cargar tus entregas.","error");}
+}
+
+async function driverChangeStatus(orderId,next){
+  try{
+    await rpc("driver_set_order_status",{
+      p_order_id:orderId,
+      p_new_status:next,
+      p_note:null
+    });
+    message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo actualizar la entrega.","error");}
+}
+
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
 function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
 function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
