@@ -811,7 +811,21 @@
 
       <div class="card">
         <div class="row between">
-          <div><h3>Referidos</h3><p class="muted">Genera códigos/enlaces para incorporar clientes a la red privada.</p></div>
+          <div>
+            <h3>Contactos autorizados</h3>
+            <p class="muted">Importa hasta 500 contactos por lote. En modo privado, un cliente podrá entrar por coincidencia de teléfono o correo si el plan incluye esta función.</p>
+          </div>
+          <button id="networkImportContacts" class="btn-primary" type="button">Importar contactos</button>
+        </div>
+        <label style="margin-top:12px">Un contacto por línea</label>
+        <textarea id="networkContactsInput" rows="6" placeholder="Ana Pérez, 0991234567, ana@correo.com&#10;Carlos Ruiz, 0987654321"></textarea>
+        <p class="muted">Formato: nombre, teléfono, correo. También acepta punto y coma. Teléfono o correo son obligatorios.</p>
+        <div id="networkContacts"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div><h3>Referidos</h3><p class="muted">Genera códigos y, cuando el plan lo permita, enlaces directos para incorporar clientes a la red privada.</p></div>
           <button id="networkCreateReferral" class="btn-primary" type="button">Crear referido</button>
         </div>
         <div id="networkReferrals"></div>
