@@ -1317,9 +1317,7 @@ async function loadShareModule() {
   if (!select) return;
 
   const previous = select.value;
-  const available = state.role === "MASTER"
-    ? state.deliveries
-    : state.deliveries.filter(delivery => delivery.active !== false);
+  const available = state.deliveries.filter(delivery => delivery.active !== false);
 
   select.innerHTML = available.length
     ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}${delivery.active === false ? " — Inactivo" : ""}</option>`).join("")
@@ -2835,7 +2833,9 @@ async function loadCoverage() {
 
   const select = $("coverageDelivery");
   const previous = select.value;
-  const available = state.deliveries.filter(delivery => delivery.active !== false);
+  const available = state.role === "MASTER"
+    ? state.deliveries
+    : state.deliveries.filter(delivery => delivery.active !== false);
 
   select.innerHTML = available.length
     ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
