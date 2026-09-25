@@ -5592,7 +5592,7 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,candidate:null};
 const driverGpsState={
   selectedDriverId:null,
   selectedDriverName:"",
@@ -6024,12 +6024,14 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch]=await Promise.all([
+    const [drivers,dispatch,proofSettings]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId})
+      rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
+    driverWorkspaceState.proofSettings=proofSettings||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
