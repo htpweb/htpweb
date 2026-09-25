@@ -39,7 +39,7 @@ test('driver_trigger_sos exige repartidor, asignación ACTIVE y pedido EN_ROUTE'
 
 test('crear SOS requiere safety.sos del plan pero atender uno existente no',()=>{
   assert.match(migration,/delivery_has_capability\(v_assignment\.delivery_id, 'safety\.sos'\)|delivery_has_capability\(v_assignment\.delivery_id,'safety\.sos'\)/i);
-  const membership=migration.match(/CREATE OR REPLACE FUNCTION private\.sos_user_has_delivery[\s\S]*?\$\$;/i)?.[0]||'';
+  const membership=sqlFunction('private.sos_user_has_delivery');
   assert.match(membership,/user_deliveries/i);
   assert.doesNotMatch(membership,/delivery_service_is_active/i);
 
@@ -58,7 +58,7 @@ test('SOS no depende de que exista ubicación',()=>{
 });
 
 test('SOS prefiere GPS en vivo reciente y usa dispositivo como respaldo',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION public\.driver_trigger_sos[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('public.driver_trigger_sos');
   assert.match(fn,/driver_live_locations/i);
   assert.match(fn,/interval '2 minutes'/i);
   assert.match(fn,/v_source := 'LIVE_GPS'|v_source:='LIVE_GPS'/i);
@@ -67,7 +67,7 @@ test('SOS prefiere GPS en vivo reciente y usa dispositivo como respaldo',()=>{
 });
 
 test('doble toque usa advisory lock y reutiliza incidente abierto',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION public\.driver_trigger_sos[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('public.driver_trigger_sos');
   assert.match(fn,/pg_advisory_xact_lock/i);
   assert.match(fn,/status in \('OPEN','ACKNOWLEDGED'\)/i);
   assert.match(fn,/for update/i);
