@@ -11,6 +11,8 @@
 <script src="../config/orders.js"></script>
 <script src="../config/ads.js"></script>
 <link rel="stylesheet" href="../assets/app.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <header><div class="header-row">
@@ -46,6 +48,10 @@ let page = 0;
 let hasMore = false;
 let busy = false;
 let selectedId = new URLSearchParams(location.search).get('order') || '';
+let trackingChannel = null;
+let trackingOrderId = '';
+let trackingMap = null;
+let trackingMarker = null;
 
 function message(text, success = false) {
   $('message').textContent = text;
@@ -57,6 +63,111 @@ function controls() {
   $('nextBtn').disabled = busy || !hasMore;
   document.querySelectorAll('[data-order], #cancelBtn, #closeDetailBtn').forEach(button => { button.disabled = busy; });
 }
+async function stopCustomerTracking(clearVisual = true) {
+  const channel = trackingChannel;
+  trackingChannel = null;
+  trackingOrderId = '';
+  if (channel) {
+    try { await supabaseClient.removeChannel(channel); } catch {}
+  }
+  if (clearVisual) {
+    if (trackingMap) {
+      trackingMap.remove();
+      trackingMap = null;
+    }
+    trackingMarker = null;
+  }
+}
+
+function trackingReasonText(reason) {
+  const labels = {
+    PLAN_DISABLED: 'Este DELIVERY no incluye tracking del cliente en su plan.',
+    ORDER_NOT_EN_ROUTE: 'El seguimiento estará disponible cuando el pedido salga a ruta.'
+  };
+  return labels[reason] || 'Seguimiento no disponible.';
+}
+
+function renderTrackingLocation(location) {
+  const status = $('trackingStatus');
+  const host = $('trackingMap');
+  if (!status || !host || !location) return;
+
+  const lat = Number(location.latitude);
+  const lng = Number(location.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  host.style.display = 'block';
+  if (!trackingMap) {
+    trackingMap = L.map(host).setView([lat, lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(trackingMap);
+  }
+
+  if (!trackingMarker) trackingMarker = L.marker([lat, lng]).addTo(trackingMap);
+  else trackingMarker.setLatLng([lat, lng]);
+
+  trackingMap.setView([lat, lng], Math.max(trackingMap.getZoom(), 16));
+  setTimeout(() => trackingMap?.invalidateSize(), 0);
+
+  const captured = location.captured_at ? dateText(location.captured_at) : 'ahora';
+  const accuracy = Number.isFinite(Number(location.accuracy_m))
+    ? ' · precisión ±' + Math.round(Number(location.accuracy_m)) + ' m'
+    : '';
+  status.textContent = 'Repartidor ubicado · ' + captured + accuracy;
+}
+
+async function startCustomerTracking(orderId) {
+  await stopCustomerTracking();
+  const status = $('trackingStatus');
+  const host = $('trackingMap');
+  if (!status || !host) return;
+
+  try {
+    const { data: snapshot, error } = await supabaseClient.rpc('customer_order_tracking_snapshot', {
+      p_order_id: orderId
+    });
+    if (error) throw error;
+
+    if (!snapshot?.enabled) {
+      status.textContent = trackingReasonText(snapshot?.reason);
+      host.style.display = 'none';
+      return;
+    }
+
+    trackingOrderId = orderId;
+    if (snapshot.location) renderTrackingLocation(snapshot.location);
+    else status.textContent = 'Esperando la primera ubicación del repartidor…';
+
+    if (!snapshot.topic) return;
+
+    trackingChannel = supabaseClient
+      .channel(snapshot.topic, { config: { private: true } })
+      .on('broadcast', { event: 'location' }, ({ payload }) => {
+        if (trackingOrderId === orderId) renderTrackingLocation(payload);
+      })
+      .on('broadcast', { event: 'tracking_ended' }, ({ payload }) => {
+        if (trackingOrderId !== orderId) return;
+        const label = payload?.status === 'DELIVERED'
+          ? 'Entrega completada.'
+          : 'Seguimiento finalizado.';
+        if ($('trackingStatus')) $('trackingStatus').textContent = label;
+        void stopCustomerTracking(false);
+      })
+      .subscribe((channelStatus) => {
+        if (channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT') {
+          if ($('trackingStatus')) {
+            $('trackingStatus').textContent = 'No se pudo conectar al tracking en vivo. Usa Actualizar para reintentar.';
+          }
+        }
+      });
+  } catch (e) {
+    status.textContent = e.message || 'No se pudo iniciar el seguimiento.';
+    host.style.display = 'none';
+  }
+}
+
 function renderOrders(orders) {
   $('pageLabel').textContent = `Página ${page + 1}`;
   $('orders').innerHTML = orders.length ? orders.map(order => `
@@ -71,6 +182,7 @@ function renderOrders(orders) {
   });
 }
 async function renderDetail() {
+  await stopCustomerTracking();
   $('detail').classList.add('hidden');
   $('detail').innerHTML = '';
   if (!selectedId) return;
@@ -94,15 +206,18 @@ async function renderDetail() {
     <div class="summary-line"><span>Productos</span><strong>${money(order.subtotal)}</strong></div>
     <div class="summary-line"><span>Delivery</span><strong>${money(order.delivery_fee)}</strong></div>
     <div class="summary-line total"><span>Total</span><strong>${money(order.total)}</strong></div>
+    ${order.status === 'EN_ROUTE' ? '<div id="trackingCard" class="card" style="margin-top:16px"><h3>Seguimiento en vivo</h3><p id="trackingStatus" class="muted">Conectando con el repartidor…</p><div id="trackingMap" style="height:320px;border-radius:12px;display:none"></div></div>' : ''}
     ${order.status === 'PENDING' ? '<button class="btn btn-danger" id="cancelBtn">Cancelar pedido</button>' : ''}`;
   $('detail').classList.remove('hidden');
   $('closeDetailBtn').onclick = () => {
     selectedId = '';
     history.replaceState(null, '', urlDelivery('pedidos.html'));
+    void stopCustomerTracking();
     $('detail').classList.add('hidden');
     $('detail').innerHTML = '';
   };
   if ($('cancelBtn')) $('cancelBtn').onclick = cancelSelected;
+  if (order.status === 'EN_ROUTE') await startCustomerTracking(order.id);
 }
 async function reload(targetPage = page) {
   if (busy || !delivery) return;
@@ -110,6 +225,7 @@ async function reload(targetPage = page) {
   controls();
   message('');
   $('orders').innerHTML = '<div class="card empty">Cargando pedidos…</div>';
+  await stopCustomerTracking();
   $('detail').classList.add('hidden');
   try {
     const result = await listarPedidosCliente(delivery.id, targetPage);
@@ -170,6 +286,7 @@ $('prevBtn').onclick = () => reload(page - 1);
 $('nextBtn').onclick = () => reload(page + 1);
 supabaseClient.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {
+    void stopCustomerTracking();
     $('orders').innerHTML = '';
     $('detail').innerHTML = '';
     irAAcceso(rutaActualRelativa());
