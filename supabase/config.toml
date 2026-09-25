@@ -27,6 +27,12 @@ verify_jwt = true
 [functions.optimizar-ruta]
 verify_jwt = true
 
+[functions.delivery-proof-upload]
+verify_jwt = true
+
+[functions.delivery-proof-view]
+verify_jwt = true
+
 [functions.analizar-menu]
 verify_jwt = true
 
