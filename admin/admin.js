@@ -115,11 +115,13 @@ async function init() {
 
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
-  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);\n  const masterDeliveryWorkspaceSections = new Set(["fees","coverage"]);
+  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
+  const masterDeliveryWorkspaceSections = new Set(["fees","coverage"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
     const hiddenInsideLocales = state.role === "MASTER" && masterLocalWorkspaceSections.has(btn.dataset.section);
-    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section) || hiddenInsideLocales);
+    const hiddenInsideDelivery = state.role === "MASTER" && masterDeliveryWorkspaceSections.has(btn.dataset.section);
+    btn.classList.toggle("hidden", !allowed.has(btn.dataset.section) || hiddenInsideLocales || hiddenInsideDelivery);
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
 
