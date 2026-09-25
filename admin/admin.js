@@ -5592,9 +5592,269 @@ async function loadAnalytics() {
 }
 
 const driverWorkspaceState={drivers:null,dispatch:null,candidate:null};
+const driverGpsState={
+  selectedDriverId:null,
+  selectedDriverName:"",
+  selectedDeliveryId:null,
+  map:null,
+  marker:null,
+  historyLine:null,
+  watchId:null,
+  lastSentAt:0,
+  sending:false,
+  allowedDeliveryIds:[]
+};
 
 function driverWorkspaceDeliveryId(){
   return $("driversDelivery")?.value||state.deliveries[0]?.id||null;
+}
+
+function resetAdminDriverGps(){
+  driverGpsState.selectedDriverId=null;
+  driverGpsState.selectedDriverName="";
+  driverGpsState.selectedDeliveryId=null;
+  if(driverGpsState.marker&&driverGpsState.map)driverGpsState.map.removeLayer(driverGpsState.marker);
+  if(driverGpsState.historyLine&&driverGpsState.map)driverGpsState.map.removeLayer(driverGpsState.historyLine);
+  driverGpsState.marker=null;
+  driverGpsState.historyLine=null;
+  if($("driverGpsMap"))$("driverGpsMap").style.display="none";
+  if($("driverGpsStatus"))$("driverGpsStatus").textContent='Selecciona “Ver GPS” en un repartidor.';
+  if($("driverGpsHistoryInfo"))$("driverGpsHistoryInfo").textContent="";
+  if($("driverGpsRefresh"))$("driverGpsRefresh").disabled=true;
+}
+
+function ensureAdminDriverGpsMap(lat,lng){
+  const host=$("driverGpsMap");
+  if(!host||!window.L)return null;
+  host.style.display="block";
+  if(!driverGpsState.map){
+    driverGpsState.map=L.map(host).setView([lat,lng],16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap"
+    }).addTo(driverGpsState.map);
+  }
+  setTimeout(()=>driverGpsState.map?.invalidateSize(),0);
+  return driverGpsState.map;
+}
+
+function renderAdminDriverGps(snapshot){
+  const status=$("driverGpsStatus");
+  const info=$("driverGpsHistoryInfo");
+  if(!status||!info)return;
+
+  if(!snapshot?.enabled){
+    status.textContent="El plan vigente no incluye GPS en vivo.";
+    info.textContent="";
+    if($("driverGpsMap"))$("driverGpsMap").style.display="none";
+    return;
+  }
+
+  const history=Array.isArray(snapshot.history)?snapshot.history:[];
+  const current=snapshot.current||history.at(-1)||null;
+  const points=history
+    .map(x=>[Number(x.latitude),Number(x.longitude)])
+    .filter(([lat,lng])=>Number.isFinite(lat)&&Number.isFinite(lng));
+
+  if(!current){
+    status.textContent="GPS habilitado, pero todavía no se ha recibido una ubicación.";
+    info.textContent=Number(snapshot.history_days)>0
+      ?"Historial contratado: "+esc(snapshot.history_days)+" día(s)."
+      :"El plan no conserva historial GPS.";
+    if($("driverGpsMap"))$("driverGpsMap").style.display="none";
+    return;
+  }
+
+  const lat=Number(current.latitude);
+  const lng=Number(current.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)){
+    status.textContent="La última ubicación recibida no es válida.";
+    return;
+  }
+
+  const map=ensureAdminDriverGpsMap(lat,lng);
+  if(!map)return;
+
+  if(driverGpsState.marker)map.removeLayer(driverGpsState.marker);
+  driverGpsState.marker=L.marker([lat,lng]).addTo(map);
+
+  if(driverGpsState.historyLine)map.removeLayer(driverGpsState.historyLine);
+  driverGpsState.historyLine=null;
+  if(points.length>=2){
+    driverGpsState.historyLine=L.polyline(points).addTo(map);
+    map.fitBounds(driverGpsState.historyLine.getBounds(),{padding:[24,24],maxZoom:17});
+  }else{
+    map.setView([lat,lng],16);
+  }
+
+  const captured=current.captured_at
+    ?new Date(current.captured_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})
+    :"—";
+  const accuracy=Number.isFinite(Number(current.accuracy_m))
+    ?" · precisión ±"+Math.round(Number(current.accuracy_m))+" m"
+    :"";
+  status.innerHTML="<strong>"+esc(driverGpsState.selectedDriverName||"Repartidor")+"</strong> · última ubicación "+esc(captured)+esc(accuracy);
+  info.textContent=Number(snapshot.history_days)>0
+    ?"Historial contratado: "+snapshot.history_days+" día(s) · "+history.length+" punto(s) mostrados."
+    :"GPS en vivo activo · sin historial contratado.";
+}
+
+async function loadSelectedDriverGps(){
+  if(!driverGpsState.selectedDriverId)return;
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId||driverGpsState.selectedDeliveryId!==deliveryId){
+    resetAdminDriverGps();
+    return;
+  }
+  try{
+    if($("driverGpsStatus"))$("driverGpsStatus").textContent="Consultando GPS…";
+    const snapshot=await rpc("delivery_driver_gps_snapshot",{
+      p_delivery_id:deliveryId,
+      p_driver_user_id:driverGpsState.selectedDriverId,
+      p_limit:100
+    });
+    renderAdminDriverGps(snapshot||{});
+  }catch(e){
+    if($("driverGpsStatus"))$("driverGpsStatus").textContent=e.message||"No se pudo consultar el GPS.";
+    if($("driverGpsMap"))$("driverGpsMap").style.display="none";
+  }
+}
+
+async function selectDriverGps(userId,name){
+  driverGpsState.selectedDriverId=userId;
+  driverGpsState.selectedDriverName=name||"Repartidor";
+  driverGpsState.selectedDeliveryId=driverWorkspaceDeliveryId();
+  if($("driverGpsRefresh"))$("driverGpsRefresh").disabled=false;
+  await loadSelectedDriverGps();
+}
+
+function driverEnRouteDeliveryIds(){
+  return [...new Set(
+    (state.driverOrders||[])
+      .filter(o=>o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"&&o.delivery_id)
+      .map(o=>o.delivery_id)
+  )];
+}
+
+function updateDriverGpsShareUi(){
+  const start=$("driverGpsStart");
+  const stop=$("driverGpsStop");
+  const status=$("driverGpsShareStatus");
+  if(!start||!stop||!status)return;
+
+  const hasEnRoute=driverEnRouteDeliveryIds().length>0;
+  const active=driverGpsState.watchId!==null;
+  start.disabled=!hasEnRoute||active;
+  stop.disabled=!active;
+
+  if(!hasEnRoute&&active){
+    stopDriverGpsSharing(true);
+    return;
+  }
+
+  if(!active){
+    status.textContent=hasEnRoute
+      ?"Entrega EN_ROUTE detectada. Activa GPS para compartir tu ubicación."
+      :"Disponible cuando tengas una entrega EN_ROUTE.";
+  }
+}
+
+function stopDriverGpsSharing(silent=false){
+  if(driverGpsState.watchId!==null&&navigator.geolocation){
+    navigator.geolocation.clearWatch(driverGpsState.watchId);
+  }
+  driverGpsState.watchId=null;
+  driverGpsState.allowedDeliveryIds=[];
+  driverGpsState.sending=false;
+  driverGpsState.lastSentAt=0;
+  if(!silent&&$("driverGpsShareStatus"))$("driverGpsShareStatus").textContent="GPS detenido.";
+  const start=$("driverGpsStart");
+  const stop=$("driverGpsStop");
+  if(start)start.disabled=driverEnRouteDeliveryIds().length===0;
+  if(stop)stop.disabled=true;
+}
+
+async function publishDriverPosition(position){
+  if(driverGpsState.sending)return;
+  const now=Date.now();
+  if(now-driverGpsState.lastSentAt<10000)return;
+
+  const activeIds=driverEnRouteDeliveryIds();
+  const deliveryIds=driverGpsState.allowedDeliveryIds.filter(id=>activeIds.includes(id));
+  if(!deliveryIds.length){
+    stopDriverGpsSharing(true);
+    updateDriverGpsShareUi();
+    return;
+  }
+
+  driverGpsState.sending=true;
+  driverGpsState.lastSentAt=now;
+  try{
+    const coords=position.coords;
+    const finiteOrNull=value=>Number.isFinite(Number(value))?Number(value):null;
+    const payload={
+      p_latitude:Number(coords.latitude),
+      p_longitude:Number(coords.longitude),
+      p_accuracy_m:finiteOrNull(coords.accuracy),
+      p_heading_deg:finiteOrNull(coords.heading),
+      p_speed_mps:finiteOrNull(coords.speed),
+      p_captured_at:new Date(position.timestamp||Date.now()).toISOString()
+    };
+
+    const results=[];
+    for(const deliveryId of deliveryIds){
+      results.push(await rpc("driver_update_location",{p_delivery_id:deliveryId,...payload}));
+    }
+
+    const updated=results.some(x=>x?.status==="UPDATED");
+    const accuracy=finiteOrNull(coords.accuracy);
+    if($("driverGpsShareStatus")){
+      $("driverGpsShareStatus").textContent=updated
+        ?"Ubicación compartida "+new Date().toLocaleTimeString("es-EC")+(accuracy!==null?" · ±"+Math.round(accuracy)+" m":"")
+        :"GPS activo; esperando la siguiente actualización válida.";
+    }
+  }catch(e){
+    if($("driverGpsShareStatus"))$("driverGpsShareStatus").textContent=e.message||"No se pudo compartir la ubicación.";
+  }finally{
+    driverGpsState.sending=false;
+  }
+}
+
+async function startDriverGpsSharing(){
+  try{
+    if(!navigator.geolocation)throw new Error("Este navegador no ofrece geolocalización.");
+    const deliveryIds=driverEnRouteDeliveryIds();
+    if(!deliveryIds.length)throw new Error("Necesitas una entrega EN_ROUTE para activar GPS.");
+
+    const allowed=[];
+    for(const deliveryId of deliveryIds){
+      const context=await rpc("driver_gps_context",{p_delivery_id:deliveryId});
+      if(context?.gps_live&&context?.has_en_route)allowed.push(deliveryId);
+    }
+    if(!allowed.length)throw new Error("El plan vigente no incluye GPS en vivo para estas entregas.");
+
+    driverGpsState.allowedDeliveryIds=allowed;
+    if($("driverGpsShareStatus"))$("driverGpsShareStatus").textContent="Solicitando permiso de ubicación…";
+
+    driverGpsState.watchId=navigator.geolocation.watchPosition(
+      position=>void publishDriverPosition(position),
+      error=>{
+        const messages={
+          1:"Permiso de ubicación denegado.",
+          2:"No se pudo obtener la ubicación del dispositivo.",
+          3:"La ubicación tardó demasiado en responder."
+        };
+        if($("driverGpsShareStatus"))$("driverGpsShareStatus").textContent=messages[error.code]||"Error de geolocalización.";
+      },
+      {enableHighAccuracy:true,maximumAge:5000,timeout:15000}
+    );
+
+    if($("driverGpsStart"))$("driverGpsStart").disabled=true;
+    if($("driverGpsStop"))$("driverGpsStop").disabled=false;
+  }catch(e){
+    if($("driverGpsShareStatus"))$("driverGpsShareStatus").textContent=e.message||"No se pudo activar GPS.";
+    stopDriverGpsSharing(true);
+  }
 }
 
 function renderDriverCandidate(){
@@ -5625,11 +5885,13 @@ function renderDriversList(){
     return;
   }
   const canManage=state.role==="DELIVERY_ADMIN";
-  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Repartidor</th><th>Pedidos activos</th><th></th></tr></thead><tbody>'+
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Repartidor</th><th>Pedidos activos</th><th>Acciones</th></tr></thead><tbody>'+
     items.map(d=>'<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
       '</div></td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
-      '</td><td>'+(canManage?'<button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</td></tr>').join("")+
+      '</td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn-muted" type="button" data-driver-gps="'+esc(d.user_id)+'" data-driver-name="'+esc(d.full_name||"Repartidor")+'">Ver GPS</button>'+
+      (canManage?'<button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>').join("")+
     '</tbody></table></div>';
+  box.querySelectorAll("[data-driver-gps]").forEach(b=>b.onclick=()=>selectDriverGps(b.dataset.driverGps,b.dataset.driverName));
   box.querySelectorAll("[data-driver-disable]").forEach(b=>b.onclick=()=>deactivateDriver(b.dataset.driverDisable));
 }
 
@@ -5690,6 +5952,13 @@ async function loadDriverWorkspace(){
     renderDriversList();
     renderDispatchOrders();
     renderDriverCandidate();
+    if(driverGpsState.selectedDriverId){
+      if(driverGpsState.selectedDeliveryId===deliveryId){
+        await loadSelectedDriverGps();
+      }else{
+        resetAdminDriverGps();
+      }
+    }
   }catch(e){
     message(e.message||"No se pudo cargar Repartidores y despacho.","error");
   }
@@ -5792,6 +6061,7 @@ function renderDriverOrders(){
   box.querySelectorAll("[data-driver-status]").forEach(b=>{
     b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next);
   });
+  updateDriverGpsShareUi();
 }
 
 async function loadDriverOrders(){
@@ -5800,6 +6070,7 @@ async function loadDriverOrders(){
     const items=await rpc("driver_my_orders");
     state.driverOrders=Array.isArray(items)?items:[];
     renderDriverOrders();
+    updateDriverGpsShareUi();
   }catch(e){
     message(e.message||"No se pudieron cargar tus entregas.","error");
   }
@@ -5818,6 +6089,8 @@ async function driverChangeStatus(orderId,next){
     message(e.message||"No se pudo actualizar la entrega.","error");
   }
 }
+
+window.addEventListener("beforeunload",()=>stopDriverGpsSharing(true));
 
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
@@ -6141,9 +6414,12 @@ async function saveRestrictedArea(){
   try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
 }
 function bindEvents() {
-  if ($("driversDelivery")) $("driversDelivery").onchange = loadDriverWorkspace;
+  if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
+  if ($("driverGpsRefresh")) $("driverGpsRefresh").onclick = loadSelectedDriverGps;
+  if ($("driverGpsStart")) $("driverGpsStart").onclick = startDriverGpsSharing;
+  if ($("driverGpsStop")) $("driverGpsStop").onclick = () => stopDriverGpsSharing(false);
   if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
   if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
   if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
