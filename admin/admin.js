@@ -6234,69 +6234,6 @@ async function loadMasterDeliveryService(){
   }
 }
 
-function renderMasterDeliveryFeeModes(status){
-  const box=document.getElementById("deliveryWorkspaceFeeModes");
-  if(!box)return;
-
-  const rows=[
-    {mode:"FIXED",label:"Tarifa fija",enabled:Boolean(status?.fixed)},
-    {mode:"DISTANCE",label:"Por distancia",enabled:Boolean(status?.distance)}
-  ];
-
-  box.innerHTML='<div class="table-wrap"><table><thead><tr>'+
-    '<th>MODALIDAD</th><th>ESTADO</th><th>ACCIÓN</th>'+
-    '</tr></thead><tbody>'+
-    rows.map(row=>'<tr>'+
-      '<td><strong>'+esc(row.label)+'</strong></td>'+
-      '<td>'+(row.enabled?'Habilitada':'Deshabilitada')+'</td>'+
-      '<td><button type="button" class="'+(row.enabled?'btn-danger':'btn-primary')+'" data-dw-fee-mode="'+row.mode+'" data-enabled="'+String(row.enabled)+'">'+
-        (row.enabled?'Deshabilitar':'Habilitar')+
-      '</button></td>'+
-    '</tr>').join("")+
-    '</tbody></table></div>';
-
-  box.querySelectorAll("[data-dw-fee-mode]").forEach(btn=>{
-    btn.onclick=()=>toggleMasterDeliveryFeeMode(btn.dataset.dwFeeMode,btn.dataset.enabled==="true");
-  });
-}
-
-async function loadMasterDeliveryFeeCapability(){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const box=document.getElementById("deliveryWorkspaceFeeModes");
-  if(!box)return;
-
-  if(!deliveryId){
-    box.innerHTML='<div class="muted">Selecciona un DELIVERY.</div>';
-    return;
-  }
-
-  try{
-    const status=await rpc("master_delivery_fee_modes_status",{p_delivery_id:deliveryId});
-    renderMasterDeliveryFeeModes(status||{});
-  }catch(e){
-    box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron consultar las modalidades de tarifa.")+'</div>';
-  }
-}
-
-async function toggleMasterDeliveryFeeMode(mode,currentEnabled){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  if(!deliveryId)return;
-
-  const nextEnabled=!currentEnabled;
-  try{
-    await rpc("master_set_delivery_fee_mode",{
-      p_delivery_id:deliveryId,
-      p_mode:mode,
-      p_enabled:nextEnabled
-    });
-    message((mode==="FIXED"?"Tarifa fija":"Tarifa por distancia")+
-      (nextEnabled?" habilitada para este DELIVERY.":" deshabilitada para este DELIVERY."));
-    await loadMasterDeliveryFeeCapability();
-  }catch(e){
-    message(e.message||"No se pudo actualizar la modalidad de tarifa.","error");
-  }
-}
-
 function openMasterDeliveryWorkspaceTab(tab){
   ["base","access","zones"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
