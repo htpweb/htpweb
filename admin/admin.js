@@ -5895,37 +5895,122 @@ function renderDriversList(){
   box.querySelectorAll("[data-driver-disable]").forEach(b=>b.onclick=()=>deactivateDriver(b.dataset.driverDisable));
 }
 
+function renderDispatchModeControls(){
+  const dispatch=driverWorkspaceState.dispatch||{};
+  const select=$("dispatchModeSelect");
+  const save=$("dispatchModeSave");
+  const help=$("dispatchModeHelp");
+  if(!select||!save||!help)return;
+
+  const allowed=Array.isArray(dispatch.allowed_modes)?dispatch.allowed_modes:[];
+  const mode=dispatch.mode||"NONE";
+  const labels={MANUAL:"Manual",HYBRID:"Híbrido",AUTO:"Automático",NONE:"No incluido"};
+
+  select.innerHTML=allowed.length
+    ? allowed.map(item=>'<option value="'+esc(item)+'">'+esc(labels[item]||item)+'</option>').join("")
+    : '<option value="NONE">No incluido en el plan</option>';
+
+  if(allowed.includes(mode))select.value=mode;
+  const canManage=state.role==="DELIVERY_ADMIN"&&allowed.length>0;
+  select.disabled=!canManage;
+  save.disabled=!canManage;
+
+  const configured=dispatch.configured_mode||null;
+  const fallback=configured&&configured!==mode
+    ?" · El modo configurado ya no está incluido; HTPWEB aplicó "+esc(labels[mode]||mode)+"."
+    :"";
+  help.innerHTML=mode==="NONE"
+    ?"El plan vigente no incluye un modo de despacho operativo."
+    :"Modo efectivo: <strong>"+esc(labels[mode]||mode)+"</strong> · multipedido "+
+      (dispatch.multi_order?"Sí":"No")+" · capacidad efectiva por repartidor "+
+      esc(dispatch.concurrent_per_driver??0)+fallback;
+}
+
 function renderDispatchOrders(){
   const box=$("dispatchOrders");if(!box)return;
   const dispatch=driverWorkspaceState.dispatch||{};
   const drivers=Array.isArray(driverWorkspaceState.drivers?.drivers)?driverWorkspaceState.drivers.drivers:[];
   const orders=Array.isArray(dispatch.orders)?dispatch.orders:[];
-  const enabled=dispatch.manual_dispatch===true;
-  if(!enabled){
-    box.innerHTML='<div class="workspace-warning">El plan vigente no incluye <code>dispatch.manual</code>.</div>';
+  const mode=dispatch.mode||"NONE";
+  const effectiveLimit=Number(dispatch.concurrent_per_driver||0);
+
+  if(mode==="NONE"){
+    box.innerHTML='<div class="workspace-warning">El plan vigente no incluye un modo de despacho operativo.</div>';
     return;
   }
   if(!orders.length){
     box.innerHTML='<div class="muted">No hay pedidos READY o EN_ROUTE para despachar.</div>';
     return;
   }
+
   box.innerHTML=orders.map(o=>{
     const assigned=o.assignment||null;
-    const options='<option value="">Seleccionar repartidor</option>'+drivers.map(d=>
-      '<option value="'+esc(d.user_id)+'" '+(assigned?.driver_user_id===d.user_id?'selected':'')+'>'+
-      esc(d.full_name||"Repartidor")+' · '+esc(d.active_orders||0)+' activo(s)</option>'
-    ).join("");
-    const controls=o.status==="READY"
-      ? '<div class="row" style="gap:8px;flex-wrap:wrap"><select id="dispatchDriver-'+esc(o.order_id)+'" style="max-width:320px">'+options+
-        '</select><button class="btn-primary" type="button" data-dispatch-assign="'+esc(o.order_id)+'">Asignar</button>'+
-        (assigned?'<button class="btn-muted" type="button" data-dispatch-unassign="'+esc(o.order_id)+'">Quitar</button>':'')+'</div>'
-      : '<div class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</div>';
+    let controls="";
+
+    if(o.status==="EN_ROUTE"){
+      controls='<div class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</div>';
+    }else if(mode==="MANUAL"){
+      const options='<option value="">Seleccionar repartidor</option>'+drivers.map(d=>{
+        const active=Number(d.active_orders||0);
+        const same=assigned?.driver_user_id===d.user_id;
+        const full=!same&&effectiveLimit>0&&active>=effectiveLimit;
+        return '<option value="'+esc(d.user_id)+'" '+(same?'selected ':'')+(full?'disabled ':'')+'>'+
+          esc(d.full_name||"Repartidor")+' · '+esc(active)+' / '+esc(effectiveLimit)+' activo(s)'+(full?' · sin cupo':'')+
+          '</option>';
+      }).join("");
+      controls='<div class="row" style="gap:8px;flex-wrap:wrap"><select id="dispatchDriver-'+esc(o.order_id)+'" style="max-width:360px">'+options+
+        '</select><button class="btn-primary" type="button" data-dispatch-assign="'+esc(o.order_id)+'">'+
+        (assigned?'Reasignar':'Asignar')+'</button>'+
+        (assigned?'<button class="btn-muted" type="button" data-dispatch-unassign="'+esc(o.order_id)+'">Quitar</button>':'')+'</div>';
+    }else if(mode==="HYBRID"){
+      if(assigned){
+        controls='<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="muted">Asignado a <strong>'+
+          esc(assigned.driver_name||"Repartidor")+'</strong>.</span>'+
+          '<button class="btn-muted" type="button" data-dispatch-unassign="'+esc(o.order_id)+'">Quitar</button></div>';
+      }else if(o.suggestion){
+        controls='<div class="workspace-note"><strong>Sugerencia:</strong> '+esc(o.suggestion.driver_name||"Repartidor")+
+          ' <button class="btn-primary" type="button" data-dispatch-accept="'+esc(o.order_id)+'" style="margin-left:8px">Aceptar sugerencia</button></div>';
+      }else{
+        controls='<div class="workspace-warning">Sin repartidor con capacidad disponible. HTPWEB volverá a sugerir cuando se libere cupo.</div>';
+      }
+    }else if(mode==="AUTO"){
+      controls=assigned
+        ? '<div class="workspace-note"><strong>Asignación automática:</strong> '+esc(assigned.driver_name||"Repartidor")+'.</div>'
+        : '<div class="workspace-warning">Esperando capacidad disponible. HTPWEB asignará automáticamente cuando se libere cupo.</div>';
+    }
+
     return '<div class="order-local" style="margin-top:10px"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
       '<div class="muted">'+esc(o.customer_name||"Cliente")+' · '+esc(o.delivery_address||"")+'</div></div>'+
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+controls+'</div>';
   }).join("");
+
   box.querySelectorAll("[data-dispatch-assign]").forEach(b=>b.onclick=()=>assignDriverToOrder(b.dataset.dispatchAssign));
   box.querySelectorAll("[data-dispatch-unassign]").forEach(b=>b.onclick=()=>unassignDriverFromOrder(b.dataset.dispatchUnassign));
+  box.querySelectorAll("[data-dispatch-accept]").forEach(b=>b.onclick=()=>acceptHybridDispatchSuggestion(b.dataset.dispatchAccept));
+}
+
+async function saveDispatchMode(){
+  try{
+    const mode=$("dispatchModeSelect")?.value;
+    if(!mode||mode==="NONE")throw new Error("Selecciona un modo de despacho incluido en el plan.");
+    await rpc("delivery_set_dispatch_mode",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_mode:mode
+    });
+    message("Modo de despacho actualizado.");
+    await loadDriverWorkspace();
+  }catch(e){message(e.message||"No se pudo cambiar el modo de despacho.","error");}
+}
+
+async function acceptHybridDispatchSuggestion(orderId){
+  try{
+    await rpc("delivery_accept_dispatch_suggestion",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_order_id:orderId
+    });
+    message("Sugerencia de despacho confirmada.");
+    await loadDriverWorkspace();
+  }catch(e){message(e.message||"No se pudo confirmar la sugerencia.","error");}
 }
 
 async function loadDriverWorkspace(){
@@ -5946,9 +6031,14 @@ async function loadDriverWorkspace(){
     driverWorkspaceState.dispatch=dispatch||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
-      ' · pedidos simultáneos por repartidor '+esc(drivers?.concurrent_per_driver??"—")+
-      ' · despacho manual '+(drivers?.manual_dispatch?'Sí':'No');
+      ' · modo '+esc(dispatch?.mode||"NONE")+
+      ' · multipedido '+(dispatch?.multi_order?'Sí':'No')+
+      ' · simultáneos efectivos '+esc(dispatch?.concurrent_per_driver??0)+
+      (dispatch?.base_concurrent_per_driver!==dispatch?.concurrent_per_driver
+        ? ' (límite contratado '+esc(dispatch?.base_concurrent_per_driver??0)+')'
+        : '');
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
+    renderDispatchModeControls();
     renderDriversList();
     renderDispatchOrders();
     renderDriverCandidate();
@@ -6416,6 +6506,7 @@ async function saveRestrictedArea(){
 function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
+  if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverGpsRefresh")) $("driverGpsRefresh").onclick = loadSelectedDriverGps;
   if ($("driverGpsStart")) $("driverGpsStart").onclick = startDriverGpsSharing;
