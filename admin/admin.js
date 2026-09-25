@@ -5592,7 +5592,13 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,candidate:null};
+const safetySosState={
+  deliveryChannel:null,
+  deliveryId:null,
+  driverChannel:null,
+  refreshTimer:null
+};
 const driverGpsState={
   selectedDriverId:null,
   selectedDriverName:"",
@@ -6094,6 +6100,202 @@ async function saveDeliveryProofSettings(){
   }
 }
 
+function sosStatusLabel(value){
+  return {OPEN:"Abierto",ACKNOWLEDGED:"Reconocido",RESOLVED:"Resuelto"}[value]||value||"—";
+}
+
+function sosLocationLink(item){
+  const lat=Number(item?.latitude);
+  const lng=Number(item?.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return "";
+  const href="https://www.openstreetmap.org/?mlat="+encodeURIComponent(lat)+"&mlon="+encodeURIComponent(lng)+"#map=18/"+encodeURIComponent(lat)+"/"+encodeURIComponent(lng);
+  return '<a class="btn-muted" href="'+href+'" target="_blank" rel="noopener noreferrer">Abrir ubicación</a>';
+}
+
+function renderDeliverySos(){
+  const box=$("deliverySosList");
+  const notice=$("deliverySosNotice");
+  if(!box||!notice)return;
+
+  const snap=driverWorkspaceState.sos||{};
+  const items=Array.isArray(snap.incidents)?snap.incidents:[];
+  const active=items.filter(x=>["OPEN","ACKNOWLEDGED"].includes(x.status));
+
+  if(!snap.enabled){
+    notice.textContent=active.length
+      ?"El plan actual no permite crear nuevos SOS, pero estos incidentes existentes siguen disponibles para atención."
+      :"El plan vigente no incluye SOS de repartidor.";
+  }else{
+    notice.textContent=active.length
+      ?active.length+" alerta(s) activa(s)."
+      :"SOS habilitado · no hay alertas activas.";
+  }
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">No hay incidentes SOS registrados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const created=item.created_at
+      ?new Date(item.created_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})
+      :"—";
+    const location=item.latitude!=null&&item.longitude!=null
+      ?'<div class="muted">Ubicación '+esc(item.location_source||"")+
+        (item.location_captured_at?' · '+esc(new Date(item.location_captured_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})):'')+
+        (Number.isFinite(Number(item.accuracy_m))?' · ±'+Math.round(Number(item.accuracy_m))+' m':'')+'</div>'
+      :'<div class="workspace-warning">Ubicación no disponible. Atiende la alerta igualmente.</div>';
+
+    const actions=item.status==="OPEN"
+      ? '<button class="btn-primary" type="button" data-sos-ack="'+esc(item.incident_id)+'">Reconocer</button>'+
+        '<button class="btn-danger" type="button" data-sos-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+      : item.status==="ACKNOWLEDGED"
+        ? '<button class="btn-danger" type="button" data-sos-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+        : '';
+
+    return '<div class="card" style="border-left:5px solid currentColor">'+
+      '<div class="row between" style="gap:10px;flex-wrap:wrap"><div><strong>SOS · '+esc(item.driver_name||"Repartidor")+'</strong>'+
+      '<div class="muted">'+esc(item.driver_phone||"")+' · pedido '+esc(item.order_id)+'</div></div>'+
+      '<span class="badge">'+esc(sosStatusLabel(item.status))+'</span></div>'+
+      '<p><strong>Activado:</strong> '+esc(created)+'</p>'+location+
+      (item.resolution_note?'<p><strong>Nota:</strong> '+esc(item.resolution_note)+'</p>':'')+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+sosLocationLink(item)+actions+'</div></div>';
+  }).join("");
+
+  box.querySelectorAll("[data-sos-ack]").forEach(b=>b.onclick=()=>acknowledgeDeliverySos(b.dataset.sosAck));
+  box.querySelectorAll("[data-sos-resolve]").forEach(b=>b.onclick=()=>resolveDeliverySos(b.dataset.sosResolve));
+}
+
+async function loadDeliverySosSnapshotOnly(){
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId||![ "DELIVERY_ADMIN","DELIVERY_OPERATOR" ].includes(state.role))return;
+  try{
+    driverWorkspaceState.sos=await rpc("delivery_sos_snapshot",{
+      p_delivery_id:deliveryId,
+      p_limit:50
+    })||{};
+    renderDeliverySos();
+  }catch(e){
+    if($("deliverySosNotice"))$("deliverySosNotice").textContent=e.message||"No se pudieron cargar las alertas SOS.";
+  }
+}
+
+function scheduleDeliverySosRefresh(){
+  if(safetySosState.refreshTimer)clearTimeout(safetySosState.refreshTimer);
+  safetySosState.refreshTimer=setTimeout(()=>{
+    safetySosState.refreshTimer=null;
+    void loadDeliverySosSnapshotOnly();
+  },200);
+}
+
+async function stopDeliverySosSubscription(){
+  const channel=safetySosState.deliveryChannel;
+  safetySosState.deliveryChannel=null;
+  safetySosState.deliveryId=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDeliverySosSubscription(deliveryId){
+  if(!deliveryId||![ "DELIVERY_ADMIN","DELIVERY_OPERATOR" ].includes(state.role))return;
+  if(safetySosState.deliveryChannel&&safetySosState.deliveryId===deliveryId)return;
+  await stopDeliverySosSubscription();
+  safetySosState.deliveryId=deliveryId;
+  safetySosState.deliveryChannel=supabaseClient
+    .channel("safety-sos:delivery:"+deliveryId,{config:{private:true}})
+    .on("broadcast",{event:"sos"},()=>scheduleDeliverySosRefresh())
+    .subscribe(status=>{
+      if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+        if($("deliverySosNotice"))$("deliverySosNotice").textContent="Alertas SOS cargadas; la actualización en vivo no pudo conectarse. Usa Actualizar SOS.";
+      }
+    });
+}
+
+async function acknowledgeDeliverySos(incidentId){
+  try{
+    await rpc("delivery_acknowledge_sos",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId
+    });
+    message("Alerta SOS reconocida.");
+    await loadDeliverySosSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo reconocer el SOS.","error");}
+}
+
+async function resolveDeliverySos(incidentId){
+  const note=prompt("Nota de resolución (opcional):","")??null;
+  if(note===null)return;
+  try{
+    await rpc("delivery_resolve_sos",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId,
+      p_note:note
+    });
+    message("Alerta SOS resuelta.");
+    await loadDeliverySosSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo resolver el SOS.","error");}
+}
+
+function activeDriverSos(){
+  return (state.driverOrders||[])
+    .map(o=>o?.sos?{...o.sos,delivery_id:o.delivery_id,order_id:o.order_id}:null)
+    .find(x=>x&&["OPEN","ACKNOWLEDGED"].includes(x.status))||null;
+}
+
+function renderDriverSosNotice(){
+  const box=$("driverSosNotice");
+  if(!box)return;
+  const incident=activeDriverSos();
+  if(!incident){
+    box.style.display="none";
+    box.textContent="";
+    return;
+  }
+  box.style.display="block";
+  box.innerHTML='<strong>SOS '+esc(sosStatusLabel(incident.status))+'</strong> · pedido '+esc(incident.order_id)+
+    (incident.status==="OPEN"
+      ?' · La alerta fue enviada al DELIVERY.'
+      :' · El DELIVERY confirmó que recibió la alerta.');
+}
+
+async function stopDriverSosSubscription(){
+  const channel=safetySosState.driverChannel;
+  safetySosState.driverChannel=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDriverSosSubscription(){
+  if(state.role!=="DELIVERY_DRIVER"||!state.user?.id)return;
+  if(safetySosState.driverChannel)return;
+  safetySosState.driverChannel=supabaseClient
+    .channel("safety-sos:driver:"+state.user.id,{config:{private:true}})
+    .on("broadcast",{event:"sos"},({payload})=>{
+      if(payload?.status==="ACKNOWLEDGED")message("Tu alerta SOS fue reconocida por el DELIVERY.");
+      if(payload?.status==="RESOLVED")message("Tu alerta SOS fue marcada como resuelta.");
+      void loadDriverOrders();
+    })
+    .subscribe();
+}
+
+async function triggerDriverSos(orderId){
+  try{
+    let position=null;
+    try{position=await currentPositionOnce();}catch{}
+    const result=await rpc("driver_trigger_sos",{
+      p_order_id:orderId,
+      p_latitude:position?.latitude??null,
+      p_longitude:position?.longitude??null,
+      p_accuracy_m:position?.accuracy??null,
+      p_captured_at:position?.captured_at??null
+    });
+    message(result?.already_open?"SOS ya estaba activo; alerta actualizada.":"SOS enviado al DELIVERY.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo activar el SOS.","error");}
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
@@ -6104,14 +6306,16 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch,proofSettings]=await Promise.all([
+    const [drivers,dispatch,proofSettings,sos]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId})
+      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
     driverWorkspaceState.proofSettings=proofSettings||{};
+    driverWorkspaceState.sos=sos||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
@@ -6124,8 +6328,10 @@ async function loadDriverWorkspace(){
     renderDispatchModeControls();
     renderDeliveryProofSettingsControls();
     renderDriversList();
+    renderDeliverySos();
     renderDispatchOrders();
     renderDriverCandidate();
+    await startDeliverySosSubscription(deliveryId);
     if(driverGpsState.selectedDriverId){
       if(driverGpsState.selectedDeliveryId===deliveryId){
         await loadSelectedDriverGps();
@@ -6476,6 +6682,7 @@ function renderDriverOrders(){
   const nextRouteOrderId=state.driverRoutePlan?.stops?.[0]?.order_id||null;
   box.innerHTML=items.map(o=>{
     let action="";
+    let safetyAction="";
     const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
       state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
 
@@ -6489,6 +6696,12 @@ function renderDriverOrders(){
     }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
       const proofReady=!o.proof?.enabled||o.proof?.ready===true;
       action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED" '+(proofReady?'':'disabled')+'>Marcar entregado</button>';
+      if(o.sos_enabled){
+        const sosActive=o.sos&&["OPEN","ACKNOWLEDGED"].includes(o.sos.status);
+        safetyAction=sosActive
+          ? '<div class="workspace-warning" style="margin:10px 0"><strong>SOS '+esc(sosStatusLabel(o.sos.status))+'</strong> · la alerta de seguridad sigue activa.</div>'
+          : '<div style="margin:10px 0"><button class="btn-danger" type="button" data-driver-sos="'+esc(o.order_id)+'" style="font-size:1.05rem;font-weight:700">SOS</button><div class="muted">Úsalo si necesitas alertar al DELIVERY durante esta entrega.</div></div>';
+      }
     }
 
     const routeMarker=nextRouteOrderId===o.order_id
@@ -6501,10 +6714,11 @@ function renderDriverOrders(){
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+proofPanel+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+proofPanel+action+'</div>';
   }).join("");
 
   box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
+  box.querySelectorAll("[data-driver-sos]").forEach(b=>b.onclick=()=>triggerDriverSos(b.dataset.driverSos));
   box.querySelectorAll("[data-proof-pin]").forEach(b=>b.onclick=()=>verifyDriverProofPin(b.dataset.proofPin));
   box.querySelectorAll("[data-proof-photo]").forEach(b=>b.onclick=()=>uploadDriverProofPhoto(b.dataset.proofPhoto));
   box.querySelectorAll("[data-proof-view]").forEach(b=>b.onclick=()=>viewDeliveryProofMedia(b.dataset.proofView,b.dataset.proofKind));
@@ -6512,6 +6726,7 @@ function renderDriverOrders(){
   box.querySelectorAll("[data-proof-sign-upload]").forEach(b=>b.onclick=()=>uploadDriverProofSignature(b.dataset.proofSignUpload));
   initDriverProofSignatureCanvases();
   updateDriverGpsShareUi();
+  renderDriverSosNotice();
   renderDriverRouteControls();
 }
 
@@ -6524,7 +6739,9 @@ function currentPositionOnce(){
     navigator.geolocation.getCurrentPosition(
       pos=>resolve({
         latitude:Number(pos.coords.latitude),
-        longitude:Number(pos.coords.longitude)
+        longitude:Number(pos.coords.longitude),
+        accuracy:Number.isFinite(Number(pos.coords.accuracy))?Number(pos.coords.accuracy):null,
+        captured_at:new Date(pos.timestamp||Date.now()).toISOString()
       }),
       err=>reject(new Error(err?.message||"No se pudo obtener tu ubicación actual.")),
       {enableHighAccuracy:true,timeout:15000,maximumAge:5000}
@@ -6585,6 +6802,8 @@ async function loadDriverOrders(){
     reconcileDriverRoutePlan();
     renderDriverOrders();
     updateDriverGpsShareUi();
+    renderDriverSosNotice();
+    await startDriverSosSubscription();
   }catch(e){
     message(e.message||"No se pudieron cargar tus entregas.","error");
   }
@@ -6604,7 +6823,11 @@ async function driverChangeStatus(orderId,next){
   }
 }
 
-window.addEventListener("beforeunload",()=>stopDriverGpsSharing(true));
+window.addEventListener("beforeunload",()=>{
+  stopDriverGpsSharing(true);
+  void stopDeliverySosSubscription();
+  void stopDriverSosSubscription();
+});
 
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
@@ -6932,6 +7155,7 @@ function bindEvents() {
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
+  if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
