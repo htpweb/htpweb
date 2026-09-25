@@ -6288,8 +6288,8 @@ async function triggerDriverSos(orderId){
       p_order_id:orderId,
       p_latitude:position?.latitude??null,
       p_longitude:position?.longitude??null,
-      p_accuracy_m:null,
-      p_captured_at:position?new Date().toISOString():null
+      p_accuracy_m:position?.accuracy??null,
+      p_captured_at:position?.captured_at??null
     });
     message(result?.already_open?"SOS ya estaba activo; alerta actualizada.":"SOS enviado al DELIVERY.");
     await loadDriverOrders();
@@ -6739,7 +6739,9 @@ function currentPositionOnce(){
     navigator.geolocation.getCurrentPosition(
       pos=>resolve({
         latitude:Number(pos.coords.latitude),
-        longitude:Number(pos.coords.longitude)
+        longitude:Number(pos.coords.longitude),
+        accuracy:Number.isFinite(Number(pos.coords.accuracy))?Number(pos.coords.accuracy):null,
+        captured_at:new Date(pos.timestamp||Date.now()).toISOString()
       }),
       err=>reject(new Error(err?.message||"No se pudo obtener tu ubicación actual.")),
       {enableHighAccuracy:true,timeout:15000,maximumAge:5000}
