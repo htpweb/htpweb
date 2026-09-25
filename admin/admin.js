@@ -5592,7 +5592,7 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,candidate:null};
 const driverGpsState={
   selectedDriverId:null,
   selectedDriverName:"",
@@ -5949,7 +5949,7 @@ function renderDispatchOrders(){
     let controls="";
 
     if(o.status==="EN_ROUTE"){
-      controls='<div class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</div>';
+      controls='<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</span><button class="btn-muted" type="button" data-dispatch-proof="'+esc(o.order_id)+'">Ver prueba</button></div><div id="dispatchProof-'+esc(o.order_id)+'"></div>';
     }else if(mode==="MANUAL"){
       const options='<option value="">Seleccionar repartidor</option>'+drivers.map(d=>{
         const active=Number(d.active_orders||0);
@@ -5988,6 +5988,38 @@ function renderDispatchOrders(){
   box.querySelectorAll("[data-dispatch-assign]").forEach(b=>b.onclick=()=>assignDriverToOrder(b.dataset.dispatchAssign));
   box.querySelectorAll("[data-dispatch-unassign]").forEach(b=>b.onclick=()=>unassignDriverFromOrder(b.dataset.dispatchUnassign));
   box.querySelectorAll("[data-dispatch-accept]").forEach(b=>b.onclick=()=>acceptHybridDispatchSuggestion(b.dataset.dispatchAccept));
+  box.querySelectorAll("[data-dispatch-proof]").forEach(b=>b.onclick=()=>showDispatchDeliveryProof(b.dataset.dispatchProof));
+}
+
+async function showDispatchDeliveryProof(orderId){
+  const host=$("dispatchProof-"+orderId);
+  if(!host)return;
+  host.innerHTML='<div class="muted" style="margin-top:8px">Consultando prueba…</div>';
+  try{
+    const proof=await rpc("delivery_order_proof_snapshot",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_order_id:orderId
+    });
+    if(!proof?.enabled){
+      host.innerHTML='<div class="muted" style="margin-top:8px">Este pedido no requiere prueba de entrega.</div>';
+      return;
+    }
+    const rows=[];
+    if(proof.require_pin)rows.push(proof.pin_verified?'✅ PIN verificado':'⏳ PIN pendiente');
+    if(proof.require_photo)rows.push(proof.photo_uploaded?'✅ Foto cargada':'⏳ Foto pendiente');
+    if(proof.require_signature)rows.push(proof.signature_uploaded?'✅ Firma registrada':'⏳ Firma pendiente');
+    host.innerHTML='<div class="workspace-note" style="margin-top:8px">'+
+      '<div>'+rows.map(esc).join(' · ')+'</div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+
+      (proof.photo_uploaded?'<button class="btn-muted" type="button" data-admin-proof-view="'+esc(orderId)+'" data-proof-kind="PHOTO">Ver foto</button>':'')+
+      (proof.signature_uploaded?'<button class="btn-muted" type="button" data-admin-proof-view="'+esc(orderId)+'" data-proof-kind="SIGNATURE">Ver firma</button>':'')+
+      '</div><small class="muted">'+(proof.ready?'Prueba completa.':'Entrega todavía bloqueada por evidencia pendiente.')+'</small></div>';
+    host.querySelectorAll("[data-admin-proof-view]").forEach(b=>{
+      b.onclick=()=>viewDeliveryProofMedia(b.dataset.adminProofView,b.dataset.proofKind);
+    });
+  }catch(e){
+    host.innerHTML='<div class="workspace-warning" style="margin-top:8px">'+esc(e.message||"No se pudo consultar la prueba.")+'</div>';
+  }
 }
 
 async function saveDispatchMode(){
@@ -6014,6 +6046,54 @@ async function acceptHybridDispatchSuggestion(orderId){
   }catch(e){message(e.message||"No se pudo confirmar la sugerencia.","error");}
 }
 
+function renderDeliveryProofSettingsControls(){
+  const proof=driverWorkspaceState.proofSettings||{};
+  const canManage=state.role==="DELIVERY_ADMIN";
+  const rows=[
+    ["proofRequirePin","available_pin","require_pin","configured_pin","PIN"],
+    ["proofRequirePhoto","available_photo","require_photo","configured_photo","Foto"],
+    ["proofRequireSignature","available_signature","require_signature","configured_signature","Firma"]
+  ];
+  const unavailable=[];
+  for(const row of rows){
+    const input=$(row[0]);
+    if(!input)continue;
+    const available=proof[row[1]]===true;
+    input.checked=proof[row[2]]===true;
+    input.disabled=!canManage||!available;
+    if(proof[row[3]]===true&&!available)unavailable.push(row[4]);
+  }
+  if($("deliveryProofSettingsSave"))$("deliveryProofSettingsSave").disabled=!canManage;
+  const availableLabels=[];
+  if(proof.available_pin)availableLabels.push("PIN");
+  if(proof.available_photo)availableLabels.push("foto");
+  if(proof.available_signature)availableLabels.push("firma");
+  const help=$("deliveryProofSettingsHelp");
+  if(help){
+    help.textContent=availableLabels.length
+      ?"Incluido en el plan: "+availableLabels.join(", ")+(unavailable.length?". Fuera del plan e ignorado: "+unavailable.join(", ")+".":".")
+      :"El plan vigente no incluye métodos de prueba de entrega.";
+  }
+}
+
+async function saveDeliveryProofSettings(){
+  try{
+    if(state.role!=="DELIVERY_ADMIN")throw new Error("Solo DELIVERY_ADMIN puede cambiar la prueba de entrega.");
+    const deliveryId=driverWorkspaceDeliveryId();
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+    driverWorkspaceState.proofSettings=await rpc("delivery_save_proof_settings",{
+      p_delivery_id:deliveryId,
+      p_require_pin:$("proofRequirePin")?.checked===true,
+      p_require_photo:$("proofRequirePhoto")?.checked===true,
+      p_require_signature:$("proofRequireSignature")?.checked===true
+    });
+    renderDeliveryProofSettingsControls();
+    message("Prueba de entrega actualizada.");
+  }catch(e){
+    message(e.message||"No se pudo guardar la prueba de entrega.","error");
+  }
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
@@ -6024,12 +6104,14 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch]=await Promise.all([
+    const [drivers,dispatch,proofSettings]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId})
+      rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
+    driverWorkspaceState.proofSettings=proofSettings||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
@@ -6040,6 +6122,7 @@ async function loadDriverWorkspace(){
         : '');
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
     renderDispatchModeControls();
+    renderDeliveryProofSettingsControls();
     renderDriversList();
     renderDispatchOrders();
     renderDriverCandidate();
@@ -6212,6 +6295,167 @@ function driverRouteRank(order){
   return i<0?Number.MAX_SAFE_INTEGER:i;
 }
 
+function renderDriverProofPanel(order){
+  const proof=order?.proof;
+  if(!proof?.enabled)return "";
+  const editable=order.status==="EN_ROUTE"&&order.assignment_status==="ACTIVE";
+  const parts=['<div class="workspace-note" style="margin:10px 0"><strong>Prueba de entrega</strong>'];
+
+  if(proof.require_pin){
+    if(proof.pin_verified){
+      parts.push('<div style="margin-top:8px">✅ PIN verificado</div>');
+    }else if(editable){
+      parts.push('<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="proofPin-'+esc(order.order_id)+'" inputmode="numeric" maxlength="6" placeholder="PIN de 6 dígitos" style="max-width:190px"><button class="btn-muted" type="button" data-proof-pin="'+esc(order.order_id)+'">Verificar PIN</button></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ PIN pendiente</div>');
+    }
+  }
+
+  if(proof.require_photo){
+    if(proof.photo_uploaded){
+      parts.push('<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><span>✅ Foto cargada</span><button class="btn-muted" type="button" data-proof-view="'+esc(order.order_id)+'" data-proof-kind="PHOTO">Ver foto</button></div>');
+    }else if(editable){
+      parts.push('<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="proofPhoto-'+esc(order.order_id)+'" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"><button class="btn-muted" type="button" data-proof-photo="'+esc(order.order_id)+'">Subir foto</button></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ Foto pendiente</div>');
+    }
+  }
+
+  if(proof.require_signature){
+    if(proof.signature_uploaded){
+      parts.push('<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><span>✅ Firma registrada</span><button class="btn-muted" type="button" data-proof-view="'+esc(order.order_id)+'" data-proof-kind="SIGNATURE">Ver firma</button></div>');
+    }else if(editable){
+      parts.push('<div style="margin-top:10px"><div class="muted">Firma del cliente</div><canvas data-proof-signature-canvas="'+esc(order.order_id)+'" width="600" height="220" style="width:100%;max-width:600px;height:180px;border:1px solid #bbb;border-radius:10px;background:#fff;touch-action:none"></canvas><div class="row" style="gap:8px;margin-top:6px"><button class="btn-muted" type="button" data-proof-sign-clear="'+esc(order.order_id)+'">Limpiar</button><button class="btn-muted" type="button" data-proof-sign-upload="'+esc(order.order_id)+'">Guardar firma</button></div></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ Firma pendiente</div>');
+    }
+  }
+
+  parts.push('<div class="muted" style="margin-top:8px">'+(proof.ready?'Prueba completa. Ya puedes finalizar la entrega.':'Completa todos los métodos exigidos antes de finalizar.')+'</div></div>');
+  return parts.join("");
+}
+
+function initDriverProofSignatureCanvases(){
+  document.querySelectorAll("canvas[data-proof-signature-canvas]").forEach(canvas=>{
+    if(canvas.dataset.bound==="1")return;
+    canvas.dataset.bound="1";
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    ctx.lineWidth=3;
+    ctx.lineCap="round";
+    ctx.lineJoin="round";
+    let drawing=false;
+    const point=event=>{
+      const rect=canvas.getBoundingClientRect();
+      return {
+        x:(event.clientX-rect.left)*(canvas.width/rect.width),
+        y:(event.clientY-rect.top)*(canvas.height/rect.height)
+      };
+    };
+    canvas.addEventListener("pointerdown",event=>{
+      drawing=true;
+      canvas.dataset.dirty="1";
+      try{canvas.setPointerCapture(event.pointerId);}catch{}
+      const p=point(event);
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      event.preventDefault();
+    });
+    canvas.addEventListener("pointermove",event=>{
+      if(!drawing)return;
+      const p=point(event);
+      ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+      event.preventDefault();
+    });
+    const stop=event=>{
+      drawing=false;
+      try{canvas.releasePointerCapture(event.pointerId);}catch{}
+      event.preventDefault();
+    };
+    canvas.addEventListener("pointerup",stop);
+    canvas.addEventListener("pointercancel",stop);
+  });
+}
+
+async function verifyDriverProofPin(orderId){
+  try{
+    const pin=$("proofPin-"+orderId)?.value.trim()||"";
+    const result=await rpc("driver_verify_delivery_pin",{p_order_id:orderId,p_pin:pin});
+    message(result?.verified?"PIN verificado.":"PIN incorrecto.",result?.verified?"success":"error");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo verificar el PIN.","error");
+  }
+}
+
+async function uploadDeliveryProofFile(orderId,kind,file){
+  if(!(file instanceof File))throw new Error("Selecciona un archivo.");
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(!session?.access_token)throw new Error("Sesión no disponible.");
+  const form=new FormData();
+  form.append("order_id",orderId);
+  form.append("kind",kind);
+  form.append("file",file,file.name||"evidencia");
+  const response=await fetch(SUPABASE_URL+"/functions/v1/delivery-proof-upload",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+session.access_token,apikey:SUPABASE_KEY},
+    body:form
+  });
+  let payload=null;
+  try{payload=await response.json();}catch{}
+  if(!response.ok||!payload?.ok)throw new Error(payload?.error||"No se pudo cargar la evidencia.");
+  return payload;
+}
+
+async function uploadDriverProofPhoto(orderId){
+  try{
+    const file=$("proofPhoto-"+orderId)?.files?.[0];
+    if(!file)throw new Error("Selecciona una foto.");
+    await uploadDeliveryProofFile(orderId,"PHOTO",file);
+    message("Foto de entrega cargada.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo cargar la foto.","error");}
+}
+
+function clearDriverProofSignature(orderId){
+  const canvas=document.querySelector('canvas[data-proof-signature-canvas="'+orderId+'"]');
+  if(!canvas)return;
+  canvas.getContext("2d")?.clearRect(0,0,canvas.width,canvas.height);
+  canvas.dataset.dirty="";
+}
+
+async function uploadDriverProofSignature(orderId){
+  try{
+    const canvas=document.querySelector('canvas[data-proof-signature-canvas="'+orderId+'"]');
+    if(!canvas||canvas.dataset.dirty!=="1")throw new Error("Solicita la firma del cliente antes de guardar.");
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+    if(!blob)throw new Error("No se pudo preparar la firma.");
+    const file=new File([blob],"firma-"+orderId+".png",{type:"image/png"});
+    await uploadDeliveryProofFile(orderId,"SIGNATURE",file);
+    message("Firma de entrega registrada.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo registrar la firma.","error");}
+}
+
+async function viewDeliveryProofMedia(orderId,kind){
+  const popup=window.open("about:blank","_blank");
+  try{
+    const {data,error}=await supabaseClient.functions.invoke("delivery-proof-view",{body:{order_id:orderId,kind}});
+    if(error)throw error;
+    if(!data?.ok||!data?.signed_url)throw new Error(data?.error||"Evidencia no disponible.");
+    if(popup){
+      popup.opener=null;
+      popup.location.href=data.signed_url;
+    }else{
+      window.open(data.signed_url,"_blank","noopener,noreferrer");
+    }
+  }catch(e){
+    try{popup?.close();}catch{}
+    message(e.message||"No se pudo abrir la evidencia.","error");
+  }
+}
+
 function renderDriverOrders(){
   const box=$("driverOrdersList");if(!box)return;
   let items=Array.isArray(state.driverOrders)?[...state.driverOrders]:[];
@@ -6243,24 +6487,30 @@ function renderDriverOrders(){
           (nextRouteOrderId===o.order_id?'Iniciar siguiente parada':'Iniciar ruta')+'</button>';
       }
     }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
-      action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED">Marcar entregado</button>';
+      const proofReady=!o.proof?.enabled||o.proof?.ready===true;
+      action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED" '+(proofReady?'':'disabled')+'>Marcar entregado</button>';
     }
 
     const routeMarker=nextRouteOrderId===o.order_id
       ? '<div class="workspace-note" style="margin:8px 0"><strong>Siguiente parada de la ruta optimizada</strong></div>'
       : '';
+    const proofPanel=renderDriverProofPanel(o);
 
     return '<div class="card"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
       '<div class="muted">'+esc(o.delivery_name||"DELIVERY")+' · asignado '+esc(new Date(o.assigned_at).toLocaleString("es-EC"))+'</div></div>'+
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> $'+Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+proofPanel+action+'</div>';
   }).join("");
 
-  box.querySelectorAll("[data-driver-status]").forEach(b=>{
-    b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next);
-  });
+  box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
+  box.querySelectorAll("[data-proof-pin]").forEach(b=>b.onclick=()=>verifyDriverProofPin(b.dataset.proofPin));
+  box.querySelectorAll("[data-proof-photo]").forEach(b=>b.onclick=()=>uploadDriverProofPhoto(b.dataset.proofPhoto));
+  box.querySelectorAll("[data-proof-view]").forEach(b=>b.onclick=()=>viewDeliveryProofMedia(b.dataset.proofView,b.dataset.proofKind));
+  box.querySelectorAll("[data-proof-sign-clear]").forEach(b=>b.onclick=()=>clearDriverProofSignature(b.dataset.proofSignClear));
+  box.querySelectorAll("[data-proof-sign-upload]").forEach(b=>b.onclick=()=>uploadDriverProofSignature(b.dataset.proofSignUpload));
+  initDriverProofSignatureCanvases();
   updateDriverGpsShareUi();
   renderDriverRouteControls();
 }
@@ -6681,6 +6931,7 @@ function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
+  if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
