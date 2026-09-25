@@ -38,7 +38,11 @@ const state = {
   deliveryServiceAccess: null,
   masterDeliveryService: null,
   myPlanSnapshot: null,
-  customerAccessRules: []
+  customerAccessRules: [],
+  restrictedAreaContext: null,
+  restrictedAreaPoints: [],
+  restrictedAreaRules: [],
+  restrictedAreaMap: null
 };
 
 const roleSections = {
@@ -5560,6 +5564,235 @@ function renderCustomerAccessRules(){
   });
 }
 
+function restrictedAreaSelectedZone(){
+  const id=$("restrictedAreaZone")?.value||"";
+  return (state.restrictedAreaContext?.zones||[]).find(z=>z.id===id)||null;
+}
+
+function restrictedAreaModeUI(){
+  const scheduled=$("restrictedAreaMode")?.value==="SCHEDULE";
+  const enabled=Boolean(state.restrictedAreaContext?.schedule_enabled);
+  $("restrictedAreaScheduleEditor")?.classList.toggle("hidden",!scheduled);
+  if($("restrictedAreaMode")){
+    const scheduleOption=[...$("restrictedAreaMode").options].find(o=>o.value==="SCHEDULE");
+    if(scheduleOption)scheduleOption.disabled=!enabled;
+    if(!enabled&&scheduled)$("restrictedAreaMode").value="PERMANENT";
+  }
+}
+
+function renderRestrictedAreaRules(){
+  const box=$("restrictedAreaRulesList");
+  if(!box)return;
+  const names=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  box.innerHTML=state.restrictedAreaRules.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+
+      state.restrictedAreaRules.map((r,i)=>
+        '<tr><td>'+esc(names[Number(r.day_of_week)]||r.day_of_week)+'</td>'+
+        '<td>'+esc(String(r.start_time).slice(0,5))+'</td>'+
+        '<td>'+esc(String(r.end_time).slice(0,5))+'</td>'+
+        '<td><button type="button" class="btn-danger" data-remove-area-rule="'+i+'">Quitar</button></td></tr>'
+      ).join("")+'</tbody></table></div>'
+    : '<div class="muted">Sin horarios configurados.</div>';
+
+  box.querySelectorAll("[data-remove-area-rule]").forEach(btn=>btn.onclick=()=>{
+    state.restrictedAreaRules.splice(Number(btn.dataset.removeAreaRule),1);
+    renderRestrictedAreaRules();
+  });
+}
+
+function drawRestrictedAreaMap(){
+  const map=state.restrictedAreaMap;
+  if(!map)return;
+  map.clear();
+
+  const zone=restrictedAreaSelectedZone();
+  if(zone?.boundary?.length)map.polygon(zone.boundary,"#64748b");
+
+  if(state.restrictedAreaPoints.length>=3){
+    map.polygon(state.restrictedAreaPoints,"#dc2626");
+  }
+
+  state.restrictedAreaPoints.forEach((point,index)=>{
+    map.marker(point,(lat,lng)=>{
+      const currentZone=restrictedAreaSelectedZone();
+      if(currentZone?.boundary?.length&&!ZoneMaps.contains(currentZone.boundary,lat,lng)){
+        message("El punto debe permanecer dentro de la zona seleccionada.","error");
+        drawRestrictedAreaMap();
+        return;
+      }
+      state.restrictedAreaPoints[index]=[lat,lng];
+      drawRestrictedAreaMap();
+    });
+  });
+
+  if($("restrictedAreaPointCount")){
+    $("restrictedAreaPointCount").textContent=
+      state.restrictedAreaPoints.length+" punto(s). El área debe quedar completamente dentro de la zona.";
+  }
+  map.resize();
+}
+
+async function ensureRestrictedAreaMap(){
+  if(state.restrictedAreaMap)return;
+  if(!window.ZoneMaps||!$("restrictedAreaMap"))return;
+
+  state.restrictedAreaMap=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{
+    const zone=restrictedAreaSelectedZone();
+    if(!zone?.boundary?.length){
+      message("Selecciona primero una zona activa con polígono.","error");
+      return;
+    }
+    if(!ZoneMaps.contains(zone.boundary,lat,lng)){
+      message("Solo puedes dibujar dentro de la zona seleccionada.","error");
+      return;
+    }
+    if(state.restrictedAreaPoints.length>=200){
+      message("Máximo 200 puntos por área.","error");
+      return;
+    }
+    state.restrictedAreaPoints.push([lat,lng]);
+    drawRestrictedAreaMap();
+  });
+}
+
+function clearRestrictedAreaForm(){
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";
+  if($("restrictedAreaName"))$("restrictedAreaName").value="";
+  if($("restrictedAreaReason"))$("restrictedAreaReason").value="";
+  if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";
+  if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";
+  state.restrictedAreaPoints=[];
+  state.restrictedAreaRules=[];
+  restrictedAreaModeUI();
+  renderRestrictedAreaRules();
+  drawRestrictedAreaMap();
+}
+
+function renderRestrictedAreasList(){
+  const box=$("restrictedAreasList");
+  if(!box)return;
+  const areas=state.restrictedAreaContext?.areas||[];
+  box.innerHTML=areas.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      areas.map(a=>'<tr>'+
+        '<td><strong>'+esc(a.name)+'</strong>'+(a.reason?'<div class="muted">'+esc(a.reason)+'</div>':'')+'</td>'+
+        '<td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td>'+
+        '<td>'+esc(a.restriction_mode==="SCHEDULE"?"Por horario":"Permanente")+'</td>'+
+        '<td>'+esc(a.active?"Activa":"Inactiva")+'</td>'+
+        '<td><button type="button" class="btn-muted" data-edit-area="'+esc(a.id)+'">Editar</button></td>'+
+      '</tr>').join("")+'</tbody></table></div>'
+    : '<div class="muted">No has creado áreas restringidas.</div>';
+
+  box.querySelectorAll("[data-edit-area]").forEach(btn=>btn.onclick=()=>{
+    const area=areas.find(a=>a.id===btn.dataset.editArea);
+    if(!area)return;
+    $("restrictedAreaId").value=area.id;
+    $("restrictedAreaZone").value=area.zone_id;
+    $("restrictedAreaName").value=area.name||"";
+    $("restrictedAreaReason").value=area.reason||"";
+    $("restrictedAreaMode").value=area.restriction_mode||"PERMANENT";
+    $("restrictedAreaActive").value=String(area.active!==false);
+    state.restrictedAreaPoints=JSON.parse(JSON.stringify(area.boundary||[]));
+    state.restrictedAreaRules=(area.rules||[]).map(r=>({
+      day_of_week:Number(r.day_of_week),
+      start_time:String(r.start_time).slice(0,5),
+      end_time:String(r.end_time).slice(0,5)
+    }));
+    restrictedAreaModeUI();
+    renderRestrictedAreaRules();
+    drawRestrictedAreaMap();
+    const zone=restrictedAreaSelectedZone();
+    if(zone?.boundary?.length)state.restrictedAreaMap?.center(zone.boundary[0],14);
+  });
+}
+
+async function loadRestrictedAreaContext(deliveryId){
+  const context=await rpc("delivery_restricted_area_context",{p_delivery_id:deliveryId});
+  state.restrictedAreaContext=context||{zones:[],areas:[],limit:null,used:0,schedule_enabled:false};
+
+  const zones=state.restrictedAreaContext.zones||[];
+  const select=$("restrictedAreaZone");
+  if(select){
+    const previous=select.value;
+    select.innerHTML=zones.length
+      ? zones.map(z=>'<option value="'+esc(z.id)+'">'+esc((z.code||"")+" — "+z.name)+'</option>').join("")
+      : '<option value="">Activa primero una zona</option>';
+    if(previous&&zones.some(z=>z.id===previous))select.value=previous;
+  }
+
+  if($("restrictedAreaUsage")){
+    $("restrictedAreaUsage").textContent=
+      "Áreas activas: "+Number(state.restrictedAreaContext.used||0)+" / "+
+      (state.restrictedAreaContext.limit===null||state.restrictedAreaContext.limit===undefined
+        ?"sin límite definido"
+        :state.restrictedAreaContext.limit)+
+      (state.restrictedAreaContext.schedule_enabled?" · Horarios habilitados":" · Solo restricciones permanentes");
+  }
+
+  await ensureRestrictedAreaMap();
+  restrictedAreaModeUI();
+  renderRestrictedAreaRules();
+  renderRestrictedAreasList();
+  drawRestrictedAreaMap();
+
+  const zone=restrictedAreaSelectedZone();
+  if(zone?.boundary?.length)state.restrictedAreaMap?.center(zone.boundary[0],14);
+}
+
+function addRestrictedAreaRule(){
+  if(!state.restrictedAreaContext?.schedule_enabled){
+    return message("Tu plan no incluye restricciones por horario.","error");
+  }
+  const start=$("restrictedAreaRuleStart").value;
+  const end=$("restrictedAreaRuleEnd").value;
+  if(!start||!end)return message("Completa el horario de restricción.","error");
+  state.restrictedAreaRules.push({
+    day_of_week:Number($("restrictedAreaRuleDay").value),
+    start_time:start,
+    end_time:end
+  });
+  renderRestrictedAreaRules();
+}
+
+async function saveRestrictedArea(){
+  try{
+    const delivery=myPlanSelectedDelivery();
+    if(!delivery)throw new Error("Selecciona un DELIVERY.");
+    const zone=restrictedAreaSelectedZone();
+    if(!zone)throw new Error("Activa y selecciona una zona.");
+    if(!$("restrictedAreaName").value.trim())throw new Error("Escribe un nombre para el área.");
+    if(state.restrictedAreaPoints.length<3)throw new Error("Dibuja al menos tres puntos.");
+    const mode=$("restrictedAreaMode").value;
+    if(mode==="SCHEDULE"&&!state.restrictedAreaRules.length){
+      throw new Error("Agrega al menos un horario o cambia el tipo a Permanente.");
+    }
+
+    const areaId=await rpc("delivery_save_restricted_area",{
+      p_area_id:$("restrictedAreaId").value||null,
+      p_delivery_id:delivery.id,
+      p_zone_id:zone.id,
+      p_name:$("restrictedAreaName").value.trim(),
+      p_reason:$("restrictedAreaReason").value.trim()||null,
+      p_boundary:state.restrictedAreaPoints,
+      p_restriction_mode:mode,
+      p_active:$("restrictedAreaActive").value==="true"
+    });
+
+    if(state.restrictedAreaContext?.schedule_enabled){
+      await rpc("delivery_replace_restricted_area_rules",{
+        p_area_id:areaId,
+        p_rules:mode==="SCHEDULE"?state.restrictedAreaRules:[]
+      });
+    }
+
+    message("Área restringida guardada.");
+    clearRestrictedAreaForm();
+    await loadRestrictedAreaContext(delivery.id);
+  }catch(e){
+    message(e.message||"No se pudo guardar el área restringida.","error");
+  }
+}
+
 async function loadMyPlan(){
   if(state.role!=="DELIVERY_ADMIN")return;
   const selector=$("myPlanDelivery");
@@ -5599,6 +5832,16 @@ async function loadMyPlan(){
 
     $("customerAccessCard")?.classList.toggle("hidden",!privateEnabled);
     $("referralCard")?.classList.toggle("hidden",!referralsEnabled);
+
+    const restrictedEnabled=ent["restricted_areas.manage"]===true;
+    $("restrictedAreaCard")?.classList.toggle("hidden",!restrictedEnabled);
+    if(restrictedEnabled){
+      await loadRestrictedAreaContext(delivery.id);
+    }else{
+      state.restrictedAreaContext=null;
+      state.restrictedAreaPoints=[];
+      state.restrictedAreaRules=[];
+    }
 
     if(privateEnabled){
       $("customerAccessDefaultMode").value=access?.default_mode||"OPEN";
@@ -5697,6 +5940,13 @@ function bindEvents() {
   if ($("addCustomerAccessRuleBtn")) $("addCustomerAccessRuleBtn").onclick = addCustomerAccessRule;
   if ($("saveCustomerAccessBtn")) $("saveCustomerAccessBtn").onclick = saveCustomerAccess;
   if ($("createReferralCodeBtn")) $("createReferralCodeBtn").onclick = createReferralCode;
+  if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = ()=>{ state.restrictedAreaPoints=[]; drawRestrictedAreaMap(); const z=restrictedAreaSelectedZone(); if(z?.boundary?.length)state.restrictedAreaMap?.center(z.boundary[0],14); };
+  if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = restrictedAreaModeUI;
+  if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = ()=>{ state.restrictedAreaPoints.pop(); drawRestrictedAreaMap(); };
+  if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = ()=>{ state.restrictedAreaPoints=[]; drawRestrictedAreaMap(); };
+  if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedAreaForm;
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = addRestrictedAreaRule;
+  if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
   if ($("orderScope")) $("orderScope").onchange = loadOrders;
   if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
   const menuImportDelivery = $("menuImportDelivery");
