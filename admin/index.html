@@ -270,12 +270,64 @@
 
       <div class="card" id="referralCard">
         <h3>Referidos</h3>
-        <p class="muted">Genera códigos para autorizar clientes dentro de tu red privada cuando tu plan incluya esta función.</p>
+        <p class="muted">Genera códigos y/o enlaces de invitación según las funciones incluidas en tu plan.</p>
         <div class="row">
           <input id="referralLabel" maxlength="120" placeholder="Ej. Clientes noche">
           <button id="createReferralCodeBtn" class="btn-primary" type="button">Generar código</button>
         </div>
         <div id="referralResult" class="workspace-note" style="margin-top:12px">Sin código generado.</div>
+      </div>
+
+      <div class="card hidden" id="restrictedAreaCard">
+        <h3>Áreas restringidas</h3>
+        <p class="muted">Dibuja sectores dentro de tus zonas activas donde HTPWEB no debe aceptar pedidos. Pueden ser permanentes o funcionar solo por días y horarios.</p>
+        <input id="restrictedAreaId" type="hidden">
+        <div class="form-grid">
+          <div><label>Zona</label><select id="restrictedAreaZone"></select></div>
+          <div><label>Nombre</label><input id="restrictedAreaName" maxlength="160" placeholder="Ej. Sector restringido nocturno"></div>
+          <div><label>Motivo interno</label><input id="restrictedAreaReason" maxlength="300" placeholder="Ej. Seguridad"></div>
+          <div>
+            <label>Tipo</label>
+            <select id="restrictedAreaMode">
+              <option value="PERMANENT">Permanente</option>
+              <option value="SCHEDULE">Por horario</option>
+            </select>
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="restrictedAreaActive"><option value="true">Activa</option><option value="false">Inactiva</option></select>
+          </div>
+        </div>
+        <div id="restrictedAreaMap" class="workspace-map" style="margin-top:12px"></div>
+        <p id="restrictedAreaPointCount" class="muted">0 puntos. Pulsa sobre el mapa para dibujar.</p>
+        <div class="row">
+          <button id="restrictedAreaUndo" type="button" class="btn-muted">Deshacer punto</button>
+          <button id="restrictedAreaClear" type="button" class="btn-muted">Borrar dibujo</button>
+          <button id="restrictedAreaNew" type="button" class="btn-muted">Nueva área</button>
+        </div>
+
+        <div id="restrictedAreaScheduleEditor" style="margin-top:16px">
+          <h4>Horario de restricción</h4>
+          <div class="form-grid">
+            <div>
+              <label>Día</label>
+              <select id="restrictedAreaRuleDay">
+                <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+                <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+              </select>
+            </div>
+            <div><label>Desde</label><input id="restrictedAreaRuleStart" type="time" value="18:00"></div>
+            <div><label>Hasta</label><input id="restrictedAreaRuleEnd" type="time" value="06:00"></div>
+          </div>
+          <button id="restrictedAreaAddRule" type="button" class="btn-muted" style="margin-top:10px">Agregar horario</button>
+          <div id="restrictedAreaRulesList" style="margin-top:10px"></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button id="restrictedAreaSave" type="button" class="btn-primary">Guardar área</button>
+        </div>
+        <div id="restrictedAreaUsage" class="workspace-note" style="margin-top:12px"></div>
+        <div id="restrictedAreasList" style="margin-top:16px"></div>
       </div>
 
       <div class="card">
