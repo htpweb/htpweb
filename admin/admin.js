@@ -35,12 +35,14 @@ const state = {
   menuImportPreview: null,
   deliveryAuthorizations: [],
   deliveryServiceAccess: null,
-  masterDeliveryService: null
+  masterDeliveryService: null,
+  myPlanSnapshot: null,
+  customerAccessRules: []
 };
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -216,6 +218,7 @@ function showSection(name) {
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
   if (name === "mydelivery") loadDeliveryProfile();
+  if (name === "myplan") loadMyPlan();
   if (name === "share") loadShareModule();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
@@ -2768,7 +2771,7 @@ function renderCoverageSummary() {
   }
 
   const max = context.max_zones === null || context.max_zones === undefined
-    ? "Sin límite configurado"
+    ? "No incluida en el plan"
     : context.max_zones;
 
   container.innerHTML = `
@@ -2777,7 +2780,7 @@ function renderCoverageSummary() {
       ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
       : "Sin cantón asignado")}</div>
     <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
-    <div><strong>Gestión de zonas:</strong> ${context.zones_manage_enabled ? "Habilitada" : "No habilitada"}</div>
+    <div><strong>Control:</strong> el plan fija la cantidad y el DELIVERY elige cuáles zonas usar.</div>
   `;
 }
 
@@ -2800,36 +2803,27 @@ function renderCoverageZones() {
 
   const zones = Array.isArray(context.zones) ? context.zones : [];
   if (!zones.length) {
-    container.innerHTML = state.role === "MASTER"
-      ? '<div class="muted">No existen zonas activas. Créala en el catálogo de zonas.</div>'
-      : '<div class="muted">HTPWEB todavía no ha creado zonas activas.</div>';
+    container.innerHTML = '<div class="muted">HTPWEB todavía no ha creado zonas activas para este cantón.</div>';
     return;
   }
 
-  const canAssign = state.role === "MASTER" || context.zones_manage_enabled === true;
+  const hasPlanCapacity = context.max_zones !== null && context.max_zones !== undefined;
+  const canAssign = state.role === "MASTER" || (state.role === "DELIVERY_ADMIN" && hasPlanCapacity);
 
   container.innerHTML = `
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Zona</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Zona</th><th>Estado</th><th>Acción</th></tr></thead>
         <tbody>
           ${zones.map(zone => `
             <tr>
-              <td><strong>${esc(zone.code || "")} — ${esc(zone.name)}</strong>${zone.city_name ? `<div class="muted">Referencia: ${esc(zone.city_name)}${zone.province ? " · "+esc(zone.province) : ""}</div>` : ""}</td>
-              <td>${zone.assigned ? "Asignada" : "Disponible"}</td>
+              <td><strong>${esc(zone.code || "")} — ${esc(zone.name)}</strong>${zone.city_name ? `<div class="muted">${esc(zone.city_name)}${zone.province ? " · "+esc(zone.province) : ""}</div>` : ""}</td>
+              <td>${zone.assigned ? "Activa para este DELIVERY" : "Disponible"}</td>
               <td>
-                <button
-                  class="${zone.assigned ? "btn-danger" : "btn-primary"}"
+                <button class="${zone.assigned ? "btn-danger" : "btn-primary"}"
                   onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
-                  ${canAssign ? "" : "disabled"}
-                >
-                  ${zone.assigned ? (state.role === "MASTER" ? "Quitar cobertura" : "Aprobada") : (state.role === "MASTER" ? "Aprobar cobertura" : "Solicitar cobertura")}
+                  ${canAssign ? "" : "disabled"}>
+                  ${zone.assigned ? "Desactivar" : "Activar"}
                 </button>
               </td>
             </tr>
@@ -2837,8 +2831,8 @@ function renderCoverageZones() {
         </tbody>
       </table>
     </div>
-    ${!canAssign && state.role === "DELIVERY_ADMIN"
-      ? '<p class="muted" style="margin-top:10px">La capability <code>zones.manage</code> debe ser habilitada por HTPWEB.</p>'
+    ${!hasPlanCapacity && state.role === "DELIVERY_ADMIN"
+      ? '<p class="message error" style="margin-top:10px">Tu plan no incluye capacidad de zonas. Contacta con HTPWEB para cambiar de plan.</p>'
       : ""}
   `;
 }
@@ -2977,19 +2971,23 @@ async function toggleDeliveryZone(zoneId, active) {
   if (!delivery) return;
 
   try {
-    if (state.role !== "MASTER") {
-      if (!active) throw new Error("Solicita al MASTER la suspensión de esta zona.");
-      await rpc("request_delivery_zone", {p_delivery_id: delivery.id, p_zone_id: zoneId});
-      message("Solicitud enviada. El MASTER debe aprobar la zona antes de habilitar sus locales.");
-      return;
+    if (state.role === "DELIVERY_ADMIN") {
+      await rpc("delivery_set_zone_choice", {
+        p_delivery_id: delivery.id,
+        p_zone_id: zoneId,
+        p_active: Boolean(active)
+      });
+      message(active ? "Zona activada dentro de tu plan." : "Zona desactivada.");
+    } else if (state.role === "MASTER") {
+      await rpc("set_delivery_zone", {
+        p_delivery_id: delivery.id,
+        p_zone_id: zoneId,
+        p_active: Boolean(active)
+      });
+      message(active ? "Zona activada por MASTER." : "Zona desactivada por MASTER.");
+    } else {
+      throw new Error("No autorizado.");
     }
-    await rpc("set_delivery_zone", {
-      p_delivery_id: delivery.id,
-      p_zone_id: zoneId,
-      p_active: Boolean(active)
-    });
-
-    message(active ? "Zona agregada a la cobertura." : "Zona retirada de la cobertura.");
     await loadCoverageContext();
   } catch (e) {
     message(e.message || "No se pudo modificar la cobertura.", "error");
