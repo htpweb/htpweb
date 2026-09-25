@@ -441,12 +441,14 @@
 
       <div class="card">
         <h2>Crear delivery</h2>
+        <input id="deliveryEditId" type="hidden">
         <div class="form-grid">
           <div><label>Nombre</label><input id="deliveryName"></div>
           <div><label>Slug</label><input id="deliverySlug"></div>
           <div><label>Ciudad</label><select id="deliveryCity"></select></div>
           <div><label>Teléfono</label><input id="deliveryPhone"></div>
           <div><label>WhatsApp</label><input id="deliveryWhatsapp"></div>
+          <div><label>Estado</label><select id="deliveryActive"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
         </div>
         <label>Descripción</label>
         <textarea id="deliveryDescription" rows="3"></textarea>
@@ -1273,7 +1275,7 @@
 
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
-<script src="./admin.js?v=20260925-0129"></script>
+<script src="./admin.js?v=20260925-0205"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-master.js?v=20260925-0129"></script>
 <script src="./local-categories-master.js"></script>
