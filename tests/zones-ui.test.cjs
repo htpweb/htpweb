@@ -54,3 +54,27 @@ test('DELIVERY no crea ciudades y Zonas resuelve provincia/cantón al guardar',(
  assert.match(zones,/resolveZoneCityId/);
  assert.match(zones,/p_city_id:cityId/);
 });
+
+
+test('MASTER no selecciona zonas operativas del DELIVERY',()=>{
+ const admin=fs.readFileSync('admin/admin.js','utf8');
+
+ const workspaceStart=admin.indexOf('function bindMasterDeliveryWorkspace');
+ const workspaceEnd=admin.indexOf('async function loadDeliveryMasterWorkspace',workspaceStart);
+ const workspace=workspaceStart>=0&&workspaceEnd>workspaceStart?admin.slice(workspaceStart,workspaceEnd):'';
+
+ assert.doesNotMatch(workspace,/data-delivery-workspace-tab="zones"/);
+ assert.doesNotMatch(workspace,/deliveryWorkspacePane-zones/);
+ assert.doesNotMatch(workspace,/section-coverage/);
+ assert.match(workspace,/La capacidad de zonas proviene del plan/);
+
+ const renderStart=admin.indexOf('function renderCoverageZones');
+ const renderEnd=admin.indexOf('function clearZoneForm',renderStart);
+ const render=renderStart>=0&&renderEnd>renderStart?admin.slice(renderStart,renderEnd):'';
+
+ assert.match(render,/state\.role === "MASTER"/);
+ assert.match(render,/selección de zonas operativas corresponde al DELIVERY_ADMIN/);
+ assert.match(render,/const canAssign = state\.role === "DELIVERY_ADMIN"/);
+ assert.match(admin,/delivery_set_zone_choice/);
+ assert.match(admin,/MASTER define el territorio y el plan; el DELIVERY selecciona sus zonas operativas/);
+});

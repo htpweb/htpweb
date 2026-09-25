@@ -3030,6 +3030,11 @@ function renderCoverageZones() {
   const container = $("coverageZonesList");
   if (!container) return;
 
+  if (state.role === "MASTER") {
+    container.innerHTML = '<div class="muted">La selección de zonas operativas corresponde al DELIVERY_ADMIN. MASTER define la capacidad máxima desde el plan comercial.</div>';
+    return;
+  }
+
   if (!context?.delivery) {
     container.innerHTML = '<div class="muted">Selecciona un DELIVERY.</div>';
     return;
@@ -8109,7 +8114,6 @@ init();
 
 
 let masterDeliveryWorkspaceBound=false;
-let masterDeliveryWorkspacePanels=[];
 
 function masterDeliveryWorkspaceSelectedId(){
   return document.getElementById("deliveryWorkspaceSelect")?.value || "";
@@ -8253,7 +8257,7 @@ async function loadMasterDeliveryPlanSummary(){
   }catch(e){box.textContent=e.message||"No se pudo consultar el plan.";}
 }
 function openMasterDeliveryWorkspaceTab(tab){
-  ["base","access","zones"].forEach(name=>{
+  ["base","access"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
   });
   document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
@@ -8295,13 +8299,12 @@ function bindMasterDeliveryWorkspace(){
   const original=[...section.children];
   const toolbar=document.createElement("div");
   toolbar.className="card workspace-title";
-  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado y zonas en un solo ambiente. Las tarifas las configura el propio DELIVERY.</p></div>'+
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha y representante autorizado. La capacidad de zonas proviene del plan y el DELIVERY_ADMIN selecciona cuáles operar.</p></div>'+
     '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
     '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
     '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
     '<button type="button" data-delivery-workspace-tab="base">Listado y ficha</button>'+
-    '<button type="button" data-delivery-workspace-tab="access">Cuenta</button>'+
-    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button></div>';
+    '<button type="button" data-delivery-workspace-tab="access">Cuenta</button></div>';
   section.insertBefore(toolbar,section.firstChild);
 
   const base=document.createElement("div");
@@ -8330,23 +8333,10 @@ function bindMasterDeliveryWorkspace(){
     '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
   section.appendChild(access);
 
-  const zones=document.createElement("div");
-  zones.id="deliveryWorkspacePane-zones";
-  zones.className="hidden";
-  section.appendChild(zones);
-
   const usersSection=document.getElementById("section-users");
   if(usersSection){
     const legacyDeliveryCard=[...usersSection.children].find(node=>node.querySelector("h3")?.textContent.trim()==="Asignar a un DELIVERY");
     if(legacyDeliveryCard)legacyDeliveryCard.classList.add("hidden");
-  }
-
-  const coverage=document.getElementById("section-coverage");
-  if(coverage){
-    [...coverage.children].forEach(node=>{
-      masterDeliveryWorkspacePanels.push({node,parent:coverage});
-      zones.appendChild(node);
-    });
   }
 
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
