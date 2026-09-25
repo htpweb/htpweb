@@ -37,7 +37,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","fees","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
@@ -120,7 +120,7 @@ async function init() {
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
   const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
-  const masterDeliveryWorkspaceSections = new Set(["fees","coverage"]);
+  const masterDeliveryWorkspaceSections = new Set(["coverage"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
     const hiddenInsideLocales = state.role === "MASTER" && masterLocalWorkspaceSections.has(btn.dataset.section);
@@ -2373,7 +2373,7 @@ async function saveDelivery() {
       ]);
     }
 
-    message(editingId ? "Delivery actualizado." : "Delivery creado. Continúa con Cuenta, Zonas y Tarifas.");
+    message(editingId ? "Delivery actualizado." : "Delivery creado. Continúa con Cuenta y Zonas. El DELIVERY configurará sus tarifas desde su propia cuenta.");
     ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"].forEach(id => { if ($(id)) $(id).value = ""; });
     if ($("deliveryEditId")) $("deliveryEditId").value = "";
     if ($("deliveryActive")) $("deliveryActive").value = "true";
@@ -2459,25 +2459,22 @@ function selectFeeRatePeriod(period) {
 }
 
 async function loadFees() {
-  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+  if (state.role !== "DELIVERY_ADMIN") return;
 
   const select = $("feeDelivery");
   if (!select) return;
 
   const previous = select.value;
-  const available = state.role === "MASTER"
-    ? state.deliveries
-    : state.deliveries.filter(delivery => delivery.active !== false);
+  const available = state.deliveries.filter(delivery => delivery.active !== false);
 
   select.innerHTML = available.length
-    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}${delivery.active === false ? " — Inactivo" : ""}</option>`).join("")
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
     : '<option value="">No hay DELIVERY disponible</option>';
 
   if (previous && available.some(delivery => delivery.id === previous)) {
     select.value = previous;
   }
 
-  $("enableDeliveryFeesBtn").classList.toggle("hidden", state.role !== "MASTER");
   await loadFeeDelivery();
 }
 
@@ -2627,26 +2624,6 @@ async function saveFeeRate() {
     message(e.message || "No se pudo guardar la tarifa por km.", "error");
   }
 }
-
-async function enableDeliveryFees() {
-  if (state.role !== "MASTER") return;
-
-  try {
-    const delivery = feeDeliveryRecord();
-    if (!delivery) throw new Error("Selecciona un DELIVERY.");
-
-    await rpc("master_set_delivery_capability", {
-      p_delivery_id: delivery.id,
-      p_capability_code: "delivery_fees.manage",
-      p_enabled: true
-    });
-
-    message("Gestión de tarifas habilitada para este DELIVERY.");
-  } catch (e) {
-    message(e.message || "No se pudo habilitar la gestión de tarifas.", "error");
-  }
-}
-
 
 function coverageDeliveryRecord() {
   const id = $("coverageDelivery")?.value || "";
@@ -5411,7 +5388,6 @@ function bindEvents() {
   $("saveFeeScheduleBtn").onclick = saveFeeSchedule;
   if ($("feeRatePeriod")) $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
   $("saveFeeRateBtn").onclick = saveFeeRate;
-  $("enableDeliveryFeesBtn").onclick = enableDeliveryFees;
   if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
   $("setCoverageLimitBtn").onclick = setCoverageLimit;
@@ -5590,8 +5566,60 @@ async function revokeMasterDeliveryAuthorization(authorizationId){
   }
 }
 
+async function loadMasterDeliveryFeeCapability(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const status=document.getElementById("deliveryWorkspaceFeeCapabilityStatus");
+  const button=document.getElementById("deliveryWorkspaceToggleFeeCapability");
+  if(!status||!button)return;
+
+  if(!deliveryId){
+    status.textContent="Selecciona un DELIVERY.";
+    button.disabled=true;
+    return;
+  }
+
+  try{
+    const enabled=Boolean(await rpc("master_delivery_fee_capability_status",{p_delivery_id:deliveryId}));
+    status.textContent=enabled
+      ? "Habilitada. El DELIVERY_ADMIN puede configurar sus propias tarifas."
+      : "Deshabilitada. El DELIVERY no puede modificar tarifas.";
+    status.dataset.enabled=String(enabled);
+    button.textContent=enabled ? "Deshabilitar configuración de tarifas" : "Habilitar configuración de tarifas";
+    button.disabled=false;
+  }catch(e){
+    status.textContent=e.message||"No se pudo consultar el permiso de tarifas.";
+    status.dataset.enabled="";
+    button.disabled=true;
+  }
+}
+
+async function toggleMasterDeliveryFeeCapability(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const status=document.getElementById("deliveryWorkspaceFeeCapabilityStatus");
+  if(!deliveryId||!status)return;
+
+  const currentlyEnabled=status.dataset.enabled==="true";
+  const nextEnabled=!currentlyEnabled;
+  const action=nextEnabled?"habilitar":"deshabilitar";
+  if(!confirm("¿"+action.charAt(0).toUpperCase()+action.slice(1)+" la configuración de tarifas para este DELIVERY? MASTER no fija precios; solo controla este permiso."))return;
+
+  try{
+    await rpc("master_set_delivery_capability",{
+      p_delivery_id:deliveryId,
+      p_capability_code:"delivery_fees.manage",
+      p_enabled:nextEnabled
+    });
+    message(nextEnabled
+      ? "Configuración de tarifas habilitada para el DELIVERY."
+      : "Configuración de tarifas deshabilitada para el DELIVERY.");
+    await loadMasterDeliveryFeeCapability();
+  }catch(e){
+    message(e.message||"No se pudo actualizar el permiso de tarifas.","error");
+  }
+}
+
 function openMasterDeliveryWorkspaceTab(tab){
-  ["base","access","zones","fees"].forEach(name=>{
+  ["base","access","zones"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
   });
   document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
@@ -5609,8 +5637,8 @@ async function syncMasterDeliveryWorkspace(){
 
   await Promise.all([
     loadMasterDeliveryAuthorizations(),
-    typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve(),
-    typeof loadFeeDelivery==="function"?loadFeeDelivery():Promise.resolve()
+    loadMasterDeliveryFeeCapability(),
+    typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
   ]);
 }
 
@@ -5633,14 +5661,13 @@ function bindMasterDeliveryWorkspace(){
   const original=[...section.children];
   const toolbar=document.createElement("div");
   toolbar.className="card workspace-title";
-  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado, zonas y tarifas en un solo ambiente.</p></div>'+
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado y zonas en un solo ambiente. Las tarifas las configura el propio DELIVERY.</p></div>'+
     '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
     '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
     '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
     '<button type="button" data-delivery-workspace-tab="base">Listado y ficha</button>'+
     '<button type="button" data-delivery-workspace-tab="access">Cuenta</button>'+
-    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button>'+
-    '<button type="button" data-delivery-workspace-tab="fees">Tarifas</button></div>';
+    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button></div>';
   section.insertBefore(toolbar,section.firstChild);
 
   const base=document.createElement("div");
@@ -5662,18 +5689,17 @@ function bindMasterDeliveryWorkspace(){
     '</div>'+
     '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
     '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
-    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>'+
+    '<div class="card"><h3>Permiso para configurar tarifas</h3>'+
+    '<p class="muted">MASTER solo habilita o bloquea esta capacidad. Los precios, horarios y modalidad de cobro los define el DELIVERY_ADMIN desde su propia cuenta.</p>'+
+    '<p id="deliveryWorkspaceFeeCapabilityStatus" class="workspace-note">Consultando permiso…</p>'+
+    '<button id="deliveryWorkspaceToggleFeeCapability" class="btn-muted" type="button">Cambiar permiso</button></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
   zones.id="deliveryWorkspacePane-zones";
   zones.className="hidden";
   section.appendChild(zones);
-
-  const fees=document.createElement("div");
-  fees.id="deliveryWorkspacePane-fees";
-  fees.className="hidden";
-  section.appendChild(fees);
 
   const usersSection=document.getElementById("section-users");
   if(usersSection){
@@ -5689,17 +5715,10 @@ function bindMasterDeliveryWorkspace(){
     });
   }
 
-  const feeSection=document.getElementById("section-fees");
-  if(feeSection){
-    [...feeSection.children].forEach(node=>{
-      masterDeliveryWorkspacePanels.push({node,parent:feeSection});
-      fees.appendChild(node);
-    });
-  }
-
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
   document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
   document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
+  document.getElementById("deliveryWorkspaceToggleFeeCapability").onclick=toggleMasterDeliveryFeeCapability;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
     for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){
@@ -5720,7 +5739,6 @@ async function loadDeliveryMasterWorkspace(){
   if(state.role!=="MASTER")return;
   bindMasterDeliveryWorkspace();
   await loadDeliveriesModule();
-  await loadFees();
   await loadCoverage();
   refreshMasterDeliveryWorkspaceSelector();
   await syncMasterDeliveryWorkspace();
