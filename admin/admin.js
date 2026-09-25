@@ -6100,6 +6100,202 @@ async function saveDeliveryProofSettings(){
   }
 }
 
+function sosStatusLabel(value){
+  return {OPEN:"Abierto",ACKNOWLEDGED:"Reconocido",RESOLVED:"Resuelto"}[value]||value||"—";
+}
+
+function sosLocationLink(item){
+  const lat=Number(item?.latitude);
+  const lng=Number(item?.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return "";
+  const href="https://www.openstreetmap.org/?mlat="+encodeURIComponent(lat)+"&mlon="+encodeURIComponent(lng)+"#map=18/"+encodeURIComponent(lat)+"/"+encodeURIComponent(lng);
+  return '<a class="btn-muted" href="'+href+'" target="_blank" rel="noopener noreferrer">Abrir ubicación</a>';
+}
+
+function renderDeliverySos(){
+  const box=$("deliverySosList");
+  const notice=$("deliverySosNotice");
+  if(!box||!notice)return;
+
+  const snap=driverWorkspaceState.sos||{};
+  const items=Array.isArray(snap.incidents)?snap.incidents:[];
+  const active=items.filter(x=>["OPEN","ACKNOWLEDGED"].includes(x.status));
+
+  if(!snap.enabled){
+    notice.textContent=active.length
+      ?"El plan actual no permite crear nuevos SOS, pero estos incidentes existentes siguen disponibles para atención."
+      :"El plan vigente no incluye SOS de repartidor.";
+  }else{
+    notice.textContent=active.length
+      ?active.length+" alerta(s) activa(s)."
+      :"SOS habilitado · no hay alertas activas.";
+  }
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">No hay incidentes SOS registrados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const created=item.created_at
+      ?new Date(item.created_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})
+      :"—";
+    const location=item.latitude!=null&&item.longitude!=null
+      ?'<div class="muted">Ubicación '+esc(item.location_source||"")+
+        (item.location_captured_at?' · '+esc(new Date(item.location_captured_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})):'')+
+        (Number.isFinite(Number(item.accuracy_m))?' · ±'+Math.round(Number(item.accuracy_m))+' m':'')+'</div>'
+      :'<div class="workspace-warning">Ubicación no disponible. Atiende la alerta igualmente.</div>';
+
+    const actions=item.status==="OPEN"
+      ? '<button class="btn-primary" type="button" data-sos-ack="'+esc(item.incident_id)+'">Reconocer</button>'+
+        '<button class="btn-danger" type="button" data-sos-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+      : item.status==="ACKNOWLEDGED"
+        ? '<button class="btn-danger" type="button" data-sos-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+        : '';
+
+    return '<div class="card" style="border-left:5px solid currentColor">'+
+      '<div class="row between" style="gap:10px;flex-wrap:wrap"><div><strong>SOS · '+esc(item.driver_name||"Repartidor")+'</strong>'+
+      '<div class="muted">'+esc(item.driver_phone||"")+' · pedido '+esc(item.order_id)+'</div></div>'+
+      '<span class="badge">'+esc(sosStatusLabel(item.status))+'</span></div>'+
+      '<p><strong>Activado:</strong> '+esc(created)+'</p>'+location+
+      (item.resolution_note?'<p><strong>Nota:</strong> '+esc(item.resolution_note)+'</p>':'')+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+sosLocationLink(item)+actions+'</div></div>';
+  }).join("");
+
+  box.querySelectorAll("[data-sos-ack]").forEach(b=>b.onclick=()=>acknowledgeDeliverySos(b.dataset.sosAck));
+  box.querySelectorAll("[data-sos-resolve]").forEach(b=>b.onclick=()=>resolveDeliverySos(b.dataset.sosResolve));
+}
+
+async function loadDeliverySosSnapshotOnly(){
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId||![ "DELIVERY_ADMIN","DELIVERY_OPERATOR" ].includes(state.role))return;
+  try{
+    driverWorkspaceState.sos=await rpc("delivery_sos_snapshot",{
+      p_delivery_id:deliveryId,
+      p_limit:50
+    })||{};
+    renderDeliverySos();
+  }catch(e){
+    if($("deliverySosNotice"))$("deliverySosNotice").textContent=e.message||"No se pudieron cargar las alertas SOS.";
+  }
+}
+
+function scheduleDeliverySosRefresh(){
+  if(safetySosState.refreshTimer)clearTimeout(safetySosState.refreshTimer);
+  safetySosState.refreshTimer=setTimeout(()=>{
+    safetySosState.refreshTimer=null;
+    void loadDeliverySosSnapshotOnly();
+  },200);
+}
+
+async function stopDeliverySosSubscription(){
+  const channel=safetySosState.deliveryChannel;
+  safetySosState.deliveryChannel=null;
+  safetySosState.deliveryId=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDeliverySosSubscription(deliveryId){
+  if(!deliveryId||![ "DELIVERY_ADMIN","DELIVERY_OPERATOR" ].includes(state.role))return;
+  if(safetySosState.deliveryChannel&&safetySosState.deliveryId===deliveryId)return;
+  await stopDeliverySosSubscription();
+  safetySosState.deliveryId=deliveryId;
+  safetySosState.deliveryChannel=supabaseClient
+    .channel("safety-sos:delivery:"+deliveryId,{config:{private:true}})
+    .on("broadcast",{event:"sos"},()=>scheduleDeliverySosRefresh())
+    .subscribe(status=>{
+      if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+        if($("deliverySosNotice"))$("deliverySosNotice").textContent="Alertas SOS cargadas; la actualización en vivo no pudo conectarse. Usa Actualizar SOS.";
+      }
+    });
+}
+
+async function acknowledgeDeliverySos(incidentId){
+  try{
+    await rpc("delivery_acknowledge_sos",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId
+    });
+    message("Alerta SOS reconocida.");
+    await loadDeliverySosSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo reconocer el SOS.","error");}
+}
+
+async function resolveDeliverySos(incidentId){
+  const note=prompt("Nota de resolución (opcional):","")??null;
+  if(note===null)return;
+  try{
+    await rpc("delivery_resolve_sos",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId,
+      p_note:note
+    });
+    message("Alerta SOS resuelta.");
+    await loadDeliverySosSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo resolver el SOS.","error");}
+}
+
+function activeDriverSos(){
+  return (state.driverOrders||[])
+    .map(o=>o?.sos?{...o.sos,delivery_id:o.delivery_id,order_id:o.order_id}:null)
+    .find(x=>x&&["OPEN","ACKNOWLEDGED"].includes(x.status))||null;
+}
+
+function renderDriverSosNotice(){
+  const box=$("driverSosNotice");
+  if(!box)return;
+  const incident=activeDriverSos();
+  if(!incident){
+    box.style.display="none";
+    box.textContent="";
+    return;
+  }
+  box.style.display="block";
+  box.innerHTML='<strong>SOS '+esc(sosStatusLabel(incident.status))+'</strong> · pedido '+esc(incident.order_id)+
+    (incident.status==="OPEN"
+      ?' · La alerta fue enviada al DELIVERY.'
+      :' · El DELIVERY confirmó que recibió la alerta.');
+}
+
+async function stopDriverSosSubscription(){
+  const channel=safetySosState.driverChannel;
+  safetySosState.driverChannel=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDriverSosSubscription(){
+  if(state.role!=="DELIVERY_DRIVER"||!state.user?.id)return;
+  if(safetySosState.driverChannel)return;
+  safetySosState.driverChannel=supabaseClient
+    .channel("safety-sos:driver:"+state.user.id,{config:{private:true}})
+    .on("broadcast",{event:"sos"},({payload})=>{
+      if(payload?.status==="ACKNOWLEDGED")message("Tu alerta SOS fue reconocida por el DELIVERY.");
+      if(payload?.status==="RESOLVED")message("Tu alerta SOS fue marcada como resuelta.");
+      void loadDriverOrders();
+    })
+    .subscribe();
+}
+
+async function triggerDriverSos(orderId){
+  try{
+    let position=null;
+    try{position=await currentPositionOnce();}catch{}
+    const result=await rpc("driver_trigger_sos",{
+      p_order_id:orderId,
+      p_latitude:position?.latitude??null,
+      p_longitude:position?.longitude??null,
+      p_accuracy_m:null,
+      p_captured_at:position?new Date().toISOString():null
+    });
+    message(result?.already_open?"SOS ya estaba activo; alerta actualizada.":"SOS enviado al DELIVERY.");
+    await loadDriverOrders();
+  }catch(e){message(e.message||"No se pudo activar el SOS.","error");}
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
