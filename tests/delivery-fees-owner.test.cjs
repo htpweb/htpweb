@@ -4,7 +4,7 @@ const fs=require('node:fs');
 
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
-const migration=fs.readFileSync('supabase/migrations/20260925050557_commercial_plan_fee_integration.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260925050557_commercial_plan_fee_integration.sql','utf8');\nconst hardening=fs.readFileSync('supabase/migrations/20260925114824_commercial_security_hardening.sql','utf8');
 
 test('MASTER no expone editor de precios ni controles manuales de modalidad',()=>{
   const roleBlock=admin.match(/const roleSections = \{[\s\S]*?\n\};/)?.[0]||'';
@@ -28,9 +28,12 @@ test('las modalidades comerciales viven en el catálogo del plan',()=>{
 
 test('DELIVERY_ADMIN solo ve modalidades incluidas en su plan',()=>{
   const load=admin.match(/async function loadFeeDelivery\(\)[\s\S]*?async function saveFeeConfig/)?.[0]||'';
-  assert.match(load,/delivery_fees\.fixed/);
-  assert.match(load,/delivery_fees\.distance/);
+  assert.match(load,/delivery_fee_capability_status/);
+  assert.match(load,/capabilityStatus\?\.fixed/);
+  assert.match(load,/capabilityStatus\?\.distance/);
   assert.match(load,/allowedModes/);
+  assert.match(hardening,/delivery_fees\.fixed/);
+  assert.match(hardening,/delivery_fees\.distance/);
 });
 
 test('backend protege tarifa fija, distancia y día-noche mediante capabilities del plan',()=>{
