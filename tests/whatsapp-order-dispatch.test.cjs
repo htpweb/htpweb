@@ -83,7 +83,9 @@ test('modo asistido abre wa.me con texto precargado',()=>{
 });
 
 test('pedido al LOCAL no expone dirección ni teléfono del cliente en el mensaje asistido',()=>{
-  const fn=admin.match(/function buildLocalOrderWhatsappText[\s\S]*?\n}\n\nasync function sendLocalOrderWhatsapp/)?.[0]||'';
+  const start=admin.indexOf('function buildLocalOrderWhatsappText');
+  const end=admin.indexOf('async function sendLocalOrderWhatsapp',start);
+  const fn=start>=0&&end>start?admin.slice(start,end):'';
   assert.match(fn,/Productos:/);
   assert.match(fn,/Subtotal del local/);
   assert.match(fn,/Observaciones:/);
