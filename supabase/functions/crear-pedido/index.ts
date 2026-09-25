@@ -153,6 +153,10 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     const messages = {
       PLAN_INACTIVE: "El servicio administrativo de este delivery no está vigente",
       PLAN_RECONFIGURATION_REQUIRED: "Este delivery está reconfigurando su plan y temporalmente no recibe pedidos",
+      INVALID_LOCATION: "La ubicación de entrega no es válida",
+      COVERAGE_NOT_AVAILABLE: "El plan de este delivery no tiene capacidad de zonas operativas",
+      COVERAGE_NOT_CONFIGURED: "Este delivery todavía no ha configurado sus zonas operativas",
+      OUTSIDE_COVERAGE: "La ubicación de entrega está fuera de las zonas operativas de este delivery",
       RESTRICTED_AREA: "Esta ubicación está restringida para este delivery en este horario",
       PRIVATE_NETWORK_REQUIRED: "Este delivery recibe pedidos solo de sus contactos y referidos en este horario",
       APPROVAL_REQUIRED: "Este delivery requiere que tu cuenta esté aprobada antes de realizar pedidos",
