@@ -6439,6 +6439,141 @@ async function triggerDriverSos(orderId){
   }catch(e){message(e.message||"No se pudo activar el SOS.","error");}
 }
 
+function driverDeviationPlanFor(orderId){
+  const plans=Array.isArray(routeDeviationState.driverSnapshot?.plans)
+    ? routeDeviationState.driverSnapshot.plans
+    : [];
+  return plans.find(p=>p.order_id===orderId&&p.active!==false)||null;
+}
+
+function driverDeviationContextFor(orderId){
+  return routeDeviationState.contexts?.[orderId]||null;
+}
+
+function activeDriverRouteDeviation(){
+  const incidents=Array.isArray(routeDeviationState.driverSnapshot?.incidents)
+    ? routeDeviationState.driverSnapshot.incidents
+    : [];
+  return incidents.find(i=>["OPEN","ACKNOWLEDGED"].includes(i.status))||null;
+}
+
+function renderDriverRouteDeviationNotice(){
+  const box=$("driverRouteDeviationNotice");
+  if(!box)return;
+  const incident=activeDriverRouteDeviation();
+  if(!incident){
+    box.style.display="none";
+    box.textContent="";
+    return;
+  }
+  const max=Number(incident.max_deviation_m);
+  box.style.display="block";
+  box.innerHTML='<strong>Desvío '+esc(sosStatusLabel(incident.status))+'</strong> · pedido '+esc(incident.order_id)+
+    (Number.isFinite(max)?' · hasta '+Math.round(max)+' m fuera de la ruta':'')+
+    (incident.status==="OPEN"
+      ?' · El DELIVERY recibió la alerta automática.'
+      :' · El DELIVERY confirmó que recibió la alerta.');
+}
+
+async function loadDriverRouteDeviationState(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    routeDeviationState.driverSnapshot=await rpc("driver_route_deviation_snapshot")||{plans:[],incidents:[]};
+  }catch{
+    routeDeviationState.driverSnapshot={plans:[],incidents:[]};
+  }
+
+  const contexts={};
+  const enRoute=(state.driverOrders||[]).filter(o=>
+    o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"
+  );
+  await Promise.all(enRoute.map(async order=>{
+    try{
+      contexts[order.order_id]=await rpc("driver_route_deviation_plan_context",{
+        p_order_id:order.order_id
+      });
+    }catch{
+      contexts[order.order_id]=null;
+    }
+  }));
+  routeDeviationState.contexts=contexts;
+  renderDriverRouteDeviationNotice();
+}
+
+async function stopDriverRouteDeviationSubscription(){
+  const channel=routeDeviationState.driverChannel;
+  routeDeviationState.driverChannel=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDriverRouteDeviationSubscription(){
+  if(state.role!=="DELIVERY_DRIVER"||!state.user?.id)return;
+  if(routeDeviationState.driverChannel)return;
+  routeDeviationState.driverChannel=supabaseClient
+    .channel("route-deviation:driver:"+state.user.id,{config:{private:true}})
+    .on("broadcast",{event:"route_deviation"},({payload})=>{
+      if(payload?.status==="OPEN")message("HTPWEB detectó un desvío sostenido y avisó al DELIVERY.","error");
+      if(payload?.status==="ACKNOWLEDGED")message("El DELIVERY reconoció la alerta de desvío.");
+      if(payload?.status==="RESOLVED"&&payload?.resolution_reason==="RETURNED_TO_ROUTE")message("Volviste al corredor esperado; la alerta de desvío se cerró.");
+      if(payload?.status==="RESOLVED"&&payload?.resolution_reason!=="RETURNED_TO_ROUTE")message("La alerta de desvío fue resuelta.");
+      void (async()=>{
+        await loadDriverRouteDeviationState();
+        renderDriverOrders();
+      })();
+    })
+    .subscribe();
+}
+
+function routeDeviationContextMessage(context){
+  return {
+    GPS_NOT_INCLUDED:"El plan no incluye GPS en vivo.",
+    ROUTE_DEVIATION_NOT_INCLUDED:"El plan no incluye alerta de desvío.",
+    DESTINATION_COORDINATES_MISSING:"El pedido no tiene coordenadas de destino."
+  }[context?.reason]||"El monitoreo de desvío no está disponible.";
+}
+
+async function prepareDriverRouteDeviationPlan(orderId,{quiet=false}={}){
+  try{
+    let context=driverDeviationContextFor(orderId);
+    if(!context){
+      context=await rpc("driver_route_deviation_plan_context",{p_order_id:orderId});
+      routeDeviationState.contexts[orderId]=context;
+    }
+    if(!context?.can_prepare){
+      if(!quiet&&context?.reason)message(routeDeviationContextMessage(context),"error");
+      return false;
+    }
+    if(context.existing_plan||driverDeviationPlanFor(orderId))return true;
+
+    const position=await currentPositionOnce();
+    const {data,error}=await supabaseClient.functions.invoke("preparar-desvio-ruta",{
+      body:{
+        order_id:orderId,
+        origin_lat:position.latitude,
+        origin_lng:position.longitude
+      }
+    });
+    if(error){
+      let detail=error.message||"No se pudo preparar el monitoreo de desvío.";
+      try{
+        const payload=await error.context?.json?.();
+        if(payload?.error)detail=payload.error;
+      }catch{}
+      throw new Error(detail);
+    }
+    if(!data?.ok)throw new Error(data?.error||"No se pudo preparar el monitoreo de desvío.");
+
+    await loadDriverRouteDeviationState();
+    if(!quiet)message("Monitoreo de desvío activo para esta entrega.");
+    return true;
+  }catch(e){
+    if(!quiet)message(e.message||"No se pudo preparar el monitoreo de desvío.","error");
+    return false;
+  }
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
