@@ -2368,12 +2368,11 @@ async function saveDelivery() {
     if (!editingId) {
       await Promise.all([
         rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"delivery.info.manage",p_enabled:true}),
-        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"zones.manage",p_enabled:true}),
-        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"delivery_fees.manage",p_enabled:true})
+        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"zones.manage",p_enabled:true})
       ]);
     }
 
-    message(editingId ? "Delivery actualizado." : "Delivery creado. Continúa con Cuenta y Zonas. El DELIVERY configurará sus tarifas desde su propia cuenta.");
+    message(editingId ? "Delivery actualizado." : "Delivery creado. Continúa con Cuenta y Zonas. En Cuenta habilita Tarifa fija y/o Por distancia; el DELIVERY definirá los precios.");
     ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"].forEach(id => { if ($(id)) $(id).value = ""; });
     if ($("deliveryEditId")) $("deliveryEditId").value = "";
     if ($("deliveryActive")) $("deliveryActive").value = "true";
@@ -2491,26 +2490,44 @@ async function loadFeeDelivery() {
   }
 
   try {
-    const capabilityEnabled=Boolean(await rpc("delivery_has_capability",{
-      p_delivery_id:delivery.id,
-      p_capability_code:"delivery_fees.manage"
-    }));
-    const capabilityNotice=$("feeCapabilityNotice");
+    const [fixedEnabled,distanceEnabled]=await Promise.all([
+      rpc("delivery_has_capability",{
+        p_delivery_id:delivery.id,
+        p_capability_code:"delivery_fees.fixed"
+      }),
+      rpc("delivery_has_capability",{
+        p_delivery_id:delivery.id,
+        p_capability_code:"delivery_fees.distance"
+      })
+    ]);
 
-    if(!capabilityEnabled){
+    const allowedModes=[];
+    if(Boolean(fixedEnabled))allowedModes.push("FIXED");
+    if(Boolean(distanceEnabled))allowedModes.push("DISTANCE");
+
+    const capabilityNotice=$("feeCapabilityNotice");
+    const modeSelect=$("feeMode");
+    modeSelect.innerHTML=allowedModes.map(mode=>
+      '<option value="'+mode+'">'+(mode==="FIXED"?"Tarifa fija":"Por distancia")+'</option>'
+    ).join("");
+
+    if(!allowedModes.length){
       state.feeRates=[];
       $("saveFeeConfigBtn").disabled=true;
       $("saveFeeScheduleBtn").disabled=true;
       $("saveFeeRateBtn").disabled=true;
+      $("fixedFeeField")?.classList.add("hidden");
+      $("distanceRatesCard")?.classList.add("hidden");
       if(capabilityNotice){
-        capabilityNotice.textContent="HTPWEB tiene deshabilitada la configuración de tarifas para este DELIVERY. Solicita habilitación a MASTER.";
+        capabilityNotice.textContent="MASTER no ha habilitado ninguna modalidad de tarifa para este DELIVERY.";
       }
       renderFeeRates();
       return;
     }
 
     if(capabilityNotice){
-      capabilityNotice.innerHTML='Tarifas habilitadas por HTPWEB. Los precios, horarios y modalidad de cobro los administra este DELIVERY. El cálculo final siempre lo realiza el backend.';
+      const labels=allowedModes.map(mode=>mode==="FIXED"?"Tarifa fija":"Por distancia");
+      capabilityNotice.textContent="HTPWEB habilitó: "+labels.join(" y ")+". El DELIVERY_ADMIN define los precios; el cálculo final lo realiza el backend.";
     }
 
     const [configRes, ratesRes] = await Promise.all([
@@ -2532,15 +2549,27 @@ async function loadFeeDelivery() {
     const config = configRes.data;
     state.feeRates = ratesRes.data || [];
 
-    $("feeMode").value = config?.mode || "FIXED";
+    const configuredMode=config?.mode;
+    const selectedMode=configuredMode&&allowedModes.includes(configuredMode)
+      ? configuredMode
+      : allowedModes[0];
+
+    $("feeMode").value = selectedMode;
     $("fixedFee").value = config?.fixed_fee ?? "0";
     $("feeDayStart").value = String(config?.day_start_time || "06:00").slice(0,5);
     $("feeNightStart").value = String(config?.night_start_time || "18:00").slice(0,5);
     $("feeConfigActive").value = String(config?.active ?? true);
 
     $("saveFeeConfigBtn").disabled = false;
-    $("saveFeeScheduleBtn").disabled = !config;
-    $("saveFeeRateBtn").disabled = !config;
+    const distanceAllowed=allowedModes.includes("DISTANCE");
+    $("saveFeeScheduleBtn").disabled = !config || !distanceAllowed;
+    $("saveFeeRateBtn").disabled = !config || !distanceAllowed;
+
+    if(configuredMode && !allowedModes.includes(configuredMode) && capabilityNotice){
+      capabilityNotice.textContent += " La modalidad guardada anteriormente ("+
+        (configuredMode==="FIXED"?"Tarifa fija":"Por distancia")+
+        ") ya no está habilitada; selecciona una modalidad disponible y guarda la configuración.";
+    }
 
     updateFeeModeUI();
     renderFeeRates();
@@ -5588,55 +5617,66 @@ async function revokeMasterDeliveryAuthorization(authorizationId){
   }
 }
 
+function renderMasterDeliveryFeeModes(status){
+  const box=document.getElementById("deliveryWorkspaceFeeModes");
+  if(!box)return;
+
+  const rows=[
+    {mode:"FIXED",label:"Tarifa fija",enabled:Boolean(status?.fixed)},
+    {mode:"DISTANCE",label:"Por distancia",enabled:Boolean(status?.distance)}
+  ];
+
+  box.innerHTML='<div class="table-wrap"><table><thead><tr>'+
+    '<th>MODALIDAD</th><th>ESTADO</th><th>ACCIÓN</th>'+
+    '</tr></thead><tbody>'+
+    rows.map(row=>'<tr>'+
+      '<td><strong>'+esc(row.label)+'</strong></td>'+
+      '<td>'+(row.enabled?'Habilitada':'Deshabilitada')+'</td>'+
+      '<td><button type="button" class="'+(row.enabled?'btn-danger':'btn-primary')+'" data-dw-fee-mode="'+row.mode+'" data-enabled="'+String(row.enabled)+'">'+
+        (row.enabled?'Deshabilitar':'Habilitar')+
+      '</button></td>'+
+    '</tr>').join("")+
+    '</tbody></table></div>';
+
+  box.querySelectorAll("[data-dw-fee-mode]").forEach(btn=>{
+    btn.onclick=()=>toggleMasterDeliveryFeeMode(btn.dataset.dwFeeMode,btn.dataset.enabled==="true");
+  });
+}
+
 async function loadMasterDeliveryFeeCapability(){
   const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const status=document.getElementById("deliveryWorkspaceFeeCapabilityStatus");
-  const button=document.getElementById("deliveryWorkspaceToggleFeeCapability");
-  if(!status||!button)return;
+  const box=document.getElementById("deliveryWorkspaceFeeModes");
+  if(!box)return;
 
   if(!deliveryId){
-    status.textContent="Selecciona un DELIVERY.";
-    button.disabled=true;
+    box.innerHTML='<div class="muted">Selecciona un DELIVERY.</div>';
     return;
   }
 
   try{
-    const enabled=Boolean(await rpc("master_delivery_fee_capability_status",{p_delivery_id:deliveryId}));
-    status.textContent=enabled
-      ? "Habilitada. El DELIVERY_ADMIN puede configurar sus propias tarifas."
-      : "Deshabilitada. El DELIVERY no puede modificar tarifas.";
-    status.dataset.enabled=String(enabled);
-    button.textContent=enabled ? "Deshabilitar configuración de tarifas" : "Habilitar configuración de tarifas";
-    button.disabled=false;
+    const status=await rpc("master_delivery_fee_modes_status",{p_delivery_id:deliveryId});
+    renderMasterDeliveryFeeModes(status||{});
   }catch(e){
-    status.textContent=e.message||"No se pudo consultar el permiso de tarifas.";
-    status.dataset.enabled="";
-    button.disabled=true;
+    box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron consultar las modalidades de tarifa.")+'</div>';
   }
 }
 
-async function toggleMasterDeliveryFeeCapability(){
+async function toggleMasterDeliveryFeeMode(mode,currentEnabled){
   const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const status=document.getElementById("deliveryWorkspaceFeeCapabilityStatus");
-  if(!deliveryId||!status)return;
+  if(!deliveryId)return;
 
-  const currentlyEnabled=status.dataset.enabled==="true";
-  const nextEnabled=!currentlyEnabled;
-  const action=nextEnabled?"habilitar":"deshabilitar";
-  if(!confirm("¿"+action.charAt(0).toUpperCase()+action.slice(1)+" la configuración de tarifas para este DELIVERY? MASTER no fija precios; solo controla este permiso."))return;
-
+  const nextEnabled=!currentEnabled;
   try{
-    await rpc("master_set_delivery_capability",{
+    await rpc("master_set_delivery_fee_mode",{
       p_delivery_id:deliveryId,
-      p_capability_code:"delivery_fees.manage",
+      p_mode:mode,
       p_enabled:nextEnabled
     });
-    message(nextEnabled
-      ? "Configuración de tarifas habilitada para el DELIVERY."
-      : "Configuración de tarifas deshabilitada para el DELIVERY.");
+    message((mode==="FIXED"?"Tarifa fija":"Tarifa por distancia")+
+      (nextEnabled?" habilitada para este DELIVERY.":" deshabilitada para este DELIVERY."));
     await loadMasterDeliveryFeeCapability();
   }catch(e){
-    message(e.message||"No se pudo actualizar el permiso de tarifas.","error");
+    message(e.message||"No se pudo actualizar la modalidad de tarifa.","error");
   }
 }
 
@@ -5712,10 +5752,9 @@ function bindMasterDeliveryWorkspace(){
     '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
     '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
     '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>'+
-    '<div class="card"><h3>Permiso para configurar tarifas</h3>'+
-    '<p class="muted">MASTER solo habilita o bloquea esta capacidad. Los precios, horarios y modalidad de cobro los define el DELIVERY_ADMIN desde su propia cuenta.</p>'+
-    '<p id="deliveryWorkspaceFeeCapabilityStatus" class="workspace-note">Consultando permiso…</p>'+
-    '<button id="deliveryWorkspaceToggleFeeCapability" class="btn-muted" type="button">Cambiar permiso</button></div>';
+    '<div class="card"><h3>Modalidades de tarifa disponibles</h3>'+
+    '<p class="muted">MASTER habilita qué modalidades puede utilizar este DELIVERY. El DELIVERY_ADMIN fija los precios desde su propia cuenta.</p>'+
+    '<div id="deliveryWorkspaceFeeModes"><div class="muted">Consultando modalidades…</div></div></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
@@ -5740,7 +5779,6 @@ function bindMasterDeliveryWorkspace(){
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
   document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
   document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
-  document.getElementById("deliveryWorkspaceToggleFeeCapability").onclick=toggleMasterDeliveryFeeCapability;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
     for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){

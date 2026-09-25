@@ -26,11 +26,12 @@ test('editor de tarifas solo carga para DELIVERY_ADMIN',()=>{
   assert.match(html,/Esta configuración pertenece al DELIVERY_ADMIN/);
 });
 
-test('MASTER conserva solo el control de habilitar o bloquear la capacidad',()=>{
-  assert.match(admin,/master_delivery_fee_capability_status/);
-  assert.match(admin,/master_set_delivery_capability/);
-  assert.match(admin,/deliveryWorkspaceToggleFeeCapability/);
-  assert.match(admin,/MASTER no fija precios; solo controla este permiso/);
+test('MASTER conserva solo el control de habilitar o bloquear modalidades',()=>{
+  assert.match(admin,/master_delivery_fee_modes_status/);
+  assert.match(admin,/master_set_delivery_fee_mode/);
+  assert.match(admin,/data-dw-fee-mode/);
+  assert.match(admin,/El DELIVERY_ADMIN fija los precios/);
+  assert.doesNotMatch(admin,/deliveryWorkspaceToggleFeeCapability/);
 });
 
 test('backend impide que MASTER u otros roles modifiquen precios',()=>{
