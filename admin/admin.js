@@ -35,12 +35,13 @@ const state = {
   menuImportPreview: null,
   deliveryAuthorizations: [],
   deliveryServiceAccess: null,
-  masterDeliveryService: null
+  masterDeliveryService: null,
+  myPlanSummary: null
 };
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","network","security","storage","advertising","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -232,6 +233,7 @@ function showSection(name) {
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
   if (name === "mydelivery") loadDeliveryProfile();
+  if (name === "myplan") loadMyPlan();
   if (name === "share") loadShareModule();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
@@ -383,7 +385,10 @@ async function refreshAll() {
   await Promise.all([
     loadOverview(),
     loadOrders(),
-    loadRequests()
+    loadRequests(),
+    state.role === "DELIVERY_ADMIN" && $("section-myplan")?.classList.contains("active")
+      ? loadMyPlan()
+      : Promise.resolve()
   ]);
 }
 
@@ -1253,6 +1258,128 @@ async function loadOverview() {
     await loadOverviewResources();
   }
   bindOverviewActions();
+}
+
+function myPlanCapacityCard(label,item,detail){
+  const used=item?.used;
+  const max=item?.max;
+  const hasUsage=used!==null&&used!==undefined;
+  const hasMax=max!==null&&max!==undefined;
+  const value=item?.usage_available===false
+    ? "Cupo "+(hasMax?max:"—")+" · Etapa 2"
+    : (hasUsage?used:0)+" / "+(hasMax?max:"—");
+  const percent=hasUsage&&Number(max)>0
+    ? Math.max(0,Math.min(100,Math.round((Number(used)/Number(max))*100)))
+    : null;
+  return overviewResourceCard({label,value,percent,detail});
+}
+
+function renderMyPlan(){
+  const summary=state.myPlanSummary;
+  const contract=$("myPlanContract");
+  const capacity=$("myPlanCapacity");
+  const features=$("myPlanFeatures");
+  const selection=$("myPlanSelectionState");
+  if(!contract||!capacity||!features||!selection)return;
+
+  if(!summary){
+    contract.innerHTML='<div class="muted">Selecciona un DELIVERY para consultar el plan.</div>';
+    capacity.innerHTML="";
+    features.innerHTML="";
+    selection.textContent="—";
+    return;
+  }
+
+  const plan=summary.plan||{};
+  const current=plan.current;
+  const next=plan.next;
+
+  if(!current){
+    contract.innerHTML='<strong>Sin plan comercial vigente.</strong>'+
+      (next?' Próximo plan: '+esc(next.plan_name||next.plan_code||"—")+
+        ' desde '+esc(formatServiceDate(next.starts_at)):'');
+  }else{
+    const price=current.price===null||current.price===undefined
+      ?"—"
+      :Number(current.price).toFixed(2)+" "+esc(current.currency||"USD");
+    contract.innerHTML=
+      '<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong>'+
+      ' · versión '+esc(current.plan_version||"—")+
+      '<br><span>Estado: '+esc(deliveryServiceStateLabel(plan.state))+
+      ' · Inicio: '+esc(formatServiceDate(current.starts_at))+
+      ' · Vence: '+esc(formatServiceDate(current.ends_at))+
+      ' · Precio contratado: '+price+'</span>'+
+      (plan.expiring_soon
+        ? '<div class="workspace-warning" style="margin-top:10px">Vence en '+esc(plan.days_remaining)+' día(s).</div>'
+        : '')+
+      (next
+        ? '<div class="workspace-note" style="margin-top:10px"><strong>Próximo plan:</strong> '+
+          esc(next.plan_name||next.plan_code||"—")+' · '+esc(next.change_type||"CAMBIO")+
+          ' · inicia '+esc(formatServiceDate(next.starts_at))+'</div>'
+        : '');
+  }
+
+  selection.textContent=summary.selection_ready?"Selección lista":"Reconfiguración pendiente";
+  const usage=summary.usage||{};
+  capacity.innerHTML=[
+    myPlanCapacityCard("Zonas activas",usage.zones,"Elige cuáles operar desde Cobertura."),
+    myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Tú defines los polígonos desde Seguridad."),
+    myPlanCapacityCard("Operadores",usage.operators,"Operadores DELIVERY_OPERATOR activos dentro del cupo contratado."),
+    myPlanCapacityCard("Repartidores",usage.drivers,"Etapa 2: el cupo ya puede estar contratado; el consumo se habilitará con el módulo de repartidores.")
+  ].join("");
+
+  const included=(summary.features||[]).filter(f=>
+    f.type==="CAPABILITY" ? f.value===true : Number(f.value)>0
+  );
+  features.innerHTML=included.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Prestación</th><th>Valor</th><th>Etapa</th></tr></thead><tbody>'+
+      included.map(f=>{
+        const value=f.type==="CAPABILITY"
+          ?"Incluida"
+          :esc(f.value)+(f.unit?" "+esc(f.unit):"");
+        return '<tr><td>'+esc(f.family||"Otros")+'</td><td><strong>'+esc(f.label||f.code)+'</strong></td><td>'+value+'</td><td>Etapa '+esc(f.stage||1)+'</td></tr>';
+      }).join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">No hay prestaciones comerciales congeladas para este contrato.</div>';
+}
+
+async function loadMyPlan(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("myPlanDelivery");
+  if(!select)return;
+
+  const previous=select.value;
+  select.innerHTML=state.deliveries.length
+    ? state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("")
+    : '<option value="">No hay DELIVERY asignados</option>';
+
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  await loadMyPlanSummary();
+}
+
+async function loadMyPlanSummary(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const deliveryId=$("myPlanDelivery")?.value||null;
+  if(!deliveryId){
+    state.myPlanSummary=null;
+    renderMyPlan();
+    return;
+  }
+  try{
+    state.myPlanSummary=await rpc("delivery_my_plan_summary",{p_delivery_id:deliveryId});
+    renderMyPlan();
+  }catch(e){
+    state.myPlanSummary=null;
+    renderMyPlan();
+    if($("myPlanContract"))$("myPlanContract").innerHTML='<div class="message error">'+esc(e.message||"No se pudo consultar Mi Plan.")+'</div>';
+  }
+}
+
+function openMyPlanResource(section,selectId){
+  const deliveryId=$("myPlanDelivery")?.value||null;
+  const select=$(selectId);
+  if(deliveryId&&select&&[...select.options].some(o=>o.value===deliveryId))select.value=deliveryId;
+  showSection(section);
 }
 
 async function loadDeliveryProfile() {
@@ -5538,6 +5665,11 @@ async function saveRestrictedArea(){
   try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
 }
 function bindEvents() {
+  if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
+  if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
+  if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
+  if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
+  if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
   if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
   if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
   if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
