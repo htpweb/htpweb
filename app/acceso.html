@@ -78,6 +78,26 @@ const params = new URLSearchParams(location.search);
 const fallbackReturn = obtenerDeliverySlug() ? urlDelivery("index.html") : "../index.html";
 const hasExplicitReturn = params.has("return");
 const requestedReturn = retornoSeguro(params.get("return"), fallbackReturn);
+const referralFromUrl=(params.get("ref")||"").trim().toUpperCase();
+if(referralFromUrl){
+  localStorage.setItem("htpweb_pending_referral",referralFromUrl);
+}
+
+async function claimPendingReferral(){
+  const code=(localStorage.getItem("htpweb_pending_referral")||"").trim().toUpperCase();
+  if(!code)return null;
+
+  const customerResult=await supabaseClient.rpc("current_customer_id");
+  if(customerResult.error)throw customerResult.error;
+  if(!customerResult.data)return null;
+
+  const claim=await supabaseClient.rpc("claim_delivery_referral",{p_code:code});
+  if(claim.error)throw claim.error;
+
+  localStorage.removeItem("htpweb_pending_referral");
+  showMessage("Invitación aceptada. Ya puedes realizar pedidos con este DELIVERY.","success");
+  return claim.data||null;
+}
 
 async function syncAccountAccess() {
   const claim = await supabaseClient.rpc("claim_my_delivery_authorizations");
@@ -179,6 +199,11 @@ async function init() {
 
       const { data: customerId } = await supabaseClient.rpc("current_customer_id");
       if (customerId) {
+        try{
+          await claimPendingReferral();
+        }catch(referralError){
+          showMessage(referralError.message||"No se pudo aplicar la invitación.");
+        }
         if (obtenerDeliverySlug()) {
           $("ordersLink").href = urlDelivery("pedidos.html");
           $("ordersLink").classList.remove("hidden");
@@ -278,6 +303,7 @@ $("loginForm").onsubmit = async event => {
     if (error) throw error;
 
     const access = await syncAccountAccess();
+    await claimPendingReferral();
     location.href = authenticatedDestination(access);
   } catch (e) {
     showMessage(e.message || "No se pudo iniciar sesión.");
@@ -312,6 +338,7 @@ $("registerForm").onsubmit = async event => {
       });
 
       await asegurarCustomerActual({ name, phone, email });
+      await claimPendingReferral();
       const access = await syncAccountAccess();
       location.href = authenticatedDestination(access);
       return;
