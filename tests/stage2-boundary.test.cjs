@@ -7,6 +7,7 @@ const promote=fs.readFileSync('supabase/migrations/20260925125259_promote_restri
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const monetization=fs.readFileSync('admin/monetization.js','utf8');
 const page=fs.readFileSync('admin/monetizacion.html','utf8');
+const drivers=fs.readFileSync('supabase/migrations/20260925132943_stage2_drivers_manual_dispatch.sql','utf8');
 
 test('áreas restringidas ya pertenecen a Etapa 1',()=>{
   assert.match(promote,/restricted_areas\.active\.max/);
@@ -47,8 +48,12 @@ test('MASTER identifica visualmente funciones Etapa 2 como activación posterior
   assert.match(page,/operación se active posteriormente/i);
 });
 
-test('Mi Plan no inventa consumo de repartidores antes del módulo Stage 2',()=>{
-  assert.match(admin,/Repartidores/);
-  assert.match(admin,/Etapa 2: el cupo ya puede estar contratado/);
-  assert.match(admin,/consumo se habilitará con el módulo de repartidores/);
+test('Repartidores y despacho manual ya son operativos dentro de Etapa 2',()=>{
+  assert.match(drivers,/DELIVERY_DRIVER/);
+  assert.match(drivers,/drivers\.active\.max/);
+  assert.match(drivers,/dispatch\.manual/);
+  assert.match(drivers,/orders\.concurrent_per_driver\.max/);
+  assert.match(drivers,/usage_available',true/);
+  assert.match(admin,/Gestiona cuáles cuentas están activas desde Repartidores/);
+  assert.doesNotMatch(admin,/consumo se habilitará con el módulo de repartidores/);
 });
