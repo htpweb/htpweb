@@ -406,6 +406,22 @@
         <small id="dispatchModeHelp" class="muted"></small>
       </div>
 
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Prueba de entrega</h3>
+            <p class="muted" style="margin:.35rem 0 0">Activa solo los métodos incluidos en el plan. Los pedidos que ya están EN_ROUTE conservan la configuración con la que iniciaron.</p>
+          </div>
+          <button id="deliveryProofSettingsSave" class="btn-primary" type="button">Guardar prueba</button>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+          <label class="workspace-note"><input id="proofRequirePin" type="checkbox"> Exigir PIN del cliente</label>
+          <label class="workspace-note"><input id="proofRequirePhoto" type="checkbox"> Exigir foto de entrega</label>
+          <label class="workspace-note"><input id="proofRequireSignature" type="checkbox"> Exigir firma del cliente</label>
+        </div>
+        <small id="deliveryProofSettingsHelp" class="muted"></small>
+      </div>
+
       <div class="card" id="driverAdminTools">
         <h3>Activar repartidor</h3>
         <p class="muted">El repartidor debe tener primero una cuenta HTPWEB. Búscalo por correo o teléfono exacto.</p>
