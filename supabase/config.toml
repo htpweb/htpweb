@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.resolver-google-maps]
 verify_jwt = true
+
+[functions.whatsapp-notify]
+verify_jwt = false
