@@ -6965,6 +6965,7 @@ function renderDriverOrders(){
   box.innerHTML=items.map(o=>{
     let action="";
     let safetyAction="";
+    let deviationAction="";
     const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
       state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
 
@@ -6984,6 +6985,22 @@ function renderDriverOrders(){
           ? '<div class="workspace-warning" style="margin:10px 0"><strong>SOS '+esc(sosStatusLabel(o.sos.status))+'</strong> · la alerta de seguridad sigue activa.</div>'
           : '<div style="margin:10px 0"><button class="btn-danger" type="button" data-driver-sos="'+esc(o.order_id)+'" style="font-size:1.05rem;font-weight:700">SOS</button><div class="muted">Úsalo si necesitas alertar al DELIVERY durante esta entrega.</div></div>';
       }
+
+      const deviationContext=driverDeviationContextFor(o.order_id);
+      const deviationPlan=driverDeviationPlanFor(o.order_id);
+      const deviationIncident=(routeDeviationState.driverSnapshot?.incidents||[])
+        .find(i=>i.order_id===o.order_id&&["OPEN","ACKNOWLEDGED"].includes(i.status));
+      if(deviationContext?.can_prepare){
+        if(deviationIncident){
+          deviationAction='<div class="workspace-warning" style="margin:10px 0"><strong>Desvío '+esc(sosStatusLabel(deviationIncident.status))+'</strong> · HTPWEB detectó una salida sostenida del corredor esperado.</div>';
+        }else if(deviationPlan){
+          const last=Number(deviationPlan.last_distance_m);
+          deviationAction='<div class="workspace-note" style="margin:10px 0"><strong>Monitoreo de desvío activo</strong> · corredor ±'+esc(deviationPlan.threshold_m||300)+' m'+
+            (Number.isFinite(last)?' · última distancia '+Math.round(last)+' m':'')+'</div>';
+        }else{
+          deviationAction='<div class="workspace-note" style="margin:10px 0"><strong>Monitoreo de desvío pendiente</strong> <button class="btn-muted" type="button" data-driver-deviation-plan="'+esc(o.order_id)+'" style="margin-left:8px">Preparar monitoreo</button></div>';
+        }
+      }
     }
 
     const routeMarker=nextRouteOrderId===o.order_id
@@ -6996,11 +7013,15 @@ function renderDriverOrders(){
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+proofPanel+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+deviationAction+proofPanel+action+'</div>';
   }).join("");
 
   box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
   box.querySelectorAll("[data-driver-sos]").forEach(b=>b.onclick=()=>triggerDriverSos(b.dataset.driverSos));
+  box.querySelectorAll("[data-driver-deviation-plan]").forEach(b=>b.onclick=async()=>{
+    const ok=await prepareDriverRouteDeviationPlan(b.dataset.driverDeviationPlan,{quiet:false});
+    if(ok)renderDriverOrders();
+  });
   box.querySelectorAll("[data-proof-pin]").forEach(b=>b.onclick=()=>verifyDriverProofPin(b.dataset.proofPin));
   box.querySelectorAll("[data-proof-photo]").forEach(b=>b.onclick=()=>uploadDriverProofPhoto(b.dataset.proofPhoto));
   box.querySelectorAll("[data-proof-view]").forEach(b=>b.onclick=()=>viewDeliveryProofMedia(b.dataset.proofView,b.dataset.proofKind));
@@ -7009,6 +7030,7 @@ function renderDriverOrders(){
   initDriverProofSignatureCanvases();
   updateDriverGpsShareUi();
   renderDriverSosNotice();
+  renderDriverRouteDeviationNotice();
   renderDriverRouteControls();
 }
 
