@@ -34,7 +34,9 @@ test('logística avanzada permanece explícitamente en Etapa 2',()=>{
     'delivery_proof.photo',
     'delivery_proof.signature',
     'safety.sos',
-    'safety.route_deviation'
+    'safety.route_deviation',
+    'customers.groups',
+    'referrals.analytics'
   ]){
     const line=catalog.split('\n').find(x=>x.includes("('"+code+"',"));
     assert.ok(line,'Falta '+code+' en catálogo');
@@ -42,11 +44,12 @@ test('logística avanzada permanece explícitamente en Etapa 2',()=>{
   }
 });
 
-test('MASTER identifica Etapa 2 como rollout progresivo',()=>{
+test('MASTER identifica Etapa 2 como operativa y gobernada por plan',()=>{
   assert.match(monetization,/Etapa /);
-  assert.match(page,/Etapa 2 se activa por bloques/i);
-  assert.match(page,/algunas capacidades ya están operativas/i);
-  assert.match(page,/otras se habilitan conforme avance el roadmap/i);
+  assert.match(page,/Etapa 2 está operativa/i);
+  assert.match(page,/cada capacidad se activa únicamente cuando está incluida en el plan comercial/i);
+  assert.match(page,/excepción MASTER/i);
+  assert.doesNotMatch(page,/otras se habilitan conforme avance el roadmap/i);
 });
 
 test('Repartidores y despacho manual ya son operativos dentro de Etapa 2',()=>{
