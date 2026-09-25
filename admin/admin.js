@@ -5949,7 +5949,7 @@ function renderDispatchOrders(){
     let controls="";
 
     if(o.status==="EN_ROUTE"){
-      controls='<div class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</div>';
+      controls='<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</span><button class="btn-muted" type="button" data-dispatch-proof="'+esc(o.order_id)+'">Ver prueba</button></div><div id="dispatchProof-'+esc(o.order_id)+'"></div>';
     }else if(mode==="MANUAL"){
       const options='<option value="">Seleccionar repartidor</option>'+drivers.map(d=>{
         const active=Number(d.active_orders||0);
@@ -5988,6 +5988,38 @@ function renderDispatchOrders(){
   box.querySelectorAll("[data-dispatch-assign]").forEach(b=>b.onclick=()=>assignDriverToOrder(b.dataset.dispatchAssign));
   box.querySelectorAll("[data-dispatch-unassign]").forEach(b=>b.onclick=()=>unassignDriverFromOrder(b.dataset.dispatchUnassign));
   box.querySelectorAll("[data-dispatch-accept]").forEach(b=>b.onclick=()=>acceptHybridDispatchSuggestion(b.dataset.dispatchAccept));
+  box.querySelectorAll("[data-dispatch-proof]").forEach(b=>b.onclick=()=>showDispatchDeliveryProof(b.dataset.dispatchProof));
+}
+
+async function showDispatchDeliveryProof(orderId){
+  const host=$("dispatchProof-"+orderId);
+  if(!host)return;
+  host.innerHTML='<div class="muted" style="margin-top:8px">Consultando prueba…</div>';
+  try{
+    const proof=await rpc("delivery_order_proof_snapshot",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_order_id:orderId
+    });
+    if(!proof?.enabled){
+      host.innerHTML='<div class="muted" style="margin-top:8px">Este pedido no requiere prueba de entrega.</div>';
+      return;
+    }
+    const rows=[];
+    if(proof.require_pin)rows.push(proof.pin_verified?'✅ PIN verificado':'⏳ PIN pendiente');
+    if(proof.require_photo)rows.push(proof.photo_uploaded?'✅ Foto cargada':'⏳ Foto pendiente');
+    if(proof.require_signature)rows.push(proof.signature_uploaded?'✅ Firma registrada':'⏳ Firma pendiente');
+    host.innerHTML='<div class="workspace-note" style="margin-top:8px">'+
+      '<div>'+rows.map(esc).join(' · ')+'</div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+
+      (proof.photo_uploaded?'<button class="btn-muted" type="button" data-admin-proof-view="'+esc(orderId)+'" data-proof-kind="PHOTO">Ver foto</button>':'')+
+      (proof.signature_uploaded?'<button class="btn-muted" type="button" data-admin-proof-view="'+esc(orderId)+'" data-proof-kind="SIGNATURE">Ver firma</button>':'')+
+      '</div><small class="muted">'+(proof.ready?'Prueba completa.':'Entrega todavía bloqueada por evidencia pendiente.')+'</small></div>';
+    host.querySelectorAll("[data-admin-proof-view]").forEach(b=>{
+      b.onclick=()=>viewDeliveryProofMedia(b.dataset.adminProofView,b.dataset.proofKind);
+    });
+  }catch(e){
+    host.innerHTML='<div class="workspace-warning" style="margin-top:8px">'+esc(e.message||"No se pudo consultar la prueba.")+'</div>';
+  }
 }
 
 async function saveDispatchMode(){
