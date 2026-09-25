@@ -5,7 +5,7 @@ const state={role:null,plans:[],features:[],deliveries:[],subscriptions:[]};
 function msg(t,e=false){const b=$("message");b.textContent=t;b.className="message "+(e?"error":"success");}
 async function rpc(n,a={}){const {data,error}=await supabaseClient.rpc(n,a);if(error)throw error;return data;}
 function fmtDate(v){if(!v)return "—";const d=new Date(v);return Number.isNaN(d.valueOf())?String(v):d.toLocaleDateString("es-EC",{year:"numeric",month:"2-digit",day:"2-digit"});}
-function money(v){return "$"+Number(v||0).toFixed(2);}
+function money(v){return Number(v||0).toFixed(2);}
 function tab(name){document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));document.querySelectorAll(".monetization-tab").forEach(s=>s.classList.add("hidden"));$("tab-"+name)?.classList.remove("hidden");}
 
 function groupedFeatures(){const groups=new Map();for(const f of state.features){if(!groups.has(f.family))groups.set(f.family,[]);groups.get(f.family).push(f);}return groups;}
