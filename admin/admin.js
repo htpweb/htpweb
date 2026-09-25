@@ -5311,8 +5311,8 @@ function bindEvents() {
   };
 
   $("refreshBtn").onclick = refreshAll;
-  $("orderScope").onchange = loadOrders;
-  $("analyticsScope").onchange = loadAnalytics;
+  if ($("orderScope")) $("orderScope").onchange = loadOrders;
+  if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
   const menuImportDelivery = $("menuImportDelivery");
   const menuExistingLocal = $("menuExistingLocal");
   const menuImportStatus = $("menuImportStatus");
@@ -5340,23 +5340,23 @@ function bindEvents() {
   if (reanalyzeMenuBtn) reanalyzeMenuBtn.onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
   if (addMenuCategoryBtn) addMenuCategoryBtn.onclick = addMenuCategory;
   if (applyMenuImportBtn) applyMenuImportBtn.onclick = applyMenuImport;
-  $("advertisementScope").onchange = loadAdvertisingTargets;
-  $("advertisementDelivery").onchange = loadAdvertisingTargets;
-  $("advertisementLocal").onchange = loadAdvertisingProducts;
+  if ($("advertisementScope")) $("advertisementScope").onchange = loadAdvertisingTargets;
+  if ($("advertisementDelivery")) $("advertisementDelivery").onchange = loadAdvertisingTargets;
+  if ($("advertisementLocal")) $("advertisementLocal").onchange = loadAdvertisingProducts;
   $("saveAdvertisementBtn").onclick = saveAdvertisement;
   $("clearAdvertisementBtn").onclick = clearAdvertisementForm;
   $("previewAdvertisementBtn").onclick = previewAdvertisementDestination;
-  $("catalogLocal").onchange = loadCatalog;
+  if ($("catalogLocal")) $("catalogLocal").onchange = loadCatalog;
 
   $("submitRequestBtn").onclick = submitRequest;
-  $("requestType").onchange = updateRequestForm;
-  $("requestDelivery").onchange = updateRequestForm;
-  $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  if ($("requestType")) $("requestType").onchange = updateRequestForm;
+  if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
+  if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
   $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
   $("profileGoStorageBtn").onclick = openDeliveryStorage;
-  $("shareDelivery").onchange = loadShareLocals;
-  $("shareLocal").onchange = loadShareProducts;
-  $("shareProduct").onchange = renderShareLinks;
+  if ($("shareDelivery")) $("shareDelivery").onchange = loadShareLocals;
+  if ($("shareLocal")) $("shareLocal").onchange = loadShareProducts;
+  if ($("shareProduct")) $("shareProduct").onchange = renderShareLinks;
   $("shareLocalNativeBtn").onclick = () => nativeShare("local");
   $("shareLocalWhatsappBtn").onclick = () => shareWhatsApp("local");
   $("shareLocalFacebookBtn").onclick = () => shareFacebook("local");
@@ -5365,23 +5365,23 @@ function bindEvents() {
   $("shareProductWhatsappBtn").onclick = () => shareWhatsApp("product");
   $("shareProductFacebookBtn").onclick = () => shareFacebook("product");
   $("copyProductLinkBtn").onclick = () => copyShareLink("product");
-  $("profileLocal").onchange = loadLocalProfileRecord;
+  if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
   $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
   $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
   $("userManagerSearch").oninput = renderUserOptions;
-  $("userManagerUser").onchange = renderManagedUser;
+  if ($("userManagerUser")) $("userManagerUser").onchange = renderManagedUser;
   $("assignDeliveryUserBtn").onclick = assignDeliveryUser;
   $("assignLocalUserBtn").onclick = assignLocalUser;
-  $("feeDelivery").onchange = loadFeeDelivery;
-  $("feeMode").onchange = updateFeeModeUI;
+  if ($("feeDelivery")) $("feeDelivery").onchange = loadFeeDelivery;
+  if ($("feeMode")) $("feeMode").onchange = updateFeeModeUI;
   $("saveFeeConfigBtn").onclick = saveFeeConfig;
   $("saveFeeScheduleBtn").onclick = saveFeeSchedule;
-  $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
+  if ($("feeRatePeriod")) $("feeRatePeriod").onchange = () => selectFeeRatePeriod($("feeRatePeriod").value);
   $("saveFeeRateBtn").onclick = saveFeeRate;
   $("enableDeliveryFeesBtn").onclick = enableDeliveryFees;
-  $("coverageDelivery").onchange = loadCoverageContext;
+  if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
   $("setCoverageLimitBtn").onclick = setCoverageLimit;
   $("enableZonesBtn").onclick = enableZonesManagement;
@@ -5394,21 +5394,21 @@ function bindEvents() {
   $("saveProductBtn").onclick = saveProduct;
   $("clearProductBtn").onclick = clearProductForm;
   $("catalogDeleteProductImageBtn").onclick = deleteCatalogProductImage;
-  $("variantProduct").onchange = loadVariants;
+  if ($("variantProduct")) $("variantProduct").onchange = loadVariants;
   $("saveVariantBtn").onclick = saveVariant;
   $("clearVariantBtn").onclick = clearVariantForm;
   $("enableCatalogManagementBtn").onclick = enableCatalogManagement;
-  $("scheduleLocal").onchange = loadSchedules;
+  if ($("scheduleLocal")) $("scheduleLocal").onchange = loadSchedules;
   $("saveSchedulesBtn").onclick = saveSchedules;
   $("enableScheduleManagementBtn").onclick = enableScheduleManagement;
 
-  $("storageDelivery").onchange = refreshDeliveryMediaPreview;
-  $("storageLocal").onchange = async () => {
+  if ($("storageDelivery")) $("storageDelivery").onchange = refreshDeliveryMediaPreview;
+  if ($("storageLocal")) $("storageLocal").onchange = async () => {
     await refreshLocalMediaPreview();
     await refreshLocalGallery();
     await loadStorageProducts();
   };
-  $("storageProduct").onchange = refreshProductMediaPreview;
+  if ($("storageProduct")) $("storageProduct").onchange = refreshProductMediaPreview;
 
   $("uploadDeliveryLogoBtn").onclick = uploadDeliveryLogo;
   $("deleteDeliveryLogoBtn").onclick = deleteDeliveryLogo;
