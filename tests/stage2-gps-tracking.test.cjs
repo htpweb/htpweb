@@ -46,12 +46,14 @@ test('broadcast de ubicación usa topic por pedido y canal privado',()=>{
 });
 
 test('Realtime solo deja recibir tracking a actores autorizados',()=>{
-  const fn=migration.match(/create or replace function public\.can_receive_order_tracking_topic[\s\S]*?grant execute on function public\.can_receive_order_tracking_topic/)?.[0]||'';
+  const fn=migration.match(/create or replace function private\.can_receive_order_tracking_topic[\s\S]*?grant execute on function private\.can_receive_order_tracking_topic/)?.[0]||'';
   assert.match(fn,/current_customer_id\(\)=v_customer_id/);
   assert.match(fn,/tracking\.customer/);
   assert.match(fn,/DELIVERY_ADMIN','DELIVERY_OPERATOR/);
   assert.match(fn,/DELIVERY_DRIVER/);
   assert.match(migration,/create policy htpweb_order_tracking_receive/);
+  assert.match(migration,/private\.can_receive_order_tracking_topic/);
+  assert.match(migration,/drop function if exists public\.can_receive_order_tracking_topic/);
   assert.match(migration,/realtime\.messages\.extension='broadcast'/);
 });
 
