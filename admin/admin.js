@@ -37,9 +37,6 @@ const state = {
   deliveryServiceAccess: null,
   masterDeliveryService: null,
   myPlanSummary: null,
-  driversSnapshot: null,
-  dispatchSnapshot: null,
-  driverCandidate: null,
   driverOrders: []
 };
 
