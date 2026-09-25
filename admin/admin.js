@@ -2280,7 +2280,7 @@ async function loadCities() {
   state.cities = data || [];
 
   $("deliveryCity").innerHTML =
-    '<option value="">Sin ciudad</option>' +
+    '<option value="">Sin cantón</option>' +
     state.cities.filter(c => c.active).map(c =>
       `<option value="${c.id}">${esc(c.name)} — ${esc(c.province || "")}</option>`
     ).join("");
@@ -2322,29 +2322,6 @@ async function loadDeliveriesModule() {
     : '<div class="muted">No hay deliveries.</div>';
 }
 
-async function saveCity() {
-  try {
-    const name = $("cityName").value.trim();
-    const province = $("cityProvince").value.trim();
-    const country = $("cityCountry").value.trim() || "Ecuador";
-
-    await rpc("master_save_city", {
-      p_city_id: null,
-      p_name: name,
-      p_province: province || null,
-      p_country: country,
-      p_active: true
-    });
-
-    message("Ciudad creada.");
-    $("cityName").value = "";
-    $("cityProvince").value = "";
-    await loadCities();
-  } catch (e) {
-    message(e.message || "No se pudo crear la ciudad.", "error");
-  }
-}
-
 function editMasterDeliveryRecord(deliveryId) {
   if (state.role !== "MASTER") return;
   const d = state.deliveries.find(x => x.id === deliveryId);
@@ -2371,7 +2348,7 @@ async function saveDelivery() {
     const editingId = $("deliveryEditId")?.value || null;
     const cityId = $("deliveryCity").value || null;
     if (!$("deliveryName").value.trim()) throw new Error("Escribe el nombre del DELIVERY.");
-    if (!cityId) throw new Error("Selecciona la ciudad del DELIVERY.");
+    if (!cityId) throw new Error("Selecciona el cantón del DELIVERY.");
     const deliveryId = await rpc("master_save_delivery", {
       p_delivery_id: editingId,
       p_name: $("deliveryName").value.trim(),
@@ -2694,9 +2671,9 @@ function renderCoverageSummary() {
 
   container.innerHTML = `
     <div><strong>Delivery:</strong> ${esc(context.delivery.name || "—")}</div>
-    <div><strong>Ciudad:</strong> ${esc(context.city
+    <div><strong>Cantón:</strong> ${esc(context.city
       ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
-      : "Sin ciudad asignada")}</div>
+      : "Sin cantón asignado")}</div>
     <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
     <div><strong>Gestión de zonas:</strong> ${context.zones_manage_enabled ? "Habilitada" : "No habilitada"}</div>
   `;
@@ -2714,8 +2691,8 @@ function renderCoverageZones() {
 
   if (!context.city) {
     container.innerHTML = state.role === "MASTER"
-      ? '<div class="message error">Este DELIVERY todavía no tiene ciudad. Asígnala desde la configuración MASTER.</div>'
-      : '<div class="message error">Este DELIVERY todavía no tiene ciudad configurada. Solicita a HTPWEB que la asigne.</div>';
+      ? '<div class="message error">Este DELIVERY todavía no tiene cantón. Asígnalo desde la configuración MASTER.</div>'
+      : '<div class="message error">Este DELIVERY todavía no tiene cantón configurado. Solicita a HTPWEB que lo asigne.</div>';
     return;
   }
 
@@ -2925,14 +2902,14 @@ async function setCoverageDeliveryCity() {
     const cityId = $("coverageCity").value || null;
 
     if (!delivery) throw new Error("Selecciona un DELIVERY.");
-    if (!cityId) throw new Error("Selecciona una ciudad.");
+    if (!cityId) throw new Error("Selecciona un cantón.");
 
     await rpc("master_set_delivery_city", {
       p_delivery_id: delivery.id,
       p_city_id: cityId
     });
 
-    message("Ciudad del DELIVERY actualizada.");
+    message("Cantón del DELIVERY actualizado.");
     await Promise.all([loadScopes(), loadDeliveriesModule()]);
     await loadCoverage();
   } catch (e) {
@@ -5437,7 +5414,6 @@ function bindEvents() {
   $("enableZonesBtn").onclick = enableZonesManagement;
   $("saveZoneBtn").onclick = saveZone;
   $("clearZoneBtn").onclick = clearZoneForm;
-  $("saveCityBtn").onclick = saveCity;
   $("saveDeliveryBtn").onclick = saveDelivery;
   $("saveCategoryBtn").onclick = saveCategory;
   $("clearCategoryBtn").onclick = clearCategoryForm;
@@ -5571,8 +5547,6 @@ function bindMasterDeliveryWorkspace(){
   if(!section)return;
 
   const original=[...section.children];
-  const cityCard=original.find(x=>x.querySelector("h2")?.textContent.trim()==="Crear ciudad");
-
   const toolbar=document.createElement("div");
   toolbar.className="card workspace-title";
   toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, cuenta administradora, zonas y tarifas en un solo ambiente.</p></div>'+

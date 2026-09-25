@@ -38,3 +38,19 @@ test('menu image import cannot recreate manual DELIVERY-local assignments',()=>{
  assert.match(admin,/zone_id: zoneId/);
  assert.match(html,/cobertura del LOCAL no se asigna aquí: se determina por su zona/);
 });
+
+test('DELIVERY no crea ciudades y Zonas resuelve provincia/cantón al guardar',()=>{
+ const html=fs.readFileSync('admin/index.html','utf8');
+ const admin=fs.readFileSync('admin/admin.js','utf8');
+ const zones=fs.readFileSync('admin/zones-master.js','utf8');
+ assert.doesNotMatch(html,/Crear ciudad/);
+ assert.doesNotMatch(html,/id="saveCityBtn"/);
+ assert.doesNotMatch(admin,/saveCityBtn/);
+ assert.match(html,/id="deliveryCity"/);
+ assert.match(html,/<label>Cantón<\/label><select id="deliveryCity"/);
+ assert.match(zones,/id="zoneProvince"/);
+ assert.match(zones,/id="zoneCity"/);
+ assert.match(zones,/master_save_city/);
+ assert.match(zones,/resolveZoneCityId/);
+ assert.match(zones,/p_city_id:cityId/);
+});
