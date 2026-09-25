@@ -5592,12 +5592,20 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,candidate:null};
 const safetySosState={
   deliveryChannel:null,
   deliveryId:null,
   driverChannel:null,
   refreshTimer:null
+};
+const routeDeviationState={
+  deliveryChannel:null,
+  deliveryId:null,
+  driverChannel:null,
+  refreshTimer:null,
+  driverSnapshot:{plans:[],incidents:[]},
+  contexts:{}
 };
 const driverGpsState={
   selectedDriverId:null,
