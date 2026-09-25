@@ -39,6 +39,7 @@
       <button data-section="fees">Tarifas</button>
       <button data-section="coverage">Cobertura</button>
       <button data-section="network">Clientes y referidos</button>
+      <button data-section="security">Seguridad</button>
       <button data-section="catalog">Catálogo</button>
       <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
@@ -778,6 +779,53 @@
       <div class="card">
         <h3>Clientes vinculados</h3>
         <div id="networkCustomers"></div>
+      </div>
+    </section>
+
+    <section id="section-security" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Seguridad y áreas restringidas</h2>
+            <p class="muted">El DELIVERY puede excluir polígonos dentro de sus zonas activas de forma permanente o por horario, según su plan.</p>
+          </div>
+          <select id="securityDelivery" style="max-width:340px"></select>
+        </div>
+        <div id="securityPlanNotice" class="workspace-note" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Nueva / editar área restringida</h3>
+        <input id="restrictedAreaId" type="hidden">
+        <div class="form-grid">
+          <div><label>Zona activa</label><select id="restrictedAreaZone"></select></div>
+          <div><label>Nombre</label><input id="restrictedAreaName" maxlength="160" placeholder="Ej. Sector restringido nocturno"></div>
+          <div><label>Motivo interno</label><input id="restrictedAreaReason" maxlength="300" placeholder="Ej. Seguridad"></div>
+          <div><label>Tipo</label><select id="restrictedAreaMode"><option value="PERMANENT">Permanente</option><option value="SCHEDULE">Por horario</option></select></div>
+          <div><label>Estado</label><select id="restrictedAreaActive"><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
+        </div>
+        <div id="restrictedAreaMap" class="workspace-map" tabindex="0" aria-label="Dibujar área restringida" style="margin-top:12px"></div>
+        <p id="restrictedAreaPointCount" class="muted">0 puntos.</p>
+        <div class="row">
+          <button id="restrictedAreaUndo" class="btn-muted" type="button">Deshacer punto</button>
+          <button id="restrictedAreaClear" class="btn-muted" type="button">Borrar dibujo</button>
+        </div>
+
+        <div id="restrictedAreaSchedule" style="margin-top:16px">
+          <div class="row between"><h4>Horario de restricción</h4><button id="restrictedAreaAddRule" class="btn-muted" type="button">+ Regla</button></div>
+          <p class="muted">Ejemplo: 19:00 → 06:00. El horario puede cruzar medianoche.</p>
+          <div id="restrictedAreaRules"></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button id="restrictedAreaSave" class="btn-primary" type="button">Guardar área</button>
+          <button id="restrictedAreaNew" class="btn-muted" type="button">Nueva área</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Áreas configuradas</h3>
+        <div id="restrictedAreasList"></div>
       </div>
     </section>
 
