@@ -419,6 +419,15 @@ begin
     raise exception 'HTPWEB: repartidor inexistente o inactivo para este DELIVERY';
   end if;
 
+  if not public.delivery_has_capability(p_delivery_id,'gps.live') then
+    return jsonb_build_object(
+      'enabled',false,
+      'history_days',0,
+      'current',null,
+      'history','[]'::jsonb
+    );
+  end if;
+
   v_history_days:=public.delivery_limit_value(p_delivery_id,'gps_history.days');
 
   select jsonb_build_object(
@@ -457,7 +466,7 @@ begin
   end if;
 
   return jsonb_build_object(
-    'enabled',public.delivery_has_capability(p_delivery_id,'gps.live'),
+    'enabled',true,
     'history_days',coalesce(v_history_days,0),
     'current',v_current,
     'history',coalesce(v_history,'[]'::jsonb)
