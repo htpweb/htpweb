@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const hardening=fs.readFileSync('supabase/migrations/20260925123106_restricted_area_tenant_hardening.sql','utf8');
 const policies=fs.readFileSync('supabase/migrations/20260925050141_delivery_operational_plan_policies.sql','utf8');
 const context=fs.readFileSync('supabase/migrations/20260925051606_restricted_area_context.sql','utf8');
+const networkPolicies=fs.readFileSync('supabase/migrations/20260925121909_delivery_contacts_referral_links.sql','utf8');
 const checkout=fs.readFileSync('supabase/functions/crear-pedido/index.ts','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
@@ -42,7 +43,7 @@ test('permanente y horario nocturno siguen soportados',()=>{
 });
 
 test('área restringida tiene prioridad antes de clientes en checkout',()=>{
-  const policy=policies.match(/create or replace function public\.evaluate_customer_order_policy[\s\S]*/)?.[0]||policies;
+  const policy=networkPolicies.match(/create or replace function public\.evaluate_customer_order_policy[\s\S]*/)?.[0]||networkPolicies;
   const restricted=policy.indexOf('RESTRICTED_AREA');
   const access=policy.indexOf('delivery_customer_access_mode_at');
   assert.ok(restricted>=0);
