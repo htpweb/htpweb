@@ -138,7 +138,7 @@ async function syncAccountAccess() {
   let service = null;
   let referral = null;
 
-  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role)) {
+  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER"].includes(role)) {
     const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
     if (serviceResult.error) throw serviceResult.error;
     service = serviceResult.data || null;
@@ -163,12 +163,12 @@ async function syncAccountAccess() {
 function authenticatedDestination(access) {
   const role = access?.role || "CLIENT";
 
-  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role) && !access?.service?.has_active_service) {
+  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER"].includes(role) && !access?.service?.has_active_service) {
     return "../admin/index.html?service=blocked";
   }
 
   if (hasExplicitReturn) return requestedReturn;
-  if (["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN"].includes(role)) {
+  if (["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER","LOCAL_ADMIN"].includes(role)) {
     return "../admin/index.html";
   }
   return requestedReturn;
@@ -224,7 +224,7 @@ async function init() {
       const role = access.role;
       if (role && role !== "CLIENT") {
         $("adminBtn").classList.remove("hidden");
-        if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role) && !access?.service?.has_active_service) {
+        if (["DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER"].includes(role) && !access?.service?.has_active_service) {
           const deliveries=Array.isArray(access?.service?.deliveries)?access.service.deliveries:[];
           const current=deliveries[0]||{};
           showMessage(

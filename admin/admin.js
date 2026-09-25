@@ -36,13 +36,15 @@ const state = {
   deliveryAuthorizations: [],
   deliveryServiceAccess: null,
   masterDeliveryService: null,
-  myPlanSummary: null
+  myPlanSummary: null,
+  driverOrders: []
 };
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","requests","fees","coverage","network","security","storage","advertising","analytics"],
-  DELIVERY_OPERATOR: ["overview","orders"],
+  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
+  DELIVERY_OPERATOR: ["overview","orders","drivers"],
+  DELIVERY_DRIVER: ["driverorders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
 
@@ -173,7 +175,7 @@ async function init() {
 
     state.role = role;
 
-    if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) {
+    if (["DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER"].includes(state.role)) {
       const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
       if (serviceResult.error) throw serviceResult.error;
       state.deliveryServiceAccess = serviceResult.data || null;
@@ -204,6 +206,10 @@ async function init() {
     if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) await renderInternalNotifications();
 
     await loadScopes();
+    if (state.role === "DELIVERY_DRIVER") {
+      await loadDriverOrders();
+      return;
+    }
     await loadCities();
     await refreshAll();
   } catch (error) {
@@ -245,6 +251,8 @@ function showSection(name) {
   if (name === "share") loadShareModule();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
+  if (name === "drivers") loadDriverWorkspace();
+  if (name === "driverorders") loadDriverOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") (state.role === "MASTER" && window.loadDeliveryMasterWorkspace ? window.loadDeliveryMasterWorkspace() : loadDeliveriesModule());
   if (name === "users") loadUsersModule();
@@ -298,6 +306,18 @@ async function loadScopes() {
       if (dRes.error) throw dRes.error;
       state.deliveries = dRes.data || [];
     }
+  }
+
+  if (state.role === "DELIVERY_DRIVER") {
+    const deliveries=Array.isArray(state.deliveryServiceAccess?.deliveries)
+      ? state.deliveryServiceAccess.deliveries
+      : [];
+    state.deliveries=deliveries.map(d=>({
+      id:d.delivery_id||d.id,
+      name:d.name||"DELIVERY",
+      slug:d.slug||null,
+      active:d.active!==false
+    })).filter(d=>d.id);
   }
 
   if (state.role === "LOCAL_ADMIN") {
@@ -379,6 +399,9 @@ function renderScopeSelectors() {
     } else if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) {
       $("scopeInfo").textContent =
         "Ámbito DELIVERY · " + deliveryCount + " asignado" + (deliveryCount === 1 ? "" : "s");
+    } else if (state.role === "DELIVERY_DRIVER") {
+      $("scopeInfo").textContent =
+        "Repartidor · " + deliveryCount + " DELIVERY asignado" + (deliveryCount === 1 ? "" : "s");
     } else if (state.role === "LOCAL_ADMIN") {
       $("scopeInfo").textContent =
         "Ámbito LOCAL · " + localCount + " asignado" + (localCount === 1 ? "" : "s");
@@ -390,6 +413,10 @@ function renderScopeSelectors() {
 
 async function refreshAll() {
   clearMessage();
+  if (state.role === "DELIVERY_DRIVER") {
+    await loadDriverOrders();
+    return;
+  }
   await Promise.all([
     loadOverview(),
     loadOrders(),
@@ -1333,7 +1360,7 @@ function renderMyPlan(){
     myPlanCapacityCard("Zonas activas",usage.zones,"Elige cuáles operar desde Cobertura."),
     myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Tú defines los polígonos desde Seguridad."),
     myPlanCapacityCard("Operadores",usage.operators,"Operadores DELIVERY_OPERATOR activos dentro del cupo contratado."),
-    myPlanCapacityCard("Repartidores",usage.drivers,"Etapa 2: el cupo ya puede estar contratado; el consumo se habilitará con el módulo de repartidores.")
+    myPlanCapacityCard("Repartidores",usage.drivers,"Gestiona cuáles cuentas están activas desde Repartidores.")
   ].join("");
 
   const included=(summary.features||[]).filter(f=>
@@ -5564,6 +5591,234 @@ async function loadAnalytics() {
   }
 }
 
+const driverWorkspaceState={drivers:null,dispatch:null,candidate:null};
+
+function driverWorkspaceDeliveryId(){
+  return $("driversDelivery")?.value||state.deliveries[0]?.id||null;
+}
+
+function renderDriverCandidate(){
+  const box=$("driverLookupResult");
+  if(!box)return;
+  const item=driverWorkspaceState.candidate;
+  if(!item){
+    box.innerHTML='<div class="muted">Busca una cuenta HTPWEB por correo o teléfono exacto.</div>';
+    return;
+  }
+  const allowed=["CLIENT","DELIVERY_DRIVER"].includes(item.role_code);
+  box.innerHTML='<div class="workspace-note"><strong>'+esc(item.full_name||item.email||"Cuenta HTPWEB")+'</strong>'+
+    '<div>'+esc(item.email||"")+(item.phone?' · '+esc(item.phone):'')+'</div>'+
+    '<div>Rol actual: '+esc(item.role_code||"—")+(item.already_active?' · Ya activo en este DELIVERY':'')+'</div>'+
+    (allowed&&!item.already_active
+      ? '<button class="btn-primary" type="button" id="driverActivateCandidate" style="margin-top:8px">Activar como repartidor</button>'
+      : (!allowed?'<div class="workspace-warning" style="margin-top:8px">Esta cuenta tiene un rol administrativo y no puede convertirse automáticamente en repartidor.</div>':'')
+    )+'</div>';
+  if($("driverActivateCandidate"))$("driverActivateCandidate").onclick=activateDriverCandidate;
+}
+
+function renderDriversList(){
+  const box=$("driversList");if(!box)return;
+  const snap=driverWorkspaceState.drivers||{};
+  const items=Array.isArray(snap.drivers)?snap.drivers:[];
+  if(!items.length){
+    box.innerHTML='<div class="muted">No hay repartidores activos.</div>';
+    return;
+  }
+  const canManage=state.role==="DELIVERY_ADMIN";
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Repartidor</th><th>Pedidos activos</th><th></th></tr></thead><tbody>'+
+    items.map(d=>'<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
+      '</div></td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
+      '</td><td>'+(canManage?'<button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-driver-disable]").forEach(b=>b.onclick=()=>deactivateDriver(b.dataset.driverDisable));
+}
+
+function renderDispatchOrders(){
+  const box=$("dispatchOrders");if(!box)return;
+  const dispatch=driverWorkspaceState.dispatch||{};
+  const drivers=Array.isArray(driverWorkspaceState.drivers?.drivers)?driverWorkspaceState.drivers.drivers:[];
+  const orders=Array.isArray(dispatch.orders)?dispatch.orders:[];
+  const enabled=dispatch.manual_dispatch===true;
+  if(!enabled){
+    box.innerHTML='<div class="workspace-warning">El plan vigente no incluye <code>dispatch.manual</code>.</div>';
+    return;
+  }
+  if(!orders.length){
+    box.innerHTML='<div class="muted">No hay pedidos READY o EN_ROUTE para despachar.</div>';
+    return;
+  }
+  box.innerHTML=orders.map(o=>{
+    const assigned=o.assignment||null;
+    const options='<option value="">Seleccionar repartidor</option>'+drivers.map(d=>
+      '<option value="'+esc(d.user_id)+'" '+(assigned?.driver_user_id===d.user_id?'selected':'')+'>'+
+      esc(d.full_name||"Repartidor")+' · '+esc(d.active_orders||0)+' activo(s)</option>'
+    ).join("");
+    const controls=o.status==="READY"
+      ? '<div class="row" style="gap:8px;flex-wrap:wrap"><select id="dispatchDriver-'+esc(o.order_id)+'" style="max-width:320px">'+options+
+        '</select><button class="btn-primary" type="button" data-dispatch-assign="'+esc(o.order_id)+'">Asignar</button>'+
+        (assigned?'<button class="btn-muted" type="button" data-dispatch-unassign="'+esc(o.order_id)+'">Quitar</button>':'')+'</div>'
+      : '<div class="muted">En ruta con '+esc(assigned?.driver_name||"repartidor asignado")+'.</div>';
+    return '<div class="order-local" style="margin-top:10px"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
+      '<div class="muted">'+esc(o.customer_name||"Cliente")+' · '+esc(o.delivery_address||"")+'</div></div>'+
+      '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+controls+'</div>';
+  }).join("");
+  box.querySelectorAll("[data-dispatch-assign]").forEach(b=>b.onclick=()=>assignDriverToOrder(b.dataset.dispatchAssign));
+  box.querySelectorAll("[data-dispatch-unassign]").forEach(b=>b.onclick=()=>unassignDriverFromOrder(b.dataset.dispatchUnassign));
+}
+
+async function loadDriverWorkspace(){
+  if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
+  const select=$("driversDelivery");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId)return;
+
+  try{
+    const [drivers,dispatch]=await Promise.all([
+      rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId})
+    ]);
+    driverWorkspaceState.drivers=drivers||{};
+    driverWorkspaceState.dispatch=dispatch||{};
+    const notice=$("driversPlanNotice");
+    if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
+      ' · pedidos simultáneos por repartidor '+esc(drivers?.concurrent_per_driver??"—")+
+      ' · despacho manual '+(drivers?.manual_dispatch?'Sí':'No');
+    if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
+    renderDriversList();
+    renderDispatchOrders();
+    renderDriverCandidate();
+  }catch(e){
+    message(e.message||"No se pudo cargar Repartidores y despacho.","error");
+  }
+}
+
+async function lookupDriverCandidate(){
+  try{
+    const identifier=$("driverLookupIdentifier")?.value.trim();
+    if(!identifier)throw new Error("Escribe el correo o teléfono exacto del repartidor.");
+    driverWorkspaceState.candidate=await rpc("delivery_driver_lookup",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_identifier:identifier
+    });
+    if(!driverWorkspaceState.candidate)throw new Error("No existe una cuenta HTPWEB activa con ese dato exacto.");
+    renderDriverCandidate();
+  }catch(e){
+    driverWorkspaceState.candidate=null;
+    renderDriverCandidate();
+    message(e.message||"No se pudo buscar la cuenta.","error");
+  }
+}
+
+async function activateDriverCandidate(){
+  const item=driverWorkspaceState.candidate;
+  if(!item)return;
+  try{
+    await rpc("delivery_set_driver",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_user_id:item.user_id,
+      p_active:true
+    });
+    message("Repartidor activado.");
+    driverWorkspaceState.candidate=null;
+    if($("driverLookupIdentifier"))$("driverLookupIdentifier").value="";
+    await loadDriverWorkspace();
+    if($("section-myplan")?.classList.contains("active"))await loadMyPlanSummary();
+  }catch(e){message(e.message||"No se pudo activar el repartidor.","error");}
+}
+
+async function deactivateDriver(userId){
+  try{
+    await rpc("delivery_set_driver",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_user_id:userId,
+      p_active:false
+    });
+    message("Repartidor desactivado.");
+    await loadDriverWorkspace();
+  }catch(e){message(e.message||"No se pudo desactivar el repartidor.","error");}
+}
+
+async function assignDriverToOrder(orderId){
+  try{
+    const driverId=$("dispatchDriver-"+orderId)?.value;
+    if(!driverId)throw new Error("Selecciona un repartidor.");
+    await rpc("delivery_assign_order_driver",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_order_id:orderId,
+      p_driver_user_id:driverId,
+      p_note:null
+    });
+    message("Pedido asignado al repartidor.");
+    await loadDriverWorkspace();
+  }catch(e){message(e.message||"No se pudo asignar el pedido.","error");}
+}
+
+async function unassignDriverFromOrder(orderId){
+  try{
+    await rpc("delivery_unassign_order_driver",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_order_id:orderId,
+      p_note:null
+    });
+    message("Repartidor retirado del pedido.");
+    await loadDriverWorkspace();
+  }catch(e){message(e.message||"No se pudo quitar el repartidor.","error");}
+}
+
+function renderDriverOrders(){
+  const box=$("driverOrdersList");if(!box)return;
+  const items=Array.isArray(state.driverOrders)?state.driverOrders:[];
+  if(!items.length){
+    box.innerHTML='<div class="muted">No tienes entregas asignadas.</div>';
+    return;
+  }
+  box.innerHTML=items.map(o=>{
+    let action="";
+    if(o.assignment_status==="ACTIVE"&&o.status==="READY"){
+      action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="EN_ROUTE">Iniciar ruta</button>';
+    }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
+      action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED">Marcar entregado</button>';
+    }
+    return '<div class="card"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
+      '<div class="muted">'+esc(o.delivery_name||"DELIVERY")+' · asignado '+esc(new Date(o.assigned_at).toLocaleString("es-EC"))+'</div></div>'+
+      '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+
+      '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
+      '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
+      '<p><strong>Total:</strong> $'+Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
+  }).join("");
+  box.querySelectorAll("[data-driver-status]").forEach(b=>{
+    b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next);
+  });
+}
+
+async function loadDriverOrders(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    const items=await rpc("driver_my_orders");
+    state.driverOrders=Array.isArray(items)?items:[];
+    renderDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudieron cargar tus entregas.","error");
+  }
+}
+
+async function driverChangeStatus(orderId,next){
+  try{
+    await rpc("driver_set_order_status",{
+      p_order_id:orderId,
+      p_new_status:next,
+      p_note:null
+    });
+    message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo actualizar la entrega.","error");
+  }
+}
+
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
 function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
@@ -5886,10 +6141,14 @@ async function saveRestrictedArea(){
   try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
 }
 function bindEvents() {
+  if ($("driversDelivery")) $("driversDelivery").onchange = loadDriverWorkspace;
+  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
+  if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
   if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
   if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
   if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
+  if ($("myPlanGoDrivers")) $("myPlanGoDrivers").onclick = () => openMyPlanResource("drivers","driversDelivery");
   if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
   if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
   if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
