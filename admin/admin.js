@@ -115,7 +115,7 @@ async function init() {
 
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
-  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
+  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);\n  const masterDeliveryWorkspaceSections = new Set(["fees","coverage"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
     const hiddenInsideLocales = state.role === "MASTER" && masterLocalWorkspaceSections.has(btn.dataset.section);
@@ -144,7 +144,7 @@ function showSection(name) {
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
   if (name === "requests") loadRequests();
-  if (name === "deliveries") loadDeliveriesModule();
+  if (name === "deliveries") (state.role === "MASTER" && window.loadDeliveryMasterWorkspace ? window.loadDeliveryMasterWorkspace() : loadDeliveriesModule());
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
   if (name === "categoriesmaster") loadMasterLocalBusinessCategories();
@@ -5426,3 +5426,180 @@ function bindEvents() {
 }
 
 init();
+
+
+let masterDeliveryWorkspaceBound=false;
+let masterDeliveryWorkspacePanels=[];
+
+function masterDeliveryWorkspaceSelectedId(){
+  return document.getElementById("deliveryWorkspaceSelect")?.value || "";
+}
+
+function renderMasterDeliveryUserOptions(){
+  const select=document.getElementById("deliveryWorkspaceUser");
+  if(!select)return;
+  const search=(document.getElementById("deliveryWorkspaceUserSearch")?.value||"").trim().toLowerCase();
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const filtered=(state.users||[]).filter(u=>{
+    if(u.role_code==="MASTER")return false;
+    if(!search)return true;
+    return [u.full_name,u.email,u.phone,u.role_code].some(v=>String(v||"").toLowerCase().includes(search));
+  });
+  select.innerHTML='<option value="">Seleccionar cuenta…</option>'+filtered.map(u=>{
+    const label=u.full_name||u.email||u.user_id;
+    return '<option value="'+esc(u.user_id)+'">'+esc(label)+(u.email&&u.email!==label?' — '+esc(u.email):'')+' — '+esc(u.role_code)+'</option>';
+  }).join("");
+  const assigned=(state.users||[]).filter(u=>(u.delivery_ids||[]).includes(deliveryId));
+  const box=document.getElementById("deliveryWorkspaceAssignments");
+  if(box)box.innerHTML=assigned.length
+    ? assigned.map(u=>'<div class="row between assignment-row"><span><strong>'+esc(u.full_name||u.email||u.user_id)+'</strong> — '+esc(u.role_code)+'</span><button class="btn-danger" type="button" data-dw-unassign="'+esc(u.user_id)+'">Desvincular</button></div>').join("")
+    : '<div class="muted">Este DELIVERY todavía no tiene cuentas asignadas.</div>';
+  box?.querySelectorAll("[data-dw-unassign]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("master_unassign_delivery_user",{p_user_id:b.dataset.dwUnassign,p_delivery_id:deliveryId});
+      message("Cuenta desvinculada del DELIVERY.");
+      await loadUsersModule();
+      renderMasterDeliveryUserOptions();
+    }catch(e){message(e.message||"No se pudo desvincular la cuenta.","error");}
+  });
+}
+
+async function assignMasterDeliveryWorkspaceUser(){
+  try{
+    const deliveryId=masterDeliveryWorkspaceSelectedId();
+    const userId=document.getElementById("deliveryWorkspaceUser")?.value||"";
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+    if(!userId)throw new Error("Selecciona una cuenta.");
+    const user=(state.users||[]).find(u=>u.user_id===userId);
+    const convert=Boolean(document.getElementById("deliveryWorkspaceConvert")?.checked);
+    if(user?.role_code==="CLIENT"&&user.active_customer&&!convert)throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión para continuar.");
+    await rpc("master_assign_delivery_user",{p_user_id:userId,p_delivery_id:deliveryId,p_role_code:"DELIVERY_ADMIN",p_convert_customer:convert});
+    message("Cuenta administradora asignada al DELIVERY.");
+    if(document.getElementById("deliveryWorkspaceConvert"))document.getElementById("deliveryWorkspaceConvert").checked=false;
+    await loadUsersModule();
+    renderMasterDeliveryUserOptions();
+  }catch(e){message(e.message||"No se pudo asignar la cuenta.","error");}
+}
+
+function openMasterDeliveryWorkspaceTab(tab){
+  ["base","access","zones","fees"].forEach(name=>{
+    document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
+  });
+  document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
+}
+
+async function syncMasterDeliveryWorkspace(){
+  const id=masterDeliveryWorkspaceSelectedId();
+  if(!id)return;
+  for(const selectId of ["coverageDelivery","feeDelivery","userManagerDelivery"]){
+    const s=document.getElementById(selectId);
+    if(s&&[...s.options].some(o=>o.value===id))s.value=id;
+  }
+  renderMasterDeliveryUserOptions();
+  await Promise.all([
+    typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve(),
+    typeof loadFeeDelivery==="function"?loadFeeDelivery():Promise.resolve()
+  ]);
+}
+
+function refreshMasterDeliveryWorkspaceSelector(preferred=""){
+  const select=document.getElementById("deliveryWorkspaceSelect");
+  if(!select)return;
+  const previous=preferred||select.value;
+  const list=(state.deliveries||[]).filter(d=>d.active!==false);
+  select.innerHTML=list.length
+    ? list.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("")
+    : '<option value="">No hay DELIVERY registrados</option>';
+  if(previous&&list.some(d=>d.id===previous))select.value=previous;
+}
+
+function bindMasterDeliveryWorkspace(){
+  if(masterDeliveryWorkspaceBound||state.role!=="MASTER")return;
+  const section=document.getElementById("section-deliveries");
+  if(!section)return;
+
+  const original=[...section.children];
+  const cityCard=original.find(x=>x.querySelector("h2")?.textContent.trim()==="Crear ciudad");
+  if(cityCard)cityCard.classList.add("hidden");
+
+  const toolbar=document.createElement("div");
+  toolbar.className="card workspace-title";
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, cuenta administradora, zonas y tarifas en un solo ambiente.</p></div>'+
+    '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
+    '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
+    '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
+    '<button type="button" data-delivery-workspace-tab="base">Listado y ficha</button>'+
+    '<button type="button" data-delivery-workspace-tab="access">Cuenta</button>'+
+    '<button type="button" data-delivery-workspace-tab="zones">Zonas</button>'+
+    '<button type="button" data-delivery-workspace-tab="fees">Tarifas</button></div>';
+  section.insertBefore(toolbar,section.firstChild);
+
+  const base=document.createElement("div");
+  base.id="deliveryWorkspacePane-base";
+  section.insertBefore(base,toolbar.nextSibling);
+  original.filter(x=>x!==cityCard).forEach(x=>base.appendChild(x));
+
+  const access=document.createElement("div");
+  access.id="deliveryWorkspacePane-access";
+  access.className="hidden";
+  access.innerHTML='<div class="card"><h3>Cuenta administradora</h3>'+
+    '<p class="muted">La persona crea primero su cuenta HTPWEB; aquí la vinculas como administrador del DELIVERY seleccionado.</p>'+
+    '<div class="form-grid"><div><label>Buscar cuenta</label><input id="deliveryWorkspaceUserSearch" type="search" placeholder="Nombre o correo"></div>'+
+    '<div><label>Cuenta</label><select id="deliveryWorkspaceUser"></select></div></div>'+
+    '<label class="row" style="margin-top:12px"><input id="deliveryWorkspaceConvert" type="checkbox" style="width:auto">'+
+    '<span>Convertir CLIENT con CUSTOMER activo</span></label>'+
+    '<button id="deliveryWorkspaceAssignUser" class="btn-primary" type="button" style="margin-top:12px">Asignar administrador</button></div>'+
+    '<div class="card"><h3>Accesos actuales</h3><div id="deliveryWorkspaceAssignments"></div></div>';
+  section.appendChild(access);
+
+  const zones=document.createElement("div");
+  zones.id="deliveryWorkspacePane-zones";
+  zones.className="hidden";
+  section.appendChild(zones);
+
+  const fees=document.createElement("div");
+  fees.id="deliveryWorkspacePane-fees";
+  fees.className="hidden";
+  section.appendChild(fees);
+
+  const coverage=document.getElementById("section-coverage");
+  if(coverage){
+    [...coverage.children].forEach(node=>{
+      masterDeliveryWorkspacePanels.push({node,parent:coverage});
+      zones.appendChild(node);
+    });
+  }
+  const feeSection=document.getElementById("section-fees");
+  if(feeSection){
+    [...feeSection.children].forEach(node=>{
+      masterDeliveryWorkspacePanels.push({node,parent:feeSection});
+      fees.appendChild(node);
+    });
+  }
+
+  toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
+  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
+  document.getElementById("deliveryWorkspaceUserSearch").oninput=renderMasterDeliveryUserOptions;
+  document.getElementById("deliveryWorkspaceAssignUser").onclick=assignMasterDeliveryWorkspaceUser;
+  document.getElementById("deliveryWorkspaceNew").onclick=()=>{
+    openMasterDeliveryWorkspaceTab("base");
+    document.getElementById("deliveryName")?.focus();
+  };
+  masterDeliveryWorkspaceBound=true;
+  openMasterDeliveryWorkspaceTab("base");
+}
+
+async function loadDeliveryMasterWorkspace(){
+  if(state.role!=="MASTER")return;
+  bindMasterDeliveryWorkspace();
+  await loadDeliveriesModule();
+  await loadUsersModule();
+  await loadFees();
+  await loadCoverage();
+  refreshMasterDeliveryWorkspaceSelector();
+  await syncMasterDeliveryWorkspace();
+}
+
+window.loadDeliveryMasterWorkspace=loadDeliveryMasterWorkspace;
+window.refreshMasterDeliveryWorkspaceSelector=refreshMasterDeliveryWorkspaceSelector;
+
