@@ -4,7 +4,8 @@ const fs=require('node:fs');
 
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
-const migration=fs.readFileSync('supabase/migrations/20260925050557_commercial_plan_fee_integration.sql','utf8');\nconst hardening=fs.readFileSync('supabase/migrations/20260925114824_commercial_security_hardening.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260925050557_commercial_plan_fee_integration.sql','utf8');
+const hardening=fs.readFileSync('supabase/migrations/20260925114824_commercial_security_hardening.sql','utf8');
 
 test('MASTER no expone editor de precios ni controles manuales de modalidad',()=>{
   const roleBlock=admin.match(/const roleSections = \{[\s\S]*?\n\};/)?.[0]||'';
