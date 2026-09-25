@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const admin=fs.readFileSync('admin/admin.js','utf8');
-const migration=fs.readFileSync('supabase/migrations/20260925033600_master_controls_fee_modes.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260925033842_master_controls_fee_modes.sql','utf8');
 
 test('MASTER muestra Tarifa fija y Por distancia como filas independientes',()=>{
   assert.match(admin,/MODALIDAD/);
