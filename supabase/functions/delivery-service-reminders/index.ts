@@ -154,8 +154,13 @@ Deno.serve(async (req) => {
   }
 
   const notifications = (rows || []) as NotificationRow[];
+  const providers = {
+    email: Boolean(RESEND_API_KEY && REMINDER_EMAIL_FROM),
+    sms: Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM_NUMBER)
+  };
+
   if (!notifications.length) {
-    return json({ processed: 0, sent: 0, retry: 0, skipped: 0 });
+    return json({ processed: 0, sent: 0, retry: 0, skipped: 0, providers });
   }
 
   const deliveryIds = [...new Set(notifications.map(item => item.delivery_id))];
@@ -216,6 +221,7 @@ Deno.serve(async (req) => {
     processed: notifications.length,
     sent,
     retry,
-    skipped
+    skipped,
+    providers
   });
 });
