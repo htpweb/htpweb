@@ -4,8 +4,8 @@ function localOptions(items,label,selected=""){return '<option value="">Seleccio
 function bindMasterLocals(){
  if(masterLocalsState.bound)return;masterLocalsState.bound=true;
  $("section-localsmaster").innerHTML=`
- <div class="card workspace-title"><div><h2>Locales</h2><p>Administra la ficha completa del LOCAL o usa la carga rápida por menú para crear y actualizar locales y productos.</p></div>
- <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalMenuImportBtn">Carga rápida por menú</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
+ <div class="card workspace-title"><div><h2>Locales</h2><p>Administra la ficha completa del LOCAL o usa la carga masiva por plantilla para crear y actualizar información.</p></div>
+ <div class="row"><button id="masterLocalListBtn">Listado de locales</button><button id="masterLocalBulkBtn">Carga masiva</button><button id="masterLocalNewBtn" class="btn-primary">Crear local</button></div></div>
  <div id="masterLocalList" class="card"><h3>Listado de locales</h3><div class="form-grid">
  <div><label for="localFilterProvince">Provincia</label><select id="localFilterProvince"></select></div>
  <div><label for="localFilterCity">Cantón</label><select id="localFilterCity"></select></div>
@@ -13,7 +13,18 @@ function bindMasterLocals(){
  <div><label for="localFilterName">Nombre</label><input id="localFilterName" type="search"></div>
  <div><label for="localFilterStatus">Estado</label><select id="localFilterStatus"><option value="">Todos</option><option value="true">Activo</option><option value="false">Inactivo / borrador</option><option value="unzoned">Sin zona</option></select></div>
  </div><div id="masterLocalsSummary"></div></div>
- <div id="masterLocalMenuImport" class="hidden"></div>
+ <div id="masterLocalBulk" class="hidden">
+ <div class="card"><div class="row between"><div><h3>Carga masiva de locales</h3><p class="muted">Crea muchos LOCAL desde una plantilla Excel. La plantilla incluye provincia, cantón, dirección/referencia, latitud y longitud; HTPWEB detecta la zona automáticamente.</p></div><button id="downloadBulkLocalTemplateBtn" class="btn-muted" type="button">Descargar plantilla completa de locales</button></div>
+ <div class="form-grid" style="margin-top:14px"><div><label>Archivo Excel de locales</label><input id="bulkLocalFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></div><div><label>Proceso</label><button id="validateBulkLocalBtn" type="button" class="btn-primary">Validar locales</button></div></div>
+ <p id="bulkLocalStatus" class="muted">Todavía no has cargado una plantilla de locales.</p><div id="bulkLocalPreview"></div>
+ <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkLocalErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones</button><button id="importBulkLocalBtn" type="button" class="btn-primary" disabled>Importar locales válidos</button></div></div>
+ <div class="card"><div class="row between"><div><h3>Carga masiva de productos</h3><p class="muted">Un solo Excel puede cargar productos, categorías y variantes para uno o varios LOCAL. Cada fila identifica su destino con LOCAL y/o LOCAL_ID.</p></div><button id="downloadBulkProductTemplateBtn" class="btn-muted" type="button">Descargar plantilla de productos</button></div>
+ <div class="workspace-note" style="margin-top:14px">Recomendado: usa LOCAL_ID y SKU. LOCAL_ID evita confusiones entre establecimientos con nombres similares y SKU permite actualizar el mismo producto sin duplicarlo.</div>
+ <div class="form-grid" style="margin-top:14px"><div><label>Archivo de productos</label><input id="bulkProductFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div><label>Modo de publicación</label><label class="row" style="margin:0"><input id="bulkProductPublish" type="checkbox" style="width:auto"> Publicar inmediatamente según ACTIVO</label></div></div>
+ <div class="row" style="margin-top:14px"><button id="validateBulkProductBtn" type="button" class="btn-primary">Validar productos</button></div>
+ <p id="bulkProductStatus" class="muted">Todavía no has cargado una plantilla de productos.</p><div id="bulkProductPreview"></div>
+ <div class="bulk-local-actions" style="margin-top:14px"><button id="downloadBulkProductErrorsBtn" type="button" class="btn-muted" disabled>Descargar observaciones de productos</button><button id="clearBulkProductBtn" type="button" class="btn-muted" disabled>Cancelar / limpiar carga</button><button id="importBulkProductBtn" type="button" class="btn-primary" disabled>Importar productos válidos</button></div></div>
+ </div>
  <div id="masterLocalEditor" class="card hidden"><h3 id="masterLocalHeading">Crear local</h3>
  <p id="localSaveStatus" role="status"></p><input id="masterLocalId" type="hidden"><input id="masterLocalPlaceId" type="hidden">
  <div class="workspace-tabs" role="tablist" aria-label="Ficha del local"><button data-local-tab="info">Información y ubicación</button>
@@ -42,7 +53,8 @@ function bindMasterLocals(){
  </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
- $("masterLocalMenuImportBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();mountMasterLocalMenuImport();}};
+ $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");renderBulkProductLocalOptions();}};
+ bindMasterLocalBulk();
  $("masterLocalSaveBtn").onclick=saveMasterLocal;$("masterLocalToggleBtn").onclick=toggleMasterLocal;$("masterLocalDeleteBtn").onclick=deleteMasterLocal;
  $("masterLocalProvince").onchange=()=>{fillLocalCities();fillLocalZones();updateGoogleSearchBias();};
  $("masterLocalCity").onchange=()=>{fillLocalZones();drawLocalMap();detectLocalZone(true);updateGoogleSearchBias();};
@@ -100,9 +112,8 @@ async function mountMasterLocalMenuImport(){
  try{await loadMenuImport();}catch(e){message(e.message||"No se pudo abrir el importador de menú.","error");}
 }
 function showLocalMode(mode){
- if(mode!=="menuimport")restoreMasterLocalMenuImport();
  $("masterLocalList").classList.toggle("hidden",mode!=="list");
- $("masterLocalMenuImport").classList.toggle("hidden",mode!=="menuimport");
+ $("masterLocalBulk").classList.toggle("hidden",mode!=="bulk");
  $("masterLocalEditor").classList.toggle("hidden",mode!=="editor");
  if(mode==="editor")initLocalMap();
 }
@@ -183,7 +194,7 @@ async function loadMasterLocals(){
    for(const [id,data,label] of [["localFilterProvince",provinces.map(p=>({id:p})),p=>p.id],["localFilterCity",state.cities,c=>c.name],["localFilterZone",zones,z=>z.code+" — "+z.name]]){
      const value=$(id).value;$(id).innerHTML='<option value="">Todos</option>'+localOptions(data,label,value).replace('<option value="">Seleccionar…</option>',"");
    }
-   renderMasterLocalList();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
+   renderMasterLocalList();if(typeof renderBulkProductLocalOptions==="function")renderBulkProductLocalOptions();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
  }catch(e){message(e.message||"No se pudieron cargar los locales.","error");}
 }
 function nullableNumber(id){const raw=$(id).value.trim();if(raw==="")return null;const value=Number(raw);if(!Number.isFinite(value))throw new Error("Coordenada inválida.");return value;}
