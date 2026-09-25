@@ -33,7 +33,9 @@ const state = {
   menuImportJobs: [],
   menuImportJob: null,
   menuImportPreview: null,
-  deliveryAuthorizations: []
+  deliveryAuthorizations: [],
+  deliveryServiceAccess: null,
+  masterDeliveryService: null
 };
 
 const roleSections = {
@@ -73,6 +75,62 @@ async function rpc(name, args = {}) {
   return data;
 }
 
+function formatServiceDate(value){
+  if(!value)return "—";
+  const raw=String(value).slice(0,10);
+  const parts=raw.split("-");
+  return parts.length===3 ? parts[2]+"/"+parts[1]+"/"+parts[0] : raw;
+}
+
+function deliveryServiceStateLabel(stateValue){
+  const labels={
+    ACTIVE:"Activo",
+    EXPIRING:"Por vencer",
+    SCHEDULED:"Programado",
+    EXPIRED:"Vencido",
+    NOT_CONFIGURED:"Sin configurar"
+  };
+  return labels[stateValue]||stateValue||"—";
+}
+
+function renderDeliveryServiceBlocked(access){
+  const deliveries=Array.isArray(access?.deliveries)?access.deliveries:[];
+  const latest=deliveries[0]||{};
+  document.body.innerHTML=`
+    <main style="max-width:760px;margin:60px auto;font-family:Arial;padding:20px">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px">
+        <h1 style="margin-top:0">Servicio DELIVERY no disponible</h1>
+        <p>Tu cuenta sigue activa en HTPWEB, pero el acceso administrativo del DELIVERY está bloqueado porque el servicio no está vigente.</p>
+        <p><strong>DELIVERY:</strong> ${esc(latest.name||"—")}</p>
+        <p><strong>Estado:</strong> ${esc(deliveryServiceStateLabel(latest.state))}</p>
+        <p><strong>Último vencimiento:</strong> ${esc(formatServiceDate(latest.paid_through_on||latest.ends_on))}</p>
+        <p>Contacta con HTPWEB para renovar. En cuanto MASTER registre la renovación, el acceso se restablece automáticamente.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+          <a href="../index.html" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#111;color:#fff;text-decoration:none">Continuar como cliente</a>
+          <a href="../app/acceso.html" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#eee;color:#111;text-decoration:none">Mi cuenta</a>
+        </div>
+      </div>
+    </main>
+  `;
+}
+
+function renderDeliveryServiceWarning(access){
+  const deliveries=Array.isArray(access?.deliveries)?access.deliveries:[];
+  const expiring=deliveries.filter(item=>item?.active&&item?.expiring_soon);
+  if(!expiring.length)return;
+
+  const host=document.querySelector("main")||document.body;
+  const note=document.createElement("div");
+  note.className="workspace-warning";
+  note.style.margin="12px";
+  note.innerHTML=expiring.map(item=>
+    '<strong>'+esc(item.name||"DELIVERY")+'</strong>: el servicio vence el '+
+    esc(formatServiceDate(item.paid_through_on||item.ends_on))+
+    ' ('+esc(item.days_remaining)+" días)."
+  ).join("<br>");
+  host.insertBefore(note,host.firstChild);
+}
+
 async function init() {
   try {
     state.user = await obtenerUsuarioActual();
@@ -91,6 +149,17 @@ async function init() {
 
     state.role = role;
 
+    if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) {
+      const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
+      if (serviceResult.error) throw serviceResult.error;
+      state.deliveryServiceAccess = serviceResult.data || null;
+
+      if (!state.deliveryServiceAccess?.has_active_service) {
+        renderDeliveryServiceBlocked(state.deliveryServiceAccess);
+        return;
+      }
+    }
+
     if (!roleSections[state.role]) {
       document.body.innerHTML = `
         <main style="max-width:720px;margin:60px auto;font-family:Arial;padding:20px">
@@ -107,6 +176,7 @@ async function init() {
 
     configureNavigation();
     bindEvents();
+    if (state.deliveryServiceAccess) renderDeliveryServiceWarning(state.deliveryServiceAccess);
 
     await loadScopes();
     await loadCities();
@@ -5617,6 +5687,94 @@ async function revokeMasterDeliveryAuthorization(authorizationId){
   }
 }
 
+function renderMasterDeliveryService(service){
+  const status=document.getElementById("deliveryWorkspaceServiceStatus");
+  const start=document.getElementById("deliveryWorkspaceServiceStart");
+  const end=document.getElementById("deliveryWorkspaceServiceEnd");
+  const renew=document.getElementById("deliveryWorkspaceServiceRenew");
+  if(!status||!start||!end||!renew)return;
+
+  state.masterDeliveryService=service||null;
+  const stateValue=service?.state||"NOT_CONFIGURED";
+  const active=Boolean(service?.active);
+  const expiring=Boolean(service?.expiring_soon);
+
+  status.innerHTML=
+    '<strong>'+esc(deliveryServiceStateLabel(stateValue))+'</strong>'+
+    (service?.starts_on?' · Inicio: '+esc(formatServiceDate(service.starts_on)):'')+
+    (service?.paid_through_on?' · Vigente hasta: '+esc(formatServiceDate(service.paid_through_on)):'')+
+    (expiring?' · Faltan '+esc(service.days_remaining)+' días':'')+
+    (!active&&stateValue==="EXPIRED"?' · Acceso administrativo bloqueado':'')+
+    (!active&&stateValue==="NOT_CONFIGURED"?' · Debes definir el primer periodo antes de operar':'');
+  status.className=(stateValue==="EXPIRED"||stateValue==="NOT_CONFIGURED")
+    ?"message error"
+    :(expiring?"workspace-warning":"workspace-note");
+
+  if(service?.starts_on&&!start.value)start.value=String(service.starts_on).slice(0,10);
+  if(service?.paid_through_on&&!end.value)end.value=String(service.paid_through_on).slice(0,10);
+  renew.disabled=stateValue==="NOT_CONFIGURED";
+}
+
+async function loadMasterDeliveryService(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const status=document.getElementById("deliveryWorkspaceServiceStatus");
+  if(!status)return;
+  if(!deliveryId){
+    status.textContent="Selecciona un DELIVERY.";
+    return;
+  }
+
+  try{
+    const service=await rpc("delivery_service_snapshot",{p_delivery_id:deliveryId});
+    renderMasterDeliveryService(service||{});
+  }catch(e){
+    status.className="message error";
+    status.textContent=e.message||"No se pudo consultar el servicio mensual.";
+  }
+}
+
+async function saveMasterDeliveryServicePeriod(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const start=document.getElementById("deliveryWorkspaceServiceStart")?.value||"";
+  const end=document.getElementById("deliveryWorkspaceServiceEnd")?.value||"";
+  if(!deliveryId)return;
+  if(!start||!end)return message("Selecciona fecha de inicio y fecha de fin.","error");
+  if(end<start)return message("La fecha de fin no puede ser anterior a la fecha de inicio.","error");
+
+  if(!confirm("¿Guardar este periodo de servicio? Este rango reemplaza cualquier periodo mensual vigente o programado que se superponga."))return;
+
+  try{
+    const service=await rpc("master_set_delivery_service_period",{
+      p_delivery_id:deliveryId,
+      p_start_date:start,
+      p_end_date:end
+    });
+    message("Periodo de servicio guardado.");
+    renderMasterDeliveryService(service||{});
+  }catch(e){
+    message(e.message||"No se pudo guardar el periodo de servicio.","error");
+  }
+}
+
+async function renewMasterDeliveryServiceMonth(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  if(!deliveryId)return;
+  if(!confirm("¿Renovar este DELIVERY por un mes calendario adicional?"))return;
+
+  try{
+    const service=await rpc("master_renew_delivery_service_month",{p_delivery_id:deliveryId});
+    message("Servicio renovado por un mes.");
+    const start=document.getElementById("deliveryWorkspaceServiceStart");
+    const end=document.getElementById("deliveryWorkspaceServiceEnd");
+    if(start)start.value="";
+    if(end)end.value="";
+    renderMasterDeliveryService(service||{});
+    await loadMasterDeliveryService();
+  }catch(e){
+    message(e.message||"No se pudo renovar el servicio.","error");
+  }
+}
+
 function renderMasterDeliveryFeeModes(status){
   const box=document.getElementById("deliveryWorkspaceFeeModes");
   if(!box)return;
@@ -5699,6 +5857,7 @@ async function syncMasterDeliveryWorkspace(){
 
   await Promise.all([
     loadMasterDeliveryAuthorizations(),
+    loadMasterDeliveryService(),
     loadMasterDeliveryFeeCapability(),
     typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
   ]);
@@ -5740,7 +5899,18 @@ function bindMasterDeliveryWorkspace(){
   const access=document.createElement("div");
   access.id="deliveryWorkspacePane-access";
   access.className="hidden";
-  access.innerHTML='<div class="card"><h3>Representante autorizado</h3>'+
+  access.innerHTML='<div class="card"><h3>Servicio mensual</h3>'+
+    '<p class="muted">Define la fecha de inicio y fin. Al vencer, el acceso administrativo del DELIVERY queda bloqueado automáticamente. Cinco días antes se programa un aviso al correo y celular del administrador registrado.</p>'+
+    '<div class="form-grid">'+
+      '<div><label>Fecha de inicio</label><input id="deliveryWorkspaceServiceStart" type="date"></div>'+
+      '<div><label>Fecha de fin</label><input id="deliveryWorkspaceServiceEnd" type="date"></div>'+
+    '</div>'+
+    '<div id="deliveryWorkspaceServiceStatus" class="workspace-note" style="margin-top:12px">Consultando servicio…</div>'+
+    '<div class="row" style="margin-top:12px">'+
+      '<button id="deliveryWorkspaceServiceSave" class="btn-primary" type="button">Guardar periodo</button>'+
+      '<button id="deliveryWorkspaceServiceRenew" class="btn-muted" type="button">Renovar 1 mes</button>'+
+    '</div></div>'+
+    '<div class="card"><h3>Representante autorizado</h3>'+
     '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
     '<div class="form-grid">'+
     '<div><label>Nombre completo</label><input id="deliveryWorkspaceRepresentativeName" maxlength="180" placeholder="Nombre del representante"></div>'+
@@ -5777,7 +5947,15 @@ function bindMasterDeliveryWorkspace(){
   }
 
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
-  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
+  document.getElementById("deliveryWorkspaceSelect").onchange=async()=>{
+    const start=document.getElementById("deliveryWorkspaceServiceStart");
+    const end=document.getElementById("deliveryWorkspaceServiceEnd");
+    if(start)start.value="";
+    if(end)end.value="";
+    await syncMasterDeliveryWorkspace();
+  };
+  document.getElementById("deliveryWorkspaceServiceSave").onclick=saveMasterDeliveryServicePeriod;
+  document.getElementById("deliveryWorkspaceServiceRenew").onclick=renewMasterDeliveryServiceMonth;
   document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
