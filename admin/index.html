@@ -604,12 +604,11 @@
 
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="saveFeeConfigBtn">Guardar tarifa</button>
-          <button class="btn-muted master-only" id="enableDeliveryFeesBtn">Habilitar tarifas para este DELIVERY</button>
         </div>
 
-        <p class="muted" style="margin-top:10px">
-          DELIVERY_ADMIN requiere el permiso y la capability <code>delivery_fees.manage</code>.
-          El cálculo final del envío siempre lo realiza el backend.
+        <p id="feeCapabilityNotice" class="muted" style="margin-top:10px">
+          Esta configuración pertenece al DELIVERY_ADMIN. MASTER únicamente habilita o bloquea la capacidad
+          <code>delivery_fees.manage</code>. El cálculo final del envío siempre lo realiza el backend.
         </p>
       </div>
 
