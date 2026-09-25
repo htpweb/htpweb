@@ -5634,7 +5634,7 @@ function drawRestrictedAreaMap(){
 
 async function ensureRestrictedAreaMap(){
   if(state.restrictedAreaMap)return;
-  if(!window.ZoneMaps||!$("restrictedAreaMap"))return;
+  if(typeof ZoneMaps==="undefined"||!$("restrictedAreaMap"))return;
 
   state.restrictedAreaMap=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{
     const zone=restrictedAreaSelectedZone();
