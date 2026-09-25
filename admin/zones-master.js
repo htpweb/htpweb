@@ -44,13 +44,13 @@ async function resolveZoneCityId(){
   const provinceKey=zoneLocationKey(province);
   const cantonKey=zoneLocationKey(canton);
   let city=(state.cities||[]).find(c=>
-    c.active&&zoneLocationKey(c.province)===provinceKey&&zoneLocationKey(c.name)===cantonKey
+    zoneLocationKey(c.province)===provinceKey&&zoneLocationKey(c.name)===cantonKey
   );
 
-  if(city)return city.id;
+  if(city?.active)return city.id;
 
   const cityId=await rpc("master_save_city",{
-    p_city_id:null,
+    p_city_id:city?.id||null,
     p_name:canton,
     p_province:province,
     p_country:"Ecuador",
