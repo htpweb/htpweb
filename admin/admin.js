@@ -7104,10 +7104,13 @@ async function loadDriverOrders(){
     const items=await rpc("driver_my_orders");
     state.driverOrders=Array.isArray(items)?items:[];
     reconcileDriverRoutePlan();
+    await loadDriverRouteDeviationState();
     renderDriverOrders();
     updateDriverGpsShareUi();
     renderDriverSosNotice();
+    renderDriverRouteDeviationNotice();
     await startDriverSosSubscription();
+    await startDriverRouteDeviationSubscription();
   }catch(e){
     message(e.message||"No se pudieron cargar tus entregas.","error");
   }
@@ -7122,6 +7125,18 @@ async function driverChangeStatus(orderId,next){
     });
     message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
     await loadDriverOrders();
+
+    if(next==="EN_ROUTE"){
+      const context=driverDeviationContextFor(orderId);
+      if(context?.can_prepare&&!context.existing_plan&&!driverDeviationPlanFor(orderId)){
+        const ok=await prepareDriverRouteDeviationPlan(orderId,{quiet:true});
+        if(!ok){
+          message("La entrega inició, pero no se pudo preparar el monitoreo de desvío. Puedes reintentarlo desde el pedido.","error");
+        }else{
+          renderDriverOrders();
+        }
+      }
+    }
   }catch(e){
     message(e.message||"No se pudo actualizar la entrega.","error");
   }
@@ -7131,6 +7146,8 @@ window.addEventListener("beforeunload",()=>{
   stopDriverGpsSharing(true);
   void stopDeliverySosSubscription();
   void stopDriverSosSubscription();
+  void stopDeliveryRouteDeviationSubscription();
+  void stopDriverRouteDeviationSubscription();
 });
 
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
@@ -7460,6 +7477,7 @@ function bindEvents() {
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
+  if ($("deliveryDeviationRefresh")) $("deliveryDeviationRefresh").onclick = loadDeliveryRouteDeviationSnapshotOnly;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
