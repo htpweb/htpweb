@@ -6683,6 +6683,12 @@ function bindEvents() {
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
+  if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
+    if(state.driverRoutePlan&&state.driverRoutePlan.delivery_id!==$("driverRouteDelivery").value){
+      state.driverRoutePlan=null;
+      renderDriverOrders();
+    }
+  };
   if ($("driverGpsRefresh")) $("driverGpsRefresh").onclick = loadSelectedDriverGps;
   if ($("driverGpsStart")) $("driverGpsStart").onclick = startDriverGpsSharing;
   if ($("driverGpsStop")) $("driverGpsStop").onclick = () => stopDriverGpsSharing(false);
