@@ -30,7 +30,7 @@ test('authorization is bound to confirmed auth email and protects CI at rest',()
   assert.match(migration,/create table if not exists public\.delivery_access_authorizations/);
   assert.match(migration,/national_id_hash text not null/);
   assert.match(migration,/national_id_last4 text not null/);
-  assert.match(migration,/extensions\.digest\(v_national_id,'sha256'\)/);
+  assert.match(migration,/extensions\\.crypt\\(v_national_id,extensions\\.gen_salt\\('bf',10\\)\\)/);
   assert.match(migration,/select lower\(u\.email\), \(u\.email_confirmed_at is not null\)/);
   assert.match(migration,/where u\.id=v_user_id/);
   assert.match(migration,/lower\(a\.email\)=v_email/);
