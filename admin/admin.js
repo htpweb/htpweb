@@ -5592,12 +5592,20 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,candidate:null};
 const safetySosState={
   deliveryChannel:null,
   deliveryId:null,
   driverChannel:null,
   refreshTimer:null
+};
+const routeDeviationState={
+  deliveryChannel:null,
+  deliveryId:null,
+  driverChannel:null,
+  refreshTimer:null,
+  driverSnapshot:{plans:[],incidents:[]},
+  contexts:{}
 };
 const driverGpsState={
   selectedDriverId:null,
@@ -6237,6 +6245,141 @@ async function resolveDeliverySos(incidentId){
   }catch(e){message(e.message||"No se pudo resolver el SOS.","error");}
 }
 
+function routeDeviationReasonLabel(value){
+  return {
+    RETURNED_TO_ROUTE:"Regresó a la ruta",
+    ORDER_FINISHED:"Pedido finalizado",
+    MANUAL:"Resuelto manualmente"
+  }[value]||value||"—";
+}
+
+function renderDeliveryRouteDeviation(){
+  const box=$("deliveryDeviationList");
+  const notice=$("deliveryDeviationNotice");
+  if(!box||!notice)return;
+
+  const snap=driverWorkspaceState.deviation||{};
+  const items=Array.isArray(snap.incidents)?snap.incidents:[];
+  const active=items.filter(x=>["OPEN","ACKNOWLEDGED"].includes(x.status));
+
+  if(!snap.enabled){
+    notice.textContent=active.length
+      ?"El plan actual no crea nuevos desvíos, pero las alertas existentes siguen disponibles para atención."
+      :"El plan vigente no incluye alerta de desvío con GPS en vivo.";
+  }else{
+    notice.textContent=active.length
+      ?active.length+" alerta(s) de desvío activa(s)."
+      :"Monitoreo de desvío habilitado · no hay alertas activas.";
+  }
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">No hay desvíos de ruta registrados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const created=item.first_detected_at
+      ?new Date(item.first_detected_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})
+      :"—";
+    const deviation=Number(item.deviation_m);
+    const max=Number(item.max_deviation_m);
+    const actions=item.status==="OPEN"
+      ? '<button class="btn-primary" type="button" data-deviation-ack="'+esc(item.incident_id)+'">Reconocer</button>'+
+        '<button class="btn-danger" type="button" data-deviation-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+      : item.status==="ACKNOWLEDGED"
+        ? '<button class="btn-danger" type="button" data-deviation-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+        : '';
+
+    return '<div class="card" style="border-left:5px solid currentColor">'+
+      '<div class="row between" style="gap:10px;flex-wrap:wrap"><div><strong>Desvío · '+esc(item.driver_name||"Repartidor")+'</strong>'+
+      '<div class="muted">'+esc(item.driver_phone||"")+' · pedido '+esc(item.order_id)+'</div></div>'+
+      '<span class="badge">'+esc(sosStatusLabel(item.status))+'</span></div>'+
+      '<p><strong>Detectado:</strong> '+esc(created)+'</p>'+
+      '<div class="muted">Desvío actual: '+(Number.isFinite(deviation)?Math.round(deviation)+" m":"—")+
+      ' · máximo: '+(Number.isFinite(max)?Math.round(max)+" m":"—")+
+      ' · muestras: '+esc(item.samples_outside??0)+'</div>'+
+      (item.status==="RESOLVED"&&item.resolution_reason
+        ?'<div class="muted">Cierre: '+esc(routeDeviationReasonLabel(item.resolution_reason))+'</div>'
+        :'')+
+      (item.resolution_note?'<p><strong>Nota:</strong> '+esc(item.resolution_note)+'</p>':'')+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+sosLocationLink(item)+actions+'</div></div>';
+  }).join("");
+
+  box.querySelectorAll("[data-deviation-ack]").forEach(b=>b.onclick=()=>acknowledgeDeliveryRouteDeviation(b.dataset.deviationAck));
+  box.querySelectorAll("[data-deviation-resolve]").forEach(b=>b.onclick=()=>resolveDeliveryRouteDeviation(b.dataset.deviationResolve));
+}
+
+async function loadDeliveryRouteDeviationSnapshotOnly(){
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
+  try{
+    driverWorkspaceState.deviation=await rpc("delivery_route_deviation_snapshot",{
+      p_delivery_id:deliveryId,
+      p_limit:50
+    })||{};
+    renderDeliveryRouteDeviation();
+  }catch(e){
+    if($("deliveryDeviationNotice"))$("deliveryDeviationNotice").textContent=e.message||"No se pudieron cargar los desvíos de ruta.";
+  }
+}
+
+function scheduleDeliveryRouteDeviationRefresh(){
+  if(routeDeviationState.refreshTimer)clearTimeout(routeDeviationState.refreshTimer);
+  routeDeviationState.refreshTimer=setTimeout(()=>{
+    routeDeviationState.refreshTimer=null;
+    void loadDeliveryRouteDeviationSnapshotOnly();
+  },200);
+}
+
+async function stopDeliveryRouteDeviationSubscription(){
+  const channel=routeDeviationState.deliveryChannel;
+  routeDeviationState.deliveryChannel=null;
+  routeDeviationState.deliveryId=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDeliveryRouteDeviationSubscription(deliveryId){
+  if(!deliveryId||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
+  if(routeDeviationState.deliveryChannel&&routeDeviationState.deliveryId===deliveryId)return;
+  await stopDeliveryRouteDeviationSubscription();
+  routeDeviationState.deliveryId=deliveryId;
+  routeDeviationState.deliveryChannel=supabaseClient
+    .channel("route-deviation:delivery:"+deliveryId,{config:{private:true}})
+    .on("broadcast",{event:"route_deviation"},()=>scheduleDeliveryRouteDeviationRefresh())
+    .subscribe(status=>{
+      if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+        if($("deliveryDeviationNotice"))$("deliveryDeviationNotice").textContent="Desvíos cargados; la actualización en vivo no pudo conectarse. Usa Actualizar desvíos.";
+      }
+    });
+}
+
+async function acknowledgeDeliveryRouteDeviation(incidentId){
+  try{
+    await rpc("delivery_acknowledge_route_deviation",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId
+    });
+    message("Alerta de desvío reconocida.");
+    await loadDeliveryRouteDeviationSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo reconocer el desvío.","error");}
+}
+
+async function resolveDeliveryRouteDeviation(incidentId){
+  const note=prompt("Nota de resolución (opcional):","")??null;
+  if(note===null)return;
+  try{
+    await rpc("delivery_resolve_route_deviation",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId,
+      p_note:note
+    });
+    message("Alerta de desvío resuelta.");
+    await loadDeliveryRouteDeviationSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo resolver el desvío.","error");}
+}
+
 function activeDriverSos(){
   return (state.driverOrders||[])
     .map(o=>o?.sos?{...o.sos,delivery_id:o.delivery_id,order_id:o.order_id}:null)
@@ -6296,6 +6439,141 @@ async function triggerDriverSos(orderId){
   }catch(e){message(e.message||"No se pudo activar el SOS.","error");}
 }
 
+function driverDeviationPlanFor(orderId){
+  const plans=Array.isArray(routeDeviationState.driverSnapshot?.plans)
+    ? routeDeviationState.driverSnapshot.plans
+    : [];
+  return plans.find(p=>p.order_id===orderId&&p.active!==false)||null;
+}
+
+function driverDeviationContextFor(orderId){
+  return routeDeviationState.contexts?.[orderId]||null;
+}
+
+function activeDriverRouteDeviation(){
+  const incidents=Array.isArray(routeDeviationState.driverSnapshot?.incidents)
+    ? routeDeviationState.driverSnapshot.incidents
+    : [];
+  return incidents.find(i=>["OPEN","ACKNOWLEDGED"].includes(i.status))||null;
+}
+
+function renderDriverRouteDeviationNotice(){
+  const box=$("driverRouteDeviationNotice");
+  if(!box)return;
+  const incident=activeDriverRouteDeviation();
+  if(!incident){
+    box.style.display="none";
+    box.textContent="";
+    return;
+  }
+  const max=Number(incident.max_deviation_m);
+  box.style.display="block";
+  box.innerHTML='<strong>Desvío '+esc(sosStatusLabel(incident.status))+'</strong> · pedido '+esc(incident.order_id)+
+    (Number.isFinite(max)?' · hasta '+Math.round(max)+' m fuera de la ruta':'')+
+    (incident.status==="OPEN"
+      ?' · El DELIVERY recibió la alerta automática.'
+      :' · El DELIVERY confirmó que recibió la alerta.');
+}
+
+async function loadDriverRouteDeviationState(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    routeDeviationState.driverSnapshot=await rpc("driver_route_deviation_snapshot")||{plans:[],incidents:[]};
+  }catch{
+    routeDeviationState.driverSnapshot={plans:[],incidents:[]};
+  }
+
+  const contexts={};
+  const enRoute=(state.driverOrders||[]).filter(o=>
+    o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"
+  );
+  await Promise.all(enRoute.map(async order=>{
+    try{
+      contexts[order.order_id]=await rpc("driver_route_deviation_plan_context",{
+        p_order_id:order.order_id
+      });
+    }catch{
+      contexts[order.order_id]=null;
+    }
+  }));
+  routeDeviationState.contexts=contexts;
+  renderDriverRouteDeviationNotice();
+}
+
+async function stopDriverRouteDeviationSubscription(){
+  const channel=routeDeviationState.driverChannel;
+  routeDeviationState.driverChannel=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDriverRouteDeviationSubscription(){
+  if(state.role!=="DELIVERY_DRIVER"||!state.user?.id)return;
+  if(routeDeviationState.driverChannel)return;
+  routeDeviationState.driverChannel=supabaseClient
+    .channel("route-deviation:driver:"+state.user.id,{config:{private:true}})
+    .on("broadcast",{event:"route_deviation"},({payload})=>{
+      if(payload?.status==="OPEN")message("HTPWEB detectó un desvío sostenido y avisó al DELIVERY.","error");
+      if(payload?.status==="ACKNOWLEDGED")message("El DELIVERY reconoció la alerta de desvío.");
+      if(payload?.status==="RESOLVED"&&payload?.resolution_reason==="RETURNED_TO_ROUTE")message("Volviste al corredor esperado; la alerta de desvío se cerró.");
+      if(payload?.status==="RESOLVED"&&payload?.resolution_reason!=="RETURNED_TO_ROUTE")message("La alerta de desvío fue resuelta.");
+      void (async()=>{
+        await loadDriverRouteDeviationState();
+        renderDriverOrders();
+      })();
+    })
+    .subscribe();
+}
+
+function routeDeviationContextMessage(context){
+  return {
+    GPS_NOT_INCLUDED:"El plan no incluye GPS en vivo.",
+    ROUTE_DEVIATION_NOT_INCLUDED:"El plan no incluye alerta de desvío.",
+    DESTINATION_COORDINATES_MISSING:"El pedido no tiene coordenadas de destino."
+  }[context?.reason]||"El monitoreo de desvío no está disponible.";
+}
+
+async function prepareDriverRouteDeviationPlan(orderId,{quiet=false}={}){
+  try{
+    let context=driverDeviationContextFor(orderId);
+    if(!context){
+      context=await rpc("driver_route_deviation_plan_context",{p_order_id:orderId});
+      routeDeviationState.contexts[orderId]=context;
+    }
+    if(!context?.can_prepare){
+      if(!quiet&&context?.reason)message(routeDeviationContextMessage(context),"error");
+      return false;
+    }
+    if(context.existing_plan||driverDeviationPlanFor(orderId))return true;
+
+    const position=await currentPositionOnce();
+    const {data,error}=await supabaseClient.functions.invoke("preparar-desvio-ruta",{
+      body:{
+        order_id:orderId,
+        origin_lat:position.latitude,
+        origin_lng:position.longitude
+      }
+    });
+    if(error){
+      let detail=error.message||"No se pudo preparar el monitoreo de desvío.";
+      try{
+        const payload=await error.context?.json?.();
+        if(payload?.error)detail=payload.error;
+      }catch{}
+      throw new Error(detail);
+    }
+    if(!data?.ok)throw new Error(data?.error||"No se pudo preparar el monitoreo de desvío.");
+
+    await loadDriverRouteDeviationState();
+    if(!quiet)message("Monitoreo de desvío activo para esta entrega.");
+    return true;
+  }catch(e){
+    if(!quiet)message(e.message||"No se pudo preparar el monitoreo de desvío.","error");
+    return false;
+  }
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
@@ -6306,16 +6584,18 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch,proofSettings,sos]=await Promise.all([
+    const [drivers,dispatch,proofSettings,sos,deviation]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50})
+      rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
+      rpc("delivery_route_deviation_snapshot",{p_delivery_id:deliveryId,p_limit:50})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
     driverWorkspaceState.proofSettings=proofSettings||{};
     driverWorkspaceState.sos=sos||{};
+    driverWorkspaceState.deviation=deviation||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
@@ -6329,9 +6609,11 @@ async function loadDriverWorkspace(){
     renderDeliveryProofSettingsControls();
     renderDriversList();
     renderDeliverySos();
+    renderDeliveryRouteDeviation();
     renderDispatchOrders();
     renderDriverCandidate();
     await startDeliverySosSubscription(deliveryId);
+    await startDeliveryRouteDeviationSubscription(deliveryId);
     if(driverGpsState.selectedDriverId){
       if(driverGpsState.selectedDeliveryId===deliveryId){
         await loadSelectedDriverGps();
@@ -6683,6 +6965,7 @@ function renderDriverOrders(){
   box.innerHTML=items.map(o=>{
     let action="";
     let safetyAction="";
+    let deviationAction="";
     const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
       state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
 
@@ -6702,6 +6985,22 @@ function renderDriverOrders(){
           ? '<div class="workspace-warning" style="margin:10px 0"><strong>SOS '+esc(sosStatusLabel(o.sos.status))+'</strong> · la alerta de seguridad sigue activa.</div>'
           : '<div style="margin:10px 0"><button class="btn-danger" type="button" data-driver-sos="'+esc(o.order_id)+'" style="font-size:1.05rem;font-weight:700">SOS</button><div class="muted">Úsalo si necesitas alertar al DELIVERY durante esta entrega.</div></div>';
       }
+
+      const deviationContext=driverDeviationContextFor(o.order_id);
+      const deviationPlan=driverDeviationPlanFor(o.order_id);
+      const deviationIncident=(routeDeviationState.driverSnapshot?.incidents||[])
+        .find(i=>i.order_id===o.order_id&&["OPEN","ACKNOWLEDGED"].includes(i.status));
+      if(deviationContext?.can_prepare){
+        if(deviationIncident){
+          deviationAction='<div class="workspace-warning" style="margin:10px 0"><strong>Desvío '+esc(sosStatusLabel(deviationIncident.status))+'</strong> · HTPWEB detectó una salida sostenida del corredor esperado.</div>';
+        }else if(deviationPlan){
+          const last=Number(deviationPlan.last_distance_m);
+          deviationAction='<div class="workspace-note" style="margin:10px 0"><strong>Monitoreo de desvío activo</strong> · corredor ±'+esc(deviationPlan.threshold_m||300)+' m'+
+            (Number.isFinite(last)?' · última distancia '+Math.round(last)+' m':'')+'</div>';
+        }else{
+          deviationAction='<div class="workspace-note" style="margin:10px 0"><strong>Monitoreo de desvío pendiente</strong> <button class="btn-muted" type="button" data-driver-deviation-plan="'+esc(o.order_id)+'" style="margin-left:8px">Preparar monitoreo</button></div>';
+        }
+      }
     }
 
     const routeMarker=nextRouteOrderId===o.order_id
@@ -6714,11 +7013,15 @@ function renderDriverOrders(){
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+proofPanel+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+deviationAction+proofPanel+action+'</div>';
   }).join("");
 
   box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
   box.querySelectorAll("[data-driver-sos]").forEach(b=>b.onclick=()=>triggerDriverSos(b.dataset.driverSos));
+  box.querySelectorAll("[data-driver-deviation-plan]").forEach(b=>b.onclick=async()=>{
+    const ok=await prepareDriverRouteDeviationPlan(b.dataset.driverDeviationPlan,{quiet:false});
+    if(ok)renderDriverOrders();
+  });
   box.querySelectorAll("[data-proof-pin]").forEach(b=>b.onclick=()=>verifyDriverProofPin(b.dataset.proofPin));
   box.querySelectorAll("[data-proof-photo]").forEach(b=>b.onclick=()=>uploadDriverProofPhoto(b.dataset.proofPhoto));
   box.querySelectorAll("[data-proof-view]").forEach(b=>b.onclick=()=>viewDeliveryProofMedia(b.dataset.proofView,b.dataset.proofKind));
@@ -6727,6 +7030,7 @@ function renderDriverOrders(){
   initDriverProofSignatureCanvases();
   updateDriverGpsShareUi();
   renderDriverSosNotice();
+  renderDriverRouteDeviationNotice();
   renderDriverRouteControls();
 }
 
@@ -6800,10 +7104,13 @@ async function loadDriverOrders(){
     const items=await rpc("driver_my_orders");
     state.driverOrders=Array.isArray(items)?items:[];
     reconcileDriverRoutePlan();
+    await loadDriverRouteDeviationState();
     renderDriverOrders();
     updateDriverGpsShareUi();
     renderDriverSosNotice();
+    renderDriverRouteDeviationNotice();
     await startDriverSosSubscription();
+    await startDriverRouteDeviationSubscription();
   }catch(e){
     message(e.message||"No se pudieron cargar tus entregas.","error");
   }
@@ -6818,6 +7125,18 @@ async function driverChangeStatus(orderId,next){
     });
     message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
     await loadDriverOrders();
+
+    if(next==="EN_ROUTE"){
+      const context=driverDeviationContextFor(orderId);
+      if(context?.can_prepare&&!context.existing_plan&&!driverDeviationPlanFor(orderId)){
+        const ok=await prepareDriverRouteDeviationPlan(orderId,{quiet:true});
+        if(!ok){
+          message("La entrega inició, pero no se pudo preparar el monitoreo de desvío. Puedes reintentarlo desde el pedido.","error");
+        }else{
+          renderDriverOrders();
+        }
+      }
+    }
   }catch(e){
     message(e.message||"No se pudo actualizar la entrega.","error");
   }
@@ -6827,6 +7146,8 @@ window.addEventListener("beforeunload",()=>{
   stopDriverGpsSharing(true);
   void stopDeliverySosSubscription();
   void stopDriverSosSubscription();
+  void stopDeliveryRouteDeviationSubscription();
+  void stopDriverRouteDeviationSubscription();
 });
 
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
@@ -7156,6 +7477,7 @@ function bindEvents() {
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
+  if ($("deliveryDeviationRefresh")) $("deliveryDeviationRefresh").onclick = loadDeliveryRouteDeviationSnapshotOnly;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
