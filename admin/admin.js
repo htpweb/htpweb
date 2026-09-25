@@ -5790,7 +5790,44 @@ function renderDriverOrders(){
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> 
+      '<p><strong>Total:</strong> $'+Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
+  }).join("");
+  box.querySelectorAll("[data-driver-status]").forEach(b=>{
+    b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next);
+  });
+}
+
+async function loadDriverOrders(){
+  if(state.role!=="DELIVERY_DRIVER")return;
+  try{
+    const items=await rpc("driver_my_orders");
+    state.driverOrders=Array.isArray(items)?items:[];
+    renderDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudieron cargar tus entregas.","error");
+  }
+}
+
+async function driverChangeStatus(orderId,next){
+  try{
+    await rpc("driver_set_order_status",{
+      p_order_id:orderId,
+      p_new_status:next,
+      p_note:null
+    });
+    message(next==="EN_ROUTE"?"Ruta iniciada.":"Entrega completada.");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo actualizar la entrega.","error");
+  }
+}
+
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
+
+function networkDeliveryId(){
+  return $("networkDelivery")?.value||state.deliveries[0]?.id||null;
+}
+
 function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
 
 function networkModeOptions(selected){
