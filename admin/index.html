@@ -414,6 +414,19 @@
       </div>
 
       <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">GPS del repartidor</h3>
+            <p class="muted" style="margin:.35rem 0 0">Consulta la última ubicación e historial disponible según el plan.</p>
+          </div>
+          <button id="driverGpsRefresh" class="btn-muted" type="button" disabled>Actualizar GPS</button>
+        </div>
+        <div id="driverGpsStatus" class="muted" style="margin-top:10px">Selecciona “Ver GPS” en un repartidor.</div>
+        <div id="driverGpsMap" style="height:360px;border-radius:12px;margin-top:12px;display:none"></div>
+        <div id="driverGpsHistoryInfo" class="muted" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
         <h3>Despacho manual</h3>
         <p class="muted">Solo los pedidos READY pueden asignarse o reasignarse. Al pasar a EN_ROUTE la asignación queda bloqueada hasta completar o cancelar.</p>
         <div id="dispatchOrders"></div>
@@ -428,6 +441,19 @@
             <p class="muted">Solo aparecen pedidos asignados a tu cuenta de repartidor.</p>
           </div>
           <button id="driverOrdersRefresh" class="btn-muted" type="button">Actualizar</button>
+        </div>
+        <div class="workspace-note" style="margin:12px 0">
+          <div class="row between" style="gap:10px;flex-wrap:wrap">
+            <div>
+              <strong>GPS en vivo</strong>
+              <div id="driverGpsShareStatus" class="muted">Disponible cuando tengas una entrega EN_ROUTE.</div>
+            </div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button id="driverGpsStart" class="btn-primary" type="button">Compartir ubicación</button>
+              <button id="driverGpsStop" class="btn-muted" type="button" disabled>Detener GPS</button>
+            </div>
+          </div>
+          <small class="muted">Mantén esta página abierta durante la entrega. El navegador puede pausar el GPS si el dispositivo bloquea o suspende la página.</small>
         </div>
         <div id="driverOrdersList"></div>
       </div>
