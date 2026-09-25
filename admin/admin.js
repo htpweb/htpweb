@@ -32,7 +32,8 @@ const state = {
   advertisementProducts: [],
   menuImportJobs: [],
   menuImportJob: null,
-  menuImportPreview: null
+  menuImportPreview: null,
+  deliveryAuthorizations: []
 };
 
 const roleSections = {
@@ -5461,50 +5462,129 @@ function masterDeliveryWorkspaceSelectedId(){
   return document.getElementById("deliveryWorkspaceSelect")?.value || "";
 }
 
-function renderMasterDeliveryUserOptions(){
-  const select=document.getElementById("deliveryWorkspaceUser");
-  if(!select)return;
-  const search=(document.getElementById("deliveryWorkspaceUserSearch")?.value||"").trim().toLowerCase();
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const filtered=(state.users||[]).filter(u=>{
-    if(u.role_code==="MASTER")return false;
-    if(!search)return true;
-    return [u.full_name,u.email,u.phone,u.role_code].some(v=>String(v||"").toLowerCase().includes(search));
-  });
-  select.innerHTML='<option value="">Seleccionar cuenta…</option>'+filtered.map(u=>{
-    const label=u.full_name||u.email||u.user_id;
-    return '<option value="'+esc(u.user_id)+'">'+esc(label)+(u.email&&u.email!==label?' — '+esc(u.email):'')+' — '+esc(u.role_code)+'</option>';
-  }).join("");
-  const assigned=(state.users||[]).filter(u=>(u.delivery_ids||[]).includes(deliveryId));
+function deliveryAuthorizationStatusLabel(item){
+  if(item?.status==="CLAIMED"&&item?.active_access)return "Activo";
+  if(item?.status==="PENDING")return "Pendiente";
+  if(item?.status==="EXPIRED")return "Vencido";
+  if(item?.status==="REVOKED")return "Revocado";
+  return item?.status||"—";
+}
+
+function deliveryAuthorizationRoleLabel(role){
+  return role==="DELIVERY_OPERATOR" ? "Operador" : "Administrador";
+}
+
+function renderMasterDeliveryAuthorizations(){
   const box=document.getElementById("deliveryWorkspaceAssignments");
-  if(box)box.innerHTML=assigned.length
-    ? assigned.map(u=>'<div class="row between assignment-row"><span><strong>'+esc(u.full_name||u.email||u.user_id)+'</strong> — '+esc(u.role_code)+'</span><button class="btn-danger" type="button" data-dw-unassign="'+esc(u.user_id)+'">Desvincular</button></div>').join("")
-    : '<div class="muted">Este DELIVERY todavía no tiene cuentas asignadas.</div>';
-  box?.querySelectorAll("[data-dw-unassign]").forEach(b=>b.onclick=async()=>{
-    try{
-      await rpc("master_unassign_delivery_user",{p_user_id:b.dataset.dwUnassign,p_delivery_id:deliveryId});
-      message("Cuenta desvinculada del DELIVERY.");
-      await loadUsersModule();
-      renderMasterDeliveryUserOptions();
-    }catch(e){message(e.message||"No se pudo desvincular la cuenta.","error");}
+  if(!box)return;
+  const items=Array.isArray(state.deliveryAuthorizations)?state.deliveryAuthorizations:[];
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">Este DELIVERY todavía no tiene representantes autorizados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const status=deliveryAuthorizationStatusLabel(item);
+    const expires=item.expires_at?new Date(item.expires_at).toLocaleString():"—";
+    const claimed=item.claimed_at?new Date(item.claimed_at).toLocaleString():"";
+    const canRevoke=item.status==="PENDING"||(item.status==="CLAIMED"&&item.active_access);
+    return '<div class="card" style="margin:10px 0;padding:14px">'+
+      '<div class="row between"><div>'+
+      '<strong>'+esc(item.representative_name||"Representante")+'</strong>'+
+      '<div>'+esc(item.email||"")+'</div>'+
+      '<div class="muted">CI ••••••'+esc(item.national_id_last4||"")+
+      ' · '+esc(deliveryAuthorizationRoleLabel(item.role_code))+
+      (item.phone?' · '+esc(item.phone):'')+'</div>'+
+      '</div><span class="badge">'+esc(status)+'</span></div>'+
+      '<div class="muted" style="margin-top:8px">'+
+      (item.status==="PENDING"?'Debe registrarse o iniciar sesión con este mismo correo y confirmar su email. Vence: '+esc(expires):
+       item.status==="CLAIMED"&&item.active_access?'Acceso habilitado'+(claimed?' desde '+esc(claimed):''):
+       item.status==="EXPIRED"?'La autorización venció sin ser utilizada.':
+       item.status==="REVOKED"?'El acceso fue revocado.':'')+
+      '</div>'+
+      (canRevoke?'<button class="btn-danger" type="button" data-dw-revoke="'+esc(item.id)+'" style="margin-top:10px">Revocar acceso</button>':'')+
+      '</div>';
+  }).join("");
+
+  box.querySelectorAll("[data-dw-revoke]").forEach(btn=>{
+    btn.onclick=()=>revokeMasterDeliveryAuthorization(btn.dataset.dwRevoke);
   });
 }
 
-async function assignMasterDeliveryWorkspaceUser(){
+async function loadMasterDeliveryAuthorizations(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  if(!deliveryId){
+    state.deliveryAuthorizations=[];
+    renderMasterDeliveryAuthorizations();
+    return;
+  }
+
+  try{
+    const data=await rpc("master_list_delivery_authorizations",{p_delivery_id:deliveryId});
+    state.deliveryAuthorizations=Array.isArray(data)?data:[];
+    renderMasterDeliveryAuthorizations();
+  }catch(e){
+    state.deliveryAuthorizations=[];
+    const box=document.getElementById("deliveryWorkspaceAssignments");
+    if(box)box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron cargar los accesos.")+'</div>';
+  }
+}
+
+async function authorizeMasterDeliveryRepresentative(){
   try{
     const deliveryId=masterDeliveryWorkspaceSelectedId();
-    const userId=document.getElementById("deliveryWorkspaceUser")?.value||"";
     if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
-    if(!userId)throw new Error("Selecciona una cuenta.");
-    const user=(state.users||[]).find(u=>u.user_id===userId);
-    const convert=Boolean(document.getElementById("deliveryWorkspaceConvert")?.checked);
-    if(user?.role_code==="CLIENT"&&user.active_customer&&!convert)throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión para continuar.");
-    await rpc("master_assign_delivery_user",{p_user_id:userId,p_delivery_id:deliveryId,p_role_code:"DELIVERY_ADMIN",p_convert_customer:convert});
-    message("Cuenta administradora asignada al DELIVERY.");
-    if(document.getElementById("deliveryWorkspaceConvert"))document.getElementById("deliveryWorkspaceConvert").checked=false;
-    await loadUsersModule();
-    renderMasterDeliveryUserOptions();
-  }catch(e){message(e.message||"No se pudo asignar la cuenta.","error");}
+
+    const name=document.getElementById("deliveryWorkspaceRepresentativeName")?.value.trim()||"";
+    const nationalId=document.getElementById("deliveryWorkspaceRepresentativeId")?.value.trim()||"";
+    const email=document.getElementById("deliveryWorkspaceRepresentativeEmail")?.value.trim()||"";
+    const phone=document.getElementById("deliveryWorkspaceRepresentativePhone")?.value.trim()||"";
+    const role=document.getElementById("deliveryWorkspaceRepresentativeRole")?.value||"DELIVERY_ADMIN";
+
+    if(!name)throw new Error("Escribe el nombre del representante.");
+    if(!/^[0-9]{10}$/.test(nationalId.replace(/\D/g,"")))throw new Error("La cédula debe contener 10 dígitos.");
+    if(!email)throw new Error("Escribe el correo autorizado.");
+
+    const result=await rpc("master_authorize_delivery_representative",{
+      p_delivery_id:deliveryId,
+      p_representative_name:name,
+      p_national_id:nationalId,
+      p_email:email,
+      p_phone:phone||null,
+      p_role_code:role
+    });
+
+    if(result?.status==="CLAIMED"){
+      message("Acceso habilitado: ese correo ya tenía una cuenta confirmada.");
+    }else{
+      message("Correo autorizado. La persona debe registrarse o iniciar sesión con ese mismo correo.");
+    }
+
+    document.getElementById("deliveryWorkspaceRepresentativeId").value="";
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo autorizar al representante.","error");
+  }
+}
+
+async function revokeMasterDeliveryAuthorization(authorizationId){
+  if(!authorizationId)return;
+  if(!confirm("¿Revocar este acceso al DELIVERY? Si ya estaba activo, perderá el acceso administrativo inmediatamente."))return;
+
+  try{
+    await rpc("master_revoke_delivery_authorization",{p_authorization_id:authorizationId});
+    message("Acceso revocado.");
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo revocar el acceso.","error");
+  }
 }
 
 function openMasterDeliveryWorkspaceTab(tab){
@@ -5523,8 +5603,9 @@ async function syncMasterDeliveryWorkspace(){
       s.value=[...s.options].some(o=>o.value===id)?id:"";
     }
   }
-  renderMasterDeliveryUserOptions();
+
   await Promise.all([
+    loadMasterDeliveryAuthorizations(),
     typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve(),
     typeof loadFeeDelivery==="function"?loadFeeDelivery():Promise.resolve()
   ]);
@@ -5549,7 +5630,7 @@ function bindMasterDeliveryWorkspace(){
   const original=[...section.children];
   const toolbar=document.createElement("div");
   toolbar.className="card workspace-title";
-  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, cuenta administradora, zonas y tarifas en un solo ambiente.</p></div>'+
+  toolbar.innerHTML='<div><h2>DELIVERY</h2><p>Ficha, representante autorizado, zonas y tarifas en un solo ambiente.</p></div>'+
     '<div class="row"><select id="deliveryWorkspaceSelect" style="min-width:280px"></select>'+
     '<button class="btn-primary" id="deliveryWorkspaceNew" type="button">Crear delivery</button></div>'+
     '<div class="workspace-tabs" style="width:100%;margin-top:12px">'+
@@ -5567,14 +5648,18 @@ function bindMasterDeliveryWorkspace(){
   const access=document.createElement("div");
   access.id="deliveryWorkspacePane-access";
   access.className="hidden";
-  access.innerHTML='<div class="card"><h3>Cuenta administradora</h3>'+
-    '<p class="muted">La persona crea primero su cuenta HTPWEB; aquí la vinculas como administrador del DELIVERY seleccionado.</p>'+
-    '<div class="form-grid"><div><label>Buscar cuenta</label><input id="deliveryWorkspaceUserSearch" type="search" placeholder="Nombre o correo"></div>'+
-    '<div><label>Cuenta</label><select id="deliveryWorkspaceUser"></select></div></div>'+
-    '<label class="row" style="margin-top:12px"><input id="deliveryWorkspaceConvert" type="checkbox" style="width:auto">'+
-    '<span>Convertir CLIENT con CUSTOMER activo</span></label>'+
-    '<button id="deliveryWorkspaceAssignUser" class="btn-primary" type="button" style="margin-top:12px">Asignar administrador</button></div>'+
-    '<div class="card"><h3>Accesos actuales</h3><div id="deliveryWorkspaceAssignments"></div></div>';
+  access.innerHTML='<div class="card"><h3>Representante autorizado</h3>'+
+    '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
+    '<div class="form-grid">'+
+    '<div><label>Nombre completo</label><input id="deliveryWorkspaceRepresentativeName" maxlength="180" placeholder="Nombre del representante"></div>'+
+    '<div><label>Cédula</label><input id="deliveryWorkspaceRepresentativeId" inputmode="numeric" maxlength="10" placeholder="10 dígitos"></div>'+
+    '<div><label>Correo autorizado</label><input id="deliveryWorkspaceRepresentativeEmail" type="email" maxlength="240" placeholder="correo@ejemplo.com"></div>'+
+    '<div><label>Teléfono</label><input id="deliveryWorkspaceRepresentativePhone" type="tel" maxlength="40"></div>'+
+    '<div><label>Tipo de acceso</label><select id="deliveryWorkspaceRepresentativeRole"><option value="DELIVERY_ADMIN">Administrador</option><option value="DELIVERY_OPERATOR">Operador</option></select></div>'+
+    '</div>'+
+    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
+    '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
@@ -5600,6 +5685,7 @@ function bindMasterDeliveryWorkspace(){
       zones.appendChild(node);
     });
   }
+
   const feeSection=document.getElementById("section-fees");
   if(feeSection){
     [...feeSection.children].forEach(node=>{
@@ -5610,18 +5696,19 @@ function bindMasterDeliveryWorkspace(){
 
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
   document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
-  document.getElementById("deliveryWorkspaceUserSearch").oninput=renderMasterDeliveryUserOptions;
-  document.getElementById("deliveryWorkspaceAssignUser").onclick=assignMasterDeliveryWorkspaceUser;
+  document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
     for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){
-      const input=document.getElementById(id); if(input)input.value="";
+      const input=document.getElementById(id);
+      if(input)input.value="";
     }
     if(document.getElementById("deliveryActive"))document.getElementById("deliveryActive").value="true";
     if(document.getElementById("saveDeliveryBtn"))document.getElementById("saveDeliveryBtn").textContent="Crear delivery";
     openMasterDeliveryWorkspaceTab("base");
     document.getElementById("deliveryName")?.focus();
   };
+
   masterDeliveryWorkspaceBound=true;
   openMasterDeliveryWorkspaceTab("base");
 }
@@ -5630,7 +5717,6 @@ async function loadDeliveryMasterWorkspace(){
   if(state.role!=="MASTER")return;
   bindMasterDeliveryWorkspace();
   await loadDeliveriesModule();
-  await loadUsersModule();
   await loadFees();
   await loadCoverage();
   refreshMasterDeliveryWorkspaceSelector();
@@ -5639,4 +5725,3 @@ async function loadDeliveryMasterWorkspace(){
 
 window.loadDeliveryMasterWorkspace=loadDeliveryMasterWorkspace;
 window.refreshMasterDeliveryWorkspaceSelector=refreshMasterDeliveryWorkspaceSelector;
-
