@@ -2578,20 +2578,13 @@ async function loadFeeDelivery() {
   }
 
   try {
-    const [fixedEnabled,distanceEnabled]=await Promise.all([
-      rpc("delivery_has_capability",{
-        p_delivery_id:delivery.id,
-        p_capability_code:"delivery_fees.fixed"
-      }),
-      rpc("delivery_has_capability",{
-        p_delivery_id:delivery.id,
-        p_capability_code:"delivery_fees.distance"
-      })
-    ]);
+    const capabilityStatus=await rpc("delivery_fee_capability_status",{
+      p_delivery_id:delivery.id
+    });
 
     const allowedModes=[];
-    if(Boolean(fixedEnabled))allowedModes.push("FIXED");
-    if(Boolean(distanceEnabled))allowedModes.push("DISTANCE");
+    if(Boolean(capabilityStatus?.fixed))allowedModes.push("FIXED");
+    if(Boolean(capabilityStatus?.distance))allowedModes.push("DISTANCE");
 
     const capabilityNotice=$("feeCapabilityNotice");
     const modeSelect=$("feeMode");
