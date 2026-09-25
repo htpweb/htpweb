@@ -7150,7 +7150,7 @@ window.addEventListener("beforeunload",()=>{
   void stopDriverRouteDeviationSubscription();
 });
 
-const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],groups:[],selectedGroupId:null,capabilities:{}};
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],groups:[],selectedGroupId:null,referralAnalytics:null,capabilities:{}};
 
 function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
 function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
@@ -7336,6 +7336,135 @@ function renderNetworkCustomers(){
 }
 
 
+function referralAnalyticsDateValue(date){
+  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+}
+
+function ensureReferralAnalyticsDates(){
+  const from=$("networkReferralAnalyticsFrom");
+  const to=$("networkReferralAnalyticsTo");
+  if(!from||!to)return;
+  if(!to.value)to.value=referralAnalyticsDateValue(new Date());
+  if(!from.value){
+    const start=new Date();
+    start.setDate(start.getDate()-29);
+    from.value=referralAnalyticsDateValue(start);
+  }
+}
+
+function referralAnalyticsRange(){
+  ensureReferralAnalyticsDates();
+  const fromValue=$("networkReferralAnalyticsFrom")?.value||"";
+  const toValue=$("networkReferralAnalyticsTo")?.value||"";
+  if(!fromValue||!toValue)throw new Error("Selecciona el rango de analítica.");
+  const from=new Date(fromValue+"T00:00:00");
+  const toInclusive=new Date(toValue+"T00:00:00");
+  if(!Number.isFinite(from.getTime())||!Number.isFinite(toInclusive.getTime())){
+    throw new Error("Rango de analítica inválido.");
+  }
+  if(from>toInclusive)throw new Error("La fecha Desde no puede ser posterior a Hasta.");
+  const to=new Date(toInclusive);
+  to.setDate(to.getDate()+1);
+  return {from:from.toISOString(),to:to.toISOString()};
+}
+
+function referralAnalyticsMoney(value){
+  return "$"+Number(value||0).toFixed(2);
+}
+
+function renderReferralAnalytics(){
+  const notice=$("networkReferralAnalyticsNotice");
+  const kpis=$("networkReferralAnalyticsKpis");
+  const table=$("networkReferralAnalyticsTable");
+  const refresh=$("networkReferralAnalyticsRefresh");
+  const from=$("networkReferralAnalyticsFrom");
+  const to=$("networkReferralAnalyticsTo");
+  if(!notice||!kpis||!table)return;
+
+  const enabled=networkState.capabilities?.referralAnalytics===true;
+  if(refresh)refresh.disabled=!enabled;
+  if(from)from.disabled=!enabled;
+  if(to)to.disabled=!enabled;
+
+  if(!enabled){
+    notice.innerHTML='<strong>Analítica no incluida.</strong> El plan vigente no incluye Analítica de referidos.';
+    kpis.innerHTML="";
+    table.innerHTML="";
+    return;
+  }
+
+  const data=networkState.referralAnalytics;
+  if(!data){
+    notice.textContent="Selecciona el rango y pulsa Actualizar.";
+    kpis.innerHTML="";
+    table.innerHTML="";
+    return;
+  }
+
+  const s=data.summary||{};
+  notice.innerHTML='<strong>Periodo:</strong> '+esc(new Date(data.from).toLocaleDateString("es-EC"))+
+    ' → '+esc(new Date(new Date(data.to).getTime()-1).toLocaleDateString("es-EC"))+
+    ' · La compra solo se atribuye después del primer referido válido.';
+
+  const cards=[
+    ["Códigos activos",s.codes_active||0],
+    ["Referidos históricos",s.attributed_customers_total||0],
+    ["Nuevos en periodo",s.new_referred_customers||0],
+    ["Compradores en periodo",s.buyers_in_period||0],
+    ["Pedidos entregados",s.delivered_orders_in_period||0],
+    ["Facturación entregada",referralAnalyticsMoney(s.delivered_revenue)]
+  ];
+  kpis.innerHTML=cards.map(([label,value])=>
+    '<div class="workspace-note"><div class="muted">'+esc(label)+'</div><strong style="font-size:1.35rem">'+esc(value)+'</strong></div>'
+  ).join("");
+
+  const codes=Array.isArray(data.codes)?data.codes:[];
+  table.innerHTML=codes.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Referido</th><th>Atribuidos</th><th>Origen</th><th>Nuevos</th><th>Compradores</th><th>Pedidos</th><th>Entregados</th><th>Cancelados</th><th>Facturación</th><th>Ticket</th></tr></thead><tbody>'+
+      codes.map(row=>'<tr><td><strong>'+esc(row.code||"—")+'</strong><div class="muted">'+esc(row.label||"Sin etiqueta")+
+        '</div></td><td>'+esc(row.attributed_customers_total||0)+'</td><td>Código '+esc(row.code_customers_total||0)+' · Enlace '+esc(row.link_customers_total||0)+
+        '</td><td>'+esc(row.new_referred_customers||0)+'</td><td>'+esc(row.buyers_in_period||0)+'</td><td>'+esc(row.orders_in_period||0)+
+        '</td><td>'+esc(row.delivered_orders_in_period||0)+'</td><td>'+esc(row.cancelled_orders_in_period||0)+'</td><td>'+
+        esc(referralAnalyticsMoney(row.delivered_revenue))+'</td><td>'+esc(referralAnalyticsMoney(row.average_delivered_ticket))+'</td></tr>'
+      ).join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay códigos de referido para analizar.</div>';
+}
+
+async function loadReferralAnalytics({quiet=false}={}){
+  ensureReferralAnalyticsDates();
+  if(networkState.capabilities?.referralAnalytics!==true){
+    networkState.referralAnalytics=null;
+    renderReferralAnalytics();
+    return;
+  }
+
+  const button=$("networkReferralAnalyticsRefresh");
+  const original=button?.textContent||"Actualizar";
+  if(button){button.disabled=true;button.textContent="Actualizando…";}
+  try{
+    const range=referralAnalyticsRange();
+    const data=await rpc("delivery_referral_analytics_snapshot",{
+      p_delivery_id:networkDeliveryId(),
+      p_from:range.from,
+      p_to:range.to
+    });
+    networkState.referralAnalytics=data||null;
+    renderReferralAnalytics();
+  }catch(e){
+    networkState.referralAnalytics=null;
+    renderReferralAnalytics();
+    if(!quiet)message(e.message||"No se pudo cargar la analítica de referidos.","error");
+    else if($("networkReferralAnalyticsNotice")){
+      $("networkReferralAnalyticsNotice").innerHTML='<span class="workspace-warning">'+esc(e.message||"No se pudo cargar la analítica de referidos.")+'</span>';
+    }
+  }finally{
+    if(button){button.textContent=original;button.disabled=networkState.capabilities?.referralAnalytics!==true;}
+  }
+}
+
+
 function resetNetworkGroupForm(){
   networkState.selectedGroupId=null;
   if($("networkGroupId"))$("networkGroupId").value="";
@@ -7491,6 +7620,8 @@ async function loadCustomerNetwork(){
   select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
   if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
   const deliveryId=networkDeliveryId();if(!deliveryId)return;
+  networkState.referralAnalytics=null;
+  renderReferralAnalytics();
 
   try{
     const [snapshot,refs,customers,contacts,plan,groupsSnapshot]=await Promise.all([
@@ -7510,6 +7641,7 @@ async function loadCustomerNetwork(){
     const contactsEnabled=ent["contacts.import"]===true;
     const approvalEnabled=ent["customers.approval"]===true;
     const groupsEnabled=ent["customers.groups"]===true&&groupsSnapshot?.available===true;
+    const referralAnalyticsEnabled=ent["referrals.analytics"]===true;
 
     networkState.snapshot=snapshot||{};
     networkState.referrals=Array.isArray(refs)?refs:[];
@@ -7527,7 +7659,8 @@ async function loadCustomerNetwork(){
       referralLinks:referralLinksEnabled,
       contacts:contactsEnabled,
       approval:approvalEnabled,
-      groups:groupsEnabled
+      groups:groupsEnabled,
+      referralAnalytics:referralAnalyticsEnabled
     };
 
     $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
@@ -7541,7 +7674,8 @@ async function loadCustomerNetwork(){
       ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
       ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
       ' · Aprobación: '+(approvalEnabled?"Sí":"No")+
-      ' · Grupos: '+(groupsEnabled?"Sí":"No");
+      ' · Grupos: '+(groupsEnabled?"Sí":"No")+
+      ' · Analítica referidos: '+(referralAnalyticsEnabled?"Sí":"No");
 
     $("networkDefaultMode").disabled=!privateEnabled;
     $("networkSaveDefault").disabled=!privateEnabled;
@@ -7557,6 +7691,8 @@ async function loadCustomerNetwork(){
     renderNetworkCustomers();
     renderNetworkGroups();
     if(networkState.selectedGroupId)renderNetworkGroupMembers();
+    renderReferralAnalytics();
+    await loadReferralAnalytics({quiet:true});
   }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
 }
 
@@ -7667,6 +7803,7 @@ function bindEvents() {
   if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
   if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
   if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
+  if ($("networkReferralAnalyticsRefresh")) $("networkReferralAnalyticsRefresh").onclick = () => loadReferralAnalytics({quiet:false});
   if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
   if ($("networkGroupNew")) $("networkGroupNew").onclick = resetNetworkGroupForm;
   if ($("networkGroupSave")) $("networkGroupSave").onclick = saveNetworkGroup;
