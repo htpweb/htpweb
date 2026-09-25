@@ -564,4 +564,3 @@ grant execute on function public.master_save_delivery_workspace(
   uuid,text,text,text,text,text,uuid,boolean,uuid,boolean,uuid[],text,numeric,time,time,numeric,numeric
 ) to authenticated;
 
-select public.htp_refresh_zone_links();
