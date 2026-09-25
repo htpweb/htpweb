@@ -5552,9 +5552,9 @@ function refreshMasterDeliveryWorkspaceSelector(preferred=""){
   const select=document.getElementById("deliveryWorkspaceSelect");
   if(!select)return;
   const previous=preferred||select.value;
-  const list=(state.deliveries||[]).filter(d=>d.active!==false);
+  const list=(state.deliveries||[]);
   select.innerHTML=list.length
-    ? list.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("")
+    ? list.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+(d.active===false?' — Inactivo':'')+'</option>').join("")
     : '<option value="">No hay DELIVERY registrados</option>';
   if(previous&&list.some(d=>d.id===previous))select.value=previous;
 }
@@ -5566,7 +5566,6 @@ function bindMasterDeliveryWorkspace(){
 
   const original=[...section.children];
   const cityCard=original.find(x=>x.querySelector("h2")?.textContent.trim()==="Crear ciudad");
-  if(cityCard)cityCard.classList.add("hidden");
 
   const toolbar=document.createElement("div");
   toolbar.className="card workspace-title";
@@ -5583,7 +5582,7 @@ function bindMasterDeliveryWorkspace(){
   const base=document.createElement("div");
   base.id="deliveryWorkspacePane-base";
   section.insertBefore(base,toolbar.nextSibling);
-  original.filter(x=>x!==cityCard).forEach(x=>base.appendChild(x));
+  original.forEach(x=>base.appendChild(x));
 
   const access=document.createElement("div");
   access.id="deliveryWorkspacePane-access";
@@ -5608,6 +5607,12 @@ function bindMasterDeliveryWorkspace(){
   fees.className="hidden";
   section.appendChild(fees);
 
+  const usersSection=document.getElementById("section-users");
+  if(usersSection){
+    const legacyDeliveryCard=[...usersSection.children].find(node=>node.querySelector("h3")?.textContent.trim()==="Asignar a un DELIVERY");
+    if(legacyDeliveryCard)legacyDeliveryCard.classList.add("hidden");
+  }
+
   const coverage=document.getElementById("section-coverage");
   if(coverage){
     [...coverage.children].forEach(node=>{
@@ -5628,6 +5633,12 @@ function bindMasterDeliveryWorkspace(){
   document.getElementById("deliveryWorkspaceUserSearch").oninput=renderMasterDeliveryUserOptions;
   document.getElementById("deliveryWorkspaceAssignUser").onclick=assignMasterDeliveryWorkspaceUser;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
+    if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
+    for(const id of ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"]){
+      const input=document.getElementById(id); if(input)input.value="";
+    }
+    if(document.getElementById("deliveryActive"))document.getElementById("deliveryActive").value="true";
+    if(document.getElementById("saveDeliveryBtn"))document.getElementById("saveDeliveryBtn").textContent="Crear delivery";
     openMasterDeliveryWorkspaceTab("base");
     document.getElementById("deliveryName")?.focus();
   };
