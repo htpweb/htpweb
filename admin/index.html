@@ -463,6 +463,20 @@
           </div>
           <small class="muted">Mantén esta página abierta durante la entrega. El navegador puede pausar el GPS si el dispositivo bloquea o suspende la página.</small>
         </div>
+        <div class="workspace-note" style="margin:12px 0">
+          <div class="row between" style="gap:10px;flex-wrap:wrap;align-items:end">
+            <div style="flex:1;min-width:240px">
+              <strong>Ruta optimizada</strong>
+              <div id="driverRouteStatus" class="muted">Disponible para planes con optimización de rutas y al menos dos pedidos READY.</div>
+            </div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <select id="driverRouteDelivery" style="min-width:220px"></select>
+              <button id="driverRouteOptimize" class="btn-primary" type="button">Optimizar ruta</button>
+            </div>
+          </div>
+          <div id="driverRouteResult" style="margin-top:10px"></div>
+          <small class="muted">La optimización usa tu ubicación actual y ordena únicamente pedidos ya asignados a tu cuenta. No reasigna ni cambia estados.</small>
+        </div>
         <div id="driverOrdersList"></div>
       </div>
     </section>
