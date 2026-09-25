@@ -2291,7 +2291,7 @@ async function loadDeliveriesModule() {
 
   const { data, error } = await supabaseClient
     .from("deliveries")
-    .select("id,name,slug,phone,whatsapp,active,city_id")
+    .select("id,name,slug,description,logo_url,phone,whatsapp,active,city_id")
     .order("name");
 
   if (error) throw error;
@@ -2303,7 +2303,7 @@ async function loadDeliveriesModule() {
     ? `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Slug</th><th>Estado</th><th>Teléfono</th><th>ID</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Slug</th><th>Estado</th><th>Teléfono</th><th>ID</th><th>Acción</th></tr></thead>
           <tbody>
             ${state.deliveries.map(d => `
               <tr>
@@ -2312,6 +2312,7 @@ async function loadDeliveriesModule() {
                 <td>${d.active ? "Activo" : "Inactivo"}</td>
                 <td>${esc(d.phone || "")}</td>
                 <td><code>${esc(d.id)}</code></td>
+                <td><button class="btn-muted" type="button" onclick="editMasterDeliveryRecord('${esc(d.id)}')">Configurar</button></td>
               </tr>
             `).join("")}
           </tbody>
@@ -2344,10 +2345,32 @@ async function saveCity() {
   }
 }
 
+function editMasterDeliveryRecord(deliveryId) {
+  if (state.role !== "MASTER") return;
+  const d = state.deliveries.find(x => x.id === deliveryId);
+  if (!d) return;
+  if ($("deliveryEditId")) $("deliveryEditId").value = d.id;
+  $("deliveryName").value = d.name || "";
+  $("deliverySlug").value = d.slug || "";
+  $("deliveryDescription").value = d.description || "";
+  $("deliveryPhone").value = d.phone || "";
+  $("deliveryWhatsapp").value = d.whatsapp || "";
+  $("deliveryCity").value = d.city_id || "";
+  if ($("deliveryActive")) $("deliveryActive").value = String(d.active !== false);
+  $("saveDeliveryBtn").textContent = "Guardar cambios";
+  if ($("deliveryWorkspaceSelect")) {
+    $("deliveryWorkspaceSelect").value = d.id;
+    syncMasterDeliveryWorkspace();
+  }
+  openMasterDeliveryWorkspaceTab("base");
+  $("deliveryName").focus();
+}
+
 async function saveDelivery() {
   try {
-    await rpc("master_save_delivery", {
-      p_delivery_id: null,
+    const editingId = $("deliveryEditId")?.value || null;
+    const deliveryId = await rpc("master_save_delivery", {
+      p_delivery_id: editingId,
       p_name: $("deliveryName").value.trim(),
       p_slug: $("deliverySlug").value.trim() || null,
       p_description: $("deliveryDescription").value.trim() || null,
@@ -2355,14 +2378,32 @@ async function saveDelivery() {
       p_phone: $("deliveryPhone").value.trim() || null,
       p_whatsapp: $("deliveryWhatsapp").value.trim() || null,
       p_city_id: $("deliveryCity").value || null,
-      p_active: true
+      p_active: $("deliveryActive") ? $("deliveryActive").value === "true" : true
     });
 
-    message("Delivery creado.");
-    ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"].forEach(id => $(id).value = "");
+    if (!editingId) {
+      await Promise.all([
+        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"delivery.info.manage",p_enabled:true}),
+        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"zones.manage",p_enabled:true}),
+        rpc("master_set_delivery_capability",{p_delivery_id:deliveryId,p_capability_code:"delivery_fees.manage",p_enabled:true})
+      ]);
+    }
+
+    message(editingId ? "Delivery actualizado." : "Delivery creado. Continúa con Cuenta, Zonas y Tarifas.");
+    ["deliveryName","deliverySlug","deliveryDescription","deliveryPhone","deliveryWhatsapp"].forEach(id => { if ($(id)) $(id).value = ""; });
+    if ($("deliveryEditId")) $("deliveryEditId").value = "";
+    if ($("deliveryActive")) $("deliveryActive").value = "true";
+    $("saveDeliveryBtn").textContent = "Crear delivery";
     await Promise.all([loadScopes(), loadDeliveriesModule()]);
+    if (window.refreshMasterDeliveryWorkspaceSelector) {
+      window.refreshMasterDeliveryWorkspaceSelector(deliveryId);
+      const selector = $("deliveryWorkspaceSelect");
+      if (selector) selector.value = deliveryId;
+      await syncMasterDeliveryWorkspace();
+      if (!editingId) openMasterDeliveryWorkspaceTab("access");
+    }
   } catch (e) {
-    message(e.message || "No se pudo crear el delivery.", "error");
+    message(e.message || "No se pudo guardar el delivery.", "error");
   }
 }
 
