@@ -4,7 +4,7 @@
 -- 2) Solo MASTER puede preautorizar acceso DELIVERY.
 -- 3) El usuario reclama el acceso únicamente con su propio correo autenticado y confirmado.
 -- 4) CUSTOMER puede coexistir con un rol administrativo para mantener una sola cuenta.
--- 5) La cédula no se guarda en texto plano: se conserva SHA-256 + últimos 4 dígitos.
+-- 5) La cédula no se guarda en texto plano: se conserva un hash bcrypt con salt + últimos 4 dígitos.
 
 create table if not exists public.delivery_access_authorizations (
   id uuid primary key default gen_random_uuid(),
@@ -493,7 +493,7 @@ begin
     )
     values (
       p_delivery_id, v_name, v_email, v_phone,
-      pg_catalog.encode(extensions.digest(v_national_id,'sha256'),'hex'),
+      extensions.crypt(v_national_id,extensions.gen_salt('bf',10)),
       right(v_national_id,4),
       v_role, 'PENDING',
       now()+interval '14 days',
@@ -504,7 +504,7 @@ begin
     update public.delivery_access_authorizations a
     set representative_name=v_name,
         phone=v_phone,
-        national_id_hash=pg_catalog.encode(extensions.digest(v_national_id,'sha256'),'hex'),
+        national_id_hash=extensions.crypt(v_national_id,extensions.gen_salt('bf',10)),
         national_id_last4=right(v_national_id,4),
         role_code=v_role,
         expires_at=now()+interval '14 days',
