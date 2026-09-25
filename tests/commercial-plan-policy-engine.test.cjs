@@ -12,7 +12,7 @@ const pedido=fs.readFileSync('supabase/functions/crear-pedido/index.ts','utf8');
 
 test('catálogo comercial incluye capacidad, referidos, horarios, GPS, seguridad y Stage 2',()=>{
   for(const code of [
-    'zones.active.max','drivers.active.max','operators.active.max',
+    'zones.active.max','drivers.active.max','operators.active.max','restricted_areas.active.max',
     'customers.private_network','customers.access_schedule','referrals.links','referrals.codes',
     'restricted_areas.manage','restricted_areas.schedule',
     'gps.live','tracking.customer','dispatch.auto','routes.optimize',
@@ -52,6 +52,13 @@ test('checkout no puede auto-vincular clientes y saltarse la red privada',()=>{
   assert.match(pedido,/evaluate_customer_order_policy/);
   assert.match(pedido,/policy\.auto_create === true/);
   assert.doesNotMatch(pedido,/if \(!relation\)[\s\S]{0,800}allow_orders:\s*true/);
+});
+
+test('MASTER fija cuántas áreas restringidas permite el plan y DELIVERY decide cuáles',()=>{
+  assert.match(catalog,/restricted_areas\.active\.max/);
+  assert.match(policies,/delivery_limit_value\(p_delivery_id,'restricted_areas\.active\.max'\)/);
+  assert.match(policies,/delivery_save_restricted_area/);
+  assert.match(admin,/Guardar área restringida/);
 });
 
 test('áreas restringidas admiten permanente o horario y tienen UI de mapa',()=>{
