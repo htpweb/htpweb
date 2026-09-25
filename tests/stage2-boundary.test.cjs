@@ -42,10 +42,11 @@ test('logística avanzada permanece explícitamente en Etapa 2',()=>{
   }
 });
 
-test('MASTER identifica visualmente funciones Etapa 2 como activación posterior',()=>{
+test('MASTER identifica Etapa 2 como rollout progresivo',()=>{
   assert.match(monetization,/Etapa /);
-  assert.match(page,/funciones de Etapa 2 pueden comercializarse desde ahora/i);
-  assert.match(page,/operación se active posteriormente/i);
+  assert.match(page,/Etapa 2 se activa por bloques/i);
+  assert.match(page,/algunas capacidades ya están operativas/i);
+  assert.match(page,/otras se habilitan conforme avance el roadmap/i);
 });
 
 test('Repartidores y despacho manual ya son operativos dentro de Etapa 2',()=>{
