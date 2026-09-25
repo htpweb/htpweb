@@ -2491,6 +2491,28 @@ async function loadFeeDelivery() {
   }
 
   try {
+    const capabilityEnabled=Boolean(await rpc("delivery_has_capability",{
+      p_delivery_id:delivery.id,
+      p_capability_code:"delivery_fees.manage"
+    }));
+    const capabilityNotice=$("feeCapabilityNotice");
+
+    if(!capabilityEnabled){
+      state.feeRates=[];
+      $("saveFeeConfigBtn").disabled=true;
+      $("saveFeeScheduleBtn").disabled=true;
+      $("saveFeeRateBtn").disabled=true;
+      if(capabilityNotice){
+        capabilityNotice.textContent="HTPWEB tiene deshabilitada la configuración de tarifas para este DELIVERY. Solicita habilitación a MASTER.";
+      }
+      renderFeeRates();
+      return;
+    }
+
+    if(capabilityNotice){
+      capabilityNotice.innerHTML='Tarifas habilitadas por HTPWEB. Los precios, horarios y modalidad de cobro los administra este DELIVERY. El cálculo final siempre lo realiza el backend.';
+    }
+
     const [configRes, ratesRes] = await Promise.all([
       supabaseClient
         .from("delivery_fee_configs")
@@ -5628,7 +5650,7 @@ function openMasterDeliveryWorkspaceTab(tab){
 async function syncMasterDeliveryWorkspace(){
   const id=masterDeliveryWorkspaceSelectedId();
   if(!id)return;
-  for(const selectId of ["coverageDelivery","feeDelivery","userManagerDelivery"]){
+  for(const selectId of ["coverageDelivery","userManagerDelivery"]){
     const s=document.getElementById(selectId);
     if(s){
       s.value=[...s.options].some(o=>o.value===id)?id:"";
