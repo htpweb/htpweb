@@ -164,6 +164,9 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   }
 
   if (policy.auto_create === true) {
+    const relationshipSource = ["PUBLIC", "CONTACT"].includes(policy?.relationship_source)
+      ? policy.relationship_source
+      : "PUBLIC";
     const now = new Date().toISOString();
     const { error: insertError } = await supabaseAdmin
       .from("customer_deliveries")
@@ -172,7 +175,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         delivery_id: deliveryId,
         active: true,
         allow_orders: true,
-        relationship_source: "PUBLIC",
+        relationship_source: relationshipSource,
         created_at: now,
         updated_at: now
       }, {
@@ -181,7 +184,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       });
 
     if (insertError) {
-      console.error("Error creando relación pública customer_deliveries:", insertError);
+      console.error("Error creando relación customer_deliveries:", insertError);
       throw new HttpError(500, "No se pudo vincular al cliente con el delivery");
     }
   }
