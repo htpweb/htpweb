@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.calcular-distancia]
 verify_jwt = true
 
+[functions.optimizar-ruta]
+verify_jwt = true
+
 [functions.analizar-menu]
 verify_jwt = true
 
