@@ -7,6 +7,7 @@ const admin=fs.readFileSync('admin/admin.js','utf8');
 const access=fs.readFileSync('app/acceso.html','utf8');
 const checkout=fs.readFileSync('supabase/functions/crear-pedido/index.ts','utf8');
 const migration=fs.readFileSync('supabase/migrations/20260925121909_delivery_contacts_referral_links.sql','utf8');
+const referralGuard=fs.readFileSync('supabase/migrations/20260925122813_referral_preserves_delivery_block.sql','utf8');
 
 test('contacts.import tiene flujo real cerrado por RPC',()=>{
   assert.match(migration,/create table if not exists public\.delivery_contacts/);
@@ -63,4 +64,13 @@ test('script inline de acceso compila después de integrar referidos',()=>{
   const inline=scripts.at(-1)?.[1]||'';
   assert.ok(inline.length>0);
   assert.doesNotThrow(()=>new Function(inline));
+});
+
+test('un referido no puede reactivar un cliente bloqueado por DELIVERY',()=>{
+  assert.match(referralGuard,/v_existing\.active is distinct from true/);
+  assert.match(referralGuard,/v_existing\.allow_orders is distinct from true/);
+  assert.match(referralGuard,/un referido no puede reactivarlo/);
+  const conflict=referralGuard.match(/on conflict\(customer_id,delivery_id\)[\s\S]*?return jsonb_build_object/)?.[0]||'';
+  assert.doesNotMatch(conflict,/active=true/);
+  assert.doesNotMatch(conflict,/allow_orders=true/);
 });
