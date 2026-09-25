@@ -8,6 +8,14 @@ create table if not exists private.delivery_dispatch_settings(
 alter table private.delivery_dispatch_settings enable row level security;
 revoke all on table private.delivery_dispatch_settings from public,anon,authenticated;
 
+drop policy if exists delivery_dispatch_settings_deny_all on private.delivery_dispatch_settings;
+create policy delivery_dispatch_settings_deny_all
+on private.delivery_dispatch_settings
+for all
+to public
+using (false)
+with check (false);
+
 create or replace function private.dispatch_mode_allowed(p_delivery_id uuid,p_mode text)
 returns boolean
 language sql
