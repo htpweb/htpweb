@@ -6,6 +6,13 @@ const migration=fs.readFileSync('supabase/migrations/20260925164245_stage2_safet
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 
+function sqlFunction(name){
+  const start=migration.indexOf('CREATE OR REPLACE FUNCTION '+name);
+  assert.ok(start>=0,'No se encontró '+name);
+  const next=migration.indexOf('CREATE OR REPLACE FUNCTION ',start+1);
+  return migration.slice(start,next>=0?next:migration.length);
+}
+
 test('incidentes SOS viven en private con RLS deny-all',()=>{
   assert.match(migration,/create table if not exists private\.driver_sos_incidents/);
   assert.match(migration,/alter table private\.driver_sos_incidents enable row level security/);
@@ -36,14 +43,14 @@ test('crear SOS requiere safety.sos del plan pero atender uno existente no',()=>
   assert.match(membership,/user_deliveries/i);
   assert.doesNotMatch(membership,/delivery_service_is_active/i);
 
-  const snapshot=migration.match(/CREATE OR REPLACE FUNCTION public\.delivery_sos_snapshot[\s\S]*?\$\$;/i)?.[0]||'';
+  const snapshot=sqlFunction('public.delivery_sos_snapshot');
   assert.match(snapshot,/sos_user_has_delivery/i);
   assert.match(snapshot,/delivery_has_capability\(p_delivery_id, 'safety\.sos'\)|delivery_has_capability\(p_delivery_id,'safety\.sos'\)/i);
   assert.doesNotMatch(snapshot,/return jsonb_build_object\(\s*'enabled', false,\s*'incidents', '\[\]'/i);
 });
 
 test('SOS no depende de que exista ubicación',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION public\.driver_trigger_sos[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('public.driver_trigger_sos');
   assert.match(fn,/v_source text := 'NONE'|v_source text:='NONE'/i);
   assert.match(fn,/location_source/i);
   assert.match(fn,/insert into private\.driver_sos_incidents/i);
@@ -69,7 +76,7 @@ test('doble toque usa advisory lock y reutiliza incidente abierto',()=>{
 });
 
 test('broadcast SOS sale solo a dos topics privados específicos',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION private\.broadcast_sos_incident[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('private.broadcast_sos_incident');
   assert.match(fn,/realtime\.send/i);
   assert.match(fn,/safety-sos:delivery:/i);
   assert.match(fn,/safety-sos:driver:/i);
@@ -77,7 +84,7 @@ test('broadcast SOS sale solo a dos topics privados específicos',()=>{
 });
 
 test('Realtime autoriza admin por DELIVERY y driver solo por su propio user id',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION private\.can_receive_safety_sos_topic[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('private.can_receive_safety_sos_topic');
   assert.match(fn,/safety-sos:delivery:/i);
   assert.match(fn,/sos_user_has_delivery/i);
   assert.match(fn,/orders\.view/i);
@@ -95,15 +102,15 @@ test('helpers SOS privados no son ejecutables por navegador',()=>{
 });
 
 test('snapshot ADMIN prioriza OPEN luego ACKNOWLEDGED y conserva 7 días resueltos',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION public\.delivery_sos_snapshot[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('public.delivery_sos_snapshot');
   assert.match(fn,/case i\.status when 'OPEN' then 0 when 'ACKNOWLEDGED' then 1 else 2 end/i);
   assert.match(fn,/order by x\.sort_rank, x\.created_at desc|order by x\.sort_rank,x\.created_at desc/i);
   assert.match(fn,/interval '7 days'/i);
 });
 
 test('reconocer y resolver requieren membresía activa y orders.manage',()=>{
-  const ack=migration.match(/CREATE OR REPLACE FUNCTION public\.delivery_acknowledge_sos[\s\S]*?\$\$;/i)?.[0]||'';
-  const resolve=migration.match(/CREATE OR REPLACE FUNCTION public\.delivery_resolve_sos[\s\S]*?\$\$;/i)?.[0]||'';
+  const ack=sqlFunction('public.delivery_acknowledge_sos');
+  const resolve=sqlFunction('public.delivery_resolve_sos');
   for(const fn of [ack,resolve]){
     assert.match(fn,/sos_user_has_delivery/i);
     assert.match(fn,/orders\.manage/i);
@@ -116,7 +123,7 @@ test('reconocer y resolver requieren membresía activa y orders.manage',()=>{
 });
 
 test('driver_my_orders expone solo estado SOS, no tablas privadas completas',()=>{
-  const fn=migration.match(/CREATE OR REPLACE FUNCTION public\.driver_my_orders[\s\S]*?\$\$;/i)?.[0]||'';
+  const fn=sqlFunction('public.driver_my_orders');
   assert.match(fn,/'sos_enabled'/i);
   assert.match(fn,/delivery_has_capability\(a\.delivery_id, 'safety\.sos'\)|delivery_has_capability\(a\.delivery_id,'safety\.sos'\)/i);
   assert.match(fn,/'incident_id'/i);
