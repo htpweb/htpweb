@@ -1,9 +1,140 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Monetización · HTPWEB</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../config/supabase.js"></script><script src="../config/auth.js"></script><link rel="stylesheet" href="../assets/admin.css"><link rel="stylesheet" href="../assets/monetization.css"></head><body><main class="monetization-shell">
-<div class="row between"><div><h1>Planes y monetización</h1><p class="muted">Planes, prestaciones, asignaciones y consumo efectivo por DELIVERY o LOCAL.</p></div><a class="btn-muted back" href="./index.html">Volver al ADMIN</a></div>
-<div id="message" class="message hidden"></div>
-<section class="card master-only"><h2>Plan</h2><input id="planId" type="hidden"><div class="form-grid"><div><label>Código</label><input id="code" placeholder="DELIVERY_PRO"></div><div><label>Nombre</label><input id="name"></div><div><label>Destino</label><select id="targetType"><option>DELIVERY</option><option>LOCAL</option></select></div><div><label>Precio USD</label><input id="price" type="number" min="0" step=".01" value="0"></div><div><label>Periodicidad</label><select id="interval"><option value="MONTH">Mensual</option><option value="YEAR">Anual</option><option value="ONE_TIME">Pago único</option></select></div><div><label>Orden</label><input id="order" type="number" min="0" value="0"></div></div><label>Descripción</label><textarea id="description"></textarea><label>Prestaciones (una por línea: CAPABILITY|código|true o LIMIT|código|número)</label><textarea id="entitlements" rows="7" placeholder="CAPABILITY|products.manage|true&#10;LIMIT|max_products|100"></textarea><label><input id="active" type="checkbox" checked> Plan activo</label><div class="row"><button class="btn-primary" id="savePlan">Guardar plan</button><button class="btn-muted" id="newPlan">Nuevo</button></div></section>
-<section class="card"><h2>Planes disponibles</h2><div id="plans"></div></section>
-<section class="card master-only"><h2>Asignar plan</h2><div class="form-grid"><div><label>Plan</label><select id="assignmentPlan"></select></div><div><label>Tipo</label><select id="assignmentType"><option>DELIVERY</option><option>LOCAL</option></select></div><div><label>Destino</label><select id="assignmentTarget"></select></div><div><label>Estado</label><select id="assignmentStatus"><option>ACTIVE</option><option>TRIAL</option><option>PAST_DUE</option></select></div><div><label>Finaliza</label><input id="endsAt" type="datetime-local"></div><div><label>Fin de prueba</label><input id="trialEndsAt" type="datetime-local"></div></div><button class="btn-primary" id="assignPlan">Asignar</button></section>
-<section class="card"><h2>Consumo y límites efectivos</h2><div class="form-grid"><div><label>Tipo</label><select id="usageType"><option>DELIVERY</option><option>LOCAL</option></select></div><div><label>Destino</label><select id="usageTarget"></select></div></div><button class="btn-muted" id="loadUsage">Consultar</button><pre id="usage">Selecciona un destino.</pre></section>
-<section class="card master-only"><h2>Excepción MASTER</h2><div class="form-grid"><div><label>Tipo</label><select id="overrideType"><option>CAPABILITY</option><option>LIMIT</option></select></div><div><label>Código</label><input id="overrideCode"></div><div><label>Valor</label><input id="overrideValue"></div><div><label>Motivo</label><input id="overrideReason"></div></div><button class="btn-muted" id="saveOverride">Guardar excepción</button></section>
-</main><script src="./monetization.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Planes y Suscripciones · HTPWEB</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/supabase.js"></script>
+  <script src="../config/auth.js"></script>
+  <link rel="stylesheet" href="../assets/admin.css">
+  <link rel="stylesheet" href="../assets/monetization.css">
+</head>
+<body>
+<main class="monetization-shell">
+  <div class="row between" style="gap:14px;flex-wrap:wrap">
+    <div>
+      <h1>Planes y Suscripciones</h1>
+      <p class="muted">MASTER define lo que HTPWEB comercializa. El plan otorga capacidad, funciones y vigencia; cada DELIVERY decide cómo usar sus recursos.</p>
+    </div>
+    <a class="btn-muted back" href="./index.html">Volver al ADMIN</a>
+  </div>
+
+  <div id="message" class="message hidden"></div>
+
+  <div class="workspace-tabs monetization-tabs">
+    <button type="button" data-tab="catalog" class="active">Catálogo de planes</button>
+    <button type="button" data-tab="subscriptions">Suscripciones</button>
+    <button type="button" data-tab="expirations">Vencimientos</button>
+    <button type="button" data-tab="overrides">Excepciones</button>
+  </div>
+
+  <section id="tab-catalog" class="monetization-tab">
+    <section class="card">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <h2>Plan comercial</h2>
+          <p class="muted">Crea planes reutilizables. Las prestaciones se congelan al contratarse para no alterar contratos ya pagados.</p>
+        </div>
+        <button class="btn-muted" id="newPlan" type="button">Nuevo plan</button>
+      </div>
+      <input id="planId" type="hidden">
+      <div class="form-grid">
+        <div><label>Código</label><input id="code" placeholder="PRO_3M"></div>
+        <div><label>Nombre</label><input id="name" placeholder="Profesional"></div>
+        <div><label>Precio USD</label><input id="price" type="number" min="0" step=".01" value="0"></div>
+        <div>
+          <label>Duración</label>
+          <select id="durationMonths">
+            <option value="1">1 mes</option>
+            <option value="2">2 meses</option>
+            <option value="3">3 meses</option>
+            <option value="6">6 meses</option>
+            <option value="12">1 año</option>
+          </select>
+        </div>
+        <div><label>Orden</label><input id="order" type="number" min="0" value="0"></div>
+        <div><label>Estado</label><select id="active"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+      </div>
+      <label>Descripción</label>
+      <textarea id="description" rows="3" placeholder="Qué incluye este plan y para qué tipo de DELIVERY está pensado."></textarea>
+
+      <div class="card feature-builder-card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3>Capacidad y funciones incluidas</h3>
+            <p class="muted">LIMIT define cantidades. CAPABILITY habilita funciones. Las funciones de Etapa 2 pueden comercializarse desde ahora aunque su operación se active posteriormente.</p>
+          </div>
+          <span id="featureCount" class="badge">0 prestaciones</span>
+        </div>
+        <div id="featureBuilder"></div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn-primary" id="savePlan" type="button">Guardar plan</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Planes disponibles</h2>
+      <div id="plans"></div>
+    </section>
+  </section>
+
+  <section id="tab-subscriptions" class="monetization-tab hidden">
+    <section class="card">
+      <h2>Asignar, renovar o cambiar plan</h2>
+      <p class="muted">HTPWEB calcula las fechas automáticamente. Renovaciones y downgrades se programan para el siguiente ciclo; upgrades pueden entrar de inmediato.</p>
+      <div class="form-grid">
+        <div><label>DELIVERY</label><select id="assignmentDelivery"></select></div>
+        <div><label>Plan</label><select id="assignmentPlan"></select></div>
+        <div>
+          <label>Entrada en vigencia</label>
+          <select id="effectiveMode">
+            <option value="AUTO">Automática recomendada</option>
+            <option value="NOW">Ahora</option>
+            <option value="NEXT_CYCLE">Próximo ciclo</option>
+          </select>
+        </div>
+      </div>
+      <div id="assignmentPreview" class="workspace-note" style="margin-top:12px"></div>
+      <button class="btn-primary" id="assignPlan" type="button" style="margin-top:12px">Activar / renovar plan</button>
+    </section>
+
+    <section class="card">
+      <h2>Suscripción actual</h2>
+      <div id="subscriptionDetail"></div>
+    </section>
+  </section>
+
+  <section id="tab-expirations" class="monetization-tab hidden">
+    <section class="card">
+      <div class="row between" style="gap:12px;flex-wrap:wrap">
+        <div>
+          <h2>Vencimientos</h2>
+          <p class="muted">HTPWEB avisa internamente al DELIVERY cinco días antes. No se envían correos ni SMS.</p>
+        </div>
+        <button id="refreshExpirations" class="btn-muted" type="button">Actualizar</button>
+      </div>
+      <div id="expirations"></div>
+    </section>
+  </section>
+
+  <section id="tab-overrides" class="monetization-tab hidden">
+    <section class="card">
+      <h2>Excepción MASTER</h2>
+      <p class="muted">Ajuste puntual para un DELIVERY sin modificar el plan comercial general. Úsalo para capacidad o funciones excepcionales.</p>
+      <div class="form-grid">
+        <div><label>DELIVERY</label><select id="overrideDelivery"></select></div>
+        <div><label>Prestación</label><select id="overrideFeature"></select></div>
+        <div><label>Valor</label><input id="overrideValue"></div>
+        <div><label>Motivo</label><input id="overrideReason" placeholder="Ej. cortesía temporal"></div>
+      </div>
+      <button class="btn-primary" id="saveOverride" type="button">Guardar excepción</button>
+      <div id="overrideUsage" style="margin-top:16px"></div>
+    </section>
+  </section>
+</main>
+<script src="./monetization.js?v=20260925-0540"></script>
+</body>
+</html>
