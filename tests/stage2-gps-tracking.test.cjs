@@ -37,7 +37,7 @@ test('historial GPS depende de gps_history.days y tiene limpieza programada',()=
 });
 
 test('broadcast de ubicación usa topic por pedido y canal privado',()=>{
-  const fn=migration.match(/create or replace function public\.driver_update_location[\s\S]*?return jsonb_build_object\(/)?.[0]||'';
+  const fn=migration.match(/create or replace function public\.driver_update_location[\s\S]*?grant execute on function public\.driver_update_location/)?.[0]||'';
   assert.match(fn,/realtime\.send\(/);
   assert.match(fn,/'order-tracking:'\|\|v_order\.id::text/);
   assert.match(fn,/'location'/);
