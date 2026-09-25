@@ -263,6 +263,7 @@ async function renderDetail() {
     <div class="summary-line"><span>Delivery</span><strong>${money(order.delivery_fee)}</strong></div>
     <div class="summary-line total"><span>Total</span><strong>${money(order.total)}</strong></div>
     ${order.status === 'EN_ROUTE' ? '<div id="trackingCard" class="card" style="margin-top:16px"><h3>Seguimiento en vivo</h3><p id="trackingStatus" class="muted">Conectando con el repartidor…</p><div id="trackingMap" style="height:320px;border-radius:12px;display:none"></div></div>' : ''}
+    ${customerProofCard(deliveryProof, order.id)}
     ${order.status === 'PENDING' ? '<button class="btn btn-danger" id="cancelBtn">Cancelar pedido</button>' : ''}`;
   $('detail').classList.remove('hidden');
   $('closeDetailBtn').onclick = () => {
@@ -273,6 +274,9 @@ async function renderDetail() {
     $('detail').innerHTML = '';
   };
   if ($('cancelBtn')) $('cancelBtn').onclick = cancelSelected;
+  document.querySelectorAll('[data-customer-proof-view]').forEach(button => {
+    button.onclick = () => viewCustomerDeliveryProofMedia(button.dataset.customerProofView, button.dataset.proofKind);
+  });
   if (order.status === 'EN_ROUTE') await startCustomerTracking(order.id);
 }
 async function reload(targetPage = page) {
