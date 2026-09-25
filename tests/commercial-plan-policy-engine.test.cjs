@@ -37,7 +37,7 @@ test('downgrade bloquea operación hasta reconfigurar recursos',()=>{
 
 test('red privada puede variar por día y hora, incluso cruzando medianoche',()=>{
   assert.match(policies,/delivery_customer_access_mode_at/);
-  assert.match(policies,/start_time>end_time/);
+  assert.match(policies,/start_time>r\\.end_time/);
   assert.match(policies,/v_prev/);
   assert.match(admin,/Clientes y referidos/);
   assert.match(admin,/18:00/);
