@@ -6682,6 +6682,7 @@ function renderDriverOrders(){
   const nextRouteOrderId=state.driverRoutePlan?.stops?.[0]?.order_id||null;
   box.innerHTML=items.map(o=>{
     let action="";
+    let safetyAction="";
     const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
       state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
 
@@ -6695,6 +6696,12 @@ function renderDriverOrders(){
     }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
       const proofReady=!o.proof?.enabled||o.proof?.ready===true;
       action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED" '+(proofReady?'':'disabled')+'>Marcar entregado</button>';
+      if(o.sos_enabled){
+        const sosActive=o.sos&&["OPEN","ACKNOWLEDGED"].includes(o.sos.status);
+        safetyAction=sosActive
+          ? '<div class="workspace-warning" style="margin:10px 0"><strong>SOS '+esc(sosStatusLabel(o.sos.status))+'</strong> · la alerta de seguridad sigue activa.</div>'
+          : '<div style="margin:10px 0"><button class="btn-danger" type="button" data-driver-sos="'+esc(o.order_id)+'" style="font-size:1.05rem;font-weight:700">SOS</button><div class="muted">Úsalo si necesitas alertar al DELIVERY durante esta entrega.</div></div>';
+      }
     }
 
     const routeMarker=nextRouteOrderId===o.order_id
@@ -6707,10 +6714,11 @@ function renderDriverOrders(){
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+proofPanel+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+proofPanel+action+'</div>';
   }).join("");
 
   box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
+  box.querySelectorAll("[data-driver-sos]").forEach(b=>b.onclick=()=>triggerDriverSos(b.dataset.driverSos));
   box.querySelectorAll("[data-proof-pin]").forEach(b=>b.onclick=()=>verifyDriverProofPin(b.dataset.proofPin));
   box.querySelectorAll("[data-proof-photo]").forEach(b=>b.onclick=()=>uploadDriverProofPhoto(b.dataset.proofPhoto));
   box.querySelectorAll("[data-proof-view]").forEach(b=>b.onclick=()=>viewDeliveryProofMedia(b.dataset.proofView,b.dataset.proofKind));
@@ -6718,6 +6726,7 @@ function renderDriverOrders(){
   box.querySelectorAll("[data-proof-sign-upload]").forEach(b=>b.onclick=()=>uploadDriverProofSignature(b.dataset.proofSignUpload));
   initDriverProofSignatureCanvases();
   updateDriverGpsShareUi();
+  renderDriverSosNotice();
   renderDriverRouteControls();
 }
 
