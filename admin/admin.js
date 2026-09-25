@@ -5313,16 +5313,33 @@ function bindEvents() {
   $("refreshBtn").onclick = refreshAll;
   $("orderScope").onchange = loadOrders;
   $("analyticsScope").onchange = loadAnalytics;
-  $("menuImportDelivery").onchange = () => { $("menuImportStatus").textContent = "Selecciona de 1 a 5 imágenes para iniciar."; };
-  $("menuExistingLocal").onchange = () => {
-    const existing = Boolean($("menuExistingLocal").value);
-    $("menuLocalZone").disabled = existing;
-    if (existing) $("menuLocalZone").value = "";
-  };
-  $("startMenuImportBtn").onclick = startMenuImageImport;
-  $("reanalyzeMenuBtn").onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
-  $("addMenuCategoryBtn").onclick = addMenuCategory;
-  $("applyMenuImportBtn").onclick = applyMenuImport;
+  const menuImportDelivery = $("menuImportDelivery");
+  const menuExistingLocal = $("menuExistingLocal");
+  const menuImportStatus = $("menuImportStatus");
+  const menuLocalZone = $("menuLocalZone");
+  const startMenuImportBtn = $("startMenuImportBtn");
+  const reanalyzeMenuBtn = $("reanalyzeMenuBtn");
+  const addMenuCategoryBtn = $("addMenuCategoryBtn");
+  const applyMenuImportBtn = $("applyMenuImportBtn");
+
+  if (menuImportDelivery) {
+    menuImportDelivery.onchange = () => {
+      if (menuImportStatus) menuImportStatus.textContent = "Selecciona de 1 a 5 imágenes para iniciar.";
+    };
+  }
+  if (menuExistingLocal) {
+    menuExistingLocal.onchange = () => {
+      const existing = Boolean(menuExistingLocal.value);
+      if (menuLocalZone) {
+        menuLocalZone.disabled = existing;
+        if (existing) menuLocalZone.value = "";
+      }
+    };
+  }
+  if (startMenuImportBtn) startMenuImportBtn.onclick = startMenuImageImport;
+  if (reanalyzeMenuBtn) reanalyzeMenuBtn.onclick = () => state.menuImportJob?.id && analyzeMenuImportJob(state.menuImportJob.id);
+  if (addMenuCategoryBtn) addMenuCategoryBtn.onclick = addMenuCategory;
+  if (applyMenuImportBtn) applyMenuImportBtn.onclick = applyMenuImport;
   $("advertisementScope").onchange = loadAdvertisingTargets;
   $("advertisementDelivery").onchange = loadAdvertisingTargets;
   $("advertisementLocal").onchange = loadAdvertisingProducts;
