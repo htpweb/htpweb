@@ -57,3 +57,10 @@ test('red privada mantiene horarios nocturnos y origen visible',()=>{
   assert.match(admin,/Enlaces:/);
   assert.match(admin,/Aprobación:/);
 });
+
+test('script inline de acceso compila después de integrar referidos',()=>{
+  const scripts=[...access.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  const inline=scripts.at(-1)?.[1]||'';
+  assert.ok(inline.length>0);
+  assert.doesNotThrow(()=>new Function(inline));
+});
