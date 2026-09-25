@@ -78,7 +78,7 @@ test('distancia al corredor se calcula localmente sin PostGIS',()=>{
   assert.match(migration,/route_polyline_distance_m/);
   assert.match(migration,/6371000\.0/);
   assert.match(migration,/sqrt\(cx\*cx\+cy\*cy\)/);
-  assert.doesNotMatch(migration,/ST_Distance|ST_DWithin|geography\(/i);
+  assert.doesNotMatch(migration,/(?:\bST_Distance\s*\(|\bST_DWithin\s*\(|::\s*geography\b|\bgeography\s*\()/i);
 });
 
 test('ruta registrada debe terminar cerca del destino real del pedido',()=>{
