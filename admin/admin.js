@@ -5556,19 +5556,42 @@ async function loadAnalytics() {
   }
 }
 
-const networkState={snapshot:null,referrals:[],customers:[],rules:[]};
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
 function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
 function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
 
+function networkModeOptions(selected){
+  const caps=networkState.capabilities||{};
+  const options=[
+    ["OPEN","Abierta"],
+    ["PRIVATE","Solo contactos/referidos"]
+  ];
+  if(caps.approval)options.push(["APPROVAL_REQUIRED","Solo aprobados"]);
+  return options.map(([value,label])=>
+    '<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>'
+  ).join("");
+}
+
 function renderNetworkRules(){
   const box=$("networkRules");if(!box)return;
   const rules=networkState.rules||[];
-  if(!rules.length){box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';return;}
+  if(!rules.length){
+    box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';
+    return;
+  }
   box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
-    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+'"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><select data-net-mode="'+i+'"><option value="OPEN" '+(r.access_mode==="OPEN"?'selected':'')+'>Abierta</option><option value="PRIVATE" '+(r.access_mode==="PRIVATE"?'selected':'')+'>Solo contactos/referidos</option><option value="APPROVAL_REQUIRED" '+(r.access_mode==="APPROVAL_REQUIRED"?'selected':'')+'>Solo aprobados</option></select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
+    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+
+      [0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+
+      '</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+
+      '"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+
+      '"></td><td><select data-net-mode="'+i+'">'+networkModeOptions(r.access_mode||"PRIVATE")+
+      '</select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
     '</tbody></table></div>';
-  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{networkState.rules.splice(Number(b.dataset.netRemove),1);renderNetworkRules();});
+  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{
+    networkState.rules.splice(Number(b.dataset.netRemove),1);
+    renderNetworkRules();
+  });
 }
 
 function collectNetworkRules(){
@@ -5581,18 +5604,141 @@ function collectNetworkRules(){
   }));
 }
 
+function networkDeliveryRecord(){
+  const id=networkDeliveryId();
+  return state.deliveries.find(d=>d.id===id)||null;
+}
+
+function referralLinkFor(code){
+  const url=new URL("../app/acceso.html",location.href);
+  const delivery=networkDeliveryRecord();
+  if(delivery?.slug)url.searchParams.set("delivery",delivery.slug);
+  url.searchParams.set("ref",code);
+  return url.toString();
+}
+
+async function copyReferralLink(code){
+  try{
+    await navigator.clipboard.writeText(referralLinkFor(code));
+    message("Enlace de referido copiado.");
+  }catch(e){
+    message(e.message||"No se pudo copiar el enlace de referido.","error");
+  }
+}
+
 function renderNetworkReferrals(){
   const box=$("networkReferrals");if(!box)return;
   const items=networkState.referrals||[];
-  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.code)+'</strong></td><td>'+esc(r.label||"—")+'</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+'</td><td><button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+(r.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Todavía no hay códigos de referido.</div>';
-  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{try{await rpc("delivery_set_referral_code_active",{p_delivery_id:networkDeliveryId(),p_referral_id:b.dataset.refToggle,p_active:b.dataset.active!=="true"});await loadCustomerNetwork();}catch(e){message(e.message,"error");}});
+  const caps=networkState.capabilities||{};
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr></thead><tbody>'+
+      items.map(r=>'<tr><td><strong>'+(caps.referralCodes?esc(r.code):"—")+'</strong></td><td>'+esc(r.label||"—")+
+        '</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+
+        '</td><td><div class="row">'+
+        (caps.referralLinks&&r.active?'<button class="btn-muted" type="button" data-ref-link="'+esc(r.code)+'">Copiar enlace</button>':"")+
+        '<button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+
+        (r.active?"Desactivar":"Activar")+'</button></div></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay referidos configurados.</div>';
+
+  box.querySelectorAll("[data-ref-link]").forEach(b=>b.onclick=()=>copyReferralLink(b.dataset.refLink));
+  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_referral_code_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_referral_id:b.dataset.refToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+function parseNetworkContacts(){
+  const raw=$("networkContactsInput")?.value||"";
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)throw new Error("Escribe al menos un contacto.");
+  if(lines.length>500)throw new Error("Puedes importar máximo 500 contactos por lote.");
+
+  return lines.map((line,index)=>{
+    const parts=line.split(/[;,]/).map(x=>x.trim());
+    let name=parts[0]||"";
+    let phone=parts[1]||"";
+    let email=parts[2]||"";
+
+    if(parts.length===1){
+      if(parts[0].includes("@")){email=parts[0];name="";}
+      else {phone=parts[0];name="";}
+    }else if(parts.length===2){
+      if(parts[1].includes("@")){email=parts[1];phone="";}
+    }
+
+    if(!phone&&!email)throw new Error("Contacto "+(index+1)+": agrega teléfono o correo.");
+    return {name:name||null,phone:phone||null,email:email||null};
+  });
+}
+
+function renderNetworkContacts(){
+  const box=$("networkContacts");if(!box)return;
+  const items=networkState.contacts||[];
+  const enabled=Boolean(networkState.capabilities?.contacts);
+  box.innerHTML=items.length
+    ? '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Contacto")+'</strong></td><td>'+esc(x.phone||"—")+'</td><td>'+esc(x.email||"—")+
+        '</td><td>'+(x.active?"Activo":"Inactivo")+'</td><td><button class="'+(x.active?"btn-danger":"btn-muted")+
+        '" type="button" data-contact-toggle="'+esc(x.id)+'" data-active="'+String(x.active)+'" '+(!enabled&&!x.active?'disabled':'')+'>'+
+        (x.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted" style="margin-top:12px">Todavía no hay contactos importados.</div>';
+
+  box.querySelectorAll("[data-contact-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_contact_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_contact_id:b.dataset.contactToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function importNetworkContacts(){
+  try{
+    const contacts=parseNetworkContacts();
+    const result=await rpc("delivery_import_contacts",{
+      p_delivery_id:networkDeliveryId(),
+      p_contacts:contacts
+    });
+    message("Contactos procesados: "+esc(result?.processed??contacts.length)+".");
+    $("networkContactsInput").value="";
+    await loadCustomerNetwork();
+  }catch(e){message(e.message||"No se pudieron importar los contactos.","error");}
 }
 
 function renderNetworkCustomers(){
   const box=$("networkCustomers");if(!box)return;
   const items=networkState.customers||[];
-  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+'</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+'</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+'" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+(x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Todavía no hay clientes vinculados.</div>';
-  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{try{await rpc("delivery_set_customer_order_access",{p_delivery_id:networkDeliveryId(),p_customer_id:b.dataset.customerAccess,p_allow_orders:b.dataset.allow!=="true"});await loadCustomerNetwork();}catch(e){message(e.message,"error");}});
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+
+        '</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+
+        '</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+
+        '" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+
+        (x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay clientes vinculados.</div>';
+
+  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_customer_order_access",{
+        p_delivery_id:networkDeliveryId(),
+        p_customer_id:b.dataset.customerAccess,
+        p_allow_orders:b.dataset.allow!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
 }
 
 async function loadCustomerNetwork(){
@@ -5602,32 +5748,99 @@ async function loadCustomerNetwork(){
   select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
   if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
   const deliveryId=networkDeliveryId();if(!deliveryId)return;
+
   try{
-    const [snapshot,refs,customers,plan]=await Promise.all([
+    const [snapshot,refs,customers,contacts,plan]=await Promise.all([
       rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_contacts_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
     ]);
-    networkState.snapshot=snapshot||{};networkState.referrals=Array.isArray(refs)?refs:[];networkState.customers=Array.isArray(customers)?customers:[];networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
-    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+
     const ent=plan?.current?.entitlements||{};
     const privateEnabled=ent["customers.private_network"]===true;
     const scheduleEnabled=ent["customers.access_schedule"]===true;
-    const referralEnabled=ent["referrals.codes"]===true||ent["referrals.links"]===true;
-    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Red privada: '+(privateEnabled?"Sí":"No")+' · Horarios: '+(scheduleEnabled?"Sí":"No")+' · Referidos: '+(referralEnabled?"Sí":"No");
+    const referralCodesEnabled=ent["referrals.codes"]===true;
+    const referralLinksEnabled=ent["referrals.links"]===true;
+    const contactsEnabled=ent["contacts.import"]===true;
+    const approvalEnabled=ent["customers.approval"]===true;
+
+    networkState.snapshot=snapshot||{};
+    networkState.referrals=Array.isArray(refs)?refs:[];
+    networkState.customers=Array.isArray(customers)?customers:[];
+    networkState.contacts=Array.isArray(contacts)?contacts:[];
+    networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
+    networkState.capabilities={
+      private:privateEnabled,
+      schedule:scheduleEnabled,
+      referralCodes:referralCodesEnabled,
+      referralLinks:referralLinksEnabled,
+      contacts:contactsEnabled,
+      approval:approvalEnabled
+    };
+
+    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+    const approvalOption=[...$("networkDefaultMode").options].find(o=>o.value==="APPROVAL_REQUIRED");
+    if(approvalOption)approvalOption.disabled=!approvalEnabled;
+
+    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong>'+
+      ' · Red privada: '+(privateEnabled?"Sí":"No")+
+      ' · Horarios: '+(scheduleEnabled?"Sí":"No")+
+      ' · Contactos: '+(contactsEnabled?"Sí":"No")+
+      ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
+      ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
+      ' · Aprobación: '+(approvalEnabled?"Sí":"No");
+
     $("networkDefaultMode").disabled=!privateEnabled;
     $("networkSaveDefault").disabled=!privateEnabled;
     $("networkAddRule").disabled=!scheduleEnabled;
     $("networkSaveRules").disabled=!scheduleEnabled;
-    $("networkCreateReferral").disabled=!referralEnabled;
-    renderNetworkRules();renderNetworkReferrals();renderNetworkCustomers();
+    $("networkCreateReferral").disabled=!(referralCodesEnabled||referralLinksEnabled);
+    if($("networkImportContacts"))$("networkImportContacts").disabled=!contactsEnabled;
+    if($("networkContactsInput"))$("networkContactsInput").disabled=!contactsEnabled;
+
+    renderNetworkRules();
+    renderNetworkReferrals();
+    renderNetworkContacts();
+    renderNetworkCustomers();
   }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
 }
 
-async function saveNetworkDefault(){try{await rpc("delivery_save_customer_access_settings",{p_delivery_id:networkDeliveryId(),p_default_mode:$("networkDefaultMode").value});message("Modo de clientes actualizado.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
-async function saveNetworkRules(){try{await rpc("delivery_replace_customer_access_rules",{p_delivery_id:networkDeliveryId(),p_rules:collectNetworkRules()});message("Horarios de clientes actualizados.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
-async function createNetworkReferral(){try{const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";const result=await rpc("delivery_create_referral_code",{p_delivery_id:networkDeliveryId(),p_label:label,p_expires_at:null});message("Referido creado: "+result.code);await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
+async function saveNetworkDefault(){
+  try{
+    await rpc("delivery_save_customer_access_settings",{
+      p_delivery_id:networkDeliveryId(),
+      p_default_mode:$("networkDefaultMode").value
+    });
+    message("Modo de clientes actualizado.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function saveNetworkRules(){
+  try{
+    await rpc("delivery_replace_customer_access_rules",{
+      p_delivery_id:networkDeliveryId(),
+      p_rules:collectNetworkRules()
+    });
+    message("Horarios de clientes actualizados.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function createNetworkReferral(){
+  try{
+    const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";
+    const result=await rpc("delivery_create_referral_code",{
+      p_delivery_id:networkDeliveryId(),
+      p_label:label,
+      p_expires_at:null
+    });
+    message("Referido creado: "+result.code);
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
 const securityState={context:null,points:[],rules:[],map:null};
 function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
 function renderRestrictedAreaMap(){
