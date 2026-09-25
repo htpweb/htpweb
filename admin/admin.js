@@ -6800,6 +6800,8 @@ async function loadDriverOrders(){
     reconcileDriverRoutePlan();
     renderDriverOrders();
     updateDriverGpsShareUi();
+    renderDriverSosNotice();
+    await startDriverSosSubscription();
   }catch(e){
     message(e.message||"No se pudieron cargar tus entregas.","error");
   }
@@ -6819,7 +6821,11 @@ async function driverChangeStatus(orderId,next){
   }
 }
 
-window.addEventListener("beforeunload",()=>stopDriverGpsSharing(true));
+window.addEventListener("beforeunload",()=>{
+  stopDriverGpsSharing(true);
+  void stopDeliverySosSubscription();
+  void stopDriverSosSubscription();
+});
 
 const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
 
@@ -7147,6 +7153,7 @@ function bindEvents() {
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
+  if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
