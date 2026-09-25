@@ -39,6 +39,7 @@ const state = {
   masterDeliveryService: null,
   myPlanSnapshot: null,
   customerAccessRules: [],
+  customerNetwork: [],
   restrictedAreaContext: null,
   restrictedAreaPoints: [],
   restrictedAreaRules: [],
@@ -5833,6 +5834,11 @@ async function loadMyPlan(){
     $("customerAccessCard")?.classList.toggle("hidden",!privateEnabled);
     $("referralCard")?.classList.toggle("hidden",!referralsEnabled);
 
+    if(!privateEnabled){
+      state.customerNetwork=[];
+      renderCustomerNetwork();
+    }
+
     const restrictedEnabled=ent["restricted_areas.manage"]===true;
     $("restrictedAreaCard")?.classList.toggle("hidden",!restrictedEnabled);
     if(restrictedEnabled){
@@ -5844,6 +5850,13 @@ async function loadMyPlan(){
     }
 
     if(privateEnabled){
+      try{
+        state.customerNetwork=await rpc("delivery_customer_network_snapshot",{p_delivery_id:delivery.id});
+      }catch(networkError){
+        state.customerNetwork=[];
+        console.warn(networkError);
+      }
+      renderCustomerNetwork();
       $("customerAccessDefaultMode").value=access?.default_mode||"OPEN";
       $("addCustomerAccessRuleBtn").disabled=!scheduleEnabled;
       $("customerAccessRuleDay").disabled=!scheduleEnabled;
@@ -5884,6 +5897,57 @@ function addCustomerAccessRule(){
     priority:100
   });
   renderCustomerAccessRules();
+}
+
+function customerSourceLabel(source){
+  return ({
+    PUBLIC:"Público",
+    CONTACT:"Contacto",
+    REFERRAL_LINK:"Enlace de referido",
+    REFERRAL_CODE:"Referido",
+    MANUAL_APPROVAL:"Aprobación manual"
+  })[source]||source||"—";
+}
+
+function renderCustomerNetwork(){
+  const box=$("customerNetworkList");
+  if(!box)return;
+  const items=state.customerNetwork||[];
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Estado</th><th>Acción</th></tr></thead><tbody>'+
+      items.map(item=>'<tr>'+
+        '<td><strong>'+esc(item.name||"Cliente")+'</strong>'+
+          (item.email?'<div class="muted">'+esc(item.email)+'</div>':'')+
+          (item.phone?'<div class="muted">'+esc(item.phone)+'</div>':'')+
+        '</td>'+
+        '<td>'+esc(customerSourceLabel(item.relationship_source))+'</td>'+
+        '<td>'+(item.allow_orders
+          ? (item.approved_at?'Aprobado':'Habilitado')
+          :'Pedidos bloqueados')+'</td>'+
+        '<td><button type="button" class="'+(item.allow_orders?'btn-danger':'btn-primary')+
+          '" data-network-customer="'+esc(item.customer_id)+'" data-network-allow="'+String(!item.allow_orders)+'">'+
+          (item.allow_orders?'Bloquear pedidos':'Aprobar pedidos')+
+        '</button></td>'+
+      '</tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay clientes vinculados a esta red.</div>';
+
+  box.querySelectorAll("[data-network-customer]").forEach(btn=>btn.onclick=async()=>{
+    const delivery=myPlanSelectedDelivery();
+    if(!delivery)return;
+    try{
+      await rpc("delivery_set_customer_order_access",{
+        p_delivery_id:delivery.id,
+        p_customer_id:btn.dataset.networkCustomer,
+        p_allow_orders:btn.dataset.networkAllow==="true"
+      });
+      message(btn.dataset.networkAllow==="true"?"Cliente aprobado.":"Pedidos del cliente bloqueados.");
+      state.customerNetwork=await rpc("delivery_customer_network_snapshot",{p_delivery_id:delivery.id});
+      renderCustomerNetwork();
+    }catch(e){
+      message(e.message||"No se pudo actualizar el cliente.","error");
+    }
+  });
 }
 
 async function saveCustomerAccess(){
