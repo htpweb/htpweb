@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const migration=fs.readFileSync('supabase/migrations/20260925135211_stage2_gps_tracking.sql','utf8');
+const retention=fs.readFileSync('supabase/migrations/20260925144627_gps_storage_retention_hardening.sql','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const adminHtml=fs.readFileSync('admin/index.html','utf8');
 const customer=fs.readFileSync('app/pedidos.html','utf8');
@@ -108,6 +109,15 @@ test('al finalizar una entrega se termina el tracking y se limpia ubicación liv
   assert.match(migration,/tracking_ended/);
   assert.match(migration,/DELIVERED','CANCELLED/);
   assert.match(migration,/delete from public\.driver_live_locations/);
+});
+
+test('retención elimina ubicación live sin servicio, sin gps.live o sin entrega EN_ROUTE',()=>{
+  assert.match(retention,/delete from public\.driver_live_locations/);
+  assert.match(retention,/not public\.delivery_service_is_active\(l\.delivery_id\)/);
+  assert.match(retention,/not public\.delivery_has_capability\(l\.delivery_id,'gps\.live'\)/);
+  assert.match(retention,/not exists\([\s\S]*?o\.status='EN_ROUTE'/);
+  assert.match(retention,/captured_at<now\(\)-make_interval\(days=>v_days\)/);
+  assert.match(retention,/grant execute on function public\.prune_driver_location_history\(\)[\s\S]*?to service_role/);
 });
 
 test('scripts modificados siguen compilando',()=>{
