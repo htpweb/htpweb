@@ -60,6 +60,16 @@
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
     </div>
 
+    <div id="referralCard" class="hidden" style="margin-top:22px">
+      <hr style="border:0;border-top:1px solid #e5e7eb;margin:20px 0">
+      <h2>Referido DELIVERY</h2>
+      <p class="muted">Si un DELIVERY te dio un código, puedes vincularlo aquí.</p>
+      <div class="row">
+        <input id="referralCode" maxlength="20" placeholder="Código de referido" style="flex:1">
+        <button id="claimReferralBtn" class="btn btn-primary" type="button">Aplicar código</button>
+      </div>
+    </div>
+
     <div id="addressesCard" class="hidden" style="margin-top:22px">
       <hr style="border:0;border-top:1px solid #e5e7eb;margin:20px 0">
       <h2>Mis direcciones</h2>
@@ -75,9 +85,47 @@
 <script>
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+const referralCodeParam = String(params.get("ref") || "").trim().toUpperCase();
 const fallbackReturn = obtenerDeliverySlug() ? urlDelivery("index.html") : "../index.html";
 const hasExplicitReturn = params.has("return");
 const requestedReturn = retornoSeguro(params.get("return"), fallbackReturn);
+
+async function ensureCustomerForReferral() {
+  const current = await supabaseClient.rpc("current_customer_id");
+  if (current.error) throw current.error;
+  if (current.data) return current.data;
+
+  const user = await obtenerUsuarioActual();
+  const name = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim();
+  const phone = String(user?.user_metadata?.phone || "").trim();
+  if (!user || !name || !phone) return null;
+
+  return asegurarCustomerActual({
+    name,
+    phone,
+    email: user.email || null
+  });
+}
+
+async function claimReferral(code, source) {
+  const clean = String(code || "").trim().toUpperCase();
+  if (!clean) throw new Error("Escribe un código de referido.");
+
+  const customerId = await ensureCustomerForReferral();
+  if (!customerId) {
+    return {
+      pending: true,
+      error: "Para usar el referido, tu cuenta debe tener nombre y teléfono."
+    };
+  }
+
+  const result = await supabaseClient.rpc("claim_delivery_referral", {
+    p_code: clean,
+    p_source: source
+  });
+  if (result.error) throw result.error;
+  return result.data || null;
+}
 
 async function syncAccountAccess() {
   const claim = await supabaseClient.rpc("claim_my_delivery_authorizations");
@@ -88,6 +136,7 @@ async function syncAccountAccess() {
 
   const role = roleResult.data || "CLIENT";
   let service = null;
+  let referral = null;
 
   if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role)) {
     const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
@@ -95,10 +144,19 @@ async function syncAccountAccess() {
     service = serviceResult.data || null;
   }
 
+  if (referralCodeParam) {
+    try {
+      referral = await claimReferral(referralCodeParam, "REFERRAL_LINK");
+    } catch (e) {
+      referral = { error: e.message || "No se pudo aplicar el enlace de referido." };
+    }
+  }
+
   return {
     role,
     claim: claim.data || null,
-    service
+    service,
+    referral
   };
 }
 
@@ -177,8 +235,19 @@ async function init() {
         }
       }
 
+      if (access?.referral?.error) {
+        showMessage(access.referral.error, "error");
+      } else if (access?.referral?.status === "AUTHORIZED") {
+        showMessage("Referido aplicado. Ya perteneces a la red de este DELIVERY.", "success");
+        const cleanUrl = new URL(location.href);
+        cleanUrl.searchParams.delete("ref");
+        history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      }
+
       const { data: customerId } = await supabaseClient.rpc("current_customer_id");
       if (customerId) {
+        $("referralCard").classList.remove("hidden");
+        if (referralCodeParam) $("referralCode").value = referralCodeParam;
         if (obtenerDeliverySlug()) {
           $("ordersLink").href = urlDelivery("pedidos.html");
           $("ordersLink").classList.remove("hidden");
@@ -265,6 +334,19 @@ async function deactivateAccountAddress(addressId) {
   }
 }
 
+$("claimReferralBtn").onclick = async () => {
+  try {
+    const result = await claimReferral($("referralCode").value, "REFERRAL_CODE");
+    if (result?.pending) {
+      showMessage(result.error || "Completa tus datos antes de aplicar el referido.");
+      return;
+    }
+    showMessage("Código aplicado. Ya perteneces a la red de este DELIVERY.", "success");
+  } catch (e) {
+    showMessage(e.message || "No se pudo aplicar el código de referido.");
+  }
+};
+
 $("loginTab").onclick = showLogin;
 $("registerTab").onclick = showRegister;
 
@@ -278,6 +360,10 @@ $("loginForm").onsubmit = async event => {
     if (error) throw error;
 
     const access = await syncAccountAccess();
+    if (access?.referral?.error) {
+      showMessage(access.referral.error);
+      return;
+    }
     location.href = authenticatedDestination(access);
   } catch (e) {
     showMessage(e.message || "No se pudo iniciar sesión.");
@@ -313,6 +399,10 @@ $("registerForm").onsubmit = async event => {
 
       await asegurarCustomerActual({ name, phone, email });
       const access = await syncAccountAccess();
+      if (access?.referral?.error) {
+        showMessage(access.referral.error);
+        return;
+      }
       location.href = authenticatedDestination(access);
       return;
     }

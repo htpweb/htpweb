@@ -9,15 +9,22 @@ function bulkLocalValue(row,key){
 }
 
 function bindMasterLocalBulk(){
-  $("downloadBulkLocalTemplateBtn").onclick=downloadBulkLocalTemplate;
-  $("downloadBulkLocalErrorsBtn").onclick=downloadBulkLocalErrors;
-  $("validateBulkLocalBtn").onclick=validateBulkLocalFile;
-  $("importBulkLocalBtn").onclick=importBulkLocals;
-  $("downloadBulkProductTemplateBtn").onclick=downloadBulkProductTemplate;
-  $("downloadBulkProductErrorsBtn").onclick=downloadBulkProductErrors;
-  $("validateBulkProductBtn").onclick=validateBulkProductFile;
-  $("clearBulkProductBtn").onclick=clearBulkProductLoad;
-  $("importBulkProductBtn").onclick=importBulkProducts;
+  const bind=(id,handler)=>{const el=$(id);if(el)el.onclick=handler;};
+  bind("downloadBulkLocalTemplateBtn",downloadBulkLocalTemplate);
+  bind("downloadBulkLocalErrorsBtn",downloadBulkLocalErrors);
+  bind("validateBulkLocalBtn",validateBulkLocalFile);
+  bind("importBulkLocalBtn",importBulkLocals);
+  bind("downloadBulkProductTemplateBtn",downloadBulkProductTemplate);
+  bind("downloadBulkProductErrorsBtn",downloadBulkProductErrors);
+  bind("validateBulkProductBtn",validateBulkProductFile);
+  bind("clearBulkProductBtn",clearBulkProductLoad);
+  bind("importBulkProductBtn",importBulkProducts);
+  const localFile=$("bulkLocalFile");
+  if(localFile)localFile.onchange=()=>{
+    masterLocalsState.bulkRows=[];
+    masterLocalsState.bulkFileName=localFile.files?.[0]?.name||"";
+    renderBulkLocalPreview();
+  };
 }
 
 function downloadBulkLocalTemplate(){

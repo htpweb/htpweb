@@ -35,12 +35,13 @@ const state = {
   menuImportPreview: null,
   deliveryAuthorizations: [],
   deliveryServiceAccess: null,
-  masterDeliveryService: null
+  masterDeliveryService: null,
+  myPlanSummary: null
 };
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -131,6 +132,29 @@ function renderDeliveryServiceWarning(access){
   host.insertBefore(note,host.firstChild);
 }
 
+async function renderInternalNotifications(){
+  try{
+    document.getElementById("internalNotifications")?.remove();
+    const items=await rpc("my_notifications",{p_limit:10});
+    const unread=(Array.isArray(items)?items:[]).filter(x=>!x.read_at);
+    if(!unread.length)return;
+    const host=document.querySelector("main")||document.body;
+    const box=document.createElement("div");
+    box.id="internalNotifications";
+    box.className="workspace-warning";
+    box.style.margin="12px";
+    box.innerHTML='<div class="row between"><strong>Notificaciones HTPWEB</strong><span class="badge">'+unread.length+' nueva(s)</span></div>'+
+      unread.map(n=>'<div style="margin-top:8px"><strong>'+esc(n.title)+'</strong><div>'+esc(n.message)+'</div>'+
+        '<button class="btn-muted" type="button" data-notification-read="'+esc(n.id)+'" style="margin-top:6px">Marcar como leída</button></div>').join("");
+    box.querySelectorAll("[data-notification-read]").forEach(b=>b.onclick=async()=>{
+      try{
+        await rpc("mark_notification_read",{p_notification_id:b.dataset.notificationRead});
+        await renderInternalNotifications();
+      }catch(e){message(e.message||"No se pudo marcar la notificación.","error");}
+    });
+    host.insertBefore(box,host.firstChild);
+  }catch(e){console.warn("No se pudieron cargar notificaciones internas.",e);}
+}
 async function init() {
   try {
     state.user = await obtenerUsuarioActual();
@@ -177,6 +201,7 @@ async function init() {
     configureNavigation();
     bindEvents();
     if (state.deliveryServiceAccess) renderDeliveryServiceWarning(state.deliveryServiceAccess);
+    if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) await renderInternalNotifications();
 
     await loadScopes();
     await loadCities();
@@ -216,6 +241,7 @@ function showSection(name) {
   $("pageTitle").textContent = document.querySelector(`#nav button[data-section="${name}"]`)?.textContent || "HTPWEB Admin";
 
   if (name === "mydelivery") loadDeliveryProfile();
+  if (name === "myplan") loadMyPlan();
   if (name === "share") loadShareModule();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
@@ -227,6 +253,8 @@ function showSection(name) {
   if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
+  if (name === "network") loadCustomerNetwork();
+  if (name === "security") loadRestrictedAreas();
   if (name === "catalog") loadCatalog();
   if (name === "schedules") loadSchedules();
   if (name === "storage") loadStorage();
@@ -365,7 +393,10 @@ async function refreshAll() {
   await Promise.all([
     loadOverview(),
     loadOrders(),
-    loadRequests()
+    loadRequests(),
+    state.role === "DELIVERY_ADMIN" && $("section-myplan")?.classList.contains("active")
+      ? loadMyPlan()
+      : Promise.resolve()
   ]);
 }
 
@@ -1235,6 +1266,128 @@ async function loadOverview() {
     await loadOverviewResources();
   }
   bindOverviewActions();
+}
+
+function myPlanCapacityCard(label,item,detail){
+  const used=item?.used;
+  const max=item?.max;
+  const hasUsage=used!==null&&used!==undefined;
+  const hasMax=max!==null&&max!==undefined;
+  const value=item?.usage_available===false
+    ? "Cupo "+(hasMax?max:"—")+" · Etapa 2"
+    : (hasUsage?used:0)+" / "+(hasMax?max:"—");
+  const percent=hasUsage&&Number(max)>0
+    ? Math.max(0,Math.min(100,Math.round((Number(used)/Number(max))*100)))
+    : null;
+  return overviewResourceCard({label,value,percent,detail});
+}
+
+function renderMyPlan(){
+  const summary=state.myPlanSummary;
+  const contract=$("myPlanContract");
+  const capacity=$("myPlanCapacity");
+  const features=$("myPlanFeatures");
+  const selection=$("myPlanSelectionState");
+  if(!contract||!capacity||!features||!selection)return;
+
+  if(!summary){
+    contract.innerHTML='<div class="muted">Selecciona un DELIVERY para consultar el plan.</div>';
+    capacity.innerHTML="";
+    features.innerHTML="";
+    selection.textContent="—";
+    return;
+  }
+
+  const plan=summary.plan||{};
+  const current=plan.current;
+  const next=plan.next;
+
+  if(!current){
+    contract.innerHTML='<strong>Sin plan comercial vigente.</strong>'+
+      (next?' Próximo plan: '+esc(next.plan_name||next.plan_code||"—")+
+        ' desde '+esc(formatServiceDate(next.starts_at)):'');
+  }else{
+    const price=current.price===null||current.price===undefined
+      ?"—"
+      :Number(current.price).toFixed(2)+" "+esc(current.currency||"USD");
+    contract.innerHTML=
+      '<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong>'+
+      ' · versión '+esc(current.plan_version||"—")+
+      '<br><span>Estado: '+esc(deliveryServiceStateLabel(plan.state))+
+      ' · Inicio: '+esc(formatServiceDate(current.starts_at))+
+      ' · Vence: '+esc(formatServiceDate(current.ends_at))+
+      ' · Precio contratado: '+price+'</span>'+
+      (plan.expiring_soon
+        ? '<div class="workspace-warning" style="margin-top:10px">Vence en '+esc(plan.days_remaining)+' día(s).</div>'
+        : '')+
+      (next
+        ? '<div class="workspace-note" style="margin-top:10px"><strong>Próximo plan:</strong> '+
+          esc(next.plan_name||next.plan_code||"—")+' · '+esc(next.change_type||"CAMBIO")+
+          ' · inicia '+esc(formatServiceDate(next.starts_at))+'</div>'
+        : '');
+  }
+
+  selection.textContent=summary.selection_ready?"Selección lista":"Reconfiguración pendiente";
+  const usage=summary.usage||{};
+  capacity.innerHTML=[
+    myPlanCapacityCard("Zonas activas",usage.zones,"Elige cuáles operar desde Cobertura."),
+    myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Tú defines los polígonos desde Seguridad."),
+    myPlanCapacityCard("Operadores",usage.operators,"Operadores DELIVERY_OPERATOR activos dentro del cupo contratado."),
+    myPlanCapacityCard("Repartidores",usage.drivers,"Etapa 2: el cupo ya puede estar contratado; el consumo se habilitará con el módulo de repartidores.")
+  ].join("");
+
+  const included=(summary.features||[]).filter(f=>
+    f.type==="CAPABILITY" ? f.value===true : Number(f.value)>0
+  );
+  features.innerHTML=included.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Prestación</th><th>Valor</th><th>Etapa</th></tr></thead><tbody>'+
+      included.map(f=>{
+        const value=f.type==="CAPABILITY"
+          ?"Incluida"
+          :esc(f.value)+(f.unit?" "+esc(f.unit):"");
+        return '<tr><td>'+esc(f.family||"Otros")+'</td><td><strong>'+esc(f.label||f.code)+'</strong></td><td>'+value+'</td><td>Etapa '+esc(f.stage||1)+'</td></tr>';
+      }).join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">No hay prestaciones comerciales congeladas para este contrato.</div>';
+}
+
+async function loadMyPlan(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("myPlanDelivery");
+  if(!select)return;
+
+  const previous=select.value;
+  select.innerHTML=state.deliveries.length
+    ? state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("")
+    : '<option value="">No hay DELIVERY asignados</option>';
+
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  await loadMyPlanSummary();
+}
+
+async function loadMyPlanSummary(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const deliveryId=$("myPlanDelivery")?.value||null;
+  if(!deliveryId){
+    state.myPlanSummary=null;
+    renderMyPlan();
+    return;
+  }
+  try{
+    state.myPlanSummary=await rpc("delivery_my_plan_summary",{p_delivery_id:deliveryId});
+    renderMyPlan();
+  }catch(e){
+    state.myPlanSummary=null;
+    renderMyPlan();
+    if($("myPlanContract"))$("myPlanContract").innerHTML='<div class="message error">'+esc(e.message||"No se pudo consultar Mi Plan.")+'</div>';
+  }
+}
+
+function openMyPlanResource(section,selectId){
+  const deliveryId=$("myPlanDelivery")?.value||null;
+  const select=$(selectId);
+  if(deliveryId&&select&&[...select.options].some(o=>o.value===deliveryId))select.value=deliveryId;
+  showSection(section);
 }
 
 async function loadDeliveryProfile() {
@@ -2560,20 +2713,13 @@ async function loadFeeDelivery() {
   }
 
   try {
-    const [fixedEnabled,distanceEnabled]=await Promise.all([
-      rpc("delivery_has_capability",{
-        p_delivery_id:delivery.id,
-        p_capability_code:"delivery_fees.fixed"
-      }),
-      rpc("delivery_has_capability",{
-        p_delivery_id:delivery.id,
-        p_capability_code:"delivery_fees.distance"
-      })
-    ]);
+    const capabilityStatus=await rpc("delivery_fee_capability_status",{
+      p_delivery_id:delivery.id
+    });
 
     const allowedModes=[];
-    if(Boolean(fixedEnabled))allowedModes.push("FIXED");
-    if(Boolean(distanceEnabled))allowedModes.push("DISTANCE");
+    if(Boolean(capabilityStatus?.fixed))allowedModes.push("FIXED");
+    if(Boolean(capabilityStatus?.distance))allowedModes.push("DISTANCE");
 
     const capabilityNotice=$("feeCapabilityNotice");
     const modeSelect=$("feeMode");
@@ -2777,7 +2923,7 @@ function renderCoverageSummary() {
       ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
       : "Sin cantón asignado")}</div>
     <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
-    <div><strong>Gestión de zonas:</strong> ${context.zones_manage_enabled ? "Habilitada" : "No habilitada"}</div>
+    <div><strong>Selección operativa:</strong> ${context.selection_reset_pending ? "Requiere nueva selección por cambio de plan" : "Lista"}</div>
   `;
 }
 
@@ -2806,7 +2952,7 @@ function renderCoverageZones() {
     return;
   }
 
-  const canAssign = state.role === "MASTER" || context.zones_manage_enabled === true;
+  const canAssign = state.role === "DELIVERY_ADMIN";
 
   container.innerHTML = `
     <div class="table-wrap">
@@ -2829,7 +2975,7 @@ function renderCoverageZones() {
                   onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
                   ${canAssign ? "" : "disabled"}
                 >
-                  ${zone.assigned ? (state.role === "MASTER" ? "Quitar cobertura" : "Aprobada") : (state.role === "MASTER" ? "Aprobar cobertura" : "Solicitar cobertura")}
+                  ${state.role === "DELIVERY_ADMIN" ? (zone.assigned ? "Desactivar" : "Activar") : (zone.assigned ? "Seleccionada por DELIVERY" : "Disponible")}
                 </button>
               </td>
             </tr>
@@ -2837,8 +2983,8 @@ function renderCoverageZones() {
         </tbody>
       </table>
     </div>
-    ${!canAssign && state.role === "DELIVERY_ADMIN"
-      ? '<p class="muted" style="margin-top:10px">La capability <code>zones.manage</code> debe ser habilitada por HTPWEB.</p>'
+    ${state.role === "DELIVERY_ADMIN" && context.selection_reset_pending
+      ? '<p class="workspace-warning" style="margin-top:10px">Tu plan cambió: vuelve a seleccionar las zonas que deseas operar dentro del nuevo límite.</p>'
       : ""}
   `;
 }
@@ -2952,15 +3098,8 @@ async function loadCoverageContext() {
       p_delivery_id: delivery.id
     });
 
-    if (state.role === "MASTER") {
-      if (state.zoneContext?.delivery?.city_id) {
-        $("coverageCity").value = state.zoneContext.delivery.city_id;
-      }
-
-      $("coverageMaxZones").value =
-        state.zoneContext?.max_zones === null || state.zoneContext?.max_zones === undefined
-          ? ""
-          : state.zoneContext.max_zones;
+    if (state.role === "MASTER" && state.zoneContext?.delivery?.city_id && $("coverageCity")) {
+      $("coverageCity").value = state.zoneContext.delivery.city_id;
     }
 
     renderCoverageSummary();
@@ -2977,19 +3116,15 @@ async function toggleDeliveryZone(zoneId, active) {
   if (!delivery) return;
 
   try {
-    if (state.role !== "MASTER") {
-      if (!active) throw new Error("Solicita al MASTER la suspensión de esta zona.");
-      await rpc("request_delivery_zone", {p_delivery_id: delivery.id, p_zone_id: zoneId});
-      message("Solicitud enviada. El MASTER debe aprobar la zona antes de habilitar sus locales.");
-      return;
+    if (state.role !== "DELIVERY_ADMIN") {
+      throw new Error("MASTER define el territorio y el plan; el DELIVERY selecciona sus zonas operativas.");
     }
-    await rpc("set_delivery_zone", {
+    await rpc("delivery_set_zone_choice", {
       p_delivery_id: delivery.id,
       p_zone_id: zoneId,
       p_active: Boolean(active)
     });
-
-    message(active ? "Zona agregada a la cobertura." : "Zona retirada de la cobertura.");
+    message(active ? "Zona activada para operar." : "Zona desactivada.");
     await loadCoverageContext();
   } catch (e) {
     message(e.message || "No se pudo modificar la cobertura.", "error");
@@ -5429,7 +5564,347 @@ async function loadAnalytics() {
   }
 }
 
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
+
+function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
+function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
+
+function networkModeOptions(selected){
+  const caps=networkState.capabilities||{};
+  const options=[
+    ["OPEN","Abierta"]
+  ];
+  if(caps.private)options.push(["PRIVATE","Solo contactos/referidos"]);
+  if(caps.approval)options.push(["APPROVAL_REQUIRED","Solo aprobados"]);
+  return options.map(([value,label])=>
+    '<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>'
+  ).join("");
+}
+
+function renderNetworkRules(){
+  const box=$("networkRules");if(!box)return;
+  const rules=networkState.rules||[];
+  if(!rules.length){
+    box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';
+    return;
+  }
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
+    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+
+      [0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+
+      '</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+
+      '"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+
+      '"></td><td><select data-net-mode="'+i+'">'+networkModeOptions(r.access_mode||"PRIVATE")+
+      '</select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{
+    networkState.rules.splice(Number(b.dataset.netRemove),1);
+    renderNetworkRules();
+  });
+}
+
+function collectNetworkRules(){
+  return (networkState.rules||[]).map((r,i)=>({
+    day_of_week:Number(document.querySelector('[data-net-day="'+i+'"]')?.value??r.day_of_week),
+    start_time:document.querySelector('[data-net-start="'+i+'"]')?.value||"18:00",
+    end_time:document.querySelector('[data-net-end="'+i+'"]')?.value||"06:00",
+    access_mode:document.querySelector('[data-net-mode="'+i+'"]')?.value||"PRIVATE",
+    priority:100
+  }));
+}
+
+function networkDeliveryRecord(){
+  const id=networkDeliveryId();
+  return state.deliveries.find(d=>d.id===id)||null;
+}
+
+function referralLinkFor(code){
+  const url=new URL("../app/acceso.html",location.href);
+  const delivery=networkDeliveryRecord();
+  if(delivery?.slug)url.searchParams.set("delivery",delivery.slug);
+  url.searchParams.set("ref",code);
+  return url.toString();
+}
+
+async function copyReferralLink(code){
+  try{
+    await navigator.clipboard.writeText(referralLinkFor(code));
+    message("Enlace de referido copiado.");
+  }catch(e){
+    message(e.message||"No se pudo copiar el enlace de referido.","error");
+  }
+}
+
+function renderNetworkReferrals(){
+  const box=$("networkReferrals");if(!box)return;
+  const items=networkState.referrals||[];
+  const caps=networkState.capabilities||{};
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th>Acciones</th></tr></thead><tbody>'+
+      items.map(r=>'<tr><td><strong>'+(caps.referralCodes?esc(r.code):"—")+'</strong></td><td>'+esc(r.label||"—")+
+        '</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+
+        '</td><td><div class="row">'+
+        (caps.referralLinks&&r.active?'<button class="btn-muted" type="button" data-ref-link="'+esc(r.code)+'">Copiar enlace</button>':"")+
+        '<button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+
+        (r.active?"Desactivar":"Activar")+'</button></div></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay referidos configurados.</div>';
+
+  box.querySelectorAll("[data-ref-link]").forEach(b=>b.onclick=()=>copyReferralLink(b.dataset.refLink));
+  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_referral_code_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_referral_id:b.dataset.refToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+function parseNetworkContacts(){
+  const raw=$("networkContactsInput")?.value||"";
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length)throw new Error("Escribe al menos un contacto.");
+  if(lines.length>500)throw new Error("Puedes importar máximo 500 contactos por lote.");
+
+  return lines.map((line,index)=>{
+    const parts=line.split(/[;,]/).map(x=>x.trim());
+    let name=parts[0]||"";
+    let phone=parts[1]||"";
+    let email=parts[2]||"";
+
+    if(parts.length===1){
+      if(parts[0].includes("@")){email=parts[0];name="";}
+      else {phone=parts[0];name="";}
+    }else if(parts.length===2){
+      if(parts[1].includes("@")){email=parts[1];phone="";}
+    }
+
+    if(!phone&&!email)throw new Error("Contacto "+(index+1)+": agrega teléfono o correo.");
+    return {name:name||null,phone:phone||null,email:email||null};
+  });
+}
+
+function renderNetworkContacts(){
+  const box=$("networkContacts");if(!box)return;
+  const items=networkState.contacts||[];
+  const enabled=Boolean(networkState.capabilities?.contacts);
+  box.innerHTML=items.length
+    ? '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Contacto")+'</strong></td><td>'+esc(x.phone||"—")+'</td><td>'+esc(x.email||"—")+
+        '</td><td>'+(x.active?"Activo":"Inactivo")+'</td><td><button class="'+(x.active?"btn-danger":"btn-muted")+
+        '" type="button" data-contact-toggle="'+esc(x.id)+'" data-active="'+String(x.active)+'" '+(!enabled&&!x.active?'disabled':'')+'>'+
+        (x.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted" style="margin-top:12px">Todavía no hay contactos importados.</div>';
+
+  box.querySelectorAll("[data-contact-toggle]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_contact_active",{
+        p_delivery_id:networkDeliveryId(),
+        p_contact_id:b.dataset.contactToggle,
+        p_active:b.dataset.active!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function importNetworkContacts(){
+  try{
+    const contacts=parseNetworkContacts();
+    const result=await rpc("delivery_import_contacts",{
+      p_delivery_id:networkDeliveryId(),
+      p_contacts:contacts
+    });
+    message("Contactos procesados: "+esc(result?.processed??contacts.length)+".");
+    $("networkContactsInput").value="";
+    await loadCustomerNetwork();
+  }catch(e){message(e.message||"No se pudieron importar los contactos.","error");}
+}
+
+function renderNetworkCustomers(){
+  const box=$("networkCustomers");if(!box)return;
+  const items=networkState.customers||[];
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+
+      items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+
+        '</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+
+        '</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+
+        '" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+
+        (x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay clientes vinculados.</div>';
+
+  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{
+    try{
+      await rpc("delivery_set_customer_order_access",{
+        p_delivery_id:networkDeliveryId(),
+        p_customer_id:b.dataset.customerAccess,
+        p_allow_orders:b.dataset.allow!=="true"
+      });
+      await loadCustomerNetwork();
+    }catch(e){message(e.message,"error");}
+  });
+}
+
+async function loadCustomerNetwork(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("networkDelivery");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  const deliveryId=networkDeliveryId();if(!deliveryId)return;
+
+  try{
+    const [snapshot,refs,customers,contacts,plan]=await Promise.all([
+      rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_contacts_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+    ]);
+
+    const ent=plan?.current?.entitlements||{};
+    const privateEnabled=ent["customers.private_network"]===true;
+    const scheduleEnabled=ent["customers.access_schedule"]===true;
+    const referralCodesEnabled=ent["referrals.codes"]===true;
+    const referralLinksEnabled=ent["referrals.links"]===true;
+    const contactsEnabled=ent["contacts.import"]===true;
+    const approvalEnabled=ent["customers.approval"]===true;
+
+    networkState.snapshot=snapshot||{};
+    networkState.referrals=Array.isArray(refs)?refs:[];
+    networkState.customers=Array.isArray(customers)?customers:[];
+    networkState.contacts=Array.isArray(contacts)?contacts:[];
+    networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
+    networkState.capabilities={
+      private:privateEnabled,
+      schedule:scheduleEnabled,
+      referralCodes:referralCodesEnabled,
+      referralLinks:referralLinksEnabled,
+      contacts:contactsEnabled,
+      approval:approvalEnabled
+    };
+
+    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+    const approvalOption=[...$("networkDefaultMode").options].find(o=>o.value==="APPROVAL_REQUIRED");
+    if(approvalOption)approvalOption.disabled=!approvalEnabled;
+
+    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong>'+
+      ' · Red privada: '+(privateEnabled?"Sí":"No")+
+      ' · Horarios: '+(scheduleEnabled?"Sí":"No")+
+      ' · Contactos: '+(contactsEnabled?"Sí":"No")+
+      ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
+      ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
+      ' · Aprobación: '+(approvalEnabled?"Sí":"No");
+
+    $("networkDefaultMode").disabled=!privateEnabled;
+    $("networkSaveDefault").disabled=!privateEnabled;
+    $("networkAddRule").disabled=!scheduleEnabled;
+    $("networkSaveRules").disabled=!scheduleEnabled;
+    $("networkCreateReferral").disabled=!(referralCodesEnabled||referralLinksEnabled);
+    if($("networkImportContacts"))$("networkImportContacts").disabled=!contactsEnabled;
+    if($("networkContactsInput"))$("networkContactsInput").disabled=!contactsEnabled;
+
+    renderNetworkRules();
+    renderNetworkReferrals();
+    renderNetworkContacts();
+    renderNetworkCustomers();
+  }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
+}
+
+async function saveNetworkDefault(){
+  try{
+    await rpc("delivery_save_customer_access_settings",{
+      p_delivery_id:networkDeliveryId(),
+      p_default_mode:$("networkDefaultMode").value
+    });
+    message("Modo de clientes actualizado.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function saveNetworkRules(){
+  try{
+    await rpc("delivery_replace_customer_access_rules",{
+      p_delivery_id:networkDeliveryId(),
+      p_rules:collectNetworkRules()
+    });
+    message("Horarios de clientes actualizados.");
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+
+async function createNetworkReferral(){
+  try{
+    const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";
+    const result=await rpc("delivery_create_referral_code",{
+      p_delivery_id:networkDeliveryId(),
+      p_label:label,
+      p_expires_at:null
+    });
+    message("Referido creado: "+result.code);
+    await loadCustomerNetwork();
+  }catch(e){message(e.message,"error");}
+}
+const securityState={context:null,points:[],rules:[],map:null};
+function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
+function renderRestrictedAreaMap(){
+  if(!securityState.map)return;
+  securityState.map.clear();
+  const zoneId=$("restrictedAreaZone")?.value;
+  const zone=securityState.context?.zones?.find(z=>z.id===zoneId);
+  if(zone?.boundary)securityState.map.polygon(zone.boundary,"#2563eb");
+  if(securityState.points.length>=3)securityState.map.polygon(securityState.points,"#dc2626");
+  securityState.points.forEach((p,i)=>securityState.map.marker(p,(lat,lng)=>{securityState.points[i]=[lat,lng];renderRestrictedAreaMap();}));
+  if($("restrictedAreaPointCount"))$("restrictedAreaPointCount").textContent=securityState.points.length+" puntos.";
+}
+function renderRestrictedAreaRules(){
+  const box=$("restrictedAreaRules");if(!box)return;
+  const show=$("restrictedAreaMode")?.value==="SCHEDULE";$("restrictedAreaSchedule")?.classList.toggle("hidden",!show);
+  if(!show)return;
+  const rules=securityState.rules||[];
+  box.innerHTML=rules.length?'<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+rules.map((r,i)=>'<tr><td><select data-sec-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-sec-start="'+i+'" value="'+esc(String(r.start_time||"19:00").slice(0,5))+'"></td><td><input type="time" data-sec-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><button class="btn-danger" data-sec-remove="'+i+'" type="button">Quitar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Agrega al menos una regla horaria.</div>';
+  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{securityState.rules.splice(Number(b.dataset.secRemove),1);renderRestrictedAreaRules();});
+}
+function collectRestrictedRules(){return (securityState.rules||[]).map((r,i)=>({day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week),start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||"19:00",end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||"06:00"}));}
+function clearRestrictedArea(){
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
+}
+function renderRestrictedAreasList(){
+  const box=$("restrictedAreasList");if(!box)return;const items=securityState.context?.areas||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode)+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">No hay áreas restringidas configuradas.</div>';
+  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{const a=items.find(x=>x.id===b.dataset.secEdit);if(!a)return;$("restrictedAreaId").value=a.id;$("restrictedAreaZone").value=a.zone_id;$("restrictedAreaName").value=a.name||"";$("restrictedAreaReason").value=a.reason||"";$("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";$("restrictedAreaActive").value=String(a.active);securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));securityState.rules=(a.rules||[]).map(r=>({...r}));renderRestrictedAreaRules();renderRestrictedAreaMap();if(securityState.points.length)securityState.map?.center(securityState.points[0],15);});
+}
+async function loadRestrictedAreas(){
+  if(state.role!=="DELIVERY_ADMIN")return;const sel=$("securityDelivery");if(!sel)return;const previous=sel.value;sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;const id=securityDeliveryId();if(!id)return;
+  try{const [context,plan]=await Promise.all([rpc("delivery_restricted_area_context",{p_delivery_id:id}),rpc("delivery_plan_snapshot",{p_delivery_id:id})]);securityState.context=context||{};$("restrictedAreaZone").innerHTML=(context?.zones||[]).map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>').join("");const ent=plan?.current?.entitlements||{};const manage=ent["restricted_areas.manage"]===true,schedule=ent["restricted_areas.schedule"]===true;$("securityPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Áreas: '+esc(context?.used||0)+' / '+esc(context?.limit??0)+' · Por horario: '+(schedule?"Sí":"No");$("restrictedAreaSave").disabled=!manage;$("restrictedAreaMode").disabled=!manage;if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";renderRestrictedAreaRules();renderRestrictedAreasList();if(!securityState.map){securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{securityState.points.push([lat,lng]);renderRestrictedAreaMap();});}securityState.map.resize();renderRestrictedAreaMap();}catch(e){message(e.message||"No se pudo cargar Seguridad.","error");}
+}
+async function saveRestrictedArea(){
+  try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
+}
 function bindEvents() {
+  if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
+  if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
+  if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
+  if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
+  if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
+  if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
+  if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
+  if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
+  if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = () => { securityState.points.pop(); renderRestrictedAreaMap(); };
+  if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = () => { securityState.points=[]; renderRestrictedAreaMap(); };
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = () => { securityState.rules.push({day_of_week:1,start_time:"19:00",end_time:"06:00"}); renderRestrictedAreaRules(); };
+  if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
+  if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedArea;
+  if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
+  if ($("networkSaveDefault")) $("networkSaveDefault").onclick = saveNetworkDefault;
+  if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
+  if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
+  if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
+  if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
   $("logoutBtn").onclick = async () => {
     try {
       await cerrarSesion();
@@ -5511,8 +5986,6 @@ function bindEvents() {
   $("saveFeeRateBtn").onclick = saveFeeRate;
   if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
-  $("setCoverageLimitBtn").onclick = setCoverageLimit;
-  $("enableZonesBtn").onclick = enableZonesManagement;
   $("saveZoneBtn").onclick = saveZone;
   $("clearZoneBtn").onclick = clearZoneForm;
   $("saveDeliveryBtn").onclick = saveDelivery;
@@ -5687,157 +6160,18 @@ async function revokeMasterDeliveryAuthorization(authorizationId){
   }
 }
 
-function renderMasterDeliveryService(service){
-  const status=document.getElementById("deliveryWorkspaceServiceStatus");
-  const start=document.getElementById("deliveryWorkspaceServiceStart");
-  const end=document.getElementById("deliveryWorkspaceServiceEnd");
-  const renew=document.getElementById("deliveryWorkspaceServiceRenew");
-  if(!status||!start||!end||!renew)return;
-
-  state.masterDeliveryService=service||null;
-  const stateValue=service?.state||"NOT_CONFIGURED";
-  const active=Boolean(service?.active);
-  const expiring=Boolean(service?.expiring_soon);
-
-  status.innerHTML=
-    '<strong>'+esc(deliveryServiceStateLabel(stateValue))+'</strong>'+
-    (service?.starts_on?' · Inicio: '+esc(formatServiceDate(service.starts_on)):'')+
-    (service?.paid_through_on?' · Vigente hasta: '+esc(formatServiceDate(service.paid_through_on)):'')+
-    (expiring?' · Faltan '+esc(service.days_remaining)+' días':'')+
-    (!active&&stateValue==="EXPIRED"?' · Acceso administrativo bloqueado':'')+
-    (!active&&stateValue==="NOT_CONFIGURED"?' · Debes definir el primer periodo antes de operar':'');
-  status.className=(stateValue==="EXPIRED"||stateValue==="NOT_CONFIGURED")
-    ?"message error"
-    :(expiring?"workspace-warning":"workspace-note");
-
-  if(service?.starts_on&&!start.value)start.value=String(service.starts_on).slice(0,10);
-  if(service?.paid_through_on&&!end.value)end.value=String(service.paid_through_on).slice(0,10);
-  renew.disabled=stateValue==="NOT_CONFIGURED";
-}
-
-async function loadMasterDeliveryService(){
+async function loadMasterDeliveryPlanSummary(){
   const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const status=document.getElementById("deliveryWorkspaceServiceStatus");
-  if(!status)return;
-  if(!deliveryId){
-    status.textContent="Selecciona un DELIVERY.";
-    return;
-  }
-
-  try{
-    const service=await rpc("delivery_service_snapshot",{p_delivery_id:deliveryId});
-    renderMasterDeliveryService(service||{});
-  }catch(e){
-    status.className="message error";
-    status.textContent=e.message||"No se pudo consultar el servicio mensual.";
-  }
-}
-
-async function saveMasterDeliveryServicePeriod(){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const start=document.getElementById("deliveryWorkspaceServiceStart")?.value||"";
-  const end=document.getElementById("deliveryWorkspaceServiceEnd")?.value||"";
-  if(!deliveryId)return;
-  if(!start||!end)return message("Selecciona fecha de inicio y fecha de fin.","error");
-  if(end<start)return message("La fecha de fin no puede ser anterior a la fecha de inicio.","error");
-
-  if(!confirm("¿Guardar este periodo de servicio? Este rango reemplaza cualquier periodo mensual vigente o programado que se superponga."))return;
-
-  try{
-    const service=await rpc("master_set_delivery_service_period",{
-      p_delivery_id:deliveryId,
-      p_start_date:start,
-      p_end_date:end
-    });
-    message("Periodo de servicio guardado.");
-    renderMasterDeliveryService(service||{});
-  }catch(e){
-    message(e.message||"No se pudo guardar el periodo de servicio.","error");
-  }
-}
-
-async function renewMasterDeliveryServiceMonth(){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  if(!deliveryId)return;
-  if(!confirm("¿Renovar este DELIVERY por un mes calendario adicional?"))return;
-
-  try{
-    const service=await rpc("master_renew_delivery_service_month",{p_delivery_id:deliveryId});
-    message("Servicio renovado por un mes.");
-    const start=document.getElementById("deliveryWorkspaceServiceStart");
-    const end=document.getElementById("deliveryWorkspaceServiceEnd");
-    if(start)start.value="";
-    if(end)end.value="";
-    renderMasterDeliveryService(service||{});
-    await loadMasterDeliveryService();
-  }catch(e){
-    message(e.message||"No se pudo renovar el servicio.","error");
-  }
-}
-
-function renderMasterDeliveryFeeModes(status){
-  const box=document.getElementById("deliveryWorkspaceFeeModes");
+  const box=document.getElementById("deliveryWorkspacePlanSummary");
   if(!box)return;
-
-  const rows=[
-    {mode:"FIXED",label:"Tarifa fija",enabled:Boolean(status?.fixed)},
-    {mode:"DISTANCE",label:"Por distancia",enabled:Boolean(status?.distance)}
-  ];
-
-  box.innerHTML='<div class="table-wrap"><table><thead><tr>'+
-    '<th>MODALIDAD</th><th>ESTADO</th><th>ACCIÓN</th>'+
-    '</tr></thead><tbody>'+
-    rows.map(row=>'<tr>'+
-      '<td><strong>'+esc(row.label)+'</strong></td>'+
-      '<td>'+(row.enabled?'Habilitada':'Deshabilitada')+'</td>'+
-      '<td><button type="button" class="'+(row.enabled?'btn-danger':'btn-primary')+'" data-dw-fee-mode="'+row.mode+'" data-enabled="'+String(row.enabled)+'">'+
-        (row.enabled?'Deshabilitar':'Habilitar')+
-      '</button></td>'+
-    '</tr>').join("")+
-    '</tbody></table></div>';
-
-  box.querySelectorAll("[data-dw-fee-mode]").forEach(btn=>{
-    btn.onclick=()=>toggleMasterDeliveryFeeMode(btn.dataset.dwFeeMode,btn.dataset.enabled==="true");
-  });
-}
-
-async function loadMasterDeliveryFeeCapability(){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  const box=document.getElementById("deliveryWorkspaceFeeModes");
-  if(!box)return;
-
-  if(!deliveryId){
-    box.innerHTML='<div class="muted">Selecciona un DELIVERY.</div>';
-    return;
-  }
-
+  if(!deliveryId){box.textContent="Selecciona un DELIVERY.";return;}
   try{
-    const status=await rpc("master_delivery_fee_modes_status",{p_delivery_id:deliveryId});
-    renderMasterDeliveryFeeModes(status||{});
-  }catch(e){
-    box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron consultar las modalidades de tarifa.")+'</div>';
-  }
+    const snapshot=await rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId});
+    const current=snapshot?.current;
+    if(!current){box.innerHTML='<strong>Sin plan vigente</strong>'+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');return;}
+    box.innerHTML='<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong> · vence '+esc(formatServiceDate(current.ends_at))+(snapshot?.expiring_soon?' · <strong>vence en '+esc(snapshot.days_remaining)+' día(s)</strong>':'')+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');
+  }catch(e){box.textContent=e.message||"No se pudo consultar el plan.";}
 }
-
-async function toggleMasterDeliveryFeeMode(mode,currentEnabled){
-  const deliveryId=masterDeliveryWorkspaceSelectedId();
-  if(!deliveryId)return;
-
-  const nextEnabled=!currentEnabled;
-  try{
-    await rpc("master_set_delivery_fee_mode",{
-      p_delivery_id:deliveryId,
-      p_mode:mode,
-      p_enabled:nextEnabled
-    });
-    message((mode==="FIXED"?"Tarifa fija":"Tarifa por distancia")+
-      (nextEnabled?" habilitada para este DELIVERY.":" deshabilitada para este DELIVERY."));
-    await loadMasterDeliveryFeeCapability();
-  }catch(e){
-    message(e.message||"No se pudo actualizar la modalidad de tarifa.","error");
-  }
-}
-
 function openMasterDeliveryWorkspaceTab(tab){
   ["base","access","zones"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
@@ -5857,8 +6191,7 @@ async function syncMasterDeliveryWorkspace(){
 
   await Promise.all([
     loadMasterDeliveryAuthorizations(),
-    loadMasterDeliveryService(),
-    loadMasterDeliveryFeeCapability(),
+    loadMasterDeliveryPlanSummary(),
     typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
   ]);
 }
@@ -5899,17 +6232,10 @@ function bindMasterDeliveryWorkspace(){
   const access=document.createElement("div");
   access.id="deliveryWorkspacePane-access";
   access.className="hidden";
-  access.innerHTML='<div class="card"><h3>Servicio mensual</h3>'+
-    '<p class="muted">Define la fecha de inicio y fin. Al vencer, el acceso administrativo del DELIVERY queda bloqueado automáticamente. Cinco días antes se programa un aviso al correo y celular del administrador registrado.</p>'+
-    '<div class="form-grid">'+
-      '<div><label>Fecha de inicio</label><input id="deliveryWorkspaceServiceStart" type="date"></div>'+
-      '<div><label>Fecha de fin</label><input id="deliveryWorkspaceServiceEnd" type="date"></div>'+
-    '</div>'+
-    '<div id="deliveryWorkspaceServiceStatus" class="workspace-note" style="margin-top:12px">Consultando servicio…</div>'+
-    '<div class="row" style="margin-top:12px">'+
-      '<button id="deliveryWorkspaceServiceSave" class="btn-primary" type="button">Guardar periodo</button>'+
-      '<button id="deliveryWorkspaceServiceRenew" class="btn-muted" type="button">Renovar 1 mes</button>'+
-    '</div></div>'+
+  access.innerHTML='<div class="card"><h3>Plan y suscripción</h3>'+
+    '<p class="muted">La vigencia, capacidad y funciones provienen del plan comercial. No se configuran fechas ni prestaciones manualmente desde DELIVERY.</p>'+
+    '<div id="deliveryWorkspacePlanSummary" class="workspace-note">Consultando plan…</div>'+
+    '<a class="btn-primary" href="./monetizacion.html" style="display:inline-block;margin-top:12px;text-decoration:none">Abrir Planes y suscripciones</a></div>'+
     '<div class="card"><h3>Representante autorizado</h3>'+
     '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
     '<div class="form-grid">'+
@@ -5919,12 +6245,9 @@ function bindMasterDeliveryWorkspace(){
     '<div><label>Teléfono</label><input id="deliveryWorkspaceRepresentativePhone" type="tel" maxlength="40"></div>'+
     '<div><label>Tipo de acceso</label><select id="deliveryWorkspaceRepresentativeRole"><option value="DELIVERY_ADMIN">Administrador</option><option value="DELIVERY_OPERATOR">Operador</option></select></div>'+
     '</div>'+
-    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
+    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña.</p>'+
     '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
-    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>'+
-    '<div class="card"><h3>Modalidades de tarifa disponibles</h3>'+
-    '<p class="muted">MASTER habilita qué modalidades puede utilizar este DELIVERY. El DELIVERY_ADMIN fija los precios desde su propia cuenta.</p>'+
-    '<div id="deliveryWorkspaceFeeModes"><div class="muted">Consultando modalidades…</div></div></div>';
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
@@ -5947,15 +6270,7 @@ function bindMasterDeliveryWorkspace(){
   }
 
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
-  document.getElementById("deliveryWorkspaceSelect").onchange=async()=>{
-    const start=document.getElementById("deliveryWorkspaceServiceStart");
-    const end=document.getElementById("deliveryWorkspaceServiceEnd");
-    if(start)start.value="";
-    if(end)end.value="";
-    await syncMasterDeliveryWorkspace();
-  };
-  document.getElementById("deliveryWorkspaceServiceSave").onclick=saveMasterDeliveryServicePeriod;
-  document.getElementById("deliveryWorkspaceServiceRenew").onclick=renewMasterDeliveryServiceMonth;
+  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
   document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
