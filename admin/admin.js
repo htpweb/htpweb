@@ -37,7 +37,8 @@ const state = {
   deliveryServiceAccess: null,
   masterDeliveryService: null,
   myPlanSummary: null,
-  driverOrders: []
+  driverOrders: [],
+  driverRoutePlan: null
 };
 
 const roleSections = {
@@ -6127,31 +6128,203 @@ async function unassignDriverFromOrder(orderId){
   }catch(e){message(e.message||"No se pudo quitar el repartidor.","error");}
 }
 
-function renderDriverOrders(){
-  const box=$("driverOrdersList");if(!box)return;
-  const items=Array.isArray(state.driverOrders)?state.driverOrders:[];
-  if(!items.length){
-    box.innerHTML='<div class="muted">No tienes entregas asignadas.</div>';
+function driverActiveOrders(){
+  return (Array.isArray(state.driverOrders)?state.driverOrders:[])
+    .filter(o=>o.assignment_status==="ACTIVE"&&["READY","EN_ROUTE"].includes(o.status));
+}
+
+function driverRouteDeliveries(){
+  const map=new Map();
+  for(const order of driverActiveOrders()){
+    if(!map.has(order.delivery_id)){
+      map.set(order.delivery_id,{
+        id:order.delivery_id,
+        name:order.delivery_name||"DELIVERY",
+        count:0
+      });
+    }
+    map.get(order.delivery_id).count+=1;
+  }
+  return [...map.values()];
+}
+
+function reconcileDriverRoutePlan(){
+  const plan=state.driverRoutePlan;
+  if(!plan||!Array.isArray(plan.stops))return;
+  const activeIds=new Set(driverActiveOrders().map(o=>o.order_id));
+  const remaining=plan.stops.filter(stop=>activeIds.has(stop.order_id));
+  if(!remaining.length){
+    state.driverRoutePlan=null;
     return;
   }
+  state.driverRoutePlan={...plan,stops:remaining};
+}
+
+function renderDriverRouteControls(){
+  const select=$("driverRouteDelivery");
+  const button=$("driverRouteOptimize");
+  const status=$("driverRouteStatus");
+  const result=$("driverRouteResult");
+  if(!select||!button||!status||!result)return;
+
+  const deliveries=driverRouteDeliveries();
+  const previous=select.value;
+  select.innerHTML=deliveries.length
+    ? deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+' · '+esc(d.count)+' pedido(s)</option>').join("")
+    : '<option value="">Sin pedidos activos</option>';
+
+  if(state.driverRoutePlan?.delivery_id&&deliveries.some(d=>d.id===state.driverRoutePlan.delivery_id)){
+    select.value=state.driverRoutePlan.delivery_id;
+  }else if(previous&&deliveries.some(d=>d.id===previous)){
+    select.value=previous;
+  }
+
+  button.disabled=!deliveries.length;
+
+  if(!state.driverRoutePlan){
+    status.textContent=deliveries.length
+      ?"Selecciona un DELIVERY y optimiza antes de iniciar la siguiente tanda."
+      :"No tienes pedidos READY o EN_ROUTE para optimizar.";
+    result.innerHTML="";
+    return;
+  }
+
+  const plan=state.driverRoutePlan;
+  const km=plan.summary?.distance_km;
+  const minutes=plan.summary?.duration_minutes;
+  status.innerHTML='<strong>Ruta calculada:</strong> '+esc(plan.stops.length)+' parada(s)'+
+    (km!=null?' · '+esc(km)+' km':'')+
+    (minutes!=null?' · aprox. '+esc(minutes)+' min':'');
+
+  result.innerHTML='<div class="stack">'+plan.stops.map((stop,index)=>{
+    const order=(state.driverOrders||[]).find(o=>o.order_id===stop.order_id);
+    const badge=order?.status?'<span class="badge status-'+esc(order.status)+'">'+esc(order.status)+'</span>':'';
+    return '<div class="order-local"><div class="row between"><div><strong>'+(index+1)+'. '+esc(stop.customer_name||"Cliente")+
+      '</strong><div class="muted">'+esc(stop.delivery_address||"")+
+      (stop.address_reference?' · '+esc(stop.address_reference):'')+'</div></div>'+badge+'</div></div>';
+  }).join("")+'</div>';
+}
+
+function driverRouteRank(order){
+  const stops=state.driverRoutePlan?.stops;
+  if(!Array.isArray(stops)||state.driverRoutePlan?.delivery_id!==order.delivery_id)return Number.MAX_SAFE_INTEGER;
+  const i=stops.findIndex(stop=>stop.order_id===order.order_id);
+  return i<0?Number.MAX_SAFE_INTEGER:i;
+}
+
+function renderDriverOrders(){
+  const box=$("driverOrdersList");if(!box)return;
+  let items=Array.isArray(state.driverOrders)?[...state.driverOrders]:[];
+  if(!items.length){
+    box.innerHTML='<div class="muted">No tienes entregas asignadas.</div>';
+    renderDriverRouteControls();
+    return;
+  }
+
+  if(state.driverRoutePlan){
+    items.sort((a,b)=>{
+      const ar=driverRouteRank(a),br=driverRouteRank(b);
+      if(ar!==br)return ar-br;
+      return new Date(b.assigned_at||0)-new Date(a.assigned_at||0);
+    });
+  }
+
+  const nextRouteOrderId=state.driverRoutePlan?.stops?.[0]?.order_id||null;
   box.innerHTML=items.map(o=>{
     let action="";
+    const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
+      state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
+
     if(o.assignment_status==="ACTIVE"&&o.status==="READY"){
-      action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="EN_ROUTE">Iniciar ruta</button>';
+      if(inCurrentPlan&&nextRouteOrderId!==o.order_id){
+        action='<button class="btn-muted" type="button" disabled>Según ruta: espera</button>';
+      }else{
+        action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="EN_ROUTE">'+
+          (nextRouteOrderId===o.order_id?'Iniciar siguiente parada':'Iniciar ruta')+'</button>';
+      }
     }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
       action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="DELIVERED">Marcar entregado</button>';
     }
+
+    const routeMarker=nextRouteOrderId===o.order_id
+      ? '<div class="workspace-note" style="margin:8px 0"><strong>Siguiente parada de la ruta optimizada</strong></div>'
+      : '';
+
     return '<div class="card"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
       '<div class="muted">'+esc(o.delivery_name||"DELIVERY")+' · asignado '+esc(new Date(o.assigned_at).toLocaleString("es-EC"))+'</div></div>'+
-      '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+
+      '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
       '<p><strong>Total:</strong> $'+Number(o.total||0).toFixed(2)+'</p>'+action+'</div>';
   }).join("");
+
   box.querySelectorAll("[data-driver-status]").forEach(b=>{
     b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next);
   });
   updateDriverGpsShareUi();
+  renderDriverRouteControls();
+}
+
+function currentPositionOnce(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error("Este dispositivo no ofrece geolocalización."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos=>resolve({
+        latitude:Number(pos.coords.latitude),
+        longitude:Number(pos.coords.longitude)
+      }),
+      err=>reject(new Error(err?.message||"No se pudo obtener tu ubicación actual.")),
+      {enableHighAccuracy:true,timeout:15000,maximumAge:5000}
+    );
+  });
+}
+
+async function optimizeDriverRoute(){
+  const button=$("driverRouteOptimize");
+  const deliveryId=$("driverRouteDelivery")?.value;
+  if(!deliveryId){
+    message("No hay un DELIVERY con pedidos activos para optimizar.","error");
+    return;
+  }
+
+  const original=button?.textContent||"Optimizar ruta";
+  if(button){button.disabled=true;button.textContent="Optimizando…";}
+
+  try{
+    const position=await currentPositionOnce();
+    const {data,error}=await supabaseClient.functions.invoke("optimizar-ruta",{
+      body:{
+        delivery_id:deliveryId,
+        origin_lat:position.latitude,
+        origin_lng:position.longitude
+      }
+    });
+
+    if(error){
+      let detail=error.message||"No se pudo optimizar la ruta.";
+      try{
+        const payload=await error.context?.json?.();
+        if(payload?.error)detail=payload.error;
+      }catch{}
+      throw new Error(detail);
+    }
+    if(!data?.ok||!Array.isArray(data.stops)){
+      throw new Error(data?.error||"El optimizador no devolvió una ruta válida.");
+    }
+
+    state.driverRoutePlan=data;
+    reconcileDriverRoutePlan();
+    renderDriverOrders();
+    message("Ruta optimizada. Sigue las paradas en el orden mostrado.");
+  }catch(e){
+    message(e.message||"No se pudo optimizar la ruta.","error");
+  }finally{
+    if(button){button.disabled=false;button.textContent=original;}
+    renderDriverRouteControls();
+  }
 }
 
 async function loadDriverOrders(){
@@ -6159,6 +6332,7 @@ async function loadDriverOrders(){
   try{
     const items=await rpc("driver_my_orders");
     state.driverOrders=Array.isArray(items)?items:[];
+    reconcileDriverRoutePlan();
     renderDriverOrders();
     updateDriverGpsShareUi();
   }catch(e){
@@ -6508,6 +6682,7 @@ function bindEvents() {
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
+  if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverGpsRefresh")) $("driverGpsRefresh").onclick = loadSelectedDriverGps;
   if ($("driverGpsStart")) $("driverGpsStart").onclick = startDriverGpsSharing;
   if ($("driverGpsStop")) $("driverGpsStop").onclick = () => stopDriverGpsSharing(false);
