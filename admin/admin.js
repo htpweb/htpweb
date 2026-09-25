@@ -7150,7 +7150,7 @@ window.addEventListener("beforeunload",()=>{
   void stopDriverRouteDeviationSubscription();
 });
 
-const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],capabilities:{}};
+const networkState={snapshot:null,referrals:[],customers:[],contacts:[],rules:[],groups:[],selectedGroupId:null,capabilities:{}};
 
 function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
 function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
@@ -7335,6 +7335,155 @@ function renderNetworkCustomers(){
   });
 }
 
+
+function resetNetworkGroupForm(){
+  networkState.selectedGroupId=null;
+  if($("networkGroupId"))$("networkGroupId").value="";
+  if($("networkGroupName"))$("networkGroupName").value="";
+  if($("networkGroupDescription"))$("networkGroupDescription").value="";
+  if($("networkGroupActive"))$("networkGroupActive").value="true";
+  $("networkGroupMembersPanel")?.classList.add("hidden");
+  renderNetworkGroups();
+}
+
+function selectedNetworkGroup(){
+  return (networkState.groups||[]).find(g=>g.id===networkState.selectedGroupId)||null;
+}
+
+function renderNetworkGroups(){
+  const box=$("networkGroups");if(!box)return;
+  const enabled=Boolean(networkState.capabilities?.groups);
+  const groups=Array.isArray(networkState.groups)?networkState.groups:[];
+
+  if($("networkGroupNew"))$("networkGroupNew").disabled=!enabled;
+  if($("networkGroupSave"))$("networkGroupSave").disabled=!enabled;
+  if($("networkGroupName"))$("networkGroupName").disabled=!enabled;
+  if($("networkGroupDescription"))$("networkGroupDescription").disabled=!enabled;
+  if($("networkGroupActive"))$("networkGroupActive").disabled=!enabled;
+
+  if(!enabled){
+    box.innerHTML='<div class="workspace-warning">El plan vigente no incluye grupos de clientes.</div>';
+    $("networkGroupMembersPanel")?.classList.add("hidden");
+    return;
+  }
+
+  box.innerHTML=groups.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Grupo</th><th>Miembros</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
+      groups.map(g=>'<tr><td><strong>'+esc(g.name||"Grupo")+'</strong><div class="muted">'+esc(g.description||"")+
+        '</div></td><td>'+esc(g.member_count||0)+'</td><td>'+(g.active?"Activo":"Inactivo")+
+        '</td><td><div class="row" style="gap:6px;flex-wrap:wrap">'+
+        '<button class="btn-muted" type="button" data-group-edit="'+esc(g.id)+'">Editar</button>'+
+        '<button class="btn-muted" type="button" data-group-members="'+esc(g.id)+'">Miembros</button>'+
+        '<button class="btn-danger" type="button" data-group-delete="'+esc(g.id)+'">Eliminar</button>'+
+        '</div></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Todavía no hay grupos de clientes.</div>';
+
+  box.querySelectorAll("[data-group-edit]").forEach(b=>b.onclick=()=>{
+    const g=groups.find(x=>x.id===b.dataset.groupEdit);if(!g)return;
+    networkState.selectedGroupId=g.id;
+    $("networkGroupId").value=g.id;
+    $("networkGroupName").value=g.name||"";
+    $("networkGroupDescription").value=g.description||"";
+    $("networkGroupActive").value=String(g.active!==false);
+    $("networkGroupMembersPanel")?.classList.add("hidden");
+  });
+
+  box.querySelectorAll("[data-group-members]").forEach(b=>b.onclick=()=>{
+    const g=groups.find(x=>x.id===b.dataset.groupMembers);if(!g)return;
+    networkState.selectedGroupId=g.id;
+    renderNetworkGroupMembers();
+  });
+
+  box.querySelectorAll("[data-group-delete]").forEach(b=>b.onclick=async()=>{
+    const g=groups.find(x=>x.id===b.dataset.groupDelete);if(!g)return;
+    if(!confirm('Eliminar el grupo "'+(g.name||"")+'"? Los clientes no se eliminan.'))return;
+    try{
+      await rpc("delivery_delete_customer_group",{
+        p_delivery_id:networkDeliveryId(),
+        p_group_id:g.id
+      });
+      message("Grupo eliminado.");
+      await loadCustomerNetwork();
+    }catch(e){message(e.message||"No se pudo eliminar el grupo.","error");}
+  });
+}
+
+function renderNetworkGroupMembers(){
+  const panel=$("networkGroupMembersPanel");
+  const box=$("networkGroupMembers");
+  const title=$("networkGroupMembersTitle");
+  if(!panel||!box||!title)return;
+
+  const group=selectedNetworkGroup();
+  if(!group||!networkState.capabilities?.groups){
+    panel.classList.add("hidden");
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  title.textContent='Miembros de "'+(group.name||"Grupo")+'"';
+  const selected=new Set(Array.isArray(group.customer_ids)?group.customer_ids:[]);
+  const customers=Array.isArray(networkState.customers)?networkState.customers:[];
+
+  box.innerHTML=customers.length
+    ? '<div class="table-wrap"><table><thead><tr><th></th><th>Cliente</th><th>Origen</th><th>Pedidos</th></tr></thead><tbody>'+
+      customers.map(customer=>'<tr><td><input type="checkbox" data-group-customer="'+esc(customer.customer_id)+'" '+(selected.has(customer.customer_id)?'checked':'')+'></td>'+
+        '<td><strong>'+esc(customer.name||"Cliente")+'</strong><div class="muted">'+esc(customer.phone||customer.email||"")+'</div></td>'+
+        '<td>'+esc(customer.relationship_source||"—")+'</td><td>'+(customer.allow_orders?"Permitidos":"Bloqueados")+'</td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">Este DELIVERY todavía no tiene clientes vinculados.</div>';
+
+  if($("networkGroupMembersSave"))$("networkGroupMembersSave").disabled=!customers.length;
+}
+
+async function saveNetworkGroup(){
+  try{
+    if(!networkState.capabilities?.groups)throw new Error("El plan vigente no incluye grupos de clientes.");
+    const name=$("networkGroupName")?.value.trim()||"";
+    if(!name)throw new Error("Escribe el nombre del grupo.");
+    const result=await rpc("delivery_save_customer_group",{
+      p_delivery_id:networkDeliveryId(),
+      p_group_id:$("networkGroupId")?.value||null,
+      p_name:name,
+      p_description:$("networkGroupDescription")?.value.trim()||null,
+      p_active:$("networkGroupActive")?.value==="true"
+    });
+    message("Grupo guardado.");
+    await loadCustomerNetwork();
+    if(result?.id){
+      networkState.selectedGroupId=result.id;
+      const g=(networkState.groups||[]).find(x=>x.id===result.id);
+      if(g){
+        $("networkGroupId").value=g.id;
+        $("networkGroupName").value=g.name||"";
+        $("networkGroupDescription").value=g.description||"";
+        $("networkGroupActive").value=String(g.active!==false);
+      }
+    }
+  }catch(e){message(e.message||"No se pudo guardar el grupo.","error");}
+}
+
+async function saveNetworkGroupMembers(){
+  try{
+    const group=selectedNetworkGroup();
+    if(!group)throw new Error("Selecciona un grupo.");
+    const ids=[...document.querySelectorAll("[data-group-customer]:checked")]
+      .map(input=>input.dataset.groupCustomer)
+      .filter(Boolean);
+    const snapshot=await rpc("delivery_set_customer_group_members",{
+      p_delivery_id:networkDeliveryId(),
+      p_group_id:group.id,
+      p_customer_ids:ids
+    });
+    networkState.groups=Array.isArray(snapshot?.groups)?snapshot.groups:[];
+    networkState.selectedGroupId=group.id;
+    renderNetworkGroups();
+    renderNetworkGroupMembers();
+    message("Miembros del grupo actualizados.");
+  }catch(e){message(e.message||"No se pudieron guardar los miembros.","error");}
+}
+
 async function loadCustomerNetwork(){
   if(state.role!=="DELIVERY_ADMIN")return;
   const select=$("networkDelivery");if(!select)return;
@@ -7344,12 +7493,13 @@ async function loadCustomerNetwork(){
   const deliveryId=networkDeliveryId();if(!deliveryId)return;
 
   try{
-    const [snapshot,refs,customers,contacts,plan]=await Promise.all([
+    const [snapshot,refs,customers,contacts,plan,groupsSnapshot]=await Promise.all([
       rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_contacts_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_customer_groups_snapshot",{p_delivery_id:deliveryId})
     ]);
 
     const ent=plan?.current?.entitlements||{};
@@ -7359,11 +7509,16 @@ async function loadCustomerNetwork(){
     const referralLinksEnabled=ent["referrals.links"]===true;
     const contactsEnabled=ent["contacts.import"]===true;
     const approvalEnabled=ent["customers.approval"]===true;
+    const groupsEnabled=ent["customers.groups"]===true&&groupsSnapshot?.available===true;
 
     networkState.snapshot=snapshot||{};
     networkState.referrals=Array.isArray(refs)?refs:[];
     networkState.customers=Array.isArray(customers)?customers:[];
     networkState.contacts=Array.isArray(contacts)?contacts:[];
+    networkState.groups=Array.isArray(groupsSnapshot?.groups)?groupsSnapshot.groups:[];
+    if(networkState.selectedGroupId&&!networkState.groups.some(g=>g.id===networkState.selectedGroupId)){
+      networkState.selectedGroupId=null;
+    }
     networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
     networkState.capabilities={
       private:privateEnabled,
@@ -7371,7 +7526,8 @@ async function loadCustomerNetwork(){
       referralCodes:referralCodesEnabled,
       referralLinks:referralLinksEnabled,
       contacts:contactsEnabled,
-      approval:approvalEnabled
+      approval:approvalEnabled,
+      groups:groupsEnabled
     };
 
     $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
@@ -7384,7 +7540,8 @@ async function loadCustomerNetwork(){
       ' · Contactos: '+(contactsEnabled?"Sí":"No")+
       ' · Códigos: '+(referralCodesEnabled?"Sí":"No")+
       ' · Enlaces: '+(referralLinksEnabled?"Sí":"No")+
-      ' · Aprobación: '+(approvalEnabled?"Sí":"No");
+      ' · Aprobación: '+(approvalEnabled?"Sí":"No")+
+      ' · Grupos: '+(groupsEnabled?"Sí":"No");
 
     $("networkDefaultMode").disabled=!privateEnabled;
     $("networkSaveDefault").disabled=!privateEnabled;
@@ -7398,6 +7555,8 @@ async function loadCustomerNetwork(){
     renderNetworkReferrals();
     renderNetworkContacts();
     renderNetworkCustomers();
+    renderNetworkGroups();
+    if(networkState.selectedGroupId)renderNetworkGroupMembers();
   }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
 }
 
@@ -7509,6 +7668,11 @@ function bindEvents() {
   if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
   if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
   if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
+  if ($("networkGroupNew")) $("networkGroupNew").onclick = resetNetworkGroupForm;
+  if ($("networkGroupSave")) $("networkGroupSave").onclick = saveNetworkGroup;
+  if ($("networkGroupCancel")) $("networkGroupCancel").onclick = resetNetworkGroupForm;
+  if ($("networkGroupMembersClose")) $("networkGroupMembersClose").onclick = () => $("networkGroupMembersPanel")?.classList.add("hidden");
+  if ($("networkGroupMembersSave")) $("networkGroupMembersSave").onclick = saveNetworkGroupMembers;
   $("logoutBtn").onclick = async () => {
     try {
       await cerrarSesion();
