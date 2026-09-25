@@ -127,37 +127,66 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
    Si existe pero está deshabilitada:
    - NO se reactiva automáticamente.
-   ============================================================ */ async function ensureCustomerDelivery(customerId, deliveryId) {
-  const { data: existing, error: existingError } = await supabaseAdmin.from("customer_deliveries").select(`
-        customer_id,
-        delivery_id,
-        active,
-        allow_orders
-      `).eq("customer_id", customerId).eq("delivery_id", deliveryId).maybeSingle();
-  if (existingError) {
-    console.error("Error consultando customer_deliveries:", existingError);
-    throw new HttpError(500, "No se pudo validar la relación del cliente con el delivery");
-  }
-  if (existing) {
-    if (existing.active !== true || existing.allow_orders !== true) {
-      throw new HttpError(403, "El cliente no está habilitado para realizar pedidos en este delivery");
+   ============================================================ */ async function ensureCustomerDelivery(
+  customerId,
+  deliveryId,
+  latitude,
+  longitude
+) {
+  const { data: policy, error: policyError } = await supabaseAdmin.rpc(
+    "evaluate_customer_order_policy",
+    {
+      p_customer_id: customerId,
+      p_delivery_id: deliveryId,
+      p_latitude: latitude,
+      p_longitude: longitude,
+      p_at: new Date().toISOString()
     }
-    return;
+  );
+
+  if (policyError) {
+    console.error("Error evaluando política de pedido:", policyError);
+    throw new HttpError(500, "No se pudo validar la política operativa del delivery");
   }
-  const now = new Date().toISOString();
-  const { error: insertError } = await supabaseAdmin.from("customer_deliveries").insert({
-    customer_id: customerId,
-    delivery_id: deliveryId,
-    active: true,
-    allow_orders: true,
-    created_at: now,
-    updated_at: now
-  });
-  if (insertError) {
-    console.error("Error creando customer_deliveries:", insertError);
-    throw new HttpError(500, "No se pudo habilitar al cliente para este delivery");
+
+  if (!policy?.allowed) {
+    const messages = {
+      PLAN_INACTIVE: "El servicio administrativo de este delivery no está vigente",
+      PLAN_RECONFIGURATION_REQUIRED: "Este delivery está reconfigurando su plan y temporalmente no recibe pedidos",
+      RESTRICTED_AREA: "Esta ubicación está restringida para este delivery en este horario",
+      PRIVATE_NETWORK_REQUIRED: "Este delivery recibe pedidos solo de sus contactos y referidos en este horario",
+      APPROVAL_REQUIRED: "Este delivery requiere que tu cuenta esté aprobada antes de realizar pedidos",
+      CUSTOMER_BLOCKED: "Tu cuenta no está habilitada para realizar pedidos en este delivery",
+      DELIVERY_INACTIVE: "El delivery está inactivo",
+      CUSTOMER_INACTIVE: "Tu perfil de cliente no está activo"
+    };
+    throw new HttpError(403, messages[policy?.reason] || "El pedido no está permitido por la política actual del delivery");
+  }
+
+  if (policy.auto_create === true) {
+    const now = new Date().toISOString();
+    const { error: insertError } = await supabaseAdmin
+      .from("customer_deliveries")
+      .upsert({
+        customer_id: customerId,
+        delivery_id: deliveryId,
+        active: true,
+        allow_orders: true,
+        relationship_source: "PUBLIC",
+        created_at: now,
+        updated_at: now
+      }, {
+        onConflict: "customer_id,delivery_id",
+        ignoreDuplicates: true
+      });
+
+    if (insertError) {
+      console.error("Error creando relación pública customer_deliveries:", insertError);
+      throw new HttpError(500, "No se pudo vincular al cliente con el delivery");
+    }
   }
 }
+
 /* ============================================================
    DISPONIBILIDAD REAL DE LOCALES
 
@@ -371,7 +400,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
          El CUSTOMER fue obtenido del JWT.
          Nunca del body.
-         ====================================================== */ await ensureCustomerDelivery(customerId, body.delivery_id);
+         ====================================================== */ await ensureCustomerDelivery(customerId, body.delivery_id, customerLat, customerLng);
     /* ======================================================
          11. OBTENER LOCALES REALES
          ====================================================== */ const { data: locals, error: localsError } = await supabaseAdmin.from("locals").select(`
