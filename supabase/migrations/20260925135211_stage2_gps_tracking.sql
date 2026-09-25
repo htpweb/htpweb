@@ -35,7 +35,7 @@ alter table public.driver_location_history enable row level security;
 revoke all on table public.driver_live_locations from anon,authenticated;
 revoke all on table public.driver_location_history from anon,authenticated;
 
-create or replace function public.can_receive_order_tracking_topic(p_topic text)
+create or replace function private.can_receive_order_tracking_topic(p_topic text)
 returns boolean
 language plpgsql
 stable
@@ -104,8 +104,9 @@ exception
 end;
 $$;
 
-revoke execute on function public.can_receive_order_tracking_topic(text) from public,anon;
-grant execute on function public.can_receive_order_tracking_topic(text) to authenticated;
+grant usage on schema private to authenticated;
+revoke execute on function private.can_receive_order_tracking_topic(text) from public,anon;
+grant execute on function private.can_receive_order_tracking_topic(text) to authenticated;
 
 drop policy if exists htpweb_order_tracking_receive on realtime.messages;
 create policy htpweb_order_tracking_receive
@@ -114,8 +115,10 @@ for select
 to authenticated
 using (
   realtime.messages.extension='broadcast'
-  and public.can_receive_order_tracking_topic((select realtime.topic()))
+  and private.can_receive_order_tracking_topic((select realtime.topic()))
 );
+
+drop function if exists public.can_receive_order_tracking_topic(text);
 
 create or replace function public.driver_gps_context(p_delivery_id uuid)
 returns jsonb
