@@ -5593,7 +5593,9 @@ async function loadMyPlan(){
     const ent=snapshot?.current?.entitlements||{};
     const privateEnabled=ent["customers.private_network"]===true;
     const scheduleEnabled=ent["customers.access_schedule"]===true;
-    const referralsEnabled=ent["referrals.codes"]===true;
+    const referralCodesEnabled=ent["referrals.codes"]===true;
+    const referralLinksEnabled=ent["referrals.links"]===true;
+    const referralsEnabled=referralCodesEnabled||referralLinksEnabled;
 
     $("customerAccessCard")?.classList.toggle("hidden",!privateEnabled);
     $("referralCard")?.classList.toggle("hidden",!referralsEnabled);
@@ -5670,7 +5672,12 @@ async function createReferralCode(){
       p_label:$("referralLabel").value.trim()||null,
       p_expires_at:null
     });
-    $("referralResult").innerHTML='<strong>Código:</strong> '+esc(result.code)+'<br><span class="muted">Compártelo con el cliente para vincularlo a tu red privada.</span>';
+    const ent=state.myPlanSnapshot?.current?.entitlements||{};
+    const link=new URL("../app/acceso.html?ref="+encodeURIComponent(result.code),location.href).href;
+    $("referralResult").innerHTML=
+      (ent["referrals.codes"]===true?'<strong>Código:</strong> '+esc(result.code)+'<br>':'')+
+      (ent["referrals.links"]===true?'<strong>Enlace:</strong> <input value="'+esc(link)+'" readonly style="margin-top:6px"><br>':'')+
+      '<span class="muted">La invitación vincula al cliente con tu red privada después de iniciar sesión o registrarse.</span>';
     $("referralLabel").value="";
   }catch(e){message(e.message||"No se pudo generar el código.","error")}
 }
