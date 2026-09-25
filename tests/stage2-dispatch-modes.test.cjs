@@ -11,6 +11,9 @@ test('configuración de despacho vive en private y no queda expuesta al navegado
   assert.match(migration,/create table if not exists private\.delivery_dispatch_settings/);
   assert.match(migration,/mode text not null check \(mode in \('MANUAL','HYBRID','AUTO'\)\)/);
   assert.match(migration,/revoke all on table private\.delivery_dispatch_settings from public,anon,authenticated/);
+  assert.match(migration,/create policy delivery_dispatch_settings_deny_all/);
+  assert.match(migration,/using \(false\)/);
+  assert.match(migration,/with check \(false\)/);
   assert.doesNotMatch(admin,/\.from\(["']delivery_dispatch_settings/);
 });
 
