@@ -6263,6 +6263,189 @@ function driverRouteRank(order){
   return i<0?Number.MAX_SAFE_INTEGER:i;
 }
 
+function renderDriverProofPanel(order){
+  const proof=order?.proof;
+  if(!proof?.enabled)return "";
+  const editable=order.status==="EN_ROUTE"&&order.assignment_status==="ACTIVE";
+  const parts=['<div class="workspace-note" style="margin:10px 0"><strong>Prueba de entrega</strong>'];
+
+  if(proof.require_pin){
+    if(proof.pin_verified){
+      parts.push('<div style="margin-top:8px">✅ PIN verificado</div>');
+    }else if(editable){
+      parts.push('<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="proofPin-'+esc(order.order_id)+'" inputmode="numeric" maxlength="6" placeholder="PIN de 6 dígitos" style="max-width:190px"><button class="btn-muted" type="button" data-proof-pin="'+esc(order.order_id)+'">Verificar PIN</button></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ PIN pendiente</div>');
+    }
+  }
+
+  if(proof.require_photo){
+    if(proof.photo_uploaded){
+      parts.push('<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><span>✅ Foto cargada</span><button class="btn-muted" type="button" data-proof-view="'+esc(order.order_id)+'" data-proof-kind="PHOTO">Ver foto</button></div>');
+    }else if(editable){
+      parts.push('<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="proofPhoto-'+esc(order.order_id)+'" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"><button class="btn-muted" type="button" data-proof-photo="'+esc(order.order_id)+'">Subir foto</button></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ Foto pendiente</div>');
+    }
+  }
+
+  if(proof.require_signature){
+    if(proof.signature_uploaded){
+      parts.push('<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><span>✅ Firma registrada</span><button class="btn-muted" type="button" data-proof-view="'+esc(order.order_id)+'" data-proof-kind="SIGNATURE">Ver firma</button></div>');
+    }else if(editable){
+      parts.push('<div style="margin-top:10px"><div class="muted">Firma del cliente</div><canvas data-proof-signature-canvas="'+esc(order.order_id)+'" width="600" height="220" style="width:100%;max-width:600px;height:180px;border:1px solid #bbb;border-radius:10px;background:#fff;touch-action:none"></canvas><div class="row" style="gap:8px;margin-top:6px"><button class="btn-muted" type="button" data-proof-sign-clear="'+esc(order.order_id)+'">Limpiar</button><button class="btn-muted" type="button" data-proof-sign-upload="'+esc(order.order_id)+'">Guardar firma</button></div></div>');
+    }else{
+      parts.push('<div style="margin-top:8px">⏳ Firma pendiente</div>');
+    }
+  }
+
+  parts.push('<div class="muted" style="margin-top:8px">'+(proof.ready?'Prueba completa. Ya puedes finalizar la entrega.':'Completa todos los métodos exigidos antes de finalizar.')+'</div></div>');
+  return parts.join("");
+}
+
+function initDriverProofSignatureCanvases(){
+  document.querySelectorAll("canvas[data-proof-signature-canvas]").forEach(canvas=>{
+    if(canvas.dataset.bound==="1")return;
+    canvas.dataset.bound="1";
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    ctx.lineWidth=3;
+    ctx.lineCap="round";
+    ctx.lineJoin="round";
+    let drawing=false;
+
+    const point=event=>{
+      const rect=canvas.getBoundingClientRect();
+      return {
+        x:(event.clientX-rect.left)*(canvas.width/rect.width),
+        y:(event.clientY-rect.top)*(canvas.height/rect.height)
+      };
+    };
+
+    canvas.addEventListener("pointerdown",event=>{
+      drawing=true;
+      canvas.dataset.dirty="1";
+      try{canvas.setPointerCapture(event.pointerId);}catch{}
+      const p=point(event);
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      event.preventDefault();
+    });
+    canvas.addEventListener("pointermove",event=>{
+      if(!drawing)return;
+      const p=point(event);
+      ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+      event.preventDefault();
+    });
+    const stop=event=>{
+      drawing=false;
+      try{canvas.releasePointerCapture(event.pointerId);}catch{}
+      event.preventDefault();
+    };
+    canvas.addEventListener("pointerup",stop);
+    canvas.addEventListener("pointercancel",stop);
+  });
+}
+
+async function verifyDriverProofPin(orderId){
+  try{
+    const input=$("proofPin-"+orderId);
+    const pin=input?.value.trim()||"";
+    const result=await rpc("driver_verify_delivery_pin",{p_order_id:orderId,p_pin:pin});
+    if(result?.verified){
+      message("PIN verificado.");
+    }else{
+      message("PIN incorrecto.","error");
+    }
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo verificar el PIN.","error");
+  }
+}
+
+async function uploadDeliveryProofFile(orderId,kind,file){
+  if(!(file instanceof File))throw new Error("Selecciona un archivo.");
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(!session?.access_token)throw new Error("Sesión no disponible.");
+
+  const form=new FormData();
+  form.append("order_id",orderId);
+  form.append("kind",kind);
+  form.append("file",file,file.name||"evidencia");
+
+  const response=await fetch(SUPABASE_URL+"/functions/v1/delivery-proof-upload",{
+    method:"POST",
+    headers:{
+      Authorization:"Bearer "+session.access_token,
+      apikey:SUPABASE_KEY
+    },
+    body:form
+  });
+
+  let payload=null;
+  try{payload=await response.json();}catch{}
+  if(!response.ok||!payload?.ok){
+    throw new Error(payload?.error||"No se pudo cargar la evidencia.");
+  }
+  return payload;
+}
+
+async function uploadDriverProofPhoto(orderId){
+  try{
+    const file=$("proofPhoto-"+orderId)?.files?.[0];
+    if(!file)throw new Error("Selecciona una foto.");
+    await uploadDeliveryProofFile(orderId,"PHOTO",file);
+    message("Foto de entrega cargada.");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo cargar la foto.","error");
+  }
+}
+
+function clearDriverProofSignature(orderId){
+  const canvas=document.querySelector('canvas[data-proof-signature-canvas="'+orderId+'"]');
+  if(!canvas)return;
+  const ctx=canvas.getContext("2d");
+  ctx?.clearRect(0,0,canvas.width,canvas.height);
+  canvas.dataset.dirty="";
+}
+
+async function uploadDriverProofSignature(orderId){
+  try{
+    const canvas=document.querySelector('canvas[data-proof-signature-canvas="'+orderId+'"]');
+    if(!canvas||canvas.dataset.dirty!=="1")throw new Error("Solicita la firma del cliente antes de guardar.");
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+    if(!blob)throw new Error("No se pudo preparar la firma.");
+    const file=new File([blob],"firma-"+orderId+".png",{type:"image/png"});
+    await uploadDeliveryProofFile(orderId,"SIGNATURE",file);
+    message("Firma de entrega registrada.");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo registrar la firma.","error");
+  }
+}
+
+async function viewDeliveryProofMedia(orderId,kind){
+  const popup=window.open("about:blank","_blank");
+  try{
+    const {data,error}=await supabaseClient.functions.invoke("delivery-proof-view",{
+      body:{order_id:orderId,kind}
+    });
+    if(error)throw error;
+    if(!data?.ok||!data?.signed_url)throw new Error(data?.error||"Evidencia no disponible.");
+    if(popup){
+      popup.opener=null;
+      popup.location.href=data.signed_url;
+    }else{
+      window.open(data.signed_url,"_blank","noopener,noreferrer");
+    }
+  }catch(e){
+    try{popup?.close();}catch{}
+    message(e.message||"No se pudo abrir la evidencia.","error");
+  }
+}
+
 function renderDriverOrders(){
   const box=$("driverOrdersList");if(!box)return;
   let items=Array.isArray(state.driverOrders)?[...state.driverOrders]:[];
