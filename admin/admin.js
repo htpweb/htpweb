@@ -40,7 +40,7 @@ const state = {
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","storage","advertising","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","network","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -131,6 +131,21 @@ function renderDeliveryServiceWarning(access){
   host.insertBefore(note,host.firstChild);
 }
 
+async function renderInternalNotifications(){
+  try{
+    const items=await rpc("my_notifications",{p_limit:10});
+    const unread=(Array.isArray(items)?items:[]).filter(x=>!x.read_at);
+    if(!unread.length)return;
+    const host=document.querySelector("main")||document.body;
+    const box=document.createElement("div");
+    box.id="internalNotifications";
+    box.className="workspace-warning";
+    box.style.margin="12px";
+    box.innerHTML='<div class="row between"><strong>Notificaciones HTPWEB</strong><span class="badge">'+unread.length+' nueva(s)</span></div>'+
+      unread.map(n=>'<div style="margin-top:8px"><strong>'+esc(n.title)+'</strong><div>'+esc(n.message)+'</div></div>').join("");
+    host.insertBefore(box,host.firstChild);
+  }catch(e){console.warn("No se pudieron cargar notificaciones internas.",e);}
+}
 async function init() {
   try {
     state.user = await obtenerUsuarioActual();
@@ -177,6 +192,7 @@ async function init() {
     configureNavigation();
     bindEvents();
     if (state.deliveryServiceAccess) renderDeliveryServiceWarning(state.deliveryServiceAccess);
+    if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) await renderInternalNotifications();
 
     await loadScopes();
     await loadCities();
@@ -227,6 +243,7 @@ function showSection(name) {
   if (name === "zonesmaster") loadMasterZones();
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
+  if (name === "network") loadCustomerNetwork();
   if (name === "catalog") loadCatalog();
   if (name === "schedules") loadSchedules();
   if (name === "storage") loadStorage();
@@ -2777,7 +2794,7 @@ function renderCoverageSummary() {
       ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
       : "Sin cantón asignado")}</div>
     <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
-    <div><strong>Gestión de zonas:</strong> ${context.zones_manage_enabled ? "Habilitada" : "No habilitada"}</div>
+    <div><strong>Selección operativa:</strong> ${context.selection_reset_pending ? "Requiere nueva selección por cambio de plan" : "Lista"}</div>
   `;
 }
 
@@ -2806,7 +2823,7 @@ function renderCoverageZones() {
     return;
   }
 
-  const canAssign = state.role === "MASTER" || context.zones_manage_enabled === true;
+  const canAssign = state.role === "DELIVERY_ADMIN";
 
   container.innerHTML = `
     <div class="table-wrap">
@@ -2829,7 +2846,7 @@ function renderCoverageZones() {
                   onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
                   ${canAssign ? "" : "disabled"}
                 >
-                  ${zone.assigned ? (state.role === "MASTER" ? "Quitar cobertura" : "Aprobada") : (state.role === "MASTER" ? "Aprobar cobertura" : "Solicitar cobertura")}
+                  ${state.role === "DELIVERY_ADMIN" ? (zone.assigned ? "Desactivar" : "Activar") : (zone.assigned ? "Seleccionada por DELIVERY" : "Disponible")}
                 </button>
               </td>
             </tr>
@@ -2837,8 +2854,8 @@ function renderCoverageZones() {
         </tbody>
       </table>
     </div>
-    ${!canAssign && state.role === "DELIVERY_ADMIN"
-      ? '<p class="muted" style="margin-top:10px">La capability <code>zones.manage</code> debe ser habilitada por HTPWEB.</p>'
+    ${state.role === "DELIVERY_ADMIN" && context.selection_reset_pending
+      ? '<p class="workspace-warning" style="margin-top:10px">Tu plan cambió: vuelve a seleccionar las zonas que deseas operar dentro del nuevo límite.</p>'
       : ""}
   `;
 }
@@ -2952,15 +2969,8 @@ async function loadCoverageContext() {
       p_delivery_id: delivery.id
     });
 
-    if (state.role === "MASTER") {
-      if (state.zoneContext?.delivery?.city_id) {
-        $("coverageCity").value = state.zoneContext.delivery.city_id;
-      }
-
-      $("coverageMaxZones").value =
-        state.zoneContext?.max_zones === null || state.zoneContext?.max_zones === undefined
-          ? ""
-          : state.zoneContext.max_zones;
+    if (state.role === "MASTER" && state.zoneContext?.delivery?.city_id && $("coverageCity")) {
+      $("coverageCity").value = state.zoneContext.delivery.city_id;
     }
 
     renderCoverageSummary();
@@ -2977,19 +2987,15 @@ async function toggleDeliveryZone(zoneId, active) {
   if (!delivery) return;
 
   try {
-    if (state.role !== "MASTER") {
-      if (!active) throw new Error("Solicita al MASTER la suspensión de esta zona.");
-      await rpc("request_delivery_zone", {p_delivery_id: delivery.id, p_zone_id: zoneId});
-      message("Solicitud enviada. El MASTER debe aprobar la zona antes de habilitar sus locales.");
-      return;
+    if (state.role !== "DELIVERY_ADMIN") {
+      throw new Error("MASTER define el territorio y el plan; el DELIVERY selecciona sus zonas operativas.");
     }
-    await rpc("set_delivery_zone", {
+    await rpc("delivery_set_zone_choice", {
       p_delivery_id: delivery.id,
       p_zone_id: zoneId,
       p_active: Boolean(active)
     });
-
-    message(active ? "Zona agregada a la cobertura." : "Zona retirada de la cobertura.");
+    message(active ? "Zona activada para operar." : "Zona desactivada.");
     await loadCoverageContext();
   } catch (e) {
     message(e.message || "No se pudo modificar la cobertura.", "error");
@@ -5511,8 +5517,6 @@ function bindEvents() {
   $("saveFeeRateBtn").onclick = saveFeeRate;
   if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
-  $("setCoverageLimitBtn").onclick = setCoverageLimit;
-  $("enableZonesBtn").onclick = enableZonesManagement;
   $("saveZoneBtn").onclick = saveZone;
   $("clearZoneBtn").onclick = clearZoneForm;
   $("saveDeliveryBtn").onclick = saveDelivery;
@@ -5838,6 +5842,18 @@ async function toggleMasterDeliveryFeeMode(mode,currentEnabled){
   }
 }
 
+async function loadMasterDeliveryPlanSummary(){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  const box=document.getElementById("deliveryWorkspacePlanSummary");
+  if(!box)return;
+  if(!deliveryId){box.textContent="Selecciona un DELIVERY.";return;}
+  try{
+    const snapshot=await rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId});
+    const current=snapshot?.current;
+    if(!current){box.innerHTML='<strong>Sin plan vigente</strong>'+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');return;}
+    box.innerHTML='<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong> · vence '+esc(formatServiceDate(current.ends_at))+(snapshot?.expiring_soon?' · <strong>vence en '+esc(snapshot.days_remaining)+' día(s)</strong>':'')+(snapshot?.next?' · Próximo: '+esc(snapshot.next.plan_name):'');
+  }catch(e){box.textContent=e.message||"No se pudo consultar el plan.";}
+}
 function openMasterDeliveryWorkspaceTab(tab){
   ["base","access","zones"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
@@ -5857,8 +5873,7 @@ async function syncMasterDeliveryWorkspace(){
 
   await Promise.all([
     loadMasterDeliveryAuthorizations(),
-    loadMasterDeliveryService(),
-    loadMasterDeliveryFeeCapability(),
+    loadMasterDeliveryPlanSummary(),
     typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
   ]);
 }
@@ -5899,17 +5914,10 @@ function bindMasterDeliveryWorkspace(){
   const access=document.createElement("div");
   access.id="deliveryWorkspacePane-access";
   access.className="hidden";
-  access.innerHTML='<div class="card"><h3>Servicio mensual</h3>'+
-    '<p class="muted">Define la fecha de inicio y fin. Al vencer, el acceso administrativo del DELIVERY queda bloqueado automáticamente. Cinco días antes se programa un aviso al correo y celular del administrador registrado.</p>'+
-    '<div class="form-grid">'+
-      '<div><label>Fecha de inicio</label><input id="deliveryWorkspaceServiceStart" type="date"></div>'+
-      '<div><label>Fecha de fin</label><input id="deliveryWorkspaceServiceEnd" type="date"></div>'+
-    '</div>'+
-    '<div id="deliveryWorkspaceServiceStatus" class="workspace-note" style="margin-top:12px">Consultando servicio…</div>'+
-    '<div class="row" style="margin-top:12px">'+
-      '<button id="deliveryWorkspaceServiceSave" class="btn-primary" type="button">Guardar periodo</button>'+
-      '<button id="deliveryWorkspaceServiceRenew" class="btn-muted" type="button">Renovar 1 mes</button>'+
-    '</div></div>'+
+  access.innerHTML='<div class="card"><h3>Plan y suscripción</h3>'+
+    '<p class="muted">La vigencia, capacidad y funciones provienen del plan comercial. No se configuran fechas ni prestaciones manualmente desde DELIVERY.</p>'+
+    '<div id="deliveryWorkspacePlanSummary" class="workspace-note">Consultando plan…</div>'+
+    '<a class="btn-primary" href="./monetizacion.html" style="display:inline-block;margin-top:12px;text-decoration:none">Abrir Planes y suscripciones</a></div>'+
     '<div class="card"><h3>Representante autorizado</h3>'+
     '<p class="muted">MASTER registra previamente a la persona. El acceso DELIVERY solo se activa cuando esa misma dirección de correo pertenece a una cuenta HTPWEB con el correo confirmado.</p>'+
     '<div class="form-grid">'+
@@ -5919,12 +5927,9 @@ function bindMasterDeliveryWorkspace(){
     '<div><label>Teléfono</label><input id="deliveryWorkspaceRepresentativePhone" type="tel" maxlength="40"></div>'+
     '<div><label>Tipo de acceso</label><select id="deliveryWorkspaceRepresentativeRole"><option value="DELIVERY_ADMIN">Administrador</option><option value="DELIVERY_OPERATOR">Operador</option></select></div>'+
     '</div>'+
-    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
+    '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña.</p>'+
     '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
-    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>'+
-    '<div class="card"><h3>Modalidades de tarifa disponibles</h3>'+
-    '<p class="muted">MASTER habilita qué modalidades puede utilizar este DELIVERY. El DELIVERY_ADMIN fija los precios desde su propia cuenta.</p>'+
-    '<div id="deliveryWorkspaceFeeModes"><div class="muted">Consultando modalidades…</div></div></div>';
+    '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
@@ -5947,15 +5952,7 @@ function bindMasterDeliveryWorkspace(){
   }
 
   toolbar.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.onclick=()=>openMasterDeliveryWorkspaceTab(b.dataset.deliveryWorkspaceTab));
-  document.getElementById("deliveryWorkspaceSelect").onchange=async()=>{
-    const start=document.getElementById("deliveryWorkspaceServiceStart");
-    const end=document.getElementById("deliveryWorkspaceServiceEnd");
-    if(start)start.value="";
-    if(end)end.value="";
-    await syncMasterDeliveryWorkspace();
-  };
-  document.getElementById("deliveryWorkspaceServiceSave").onclick=saveMasterDeliveryServicePeriod;
-  document.getElementById("deliveryWorkspaceServiceRenew").onclick=renewMasterDeliveryServiceMonth;
+  document.getElementById("deliveryWorkspaceSelect").onchange=syncMasterDeliveryWorkspace;
   document.getElementById("deliveryWorkspaceAuthorize").onclick=authorizeMasterDeliveryRepresentative;
   document.getElementById("deliveryWorkspaceNew").onclick=()=>{
     if(document.getElementById("deliveryEditId"))document.getElementById("deliveryEditId").value="";
