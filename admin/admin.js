@@ -161,6 +161,18 @@ async function init() {
         renderDeliveryServiceBlocked(state.deliveryServiceAccess);
         return;
       }
+
+      if (state.role === "DELIVERY_ADMIN") {
+        const deliveryIds=(state.deliveryServiceAccess?.deliveries||[])
+          .filter(item=>item?.delivery_id)
+          .map(item=>item.delivery_id);
+        for (const deliveryId of deliveryIds) {
+          const transition = await supabaseClient.rpc("ensure_delivery_plan_transition_applied", {
+            p_delivery_id: deliveryId
+          });
+          if (transition.error) throw transition.error;
+        }
+      }
     }
 
     if (!roleSections[state.role]) {
