@@ -39,6 +39,7 @@
       <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
       <button data-section="advertising">Publicidad</button>
+      <button data-section="menuimport">Importar menú</button>
       <button data-section="analytics">Analytics</button>
       <a class="public-link master-only" href="./monetizacion.html">Monetización</a>
     </nav>
@@ -1150,6 +1151,111 @@
       </div>
     </section>
 
+    <section id="section-menuimport" class="section">
+      <div class="card">
+        <h2>Importar LOCAL y menú desde imágenes</h2>
+        <p class="muted">
+          Función exclusiva de MASTER. Sube de 1 a 5 fotos del menú; HTPWEB prepara una vista previa con LOCAL,
+          categorías, productos, variantes y precios. Nada se crea hasta que revises y confirmes.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div>
+            <label>DELIVERY de referencia para la importación</label>
+            <select id="menuImportDelivery"></select>
+            <small class="muted">Organiza los archivos de la importación. La cobertura del LOCAL no se asigna aquí: se determina por su zona.</small>
+          </div>
+          <div>
+            <label>Imágenes del menú (máx. 5)</label>
+            <input id="menuImportFiles" type="file" multiple accept="image/jpeg,image/png,image/webp">
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="startMenuImportBtn">Subir y analizar</button>
+        </div>
+        <div id="menuImportStatus" class="muted" style="margin-top:10px">
+          Las imágenes se guardan en Storage privado. La IA solo prepara un borrador para revisión.
+        </div>
+      </div>
+
+      <div class="card hidden" id="menuPreviewCard">
+        <div class="row between">
+          <div>
+            <h3>Vista previa antes de crear</h3>
+            <div class="muted" id="menuPreviewJobLabel"></div>
+          </div>
+          <button class="btn-muted" id="reanalyzeMenuBtn">Volver a analizar</button>
+        </div>
+
+        <div class="card" style="margin:14px 0 0">
+          <h3>LOCAL</h3>
+          <div class="form-grid">
+            <div>
+              <label>Usar LOCAL existente</label>
+              <select id="menuExistingLocal"></select>
+              <small class="muted">Si eliges uno existente, no se sobrescriben sus datos globales ni su zona; solamente se importa el catálogo.</small>
+            </div>
+            <div>
+              <label>Nombre detectado</label>
+              <input id="menuLocalName">
+            </div>
+            <div>
+              <label>Teléfono</label>
+              <input id="menuLocalPhone">
+            </div>
+            <div>
+              <label>WhatsApp</label>
+              <input id="menuLocalWhatsapp">
+            </div>
+            <div>
+              <label>Dirección</label>
+              <input id="menuLocalAddress">
+            </div>
+            <div>
+              <label>Zona del LOCAL nuevo</label>
+              <select id="menuLocalZone"></select>
+              <small class="muted">Obligatoria al crear un LOCAL. Si usas un LOCAL existente, se conserva su zona actual.</small>
+            </div>
+            <div>
+              <label>Latitud</label>
+              <input id="menuLocalLatitude" inputmode="decimal" placeholder="-0.000000">
+            </div>
+            <div>
+              <label>Longitud</label>
+              <input id="menuLocalLongitude" inputmode="decimal" placeholder="-79.000000">
+            </div>
+          </div>
+          <label>Descripción</label>
+          <textarea id="menuLocalDescription" rows="3"></textarea>
+          <label class="row" style="margin-top:12px">
+            <input id="menuLocalActive" type="checkbox" style="width:auto">
+            Publicar LOCAL al confirmar
+          </label>
+          <small class="muted">Un LOCAL nuevo queda inactivo por seguridad. Para publicarlo debes completar latitud y longitud.</small>
+        </div>
+
+        <div id="menuWarnings" class="message hidden"></div>
+
+        <div class="row between" style="margin:14px 0">
+          <h3>Categorías y productos</h3>
+          <button class="btn-muted" id="addMenuCategoryBtn">+ Categoría</button>
+        </div>
+        <div id="menuCategoriesEditor" class="stack"></div>
+
+        <div class="row" style="margin-top:18px">
+          <button class="btn-primary" id="applyMenuImportBtn">Confirmar y crear/importar</button>
+        </div>
+        <small class="muted">La confirmación se ejecuta en una sola transacción. Si algo falla, no queda un catálogo creado a medias.</small>
+      </div>
+
+      <div class="card">
+        <h3>Importaciones recientes</h3>
+        <div id="menuImportJobs" class="stack"><div class="muted">Cargando...</div></div>
+      </div>
+    </section>
+
     <section id="section-analytics" class="section">
       <div class="card">
         <div class="row between">
@@ -1166,7 +1272,6 @@
 <script src="../config/imports.js"></script>
 <script src="./admin.js"></script>
 <script src="./zone-maps.js"></script>
-<script src="./locales-bulk.js"></script>
 <script src="./locales-master.js"></script>
 <script src="./local-categories-master.js"></script>
 <script src="./zones-master.js"></script>
