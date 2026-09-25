@@ -86,13 +86,29 @@ async function syncAccountAccess() {
   const roleResult = await supabaseClient.rpc("current_role_code");
   if (roleResult.error) throw roleResult.error;
 
+  const role = roleResult.data || "CLIENT";
+  let service = null;
+
+  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role)) {
+    const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
+    if (serviceResult.error) throw serviceResult.error;
+    service = serviceResult.data || null;
+  }
+
   return {
-    role: roleResult.data || "CLIENT",
-    claim: claim.data || null
+    role,
+    claim: claim.data || null,
+    service
   };
 }
 
-function authenticatedDestination(role) {
+function authenticatedDestination(access) {
+  const role = access?.role || "CLIENT";
+
+  if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role) && !access?.service?.has_active_service) {
+    return "../admin/index.html?service=blocked";
+  }
+
   if (hasExplicitReturn) return requestedReturn;
   if (["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN"].includes(role)) {
     return "../admin/index.html";
@@ -150,6 +166,15 @@ async function init() {
       const role = access.role;
       if (role && role !== "CLIENT") {
         $("adminBtn").classList.remove("hidden");
+        if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(role) && !access?.service?.has_active_service) {
+          const deliveries=Array.isArray(access?.service?.deliveries)?access.service.deliveries:[];
+          const current=deliveries[0]||{};
+          showMessage(
+            "El servicio administrativo del DELIVERY está "+(current.state==="EXPIRED"?"vencido":"sin vigencia")+
+            ". Puedes seguir usando tu cuenta como cliente; el acceso se restablece cuando HTPWEB registre la renovación.",
+            "error"
+          );
+        }
       }
 
       const { data: customerId } = await supabaseClient.rpc("current_customer_id");
@@ -253,7 +278,7 @@ $("loginForm").onsubmit = async event => {
     if (error) throw error;
 
     const access = await syncAccountAccess();
-    location.href = authenticatedDestination(access.role);
+    location.href = authenticatedDestination(access);
   } catch (e) {
     showMessage(e.message || "No se pudo iniciar sesión.");
   }
@@ -288,7 +313,7 @@ $("registerForm").onsubmit = async event => {
 
       await asegurarCustomerActual({ name, phone, email });
       const access = await syncAccountAccess();
-      location.href = authenticatedDestination(access.role);
+      location.href = authenticatedDestination(access);
       return;
     }
 
