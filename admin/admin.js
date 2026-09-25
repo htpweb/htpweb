@@ -5564,9 +5564,9 @@ function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Ju
 function networkModeOptions(selected){
   const caps=networkState.capabilities||{};
   const options=[
-    ["OPEN","Abierta"],
-    ["PRIVATE","Solo contactos/referidos"]
+    ["OPEN","Abierta"]
   ];
+  if(caps.private)options.push(["PRIVATE","Solo contactos/referidos"]);
   if(caps.approval)options.push(["APPROVAL_REQUIRED","Solo aprobados"]);
   return options.map(([value,label])=>
     '<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>'
@@ -5896,6 +5896,7 @@ function bindEvents() {
   if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
   if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
   if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
+  if ($("networkImportContacts")) $("networkImportContacts").onclick = importNetworkContacts;
   $("logoutBtn").onclick = async () => {
     try {
       await cerrarSesion();
