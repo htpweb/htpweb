@@ -6014,6 +6014,54 @@ async function acceptHybridDispatchSuggestion(orderId){
   }catch(e){message(e.message||"No se pudo confirmar la sugerencia.","error");}
 }
 
+function renderDeliveryProofSettingsControls(){
+  const proof=driverWorkspaceState.proofSettings||{};
+  const canManage=state.role==="DELIVERY_ADMIN";
+  const rows=[
+    ["proofRequirePin","available_pin","require_pin","configured_pin","PIN"],
+    ["proofRequirePhoto","available_photo","require_photo","configured_photo","Foto"],
+    ["proofRequireSignature","available_signature","require_signature","configured_signature","Firma"]
+  ];
+  const unavailable=[];
+  for(const row of rows){
+    const input=$(row[0]);
+    if(!input)continue;
+    const available=proof[row[1]]===true;
+    input.checked=proof[row[2]]===true;
+    input.disabled=!canManage||!available;
+    if(proof[row[3]]===true&&!available)unavailable.push(row[4]);
+  }
+  if($("deliveryProofSettingsSave"))$("deliveryProofSettingsSave").disabled=!canManage;
+  const availableLabels=[];
+  if(proof.available_pin)availableLabels.push("PIN");
+  if(proof.available_photo)availableLabels.push("foto");
+  if(proof.available_signature)availableLabels.push("firma");
+  const help=$("deliveryProofSettingsHelp");
+  if(help){
+    help.textContent=availableLabels.length
+      ?"Incluido en el plan: "+availableLabels.join(", ")+(unavailable.length?". Fuera del plan e ignorado: "+unavailable.join(", ")+".":".")
+      :"El plan vigente no incluye métodos de prueba de entrega.";
+  }
+}
+
+async function saveDeliveryProofSettings(){
+  try{
+    if(state.role!=="DELIVERY_ADMIN")throw new Error("Solo DELIVERY_ADMIN puede cambiar la prueba de entrega.");
+    const deliveryId=driverWorkspaceDeliveryId();
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+    driverWorkspaceState.proofSettings=await rpc("delivery_save_proof_settings",{
+      p_delivery_id:deliveryId,
+      p_require_pin:$("proofRequirePin")?.checked===true,
+      p_require_photo:$("proofRequirePhoto")?.checked===true,
+      p_require_signature:$("proofRequireSignature")?.checked===true
+    });
+    renderDeliveryProofSettingsControls();
+    message("Prueba de entrega actualizada.");
+  }catch(e){
+    message(e.message||"No se pudo guardar la prueba de entrega.","error");
+  }
+}
+
 async function loadDriverWorkspace(){
   if(!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
   const select=$("driversDelivery");if(!select)return;
