@@ -6029,7 +6029,6 @@ async function syncMasterDeliveryWorkspace(){
   await Promise.all([
     loadMasterDeliveryAuthorizations(),
     loadMasterDeliveryService(),
-    loadMasterDeliveryFeeCapability(),
     typeof loadCoverageContext==="function"?loadCoverageContext():Promise.resolve()
   ]);
 }
@@ -6086,9 +6085,9 @@ function bindMasterDeliveryWorkspace(){
     '<p class="muted" style="margin-top:10px">La cédula se usa como referencia administrativa y se almacena protegida; no funciona como contraseña. La persona utiliza la única pantalla de acceso de HTPWEB.</p>'+
     '<button id="deliveryWorkspaceAuthorize" class="btn-primary" type="button" style="margin-top:12px">Autorizar acceso</button></div>'+
     '<div class="card"><h3>Accesos del DELIVERY</h3><div id="deliveryWorkspaceAssignments"></div></div>'+
-    '<div class="card"><h3>Modalidades de tarifa disponibles</h3>'+
-    '<p class="muted">MASTER habilita qué modalidades puede utilizar este DELIVERY. El DELIVERY_ADMIN fija los precios desde su propia cuenta.</p>'+
-    '<div id="deliveryWorkspaceFeeModes"><div class="muted">Consultando modalidades…</div></div></div>';
+    '<div class="card"><h3>Funciones contratadas</h3>'+
+    '<p class="muted">Las zonas, tarifas, red privada, GPS y demás funciones ahora provienen del plan comercial. Adminístralas desde Planes y Suscripciones.</p>'+
+    '<a class="btn-muted" href="./monetizacion.html">Abrir Planes y Suscripciones</a></div>';
   section.appendChild(access);
 
   const zones=document.createElement("div");
