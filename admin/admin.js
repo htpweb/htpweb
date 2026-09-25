@@ -134,6 +134,7 @@ function renderDeliveryServiceWarning(access){
 
 async function renderInternalNotifications(){
   try{
+    document.getElementById("internalNotifications")?.remove();
     const items=await rpc("my_notifications",{p_limit:10});
     const unread=(Array.isArray(items)?items:[]).filter(x=>!x.read_at);
     if(!unread.length)return;
@@ -143,7 +144,14 @@ async function renderInternalNotifications(){
     box.className="workspace-warning";
     box.style.margin="12px";
     box.innerHTML='<div class="row between"><strong>Notificaciones HTPWEB</strong><span class="badge">'+unread.length+' nueva(s)</span></div>'+
-      unread.map(n=>'<div style="margin-top:8px"><strong>'+esc(n.title)+'</strong><div>'+esc(n.message)+'</div></div>').join("");
+      unread.map(n=>'<div style="margin-top:8px"><strong>'+esc(n.title)+'</strong><div>'+esc(n.message)+'</div>'+
+        '<button class="btn-muted" type="button" data-notification-read="'+esc(n.id)+'" style="margin-top:6px">Marcar como leída</button></div>').join("");
+    box.querySelectorAll("[data-notification-read]").forEach(b=>b.onclick=async()=>{
+      try{
+        await rpc("mark_notification_read",{p_notification_id:b.dataset.notificationRead});
+        await renderInternalNotifications();
+      }catch(e){message(e.message||"No se pudo marcar la notificación.","error");}
+    });
     host.insertBefore(box,host.firstChild);
   }catch(e){console.warn("No se pudieron cargar notificaciones internas.",e);}
 }
