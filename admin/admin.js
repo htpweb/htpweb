@@ -6245,6 +6245,141 @@ async function resolveDeliverySos(incidentId){
   }catch(e){message(e.message||"No se pudo resolver el SOS.","error");}
 }
 
+function routeDeviationReasonLabel(value){
+  return {
+    RETURNED_TO_ROUTE:"Regresó a la ruta",
+    ORDER_FINISHED:"Pedido finalizado",
+    MANUAL:"Resuelto manualmente"
+  }[value]||value||"—";
+}
+
+function renderDeliveryRouteDeviation(){
+  const box=$("deliveryDeviationList");
+  const notice=$("deliveryDeviationNotice");
+  if(!box||!notice)return;
+
+  const snap=driverWorkspaceState.deviation||{};
+  const items=Array.isArray(snap.incidents)?snap.incidents:[];
+  const active=items.filter(x=>["OPEN","ACKNOWLEDGED"].includes(x.status));
+
+  if(!snap.enabled){
+    notice.textContent=active.length
+      ?"El plan actual no crea nuevos desvíos, pero las alertas existentes siguen disponibles para atención."
+      :"El plan vigente no incluye alerta de desvío con GPS en vivo.";
+  }else{
+    notice.textContent=active.length
+      ?active.length+" alerta(s) de desvío activa(s)."
+      :"Monitoreo de desvío habilitado · no hay alertas activas.";
+  }
+
+  if(!items.length){
+    box.innerHTML='<div class="muted">No hay desvíos de ruta registrados.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(item=>{
+    const created=item.first_detected_at
+      ?new Date(item.first_detected_at).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})
+      :"—";
+    const deviation=Number(item.deviation_m);
+    const max=Number(item.max_deviation_m);
+    const actions=item.status==="OPEN"
+      ? '<button class="btn-primary" type="button" data-deviation-ack="'+esc(item.incident_id)+'">Reconocer</button>'+
+        '<button class="btn-danger" type="button" data-deviation-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+      : item.status==="ACKNOWLEDGED"
+        ? '<button class="btn-danger" type="button" data-deviation-resolve="'+esc(item.incident_id)+'">Resolver</button>'
+        : '';
+
+    return '<div class="card" style="border-left:5px solid currentColor">'+
+      '<div class="row between" style="gap:10px;flex-wrap:wrap"><div><strong>Desvío · '+esc(item.driver_name||"Repartidor")+'</strong>'+
+      '<div class="muted">'+esc(item.driver_phone||"")+' · pedido '+esc(item.order_id)+'</div></div>'+
+      '<span class="badge">'+esc(sosStatusLabel(item.status))+'</span></div>'+
+      '<p><strong>Detectado:</strong> '+esc(created)+'</p>'+
+      '<div class="muted">Desvío actual: '+(Number.isFinite(deviation)?Math.round(deviation)+" m":"—")+
+      ' · máximo: '+(Number.isFinite(max)?Math.round(max)+" m":"—")+
+      ' · muestras: '+esc(item.samples_outside??0)+'</div>'+
+      (item.status==="RESOLVED"&&item.resolution_reason
+        ?'<div class="muted">Cierre: '+esc(routeDeviationReasonLabel(item.resolution_reason))+'</div>'
+        :'')+
+      (item.resolution_note?'<p><strong>Nota:</strong> '+esc(item.resolution_note)+'</p>':'')+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+sosLocationLink(item)+actions+'</div></div>';
+  }).join("");
+
+  box.querySelectorAll("[data-deviation-ack]").forEach(b=>b.onclick=()=>acknowledgeDeliveryRouteDeviation(b.dataset.deviationAck));
+  box.querySelectorAll("[data-deviation-resolve]").forEach(b=>b.onclick=()=>resolveDeliveryRouteDeviation(b.dataset.deviationResolve));
+}
+
+async function loadDeliveryRouteDeviationSnapshotOnly(){
+  const deliveryId=driverWorkspaceDeliveryId();
+  if(!deliveryId||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
+  try{
+    driverWorkspaceState.deviation=await rpc("delivery_route_deviation_snapshot",{
+      p_delivery_id:deliveryId,
+      p_limit:50
+    })||{};
+    renderDeliveryRouteDeviation();
+  }catch(e){
+    if($("deliveryDeviationNotice"))$("deliveryDeviationNotice").textContent=e.message||"No se pudieron cargar los desvíos de ruta.";
+  }
+}
+
+function scheduleDeliveryRouteDeviationRefresh(){
+  if(routeDeviationState.refreshTimer)clearTimeout(routeDeviationState.refreshTimer);
+  routeDeviationState.refreshTimer=setTimeout(()=>{
+    routeDeviationState.refreshTimer=null;
+    void loadDeliveryRouteDeviationSnapshotOnly();
+  },200);
+}
+
+async function stopDeliveryRouteDeviationSubscription(){
+  const channel=routeDeviationState.deliveryChannel;
+  routeDeviationState.deliveryChannel=null;
+  routeDeviationState.deliveryId=null;
+  if(channel){
+    try{await supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+async function startDeliveryRouteDeviationSubscription(deliveryId){
+  if(!deliveryId||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role))return;
+  if(routeDeviationState.deliveryChannel&&routeDeviationState.deliveryId===deliveryId)return;
+  await stopDeliveryRouteDeviationSubscription();
+  routeDeviationState.deliveryId=deliveryId;
+  routeDeviationState.deliveryChannel=supabaseClient
+    .channel("route-deviation:delivery:"+deliveryId,{config:{private:true}})
+    .on("broadcast",{event:"route_deviation"},()=>scheduleDeliveryRouteDeviationRefresh())
+    .subscribe(status=>{
+      if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+        if($("deliveryDeviationNotice"))$("deliveryDeviationNotice").textContent="Desvíos cargados; la actualización en vivo no pudo conectarse. Usa Actualizar desvíos.";
+      }
+    });
+}
+
+async function acknowledgeDeliveryRouteDeviation(incidentId){
+  try{
+    await rpc("delivery_acknowledge_route_deviation",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId
+    });
+    message("Alerta de desvío reconocida.");
+    await loadDeliveryRouteDeviationSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo reconocer el desvío.","error");}
+}
+
+async function resolveDeliveryRouteDeviation(incidentId){
+  const note=prompt("Nota de resolución (opcional):","")??null;
+  if(note===null)return;
+  try{
+    await rpc("delivery_resolve_route_deviation",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_incident_id:incidentId,
+      p_note:note
+    });
+    message("Alerta de desvío resuelta.");
+    await loadDeliveryRouteDeviationSnapshotOnly();
+  }catch(e){message(e.message||"No se pudo resolver el desvío.","error");}
+}
+
 function activeDriverSos(){
   return (state.driverOrders||[])
     .map(o=>o?.sos?{...o.sos,delivery_id:o.delivery_id,order_id:o.order_id}:null)
