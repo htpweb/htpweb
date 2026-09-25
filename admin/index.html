@@ -409,6 +409,28 @@
       <div class="card">
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
+            <h3 style="margin:0">WhatsApp de pedidos y despacho</h3>
+            <p class="muted" style="margin:.35rem 0 0">HTPWEB conserva la asignación oficial. En Asistido abre WhatsApp con el mensaje listo; Automático usa la API oficial de Meta cuando esté configurada.</p>
+          </div>
+          <button id="whatsappSettingsSave" class="btn-primary" type="button">Guardar WhatsApp</button>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+          <div>
+            <label>Modo</label>
+            <select id="whatsappModeSelect">
+              <option value="ASSISTED">Asistido</option>
+              <option value="AUTOMATIC">Automático</option>
+            </select>
+          </div>
+          <label class="workspace-note"><input id="whatsappLocalOrders" type="checkbox"> Pedidos a locales</label>
+          <label class="workspace-note"><input id="whatsappDriverDispatch" type="checkbox"> Avisos a repartidores</label>
+        </div>
+        <small id="whatsappSettingsHelp" class="muted"></small>
+      </div>
+
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
             <h3 style="margin:0">Prueba de entrega</h3>
             <p class="muted" style="margin:.35rem 0 0">Activa solo los métodos incluidos en el plan. Los pedidos que ya están EN_ROUTE conservan la configuración con la que iniciaron.</p>
           </div>
@@ -1604,7 +1626,8 @@
 
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
-<script src="./admin.js?v=20260925-0540"></script>
+<script src="../config/whatsapp.js?v=20260925-2135"></script>
+<script src="./admin.js?v=20260925-2135"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
