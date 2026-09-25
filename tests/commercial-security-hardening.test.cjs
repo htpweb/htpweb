@@ -32,3 +32,16 @@ test('nuevas relaciones comerciales tienen índices de FK',()=>{
   assert.match(migration,/notifications_delivery_id_idx/);
   assert.match(migration,/plan_assignments_previous_assignment_id_idx/);
 });
+
+test('helpers internos adicionales no quedan ejecutables por authenticated',()=>{
+  const internal=fs.readFileSync('supabase/migrations/20260925130253_commercial_internal_helper_exposure_hardening.sql','utf8');
+  for(const fn of [
+    'delivery_customer_access_mode_at',
+    'delivery_limit_value_legacy',
+    'delivery_restricted_areas_snapshot',
+    'sync_my_plan_notifications'
+  ]){
+    assert.match(internal,new RegExp('revoke execute on function public\\.'+fn+'[\\s\\S]*?from public,anon,authenticated'));
+    assert.match(internal,new RegExp('grant execute on function public\\.'+fn+'[\\s\\S]*?to service_role'));
+  }
+});
