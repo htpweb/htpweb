@@ -16,6 +16,7 @@ const state = {
   localProfileRecord: null,
   users: [],
   feeRates: [],
+  feeDayNightEnabled: false,
   zoneContext: null,
   zonesCatalog: [],
   categories: [],
@@ -2482,7 +2483,8 @@ function renderFeeRates() {
   const container = $("feeRatesList");
   if (!container) return;
 
-  const rates = ["DAY","NIGHT"].map(period =>
+  const periods = state.feeDayNightEnabled ? ["DAY","NIGHT"] : ["DAY"];
+  const rates = periods.map(period =>
     state.feeRates.find(rate => rate.period === period) || {
       period,
       rate_per_km: null,
@@ -2521,7 +2523,7 @@ function renderFeeRates() {
 }
 
 function selectFeeRatePeriod(period) {
-  const normalized = period === "NIGHT" ? "NIGHT" : "DAY";
+  const normalized = state.feeDayNightEnabled && period === "NIGHT" ? "NIGHT" : "DAY";
   $("feeRatePeriod").value = normalized;
 
   const current = state.feeRates.find(rate => rate.period === normalized);
@@ -2563,7 +2565,7 @@ async function loadFeeDelivery() {
   }
 
   try {
-    const [fixedEnabled,distanceEnabled]=await Promise.all([
+    const [fixedEnabled,distanceEnabled,dayNightEnabled]=await Promise.all([
       rpc("delivery_has_capability",{
         p_delivery_id:delivery.id,
         p_capability_code:"delivery_fees.fixed"
@@ -2571,8 +2573,13 @@ async function loadFeeDelivery() {
       rpc("delivery_has_capability",{
         p_delivery_id:delivery.id,
         p_capability_code:"delivery_fees.distance"
+      }),
+      rpc("delivery_has_capability",{
+        p_delivery_id:delivery.id,
+        p_capability_code:"delivery_fees.day_night"
       })
     ]);
+    state.feeDayNightEnabled=Boolean(dayNightEnabled);
 
     const allowedModes=[];
     if(Boolean(fixedEnabled))allowedModes.push("FIXED");
@@ -2600,7 +2607,9 @@ async function loadFeeDelivery() {
 
     if(capabilityNotice){
       const labels=allowedModes.map(mode=>mode==="FIXED"?"Tarifa fija":"Por distancia");
-      capabilityNotice.textContent="HTPWEB habilitó: "+labels.join(" y ")+". El DELIVERY_ADMIN define los precios; el cálculo final lo realiza el backend.";
+      capabilityNotice.textContent="Tu plan incluye: "+labels.join(" y ")+
+        (state.feeDayNightEnabled?" + tarifa Día/Noche.":".")+
+        " El DELIVERY_ADMIN define los precios; el cálculo final lo realiza el backend.";
     }
 
     const [configRes, ratesRes] = await Promise.all([
@@ -2635,8 +2644,16 @@ async function loadFeeDelivery() {
 
     $("saveFeeConfigBtn").disabled = false;
     const distanceAllowed=allowedModes.includes("DISTANCE");
-    $("saveFeeScheduleBtn").disabled = !config || !distanceAllowed;
+    $("saveFeeScheduleBtn").disabled = !config || !distanceAllowed || !state.feeDayNightEnabled;
     $("saveFeeRateBtn").disabled = !config || !distanceAllowed;
+    if ($("feeRatePeriod")) {
+      $("feeRatePeriod").innerHTML = state.feeDayNightEnabled
+        ? '<option value="DAY">Día</option><option value="NIGHT">Noche</option>'
+        : '<option value="DAY">Todo el día</option>';
+      if (!state.feeDayNightEnabled) $("feeRatePeriod").value = "DAY";
+    }
+    if ($("feeDayStart")) $("feeDayStart").disabled = !state.feeDayNightEnabled;
+    if ($("feeNightStart")) $("feeNightStart").disabled = !state.feeDayNightEnabled;
 
     if(configuredMode && !allowedModes.includes(configuredMode) && capabilityNotice){
       capabilityNotice.textContent += " La modalidad guardada anteriormente ("+
@@ -2680,7 +2697,9 @@ async function saveFeeConfig() {
     message(
       mode === "FIXED"
         ? "Tarifa fija del DELIVERY actualizada."
-        : "Tarifa por distancia activada. Configura el costo por km de Día y Noche."
+        : (state.feeDayNightEnabled
+            ? "Tarifa por distancia activada. Configura el costo por km de Día y Noche."
+            : "Tarifa por distancia activada. Configura el costo por km que aplicará todo el día.")
     );
 
     await loadFeeDelivery();
