@@ -5435,7 +5435,84 @@ async function loadAnalytics() {
   }
 }
 
+const networkState={snapshot:null,referrals:[],customers:[],rules:[]};
+
+function networkDeliveryId(){return $("networkDelivery")?.value||state.deliveries[0]?.id||null;}
+function networkDayName(day){return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][Number(day)]||String(day);}
+
+function renderNetworkRules(){
+  const box=$("networkRules");if(!box)return;
+  const rules=networkState.rules||[];
+  if(!rules.length){box.innerHTML='<div class="muted" style="margin-top:10px">Sin reglas: aplica el modo predeterminado todo el tiempo.</div>';return;}
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
+    rules.map((r,i)=>'<tr><td><select data-net-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-net-start="'+i+'" value="'+esc(String(r.start_time||"18:00").slice(0,5))+'"></td><td><input type="time" data-net-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><select data-net-mode="'+i+'"><option value="OPEN" '+(r.access_mode==="OPEN"?'selected':'')+'>Abierta</option><option value="PRIVATE" '+(r.access_mode==="PRIVATE"?'selected':'')+'>Solo contactos/referidos</option><option value="APPROVAL_REQUIRED" '+(r.access_mode==="APPROVAL_REQUIRED"?'selected':'')+'>Solo aprobados</option></select></td><td><button class="btn-danger" type="button" data-net-remove="'+i+'">Quitar</button></td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-net-remove]").forEach(b=>b.onclick=()=>{networkState.rules.splice(Number(b.dataset.netRemove),1);renderNetworkRules();});
+}
+
+function collectNetworkRules(){
+  return (networkState.rules||[]).map((r,i)=>({
+    day_of_week:Number(document.querySelector('[data-net-day="'+i+'"]')?.value??r.day_of_week),
+    start_time:document.querySelector('[data-net-start="'+i+'"]')?.value||"18:00",
+    end_time:document.querySelector('[data-net-end="'+i+'"]')?.value||"06:00",
+    access_mode:document.querySelector('[data-net-mode="'+i+'"]')?.value||"PRIVATE",
+    priority:100
+  }));
+}
+
+function renderNetworkReferrals(){
+  const box=$("networkReferrals");if(!box)return;
+  const items=networkState.referrals||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Código</th><th>Etiqueta</th><th>Estado</th><th>Vence</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.code)+'</strong></td><td>'+esc(r.label||"—")+'</td><td>'+(r.active?"Activo":"Inactivo")+'</td><td>'+esc(r.expires_at?new Date(r.expires_at).toLocaleDateString("es-EC"):"Sin vencimiento")+'</td><td><button class="'+(r.active?"btn-danger":"btn-muted")+'" type="button" data-ref-toggle="'+esc(r.id)+'" data-active="'+String(r.active)+'">'+(r.active?"Desactivar":"Activar")+'</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Todavía no hay códigos de referido.</div>';
+  box.querySelectorAll("[data-ref-toggle]").forEach(b=>b.onclick=async()=>{try{await rpc("delivery_set_referral_code_active",{p_delivery_id:networkDeliveryId(),p_referral_id:b.dataset.refToggle,p_active:b.dataset.active!=="true"});await loadCustomerNetwork();}catch(e){message(e.message,"error");}});
+}
+
+function renderNetworkCustomers(){
+  const box=$("networkCustomers");if(!box)return;
+  const items=networkState.customers||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Origen</th><th>Pedidos</th><th>Aprobación</th><th></th></tr></thead><tbody>'+items.map(x=>'<tr><td><strong>'+esc(x.name||"Cliente")+'</strong><div class="muted">'+esc(x.phone||x.email||"")+'</div></td><td>'+esc(x.relationship_source||"—")+'</td><td>'+(x.allow_orders?"Permitidos":"Bloqueados")+'</td><td>'+(x.approved_at?"Aprobado":"Pendiente")+'</td><td><button class="'+(x.allow_orders?"btn-danger":"btn-primary")+'" type="button" data-customer-access="'+esc(x.customer_id)+'" data-allow="'+String(x.allow_orders)+'">'+(x.allow_orders?"Bloquear":"Aprobar")+'</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Todavía no hay clientes vinculados.</div>';
+  box.querySelectorAll("[data-customer-access]").forEach(b=>b.onclick=async()=>{try{await rpc("delivery_set_customer_order_access",{p_delivery_id:networkDeliveryId(),p_customer_id:b.dataset.customerAccess,p_allow_orders:b.dataset.allow!=="true"});await loadCustomerNetwork();}catch(e){message(e.message,"error");}});
+}
+
+async function loadCustomerNetwork(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("networkDelivery");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))select.value=previous;
+  const deliveryId=networkDeliveryId();if(!deliveryId)return;
+  try{
+    const [snapshot,refs,customers,plan]=await Promise.all([
+      rpc("delivery_customer_access_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_referral_codes_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_customer_network_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+    ]);
+    networkState.snapshot=snapshot||{};networkState.referrals=Array.isArray(refs)?refs:[];networkState.customers=Array.isArray(customers)?customers:[];networkState.rules=Array.isArray(snapshot?.rules)?snapshot.rules.map(r=>({...r})):[];
+    $("networkDefaultMode").value=snapshot?.default_mode||"OPEN";
+    const ent=plan?.current?.entitlements||{};
+    const privateEnabled=ent["customers.private_network"]===true;
+    const scheduleEnabled=ent["customers.access_schedule"]===true;
+    const referralEnabled=ent["referrals.codes"]===true||ent["referrals.links"]===true;
+    $("networkPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Red privada: '+(privateEnabled?"Sí":"No")+' · Horarios: '+(scheduleEnabled?"Sí":"No")+' · Referidos: '+(referralEnabled?"Sí":"No");
+    $("networkDefaultMode").disabled=!privateEnabled;
+    $("networkSaveDefault").disabled=!privateEnabled;
+    $("networkAddRule").disabled=!scheduleEnabled;
+    $("networkSaveRules").disabled=!scheduleEnabled;
+    $("networkCreateReferral").disabled=!referralEnabled;
+    renderNetworkRules();renderNetworkReferrals();renderNetworkCustomers();
+  }catch(e){message(e.message||"No se pudo cargar Clientes y referidos.","error");}
+}
+
+async function saveNetworkDefault(){try{await rpc("delivery_save_customer_access_settings",{p_delivery_id:networkDeliveryId(),p_default_mode:$("networkDefaultMode").value});message("Modo de clientes actualizado.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
+async function saveNetworkRules(){try{await rpc("delivery_replace_customer_access_rules",{p_delivery_id:networkDeliveryId(),p_rules:collectNetworkRules()});message("Horarios de clientes actualizados.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
+async function createNetworkReferral(){try{const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";const result=await rpc("delivery_create_referral_code",{p_delivery_id:networkDeliveryId(),p_label:label,p_expires_at:null});message("Referido creado: "+result.code);await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
 function bindEvents() {
+  if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
+  if ($("networkSaveDefault")) $("networkSaveDefault").onclick = saveNetworkDefault;
+  if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
+  if ($("networkSaveRules")) $("networkSaveRules").onclick = saveNetworkRules;
+  if ($("networkCreateReferral")) $("networkCreateReferral").onclick = createNetworkReferral;
   $("logoutBtn").onclick = async () => {
     try {
       await cerrarSesion();
