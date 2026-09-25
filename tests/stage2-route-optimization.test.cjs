@@ -100,7 +100,10 @@ test('optimizar-ruta exige JWT y permite preflight CORS antes del handler autent
 });
 
 test('UI obtiene geolocalización y nunca envía lista de pedidos al optimizador',()=>{
-  const fn=admin.match(/async function optimizeDriverRoute\(\)[\s\S]*?\n}\n\nasync function loadDriverOrders/)?.[0]||'';
+  const start=admin.indexOf('async function optimizeDriverRoute(){');
+  const end=admin.indexOf('async function loadDriverOrders(){',start);
+  assert.ok(start>=0&&end>start);
+  const fn=admin.slice(start,end);
   assert.match(fn,/currentPositionOnce/);
   assert.match(fn,/functions\.invoke\("optimizar-ruta"/);
   assert.match(fn,/delivery_id:deliveryId/);
