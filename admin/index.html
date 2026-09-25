@@ -678,16 +678,16 @@
         </div>
 
         <p id="feeCapabilityNotice" class="muted" style="margin-top:10px">
-          Esta configuración pertenece al DELIVERY_ADMIN. MASTER decide si este DELIVERY puede usar
-          Tarifa fija, Por distancia o ambas. El cálculo final del envío siempre lo realiza el backend.
+          Esta configuración pertenece al DELIVERY_ADMIN. El plan comercial define si incluye Tarifa fija,
+          Por distancia y/o Día/Noche. El cálculo final del envío siempre lo realiza el backend.
         </p>
       </div>
 
       <div class="card" id="distanceRatesCard">
-        <h3>Tarifa por kilómetro — Día / Noche</h3>
+        <h3>Tarifa por kilómetro</h3>
         <p class="muted">
-          El DELIVERY configura un costo por km para el día y otro para la noche.
-          El cliente no selecciona la tarifa: el backend aplica automáticamente la correcta según la hora del pedido.
+          Si el plan incluye Día/Noche, el DELIVERY puede configurar ambos periodos. Si no lo incluye,
+          se utiliza la tarifa de Día durante todo el día. El cliente nunca selecciona la tarifa.
         </p>
 
         <div class="form-grid">
@@ -768,8 +768,8 @@
       <div class="card">
         <h3>Zonas disponibles para este DELIVERY</h3>
         <p class="muted">
-          Solo se muestran zonas activas del mismo cantón. DELIVERY_ADMIN necesita el permiso
-          <code>zones.assign</code> y la capability <code>zones.manage</code>.
+          Solo se muestran zonas activas del mismo cantón. El plan comercial define cuántas zonas
+          puede mantener activas el DELIVERY_ADMIN.
         </p>
         <div id="coverageZonesList"></div>
       </div>
