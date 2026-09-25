@@ -430,22 +430,12 @@
 
     <section id="section-deliveries" class="section">
       <div class="card">
-        <h2>Crear ciudad</h2>
-        <div class="form-grid">
-          <div><label>Nombre</label><input id="cityName"></div>
-          <div><label>Provincia</label><input id="cityProvince"></div>
-          <div><label>País</label><input id="cityCountry" value="Ecuador"></div>
-        </div>
-        <button class="btn-primary" id="saveCityBtn">Crear ciudad</button>
-      </div>
-
-      <div class="card">
         <h2>Crear delivery</h2>
         <input id="deliveryEditId" type="hidden">
         <div class="form-grid">
           <div><label>Nombre</label><input id="deliveryName"></div>
           <div><label>Slug</label><input id="deliverySlug"></div>
-          <div><label>Ciudad</label><select id="deliveryCity"></select></div>
+          <div><label>Cantón</label><select id="deliveryCity"></select></div>
           <div><label>Teléfono</label><input id="deliveryPhone"></div>
           <div><label>WhatsApp</label><input id="deliveryWhatsapp"></div>
           <div><label>Estado</label><select id="deliveryActive"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
@@ -690,7 +680,7 @@
         <h3>Configuración de cobertura — MASTER</h3>
         <div class="form-grid">
           <div>
-            <label>Ciudad del DELIVERY</label>
+            <label>Cantón del DELIVERY</label>
             <select id="coverageCity"></select>
           </div>
           <div>
@@ -699,19 +689,19 @@
           </div>
         </div>
         <div class="row" style="margin-top:14px">
-          <button class="btn-primary" id="setDeliveryCityBtn">Asignar ciudad</button>
+          <button class="btn-primary" id="setDeliveryCityBtn">Asignar cantón</button>
           <button class="btn-muted" id="setCoverageLimitBtn">Guardar límite</button>
           <button class="btn-muted" id="enableZonesBtn">Habilitar gestión de zonas</button>
         </div>
         <p class="muted" style="margin-top:10px">
-          Si un DELIVERY ya tiene zonas activas, primero deben desasignarse antes de cambiar su ciudad.
+          Si un DELIVERY ya tiene zonas activas, primero deben desasignarse antes de cambiar su cantón.
         </p>
       </div>
 
       <div class="card">
         <h3>Zonas disponibles para este DELIVERY</h3>
         <p class="muted">
-          Solo se muestran zonas activas de la misma ciudad. DELIVERY_ADMIN necesita el permiso
+          Solo se muestran zonas activas del mismo cantón. DELIVERY_ADMIN necesita el permiso
           <code>zones.assign</code> y la capability <code>zones.manage</code>.
         </p>
         <div id="coverageZonesList"></div>
@@ -722,7 +712,7 @@
         <input id="zoneEditId" type="hidden">
         <div class="form-grid">
           <div>
-            <label>Ciudad</label>
+            <label>Cantón</label>
             <select id="zoneEditCity"></select>
           </div>
           <div>
