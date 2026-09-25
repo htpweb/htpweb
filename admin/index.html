@@ -38,13 +38,14 @@
       <button data-section="users">Usuarios</button>
       <button data-section="fees">Tarifas</button>
       <button data-section="coverage">Cobertura</button>
+      <button data-section="network">Clientes y referidos</button>
       <button data-section="catalog">Catálogo</button>
       <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
       <button data-section="advertising">Publicidad</button>
       <button data-section="menuimport">Importar menú</button>
       <button data-section="analytics">Analytics</button>
-      <a class="public-link master-only" href="./monetizacion.html">Monetización</a>
+      <a class="public-link master-only" href="./monetizacion.html">Planes y suscripciones</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -676,32 +677,25 @@
       </div>
 
       <div class="card master-only">
-        <h3>Configuración de cobertura — MASTER</h3>
+        <h3>Territorio base — MASTER</h3>
         <div class="form-grid">
           <div>
             <label>Cantón del DELIVERY</label>
             <select id="coverageCity"></select>
           </div>
-          <div>
-            <label>Límite máximo de zonas</label>
-            <input id="coverageMaxZones" type="number" min="0" step="1" placeholder="Sin límite">
-          </div>
         </div>
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="setDeliveryCityBtn">Asignar cantón</button>
-          <button class="btn-muted" id="setCoverageLimitBtn">Guardar límite</button>
-          <button class="btn-muted" id="enableZonesBtn">Habilitar gestión de zonas</button>
         </div>
         <p class="muted" style="margin-top:10px">
-          Si un DELIVERY ya tiene zonas activas, primero deben desasignarse antes de cambiar su cantón.
+          MASTER define el cantón y el catálogo global de zonas. La cantidad disponible proviene del plan comercial y el DELIVERY elige cuáles operar.
         </p>
       </div>
 
       <div class="card">
         <h3>Zonas disponibles para este DELIVERY</h3>
         <p class="muted">
-          Solo se muestran zonas activas del mismo cantón. DELIVERY_ADMIN necesita el permiso
-          <code>zones.assign</code> y la capability <code>zones.manage</code>.
+          Solo se muestran zonas activas del mismo cantón. El plan determina cuántas pueden estar activas y el DELIVERY_ADMIN selecciona directamente cuáles utilizar.
         </p>
         <div id="coverageZonesList"></div>
       </div>
@@ -731,6 +725,59 @@
           <button class="btn-muted" id="clearZoneBtn">Limpiar</button>
         </div>
         <div id="zonesCatalogList" style="margin-top:16px"></div>
+      </div>
+    </section>
+
+    <section id="section-network" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Clientes y referidos</h2>
+            <p class="muted">Configura quién puede pedir y en qué horarios. El plan determina qué funciones están disponibles.</p>
+          </div>
+          <select id="networkDelivery" style="max-width:340px"></select>
+        </div>
+        <div id="networkPlanNotice" class="workspace-note" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Modo de acceso</h3>
+        <div class="form-grid">
+          <div>
+            <label>Modo predeterminado</label>
+            <select id="networkDefaultMode">
+              <option value="OPEN">Red abierta</option>
+              <option value="PRIVATE">Solo contactos y referidos</option>
+              <option value="APPROVAL_REQUIRED">Solo clientes aprobados</option>
+            </select>
+          </div>
+        </div>
+        <button id="networkSaveDefault" class="btn-primary" type="button">Guardar modo</button>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h3>Horarios de acceso</h3>
+            <p class="muted">Ejemplo: red abierta de día y privada desde las 18:00 hasta las 06:00. Los horarios pueden cruzar medianoche.</p>
+          </div>
+          <button id="networkAddRule" class="btn-muted" type="button">+ Regla</button>
+        </div>
+        <div id="networkRules"></div>
+        <button id="networkSaveRules" class="btn-primary" type="button" style="margin-top:12px">Guardar horarios</button>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div><h3>Referidos</h3><p class="muted">Genera códigos/enlaces para incorporar clientes a la red privada.</p></div>
+          <button id="networkCreateReferral" class="btn-primary" type="button">Crear referido</button>
+        </div>
+        <div id="networkReferrals"></div>
+      </div>
+
+      <div class="card">
+        <h3>Clientes vinculados</h3>
+        <div id="networkCustomers"></div>
       </div>
     </section>
 
@@ -1264,7 +1311,7 @@
 
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
-<script src="./admin.js?v=20260925-0240"></script>
+<script src="./admin.js?v=20260925-0540"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-master.js?v=20260925-0129"></script>
 <script src="./local-categories-master.js"></script>
