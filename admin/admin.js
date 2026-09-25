@@ -5427,6 +5427,223 @@ async function loadAnalytics() {
   }
 }
 
+
+const planFeatureLabels={
+  "zones.active.max":"Zonas activas",
+  "drivers.active.max":"Repartidores activos",
+  "operators.active.max":"Operadores activos",
+  "restricted_areas.active.max":"Áreas restringidas",
+  "orders.concurrent_per_driver.max":"Pedidos simultáneos por repartidor",
+  "gps_history.days":"Historial GPS (días)",
+  "delivery_fees.fixed":"Tarifa fija",
+  "delivery_fees.distance":"Tarifa por distancia",
+  "delivery_fees.day_night":"Tarifa Día/Noche",
+  "customers.private_network":"Red privada de clientes",
+  "customers.access_schedule":"Horario de acceso de clientes",
+  "referrals.links":"Enlaces de referido",
+  "referrals.codes":"Códigos de referido",
+  "contacts.import":"Importar contactos",
+  "customers.approval":"Aprobación manual de clientes",
+  "customers.groups":"Grupos de clientes",
+  "referrals.analytics":"Analítica de referidos",
+  "restricted_areas.manage":"Áreas restringidas",
+  "restricted_areas.schedule":"Restricciones por horario",
+  "safety.sos":"SOS de repartidor",
+  "safety.route_deviation":"Alerta de desvío",
+  "gps.live":"GPS en vivo",
+  "tracking.customer":"Tracking para cliente",
+  "dispatch.manual":"Asignación manual",
+  "dispatch.hybrid":"Asignación híbrida",
+  "dispatch.auto":"Asignación automática",
+  "multi_order":"Multipedido",
+  "routes.optimize":"Optimización de rutas",
+  "delivery_proof.pin":"PIN de entrega",
+  "delivery_proof.photo":"Foto de entrega",
+  "delivery_proof.signature":"Firma de entrega",
+  "analytics.advanced":"Analítica avanzada",
+  "exports.enabled":"Exportaciones",
+  "advertising.manage":"Publicidad"
+};
+
+function myPlanSelectedDelivery(){
+  const id=$("myPlanDelivery")?.value||state.deliveries[0]?.id||null;
+  return state.deliveries.find(d=>d.id===id)||null;
+}
+
+function renderMyPlanSummary(snapshot,zoneContext){
+  const box=$("myPlanSummary");
+  const entBox=$("myPlanEntitlements");
+  if(!box||!entBox)return;
+
+  const current=snapshot?.current||null;
+  if(!current){
+    box.innerHTML='<div class="message error">Este DELIVERY no tiene un plan comercial vigente.</div>';
+    entBox.innerHTML='<div class="muted">Sin prestaciones activas.</div>';
+    return;
+  }
+
+  box.innerHTML=
+    '<div><strong>Plan:</strong> '+esc(current.plan_name||current.plan_code||"—")+'</div>'+
+    '<div><strong>Vigencia:</strong> '+esc(new Date(current.starts_at).toLocaleDateString("es-EC"))+
+      ' → '+esc(new Date(current.ends_at).toLocaleDateString("es-EC"))+'</div>'+
+    '<div><strong>Estado:</strong> '+(snapshot.expiring_soon?'🟡 Vence pronto':'🟢 Activo')+'</div>'+
+    '<div><strong>Precio contratado:</strong> $'+Number(current.price||0).toFixed(2)+' '+esc(current.currency||"USD")+'</div>'+
+    (snapshot.expiring_soon?'<div><strong>Faltan:</strong> '+esc(snapshot.days_remaining)+' día(s)</div>':'')+
+    (snapshot.next?'<div><strong>Próximo plan:</strong> '+esc(snapshot.next.plan_name||snapshot.next.plan_code||"—")+
+      ' desde '+esc(new Date(snapshot.next.starts_at).toLocaleDateString("es-EC"))+'</div>':'');
+
+  const ent=current.entitlements||{};
+  const rows=Object.entries(ent).map(([code,value])=>{
+    let display;
+    if(typeof value==="boolean")display=value?"✓ Incluida":"No incluida";
+    else display=String(value);
+    if(code==="zones.active.max"&&zoneContext){
+      display=String(zoneContext.current_zones??0)+" / "+String(value);
+    }
+    return '<tr><td>'+esc(planFeatureLabels[code]||code)+'</td><td>'+esc(display)+'</td></tr>';
+  });
+
+  entBox.innerHTML=rows.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Prestación</th><th>Disponible / uso</th></tr></thead><tbody>'+
+      rows.join("")+'</tbody></table></div>'
+    : '<div class="muted">El plan no tiene prestaciones configuradas.</div>';
+}
+
+function renderCustomerAccessRules(){
+  const box=$("customerAccessRulesList");
+  if(!box)return;
+  const dayNames=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  if(!state.customerAccessRules.length){
+    box.innerHTML='<div class="muted">Sin horarios especiales. Se usa el modo predeterminado todo el tiempo.</div>';
+    return;
+  }
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Modo</th><th></th></tr></thead><tbody>'+
+    state.customerAccessRules.map((r,i)=>'<tr><td>'+esc(dayNames[Number(r.day_of_week)]||r.day_of_week)+'</td>'+
+      '<td>'+esc(String(r.start_time).slice(0,5))+'</td><td>'+esc(String(r.end_time).slice(0,5))+'</td>'+
+      '<td>'+esc(r.access_mode==="OPEN"?"Red abierta":r.access_mode==="PRIVATE"?"Solo contactos/referidos":"Solo aprobados")+'</td>'+
+      '<td><button type="button" class="btn-danger" data-remove-access-rule="'+i+'">Quitar</button></td></tr>').join("")+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-remove-access-rule]").forEach(btn=>btn.onclick=()=>{
+    state.customerAccessRules.splice(Number(btn.dataset.removeAccessRule),1);
+    renderCustomerAccessRules();
+  });
+}
+
+async function loadMyPlan(){
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const selector=$("myPlanDelivery");
+  if(!selector)return;
+
+  const previous=selector.value;
+  selector.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))selector.value=previous;
+
+  const delivery=myPlanSelectedDelivery();
+  if(!delivery)return;
+
+  try{
+    const [snapshot,notifications,access,zoneContext]=await Promise.all([
+      rpc("delivery_plan_snapshot",{p_delivery_id:delivery.id}),
+      rpc("my_notifications",{p_limit:30}),
+      rpc("delivery_customer_access_snapshot",{p_delivery_id:delivery.id}),
+      rpc("delivery_zone_context",{p_delivery_id:delivery.id})
+    ]);
+    state.myPlanSnapshot=snapshot||null;
+    state.customerAccessRules=Array.isArray(access?.rules)?access.rules.map(r=>({
+      day_of_week:Number(r.day_of_week),
+      start_time:String(r.start_time).slice(0,5),
+      end_time:String(r.end_time).slice(0,5),
+      access_mode:r.access_mode,
+      priority:Number(r.priority||100)
+    })):[];
+    renderMyPlanSummary(snapshot,zoneContext);
+    renderCustomerAccessRules();
+
+    const ent=snapshot?.current?.entitlements||{};
+    const privateEnabled=ent["customers.private_network"]===true;
+    const scheduleEnabled=ent["customers.access_schedule"]===true;
+    const referralsEnabled=ent["referrals.codes"]===true;
+
+    $("customerAccessCard")?.classList.toggle("hidden",!privateEnabled);
+    $("referralCard")?.classList.toggle("hidden",!referralsEnabled);
+
+    if(privateEnabled){
+      $("customerAccessDefaultMode").value=access?.default_mode||"OPEN";
+      $("addCustomerAccessRuleBtn").disabled=!scheduleEnabled;
+      $("customerAccessRuleDay").disabled=!scheduleEnabled;
+      $("customerAccessRuleStart").disabled=!scheduleEnabled;
+      $("customerAccessRuleEnd").disabled=!scheduleEnabled;
+      $("customerAccessRuleMode").disabled=!scheduleEnabled;
+      $("customerAccessStatus").textContent=
+        "Modo actual: "+(access?.current_mode==="OPEN"?"Red abierta":access?.current_mode==="PRIVATE"?"Solo contactos y referidos":"Solo aprobados")+
+        (scheduleEnabled?" · Los horarios del plan están habilitados.":" · Tu plan no incluye horarios; aplica el modo predeterminado todo el día.");
+    }
+
+    const nbox=$("myNotifications");
+    const list=Array.isArray(notifications)?notifications:[];
+    nbox.innerHTML=list.length?list.map(n=>
+      '<div class="card" style="padding:12px;margin:8px 0">'+
+      '<div class="row between"><strong>'+esc(n.title)+'</strong><span class="muted">'+esc(new Date(n.created_at).toLocaleString("es-EC"))+'</span></div>'+
+      '<div>'+esc(n.message)+'</div>'+
+      (!n.read_at?'<button class="btn-muted" type="button" data-read-notification="'+esc(n.id)+'" style="margin-top:8px">Marcar como leído</button>':'')+
+      '</div>'
+    ).join(""):'<div class="muted">Sin notificaciones.</div>';
+    nbox.querySelectorAll("[data-read-notification]").forEach(btn=>btn.onclick=async()=>{
+      await rpc("mark_notification_read",{p_notification_id:btn.dataset.readNotification});
+      await loadMyPlan();
+    });
+  }catch(e){
+    $("myPlanSummary").innerHTML='<div class="message error">'+esc(e.message||"No se pudo cargar el plan.")+'</div>';
+  }
+}
+
+function addCustomerAccessRule(){
+  const ent=state.myPlanSnapshot?.current?.entitlements||{};
+  if(ent["customers.access_schedule"]!==true)return message("Tu plan no incluye horarios de acceso de clientes.","error");
+  state.customerAccessRules.push({
+    day_of_week:Number($("customerAccessRuleDay").value),
+    start_time:$("customerAccessRuleStart").value,
+    end_time:$("customerAccessRuleEnd").value,
+    access_mode:$("customerAccessRuleMode").value,
+    priority:100
+  });
+  renderCustomerAccessRules();
+}
+
+async function saveCustomerAccess(){
+  try{
+    const delivery=myPlanSelectedDelivery();
+    if(!delivery)throw new Error("Selecciona un DELIVERY.");
+    const ent=state.myPlanSnapshot?.current?.entitlements||{};
+    await rpc("delivery_save_customer_access_settings",{
+      p_delivery_id:delivery.id,
+      p_default_mode:$("customerAccessDefaultMode").value
+    });
+    if(ent["customers.access_schedule"]===true){
+      await rpc("delivery_replace_customer_access_rules",{
+        p_delivery_id:delivery.id,
+        p_rules:state.customerAccessRules
+      });
+    }
+    message("Acceso de clientes actualizado.");
+    await loadMyPlan();
+  }catch(e){message(e.message||"No se pudo guardar el acceso de clientes.","error")}
+}
+
+async function createReferralCode(){
+  try{
+    const delivery=myPlanSelectedDelivery();
+    if(!delivery)throw new Error("Selecciona un DELIVERY.");
+    const result=await rpc("delivery_create_referral_code",{
+      p_delivery_id:delivery.id,
+      p_label:$("referralLabel").value.trim()||null,
+      p_expires_at:null
+    });
+    $("referralResult").innerHTML='<strong>Código:</strong> '+esc(result.code)+'<br><span class="muted">Compártelo con el cliente para vincularlo a tu red privada.</span>';
+    $("referralLabel").value="";
+  }catch(e){message(e.message||"No se pudo generar el código.","error")}
+}
+
 function bindEvents() {
   $("logoutBtn").onclick = async () => {
     try {
@@ -5438,6 +5655,10 @@ function bindEvents() {
   };
 
   $("refreshBtn").onclick = refreshAll;
+  if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlan;
+  if ($("addCustomerAccessRuleBtn")) $("addCustomerAccessRuleBtn").onclick = addCustomerAccessRule;
+  if ($("saveCustomerAccessBtn")) $("saveCustomerAccessBtn").onclick = saveCustomerAccess;
+  if ($("createReferralCodeBtn")) $("createReferralCodeBtn").onclick = createReferralCode;
   if ($("orderScope")) $("orderScope").onchange = loadOrders;
   if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
   const menuImportDelivery = $("menuImportDelivery");
