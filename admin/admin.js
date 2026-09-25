@@ -6306,14 +6306,16 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch,proofSettings]=await Promise.all([
+    const [drivers,dispatch,proofSettings,sos]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId})
+      rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
     driverWorkspaceState.proofSettings=proofSettings||{};
+    driverWorkspaceState.sos=sos||{};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
@@ -6326,8 +6328,10 @@ async function loadDriverWorkspace(){
     renderDispatchModeControls();
     renderDeliveryProofSettingsControls();
     renderDriversList();
+    renderDeliverySos();
     renderDispatchOrders();
     renderDriverCandidate();
+    await startDeliverySosSubscription(deliveryId);
     if(driverGpsState.selectedDriverId){
       if(driverGpsState.selectedDeliveryId===deliveryId){
         await loadSelectedDriverGps();
