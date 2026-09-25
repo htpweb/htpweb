@@ -244,6 +244,13 @@ begin
 end;
 $$;
 
+drop trigger if exists trg_validate_delivery_city_zone_integrity on public.deliveries;
+create trigger trg_validate_delivery_city_zone_integrity
+before update of city_id
+on public.deliveries
+for each row
+execute function public.validate_delivery_city_zone_integrity();
+
 create or replace function public.htp_validate_local_delivery_zone()
 returns trigger
 language plpgsql
