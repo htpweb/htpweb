@@ -451,6 +451,18 @@
       </div>
 
       <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Alertas SOS</h3>
+            <p class="muted" style="margin:.35rem 0 0">Incidentes de seguridad activados por repartidores durante una entrega EN_ROUTE.</p>
+          </div>
+          <button id="deliverySosRefresh" class="btn-muted" type="button">Actualizar SOS</button>
+        </div>
+        <div id="deliverySosNotice" class="muted" style="margin-top:10px"></div>
+        <div id="deliverySosList" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
         <h3>Despacho</h3>
         <p class="muted">MANUAL permite elegir repartidor; HYBRID sugiere y espera confirmación; AUTO asigna según capacidad disponible. Al pasar a EN_ROUTE la asignación queda bloqueada.</p>
         <div id="dispatchOrders"></div>
@@ -493,6 +505,7 @@
           <div id="driverRouteResult" style="margin-top:10px"></div>
           <small class="muted">La optimización usa tu ubicación actual y ordena únicamente pedidos ya asignados a tu cuenta. No reasigna ni cambia estados.</small>
         </div>
+        <div id="driverSosNotice" class="workspace-warning" style="display:none;margin:12px 0"></div>
         <div id="driverOrdersList"></div>
       </div>
     </section>
