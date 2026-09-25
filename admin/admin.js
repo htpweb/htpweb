@@ -83,6 +83,9 @@ async function init() {
       return;
     }
 
+    const claimResult = await supabaseClient.rpc("claim_my_delivery_authorizations");
+    if (claimResult.error) throw claimResult.error;
+
     const { data: role, error: roleError } = await supabaseClient.rpc("current_role_code");
     if (roleError) throw roleError;
 
