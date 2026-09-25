@@ -31,6 +31,8 @@
       <button data-section="share">Compartir</button>
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
+      <button data-section="drivers">Repartidores</button>
+      <button data-section="driverorders">Mis entregas</button>
       <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
       <button data-section="localsmaster">Locales</button>
@@ -245,6 +247,7 @@
           <button id="myPlanGoCoverage" class="btn-primary" type="button">Elegir zonas</button>
           <button id="myPlanGoSecurity" class="btn-muted" type="button">Áreas restringidas</button>
           <button id="myPlanGoFees" class="btn-muted" type="button">Configurar tarifas</button>
+          <button id="myPlanGoDrivers" class="btn-muted" type="button">Repartidores</button>
           <button id="myPlanGoNetwork" class="btn-muted" type="button">Clientes y referidos</button>
         </div>
       </div>
@@ -380,6 +383,53 @@
           <select id="orderScope" style="max-width:320px"></select>
         </div>
         <div id="ordersList"></div>
+      </div>
+    </section>
+
+    <section id="section-drivers" class="section">
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h2>Repartidores y despacho</h2>
+            <p class="muted">El plan define la capacidad. El DELIVERY decide qué repartidores activa y a qué pedido READY los asigna.</p>
+          </div>
+          <select id="driversDelivery" style="max-width:340px"></select>
+        </div>
+        <div id="driversPlanNotice" class="workspace-note" style="margin-top:12px">Consultando capacidad…</div>
+      </div>
+
+      <div class="card" id="driverAdminTools">
+        <h3>Activar repartidor</h3>
+        <p class="muted">El repartidor debe tener primero una cuenta HTPWEB. Búscalo por correo o teléfono exacto.</p>
+        <div class="row" style="gap:10px;flex-wrap:wrap">
+          <input id="driverLookupIdentifier" placeholder="correo@ejemplo.com o 0991234567" style="flex:1;min-width:240px">
+          <button id="driverLookupBtn" class="btn-muted" type="button">Buscar cuenta</button>
+        </div>
+        <div id="driverLookupResult" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Repartidores activos</h3>
+        <div id="driversList"></div>
+      </div>
+
+      <div class="card">
+        <h3>Despacho manual</h3>
+        <p class="muted">Solo los pedidos READY pueden asignarse o reasignarse. Al pasar a EN_ROUTE la asignación queda bloqueada hasta completar o cancelar.</p>
+        <div id="dispatchOrders"></div>
+      </div>
+    </section>
+
+    <section id="section-driverorders" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Mis entregas</h2>
+            <p class="muted">Solo aparecen pedidos asignados a tu cuenta de repartidor.</p>
+          </div>
+          <button id="driverOrdersRefresh" class="btn-muted" type="button">Actualizar</button>
+        </div>
+        <div id="driverOrdersList"></div>
       </div>
     </section>
 
