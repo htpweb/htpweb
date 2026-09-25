@@ -120,9 +120,10 @@ test('UI solo ofrece modos incluidos y AUTO no muestra asignación manual',()=>{
   assert.match(admin,/Esperando capacidad disponible/);
 });
 
-test('Etapa 2 ya se describe como rollout por bloques',()=>{
-  assert.match(monetization,/Etapa 2 se activa por bloques/i);
-  assert.match(monetization,/algunas capacidades ya están operativas/i);
+test('Etapa 2 ya se describe como operativa y gobernada por plan',()=>{
+  assert.match(monetization,/Etapa 2 está operativa/i);
+  assert.match(monetization,/cada capacidad se activa únicamente cuando está incluida en el plan comercial/i);
+  assert.match(monetization,/excepción MASTER/i);
   assert.doesNotMatch(monetization,/su operación se active posteriormente/i);
 });
 
