@@ -972,6 +972,38 @@
       </div>
 
       <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3>Grupos de clientes</h3>
+            <p class="muted">Organiza clientes vinculados en segmentos internos como VIP, corporativos o nocturnos. El grupo no cambia por sí solo el permiso para realizar pedidos.</p>
+          </div>
+          <button id="networkGroupNew" class="btn-muted" type="button">Nuevo grupo</button>
+        </div>
+
+        <input id="networkGroupId" type="hidden">
+        <div class="form-grid" style="margin-top:12px">
+          <div><label>Nombre</label><input id="networkGroupName" maxlength="120" placeholder="Ej. Clientes VIP"></div>
+          <div><label>Estado</label><select id="networkGroupActive"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+        </div>
+        <label>Descripción</label>
+        <textarea id="networkGroupDescription" rows="2" maxlength="300" placeholder="Uso interno del DELIVERY"></textarea>
+        <div class="row" style="gap:8px;margin-top:10px">
+          <button id="networkGroupSave" class="btn-primary" type="button">Guardar grupo</button>
+          <button id="networkGroupCancel" class="btn-muted" type="button">Limpiar</button>
+        </div>
+        <div id="networkGroups" style="margin-top:14px"></div>
+
+        <div id="networkGroupMembersPanel" class="workspace-note hidden" style="margin-top:14px">
+          <div class="row between" style="gap:10px;flex-wrap:wrap">
+            <div><strong id="networkGroupMembersTitle">Miembros del grupo</strong><div class="muted">Selecciona únicamente clientes ya vinculados a este DELIVERY.</div></div>
+            <button id="networkGroupMembersClose" class="btn-muted" type="button">Cerrar</button>
+          </div>
+          <div id="networkGroupMembers" style="margin-top:10px"></div>
+          <button id="networkGroupMembersSave" class="btn-primary" type="button" style="margin-top:10px">Guardar miembros</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h3>Clientes vinculados</h3>
         <div id="networkCustomers"></div>
       </div>
