@@ -26,7 +26,7 @@
 
     <nav class="nav" id="nav">
       <button data-section="overview">Resumen</button>
-      <button data-section="mydelivery">Mi Delivery</button>
+      <button data-section="mydelivery">Mi Delivery</button>\n      <button data-section="myplan">Mi Plan</button>
       <button data-section="share">Compartir</button>
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
@@ -44,7 +44,7 @@
       <button data-section="advertising">Publicidad</button>
       <button data-section="menuimport">Importar menú</button>
       <button data-section="analytics">Analytics</button>
-      <a class="public-link master-only" href="./monetizacion.html">Monetización</a>
+      <a class="public-link master-only" href="./monetizacion.html">Planes y Suscripciones</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -210,6 +210,77 @@
           El nombre y el slug requieren intervención de HTPWEB. La edición de información necesita la capability
           <code>delivery.info.manage</code>.
         </p>
+      </div>
+    </section>
+
+    <section id="section-myplan" class="section">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Mi Plan</h2>
+            <p class="muted">Revisa vigencia, capacidad contratada, funciones disponibles y avisos internos de HTPWEB.</p>
+          </div>
+          <select id="myPlanDelivery" style="max-width:340px"></select>
+        </div>
+        <div id="myPlanSummary" class="request-details" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Uso y funciones</h3>
+        <div id="myPlanEntitlements"></div>
+      </div>
+
+      <div class="card" id="customerAccessCard">
+        <h3>Acceso de clientes y referidos</h3>
+        <p class="muted">Si tu plan lo permite, puedes trabajar abierto, solo con tu red privada o exigir aprobación. Los horarios pueden cruzar medianoche.</p>
+        <div class="form-grid">
+          <div>
+            <label>Modo predeterminado</label>
+            <select id="customerAccessDefaultMode">
+              <option value="OPEN">Red abierta</option>
+              <option value="PRIVATE">Solo contactos y referidos</option>
+              <option value="APPROVAL_REQUIRED">Solo clientes aprobados</option>
+            </select>
+          </div>
+          <div>
+            <label>Día</label>
+            <select id="customerAccessRuleDay">
+              <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+              <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+            </select>
+          </div>
+          <div><label>Desde</label><input id="customerAccessRuleStart" type="time" value="18:00"></div>
+          <div><label>Hasta</label><input id="customerAccessRuleEnd" type="time" value="06:00"></div>
+          <div>
+            <label>Modo durante ese horario</label>
+            <select id="customerAccessRuleMode">
+              <option value="PRIVATE">Solo contactos y referidos</option>
+              <option value="APPROVAL_REQUIRED">Solo aprobados</option>
+              <option value="OPEN">Red abierta</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="addCustomerAccessRuleBtn" class="btn-muted" type="button">Agregar horario</button>
+          <button id="saveCustomerAccessBtn" class="btn-primary" type="button">Guardar configuración</button>
+        </div>
+        <div id="customerAccessRulesList" style="margin-top:14px"></div>
+        <div id="customerAccessStatus" class="workspace-note" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card" id="referralCard">
+        <h3>Referidos</h3>
+        <p class="muted">Genera códigos para autorizar clientes dentro de tu red privada cuando tu plan incluya esta función.</p>
+        <div class="row">
+          <input id="referralLabel" maxlength="120" placeholder="Ej. Clientes noche">
+          <button id="createReferralCodeBtn" class="btn-primary" type="button">Generar código</button>
+        </div>
+        <div id="referralResult" class="workspace-note" style="margin-top:12px">Sin código generado.</div>
+      </div>
+
+      <div class="card">
+        <h3>Notificaciones HTPWEB</h3>
+        <div id="myNotifications"></div>
       </div>
     </section>
 
@@ -668,7 +739,7 @@
         <div class="row between">
           <div>
             <h2>Cobertura del DELIVERY</h2>
-            <p class="muted">Los locales disponibles se determinan por las zonas aprobadas para el DELIVERY.</p>
+            <p class="muted">Los locales disponibles se determinan por las zonas que el DELIVERY activa dentro de la capacidad de su plan.</p>
           </div>
           <select id="coverageDelivery" style="max-width:340px"></select>
         </div>
@@ -676,25 +747,22 @@
       </div>
 
       <div class="card master-only">
-        <h3>Configuración de cobertura — MASTER</h3>
+        <h3>Configuración territorial — MASTER</h3>
         <div class="form-grid">
           <div>
             <label>Cantón del DELIVERY</label>
             <select id="coverageCity"></select>
           </div>
-          <div>
-            <label>Límite máximo de zonas</label>
-            <input id="coverageMaxZones" type="number" min="0" step="1" placeholder="Sin límite">
-          </div>
         </div>
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="setDeliveryCityBtn">Asignar cantón</button>
-          <button class="btn-muted" id="setCoverageLimitBtn">Guardar límite</button>
-          <button class="btn-muted" id="enableZonesBtn">Habilitar gestión de zonas</button>
         </div>
         <p class="muted" style="margin-top:10px">
-          Si un DELIVERY ya tiene zonas activas, primero deben desasignarse antes de cambiar su cantón.
+          MASTER define el cantón y el catálogo territorial. La cantidad de zonas la determina el plan comercial; el DELIVERY decide cuáles activa.
         </p>
+        <input id="coverageMaxZones" type="hidden">
+        <button id="setCoverageLimitBtn" type="button" class="hidden">Legacy</button>
+        <button id="enableZonesBtn" type="button" class="hidden">Legacy</button>
       </div>
 
       <div class="card">
