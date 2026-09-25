@@ -1,0 +1,2 @@
+create index if not exists delivery_whatsapp_settings_updated_by_idx
+on private.delivery_whatsapp_settings(updated_by);
