@@ -17,7 +17,7 @@ test("MASTER asigna renueva cambia plan y consulta vencimientos",()=>{
   assert.match(h,/Suscripciones y vencimientos/);
   assert.match(j,/master_assign_commercial_plan/);
   assert.match(j,/master_list_delivery_subscriptions/);
-  assert.match(j,/NEXT_CYCLE/);
+  assert.match(h,/NEXT_CYCLE/);
 });
 
 test("MASTER gestiona excepciones",()=>{
