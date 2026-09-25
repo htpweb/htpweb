@@ -82,7 +82,7 @@ async function subirImagenHTPWEB(path, file) {
     .upload(path, optimized, {
       upsert: true,
       contentType: optimized.type,
-      cacheControl: "60"
+      cacheControl: "31536000"
     });
 
   if (error) throw error;
