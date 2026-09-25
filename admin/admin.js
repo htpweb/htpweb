@@ -6090,6 +6090,7 @@ async function loadDriverWorkspace(){
         : '');
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
     renderDispatchModeControls();
+    renderDeliveryProofSettingsControls();
     renderDriversList();
     renderDispatchOrders();
     renderDriverCandidate();
@@ -6731,6 +6732,7 @@ function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
+  if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("driverOrdersRefresh")) $("driverOrdersRefresh").onclick = loadDriverOrders;
   if ($("driverRouteOptimize")) $("driverRouteOptimize").onclick = optimizeDriverRoute;
   if ($("driverRouteDelivery")) $("driverRouteDelivery").onchange = () => {
