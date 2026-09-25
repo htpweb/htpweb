@@ -76,7 +76,29 @@
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const fallbackReturn = obtenerDeliverySlug() ? urlDelivery("index.html") : "../index.html";
+const hasExplicitReturn = params.has("return");
 const requestedReturn = retornoSeguro(params.get("return"), fallbackReturn);
+
+async function syncAccountAccess() {
+  const claim = await supabaseClient.rpc("claim_my_delivery_authorizations");
+  if (claim.error) throw claim.error;
+
+  const roleResult = await supabaseClient.rpc("current_role_code");
+  if (roleResult.error) throw roleResult.error;
+
+  return {
+    role: roleResult.data || "CLIENT",
+    claim: claim.data || null
+  };
+}
+
+function authenticatedDestination(role) {
+  if (hasExplicitReturn) return requestedReturn;
+  if (["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN"].includes(role)) {
+    return "../admin/index.html";
+  }
+  return requestedReturn;
+}
 
 function showMessage(text, type = "error") {
   const box = $("message");
@@ -112,6 +134,12 @@ async function init() {
   const user = await obtenerUsuarioActual();
 
   if (user) {
+    let access = { role: "CLIENT", claim: null };
+    try {
+      access = await syncAccountAccess();
+    } catch (e) {
+      console.warn("No se pudo sincronizar el contexto de acceso.", e);
+    }
     $("sessionBox").textContent = `Sesión iniciada como ${user.email || "usuario"}.`;
     $("sessionBox").classList.remove("hidden");
     $("authForms").classList.add("hidden");
@@ -119,12 +147,13 @@ async function init() {
     $("logoutBtn").classList.remove("hidden");
 
     try {
-      const { data: role } = await supabaseClient.rpc("current_role_code");
+      const role = access.role;
       if (role && role !== "CLIENT") {
         $("adminBtn").classList.remove("hidden");
       }
 
-      if (role === "CLIENT") {
+      const { data: customerId } = await supabaseClient.rpc("current_customer_id");
+      if (customerId) {
         if (obtenerDeliverySlug()) {
           $("ordersLink").href = urlDelivery("pedidos.html");
           $("ordersLink").classList.remove("hidden");
@@ -222,7 +251,9 @@ $("loginForm").onsubmit = async event => {
       password: $("loginPassword").value
     });
     if (error) throw error;
-    location.href = requestedReturn;
+
+    const access = await syncAccountAccess();
+    location.href = authenticatedDestination(access.role);
   } catch (e) {
     showMessage(e.message || "No se pudo iniciar sesión.");
   }
@@ -256,11 +287,12 @@ $("registerForm").onsubmit = async event => {
       });
 
       await asegurarCustomerActual({ name, phone, email });
-      location.href = requestedReturn;
+      const access = await syncAccountAccess();
+      location.href = authenticatedDestination(access.role);
       return;
     }
 
-    showMessage("Cuenta creada. Revisa tu correo para confirmar el acceso y luego inicia sesión.", "success");
+    showMessage("Cuenta creada. Revisa tu correo para confirmarla. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
     showLogin();
     $("loginEmail").value = email;
   } catch (e) {
