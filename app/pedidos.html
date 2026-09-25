@@ -181,6 +181,59 @@ function renderOrders(orders) {
     button.onclick = () => showDetail(button.dataset.order);
   });
 }
+async function loadCustomerDeliveryProof(orderId) {
+  const { data, error } = await supabaseClient.rpc('customer_order_delivery_proof_snapshot', {
+    p_order_id: orderId
+  });
+  if (error) throw error;
+  return data || null;
+}
+
+async function viewCustomerDeliveryProofMedia(orderId, kind) {
+  const popup = window.open('about:blank', '_blank');
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('delivery-proof-view', {
+      body: { order_id: orderId, kind }
+    });
+    if (error) throw error;
+    if (!data?.ok || !data?.signed_url) throw new Error(data?.error || 'Evidencia no disponible.');
+    if (popup) {
+      popup.opener = null;
+      popup.location.href = data.signed_url;
+    } else {
+      window.open(data.signed_url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (e) {
+    try { popup?.close(); } catch {}
+    message(e.message || 'No se pudo abrir la evidencia.');
+  }
+}
+
+function customerProofCard(proof, orderId) {
+  if (!proof?.enabled) return '';
+  const rows = [];
+  if (proof.require_pin) {
+    if (proof.pin_verified) {
+      rows.push('<p>✅ PIN verificado</p>');
+    } else if (proof.pin) {
+      rows.push('<div class="card" style="margin:10px 0"><div class="muted">PIN de entrega</div><div style="font-size:2rem;font-weight:700;letter-spacing:.18em">' + esc(proof.pin) + '</div><small class="muted">Compártelo con el repartidor únicamente cuando recibas tu pedido.</small></div>');
+    } else {
+      rows.push('<p>⏳ PIN pendiente</p>');
+    }
+  }
+  if (proof.require_photo) {
+    rows.push(proof.photo_uploaded
+      ? '<p>✅ Foto de entrega <button class="btn btn-muted" type="button" data-customer-proof-view="' + esc(orderId) + '" data-proof-kind="PHOTO">Ver foto</button></p>'
+      : '<p>⏳ Foto de entrega pendiente</p>');
+  }
+  if (proof.require_signature) {
+    rows.push(proof.signature_uploaded
+      ? '<p>✅ Firma registrada <button class="btn btn-muted" type="button" data-customer-proof-view="' + esc(orderId) + '" data-proof-kind="SIGNATURE">Ver firma</button></p>'
+      : '<p>⏳ Firma pendiente</p>');
+  }
+  return '<div class="card" style="margin-top:16px"><h3>Confirmación de entrega</h3>' + rows.join('') +
+    '<p class="muted">' + (proof.ready ? 'Prueba de entrega completa.' : 'La entrega no puede finalizar hasta completar la prueba exigida.') + '</p></div>';
+}
 async function renderDetail() {
   await stopCustomerTracking();
   $('detail').classList.add('hidden');
@@ -188,6 +241,9 @@ async function renderDetail() {
   if (!selectedId) return;
   const order = await obtenerPedidoCliente(delivery.id, selectedId);
   if (!order) throw new Error('Pedido no disponible en esta cuenta y DELIVERY.');
+  const deliveryProof = ['EN_ROUTE','DELIVERED'].includes(order.status)
+    ? await loadCustomerDeliveryProof(order.id)
+    : null;
   const groups = (order.order_locals || []).map(local => `
     <div class="cart-group">
       <h3>${esc(local.locals?.name || 'LOCAL')}</h3>
