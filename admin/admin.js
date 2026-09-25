@@ -1878,7 +1878,7 @@ async function loadOrders() {
 
   let query = supabaseClient
     .from("orders")
-    .select("id,delivery_id,status,total,customer_name,customer_phone,delivery_address,created_at,order_locals(id,local_id,status,subtotal,delivery_fee,locals(id,name))")
+    .select("id,delivery_id,status,total,customer_name,customer_phone,delivery_address,notes,created_at,order_items(local_id,product_name,variant_name,quantity,subtotal),order_locals(id,local_id,status,subtotal,delivery_fee,locals(id,name,whatsapp))")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -1920,6 +1920,9 @@ function renderOrder(order) {
           `<button class="${next === "CANCELLED" ? "btn-danger" : "btn"}" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${next}</button>`
         ).join("")
       : "";
+    const whatsappButton = ["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role) && ol.locals?.whatsapp
+      ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">Enviar por WhatsApp</button>`
+      : "";
 
     return `
       <div class="order-local">
@@ -1927,8 +1930,8 @@ function renderOrder(order) {
           <strong>${esc(ol.locals?.name || ol.local_id)}</strong>
           <span class="badge status-${esc(ol.status)}">${esc(ol.status)}</span>
         </div>
-        <div class="muted">Subtotal: $${Number(ol.subtotal || 0).toFixed(2)} · Delivery: $${Number(ol.delivery_fee || 0).toFixed(2)}</div>
-        ${buttons ? `<div class="row" style="margin-top:8px">${buttons}</div>` : ""}
+        <div class="muted">Subtotal: ${Number(ol.subtotal || 0).toFixed(2)} · Delivery: ${Number(ol.delivery_fee || 0).toFixed(2)}</div>
+        ${buttons || whatsappButton ? `<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">${buttons}${whatsappButton}</div>` : ""}
       </div>
     `;
   }).join("");
@@ -1979,6 +1982,73 @@ async function changeLocalOrder(orderId, localId, status) {
     await loadOrders();
   } catch (e) {
     message(e.message || "No se pudo cambiar el estado del LOCAL.", "error");
+  }
+}
+
+function whatsappOrderRef(orderId){
+  return String(orderId||"").replace(/-/g,"").slice(0,8).toUpperCase();
+}
+
+function buildLocalOrderWhatsappText(order,localGroup){
+  const local=localGroup?.locals||{};
+  const items=(order?.order_items||[]).filter(item=>item.local_id===localGroup.local_id);
+  const itemLines=items.map(item=>{
+    const variant=item.variant_name?" ("+item.variant_name+")":"";
+    return "• "+item.quantity+" x "+item.product_name+variant;
+  });
+  const deliveryName=state.deliveries.find(d=>d.id===order.delivery_id)?.name||"HTPWEB";
+  return [
+    "*HTPWEB · Pedido #"+whatsappOrderRef(order.id)+"*",
+    "Local: "+(local.name||"LOCAL"),
+    "",
+    "*Productos:*",
+    ...(itemLines.length?itemLines:["• Sin productos visibles"]),
+    "",
+    "Subtotal del local: $"+Number(localGroup.subtotal||0).toFixed(2),
+    order.notes?"Observaciones: "+order.notes:"Observaciones: Sin observaciones",
+    "DELIVERY: "+deliveryName,
+    "",
+    "Por favor confirme disponibilidad y tiempo aproximado de preparación."
+  ].join("\n");
+}
+
+async function sendLocalOrderWhatsapp(orderId,localId){
+  try{
+    const order=state.orders.find(item=>item.id===orderId);
+    if(!order)throw new Error("Pedido no disponible. Actualiza la lista.");
+    const localGroup=(order.order_locals||[]).find(item=>item.local_id===localId);
+    if(!localGroup)throw new Error("LOCAL no disponible en este pedido.");
+    const local=localGroup.locals||{};
+    if(!local.whatsapp)throw new Error("El LOCAL no tiene WhatsApp registrado.");
+
+    const settings=await rpc("delivery_whatsapp_settings_snapshot",{
+      p_delivery_id:order.delivery_id
+    });
+    if(settings?.local_orders===false){
+      throw new Error("El envío de pedidos a locales por WhatsApp está desactivado.");
+    }
+
+    if(settings?.mode==="AUTOMATIC"){
+      if(typeof htpWhatsappSendAutomatic!=="function"){
+        throw new Error("El puente automático de WhatsApp no está disponible.");
+      }
+      const result=await htpWhatsappSendAutomatic({
+        kind:"LOCAL_ORDER",
+        delivery_id:order.delivery_id,
+        order_id:order.id,
+        local_id:localId
+      });
+      message("Pedido enviado automáticamente al WhatsApp del LOCAL"+(result?.message_id?" · "+result.message_id:"")+".");
+      return;
+    }
+
+    if(typeof htpWhatsappOpenAssisted!=="function"){
+      throw new Error("El modo asistido de WhatsApp no está disponible.");
+    }
+    htpWhatsappOpenAssisted(local.whatsapp,buildLocalOrderWhatsappText(order,localGroup));
+    message("WhatsApp abierto con el pedido listo para enviar.");
+  }catch(e){
+    message(e.message||"No se pudo preparar el pedido para WhatsApp.","error");
   }
 }
 
@@ -5592,7 +5662,7 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,whatsappSettings:null,whatsappProvider:null,candidate:null};
 const safetySosState={
   deliveryChannel:null,
   deliveryId:null,
@@ -5941,6 +6011,63 @@ function renderDispatchModeControls(){
       esc(dispatch.concurrent_per_driver??0)+fallback;
 }
 
+function renderWhatsappSettingsControls(){
+  const settings=driverWorkspaceState.whatsappSettings||{
+    mode:"ASSISTED",
+    local_orders:true,
+    driver_dispatch:true
+  };
+  const provider=driverWorkspaceState.whatsappProvider||{configured:false};
+  const select=$("whatsappModeSelect");
+  const save=$("whatsappSettingsSave");
+  const localOrders=$("whatsappLocalOrders");
+  const driverDispatch=$("whatsappDriverDispatch");
+  const help=$("whatsappSettingsHelp");
+  if(!select||!save||!localOrders||!driverDispatch||!help)return;
+
+  const canManage=state.role==="DELIVERY_ADMIN";
+  const automaticOption=[...select.options].find(option=>option.value==="AUTOMATIC");
+  if(automaticOption)automaticOption.disabled=provider.configured!==true;
+
+  select.value=settings.mode||"ASSISTED";
+  localOrders.checked=settings.local_orders!==false;
+  driverDispatch.checked=settings.driver_dispatch!==false;
+  select.disabled=!canManage;
+  save.disabled=!canManage;
+  localOrders.disabled=!canManage;
+  driverDispatch.disabled=!canManage;
+
+  if(provider.configured===true){
+    help.textContent=settings.mode==="AUTOMATIC"
+      ?"Automático activo: HTPWEB usa la API oficial de Meta. Las asignaciones a repartidores se notifican desde backend."
+      :"Proveedor Meta listo. Puedes mantener Asistido o activar Automático.";
+  }else{
+    help.textContent=settings.mode==="AUTOMATIC"
+      ?"Automático está seleccionado, pero faltan credenciales o plantillas de Meta. Cambia a Asistido hasta completar la conexión."
+      :"Asistido activo. Automático quedará disponible cuando se configuren las credenciales y plantillas de Meta.";
+  }
+}
+
+async function saveWhatsappSettings(){
+  try{
+    const mode=$("whatsappModeSelect")?.value||"ASSISTED";
+    if(mode==="AUTOMATIC"&&driverWorkspaceState.whatsappProvider?.configured!==true){
+      throw new Error("Primero configura las credenciales y plantillas oficiales de Meta.");
+    }
+    driverWorkspaceState.whatsappSettings=await rpc("delivery_set_whatsapp_settings",{
+      p_delivery_id:driverWorkspaceDeliveryId(),
+      p_mode:mode,
+      p_local_orders:$("whatsappLocalOrders")?.checked!==false,
+      p_driver_dispatch:$("whatsappDriverDispatch")?.checked!==false
+    });
+    message("Configuración de WhatsApp actualizada.");
+    renderWhatsappSettingsControls();
+    renderDispatchOrders();
+  }catch(e){
+    message(e.message||"No se pudo guardar la configuración de WhatsApp.","error");
+  }
+}
+
 function renderDispatchOrders(){
   const box=$("dispatchOrders");if(!box)return;
   const dispatch=driverWorkspaceState.dispatch||{};
@@ -5994,6 +6121,16 @@ function renderDispatchOrders(){
         : '<div class="workspace-warning">Esperando capacidad disponible. HTPWEB asignará automáticamente cuando se libere cupo.</div>';
     }
 
+    const whatsapp=driverWorkspaceState.whatsappSettings||{};
+    if(assigned&&whatsapp.driver_dispatch!==false){
+      const driver=drivers.find(item=>item.user_id===assigned.driver_user_id);
+      if(whatsapp.mode==="ASSISTED"&&driver?.phone){
+        controls+='<div style="margin-top:8px"><button class="btn-muted" type="button" data-dispatch-whatsapp="'+esc(o.order_id)+'">WhatsApp al repartidor</button></div>';
+      }else if(whatsapp.mode==="AUTOMATIC"){
+        controls+='<div class="muted" style="margin-top:8px">Aviso WhatsApp automático gestionado por HTPWEB.</div>';
+      }
+    }
+
     return '<div class="order-local" style="margin-top:10px"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
       '<div class="muted">'+esc(o.customer_name||"Cliente")+' · '+esc(o.delivery_address||"")+'</div></div>'+
       '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+controls+'</div>';
@@ -6003,6 +6140,7 @@ function renderDispatchOrders(){
   box.querySelectorAll("[data-dispatch-unassign]").forEach(b=>b.onclick=()=>unassignDriverFromOrder(b.dataset.dispatchUnassign));
   box.querySelectorAll("[data-dispatch-accept]").forEach(b=>b.onclick=()=>acceptHybridDispatchSuggestion(b.dataset.dispatchAccept));
   box.querySelectorAll("[data-dispatch-proof]").forEach(b=>b.onclick=()=>showDispatchDeliveryProof(b.dataset.dispatchProof));
+  box.querySelectorAll("[data-dispatch-whatsapp]").forEach(b=>b.onclick=()=>notifyAssignedDriverWhatsapp(b.dataset.dispatchWhatsapp));
 }
 
 async function showDispatchDeliveryProof(orderId){
@@ -6584,18 +6722,24 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch,proofSettings,sos,deviation]=await Promise.all([
+    const [drivers,dispatch,proofSettings,sos,deviation,whatsappSettings,whatsappProvider]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
-      rpc("delivery_route_deviation_snapshot",{p_delivery_id:deliveryId,p_limit:50})
+      rpc("delivery_route_deviation_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
+      rpc("delivery_whatsapp_settings_snapshot",{p_delivery_id:deliveryId}),
+      typeof htpWhatsappProviderStatus==="function"
+        ? htpWhatsappProviderStatus(deliveryId)
+        : Promise.resolve({configured:false})
     ]);
     driverWorkspaceState.drivers=drivers||{};
     driverWorkspaceState.dispatch=dispatch||{};
     driverWorkspaceState.proofSettings=proofSettings||{};
     driverWorkspaceState.sos=sos||{};
     driverWorkspaceState.deviation=deviation||{};
+    driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:true,driver_dispatch:true};
+    driverWorkspaceState.whatsappProvider=whatsappProvider||{configured:false};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
       ' · modo '+esc(dispatch?.mode||"NONE")+
@@ -6606,6 +6750,7 @@ async function loadDriverWorkspace(){
         : '');
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
     renderDispatchModeControls();
+    renderWhatsappSettingsControls();
     renderDeliveryProofSettingsControls();
     renderDriversList();
     renderDeliverySos();
@@ -6670,6 +6815,35 @@ async function deactivateDriver(userId){
     message("Repartidor desactivado.");
     await loadDriverWorkspace();
   }catch(e){message(e.message||"No se pudo desactivar el repartidor.","error");}
+}
+
+function buildDriverWhatsappText(order,driver){
+  const panelUrl=location.origin+location.pathname;
+  return [
+    "*HTPWEB · Nueva entrega #"+whatsappOrderRef(order?.order_id)+"*",
+    "Repartidor: "+(driver?.full_name||"Repartidor"),
+    "Destino: "+(order?.delivery_address||"Ver detalle en HTPWEB"),
+    "",
+    "Abre HTPWEB para revisar la recogida, ruta y entrega:",
+    panelUrl
+  ].join("\n");
+}
+
+function notifyAssignedDriverWhatsapp(orderId){
+  try{
+    const orders=Array.isArray(driverWorkspaceState.dispatch?.orders)?driverWorkspaceState.dispatch.orders:[];
+    const order=orders.find(item=>item.order_id===orderId);
+    const assigned=order?.assignment;
+    if(!assigned)throw new Error("El pedido todavía no tiene repartidor asignado.");
+    const drivers=Array.isArray(driverWorkspaceState.drivers?.drivers)?driverWorkspaceState.drivers.drivers:[];
+    const driver=drivers.find(item=>item.user_id===assigned.driver_user_id);
+    if(!driver?.phone)throw new Error("El repartidor no tiene teléfono registrado.");
+    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
+    htpWhatsappOpenAssisted(driver.phone,buildDriverWhatsappText(order,driver));
+    message("WhatsApp abierto con la asignación lista para enviar.");
+  }catch(e){
+    message(e.message||"No se pudo preparar el aviso al repartidor.","error");
+  }
 }
 
 async function assignDriverToOrder(orderId){
@@ -7770,6 +7944,7 @@ function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
+  if ($("whatsappSettingsSave")) $("whatsappSettingsSave").onclick = saveWhatsappSettings;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
   if ($("deliveryDeviationRefresh")) $("deliveryDeviationRefresh").onclick = loadDeliveryRouteDeviationSnapshotOnly;
