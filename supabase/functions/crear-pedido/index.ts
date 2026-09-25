@@ -128,36 +128,95 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
    Si existe pero está deshabilitada:
    - NO se reactiva automáticamente.
    ============================================================ */ async function ensureCustomerDelivery(customerId, deliveryId) {
+  const { data: allowed, error: allowedError } = await supabaseAdmin.rpc("customer_can_order_delivery", {
+    p_customer_id: customerId,
+    p_delivery_id: deliveryId,
+    p_at: new Date().toISOString()
+  });
+  if (allowedError) {
+    console.error("Error validando política CUSTOMER ↔ DELIVERY:", allowedError);
+    throw new HttpError(500, "No se pudo validar la política de acceso del delivery");
+  }
+  if (allowed !== true) {
+    throw new HttpError(403, "Este DELIVERY no acepta pedidos de este cliente en este horario");
+  }
+
   const { data: existing, error: existingError } = await supabaseAdmin.from("customer_deliveries").select(`
         customer_id,
         delivery_id,
         active,
-        allow_orders
+        allow_orders,
+        approved_at
       `).eq("customer_id", customerId).eq("delivery_id", deliveryId).maybeSingle();
+
   if (existingError) {
     console.error("Error consultando customer_deliveries:", existingError);
     throw new HttpError(500, "No se pudo validar la relación del cliente con el delivery");
   }
-  if (existing) {
-    if (existing.active !== true || existing.allow_orders !== true) {
-      throw new HttpError(403, "El cliente no está habilitado para realizar pedidos en este delivery");
-    }
-    return;
+
+  if (existing) return;
+
+  const { data: currentMode, error: modeError } = await supabaseAdmin.rpc("delivery_customer_access_mode_at", {
+    p_delivery_id: deliveryId,
+    p_at: new Date().toISOString()
+  });
+  if (modeError) {
+    console.error("Error consultando modo de clientes:", modeError);
+    throw new HttpError(500, "No se pudo validar el modo de clientes del delivery");
   }
+  if (currentMode !== "OPEN") {
+    throw new HttpError(403, "Este DELIVERY trabaja con una red privada de clientes en este horario");
+  }
+
   const now = new Date().toISOString();
   const { error: insertError } = await supabaseAdmin.from("customer_deliveries").insert({
     customer_id: customerId,
     delivery_id: deliveryId,
     active: true,
     allow_orders: true,
+    relationship_source: "PUBLIC",
     created_at: now,
     updated_at: now
   });
+
   if (insertError) {
     console.error("Error creando customer_deliveries:", insertError);
-    throw new HttpError(500, "No se pudo habilitar al cliente para este delivery");
+    throw new HttpError(500, "No se pudo vincular al cliente con el delivery");
   }
 }
+
+async function ensureDeliveryLocationAllowed(deliveryId, latitude, longitude) {
+  const { data: restricted, error } = await supabaseAdmin.rpc("delivery_location_is_restricted", {
+    p_delivery_id: deliveryId,
+    p_latitude: latitude,
+    p_longitude: longitude,
+    p_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error validando área restringida:", error);
+    throw new HttpError(500, "No se pudo validar la cobertura de seguridad");
+  }
+  if (restricted === true) {
+    throw new HttpError(403, "La ubicación de entrega está restringida para este DELIVERY en este horario");
+  }
+}
+
+async function ensureDeliveryCoversLocals(deliveryId, localIds) {
+  for (const localId of localIds) {
+    const { data: covered, error } = await supabaseAdmin.rpc("htp_delivery_covers_local", {
+      p_delivery: deliveryId,
+      p_local: localId
+    });
+    if (error) {
+      console.error("Error validando cobertura del LOCAL:", { localId, error });
+      throw new HttpError(500, "No se pudo validar la zona operativa del local");
+    }
+    if (covered !== true) {
+      throw new HttpError(403, "Uno de los locales está fuera de las zonas activas del DELIVERY o requiere reconfiguración del plan");
+    }
+  }
+}
+
 /* ============================================================
    DISPONIBILIDAD REAL DE LOCALES
 
@@ -372,6 +431,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
          El CUSTOMER fue obtenido del JWT.
          Nunca del body.
          ====================================================== */ await ensureCustomerDelivery(customerId, body.delivery_id);
+    await ensureDeliveryLocationAllowed(body.delivery_id, customerLat, customerLng);
     /* ======================================================
          11. OBTENER LOCALES REALES
          ====================================================== */ const { data: locals, error: localsError } = await supabaseAdmin.from("locals").select(`
@@ -417,6 +477,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         throw new HttpError(403, `El local ${localId} no tiene una relación activa con el delivery`);
       }
     }
+    await ensureDeliveryCoversLocals(body.delivery_id, localIds);
     /* ======================================================
          14. VALIDAR ITEMS BÁSICOS
 
