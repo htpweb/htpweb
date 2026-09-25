@@ -58,7 +58,7 @@ test('MASTER fija cuántas áreas restringidas permite el plan y DELIVERY decide
   assert.match(catalog,/restricted_areas\.active\.max/);
   assert.match(policies,/delivery_limit_value\(p_delivery_id,'restricted_areas\.active\.max'\)/);
   assert.match(policies,/delivery_save_restricted_area/);
-  assert.match(admin,/Guardar área restringida/);
+  assert.match(html,/id="restrictedAreaSave"/);
 });
 
 test('áreas restringidas admiten permanente o horario y tienen UI de mapa',()=>{
