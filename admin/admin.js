@@ -40,7 +40,7 @@ const state = {
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","network","storage","advertising","analytics"],
+  DELIVERY_ADMIN: ["overview","mydelivery","share","orders","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","orders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -244,6 +244,7 @@ function showSection(name) {
   if (name === "fees") loadFees();
   if (name === "coverage") loadCoverage();
   if (name === "network") loadCustomerNetwork();
+  if (name === "security") loadRestrictedAreas();
   if (name === "catalog") loadCatalog();
   if (name === "schedules") loadSchedules();
   if (name === "storage") loadStorage();
@@ -5507,7 +5508,51 @@ async function loadCustomerNetwork(){
 async function saveNetworkDefault(){try{await rpc("delivery_save_customer_access_settings",{p_delivery_id:networkDeliveryId(),p_default_mode:$("networkDefaultMode").value});message("Modo de clientes actualizado.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
 async function saveNetworkRules(){try{await rpc("delivery_replace_customer_access_rules",{p_delivery_id:networkDeliveryId(),p_rules:collectNetworkRules()});message("Horarios de clientes actualizados.");await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
 async function createNetworkReferral(){try{const label=prompt("Etiqueta opcional para este referido (ej. Clientes nocturnos):","")??"";const result=await rpc("delivery_create_referral_code",{p_delivery_id:networkDeliveryId(),p_label:label,p_expires_at:null});message("Referido creado: "+result.code);await loadCustomerNetwork();}catch(e){message(e.message,"error");}}
+const securityState={context:null,points:[],rules:[],map:null};
+function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
+function renderRestrictedAreaMap(){
+  if(!securityState.map)return;
+  securityState.map.clear();
+  const zoneId=$("restrictedAreaZone")?.value;
+  const zone=securityState.context?.zones?.find(z=>z.id===zoneId);
+  if(zone?.boundary)securityState.map.polygon(zone.boundary,"#2563eb");
+  if(securityState.points.length>=3)securityState.map.polygon(securityState.points,"#dc2626");
+  securityState.points.forEach((p,i)=>securityState.map.marker(p,(lat,lng)=>{securityState.points[i]=[lat,lng];renderRestrictedAreaMap();}));
+  if($("restrictedAreaPointCount"))$("restrictedAreaPointCount").textContent=securityState.points.length+" puntos.";
+}
+function renderRestrictedAreaRules(){
+  const box=$("restrictedAreaRules");if(!box)return;
+  const show=$("restrictedAreaMode")?.value==="SCHEDULE";$("restrictedAreaSchedule")?.classList.toggle("hidden",!show);
+  if(!show)return;
+  const rules=securityState.rules||[];
+  box.innerHTML=rules.length?'<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+rules.map((r,i)=>'<tr><td><select data-sec-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-sec-start="'+i+'" value="'+esc(String(r.start_time||"19:00").slice(0,5))+'"></td><td><input type="time" data-sec-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><button class="btn-danger" data-sec-remove="'+i+'" type="button">Quitar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Agrega al menos una regla horaria.</div>';
+  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{securityState.rules.splice(Number(b.dataset.secRemove),1);renderRestrictedAreaRules();});
+}
+function collectRestrictedRules(){return (securityState.rules||[]).map((r,i)=>({day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week),start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||"19:00",end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||"06:00"}));}
+function clearRestrictedArea(){
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
+}
+function renderRestrictedAreasList(){
+  const box=$("restrictedAreasList");if(!box)return;const items=securityState.context?.areas||[];
+  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode)+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">No hay áreas restringidas configuradas.</div>';
+  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{const a=items.find(x=>x.id===b.dataset.secEdit);if(!a)return;$("restrictedAreaId").value=a.id;$("restrictedAreaZone").value=a.zone_id;$("restrictedAreaName").value=a.name||"";$("restrictedAreaReason").value=a.reason||"";$("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";$("restrictedAreaActive").value=String(a.active);securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));securityState.rules=(a.rules||[]).map(r=>({...r}));renderRestrictedAreaRules();renderRestrictedAreaMap();if(securityState.points.length)securityState.map?.center(securityState.points[0],15);});
+}
+async function loadRestrictedAreas(){
+  if(state.role!=="DELIVERY_ADMIN")return;const sel=$("securityDelivery");if(!sel)return;const previous=sel.value;sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;const id=securityDeliveryId();if(!id)return;
+  try{const [context,plan]=await Promise.all([rpc("delivery_restricted_area_context",{p_delivery_id:id}),rpc("delivery_plan_snapshot",{p_delivery_id:id})]);securityState.context=context||{};$("restrictedAreaZone").innerHTML=(context?.zones||[]).map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>').join("");const ent=plan?.current?.entitlements||{};const manage=ent["restricted_areas.manage"]===true,schedule=ent["restricted_areas.schedule"]===true;$("securityPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Áreas: '+esc(context?.used||0)+' / '+esc(context?.limit??0)+' · Por horario: '+(schedule?"Sí":"No");$("restrictedAreaSave").disabled=!manage;$("restrictedAreaMode").disabled=!manage;if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";renderRestrictedAreaRules();renderRestrictedAreasList();if(!securityState.map){securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{securityState.points.push([lat,lng]);renderRestrictedAreaMap();});}securityState.map.resize();renderRestrictedAreaMap();}catch(e){message(e.message||"No se pudo cargar Seguridad.","error");}
+}
+async function saveRestrictedArea(){
+  try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
+}
 function bindEvents() {
+  if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
+  if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
+  if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
+  if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = () => { securityState.points.pop(); renderRestrictedAreaMap(); };
+  if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = () => { securityState.points=[]; renderRestrictedAreaMap(); };
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = () => { securityState.rules.push({day_of_week:1,start_time:"19:00",end_time:"06:00"}); renderRestrictedAreaRules(); };
+  if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
+  if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedArea;
   if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
   if ($("networkSaveDefault")) $("networkSaveDefault").onclick = saveNetworkDefault;
   if ($("networkAddRule")) $("networkAddRule").onclick = () => { networkState.rules.push({day_of_week:1,start_time:"18:00",end_time:"06:00",access_mode:"PRIVATE",priority:100}); renderNetworkRules(); };
