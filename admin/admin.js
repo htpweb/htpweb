@@ -1317,10 +1317,12 @@ async function loadShareModule() {
   if (!select) return;
 
   const previous = select.value;
-  const available = state.deliveries.filter(delivery => delivery.active !== false);
+  const available = state.role === "MASTER"
+    ? state.deliveries
+    : state.deliveries.filter(delivery => delivery.active !== false);
 
   select.innerHTML = available.length
-    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}${delivery.active === false ? " — Inactivo" : ""}</option>`).join("")
     : '<option value="">No hay DELIVERY disponible</option>';
 
   if (previous && available.some(delivery => delivery.id === previous)) {
@@ -2484,10 +2486,12 @@ async function loadFees() {
   if (!select) return;
 
   const previous = select.value;
-  const available = state.deliveries.filter(delivery => delivery.active !== false);
+  const available = state.role === "MASTER"
+    ? state.deliveries
+    : state.deliveries.filter(delivery => delivery.active !== false);
 
   select.innerHTML = available.length
-    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}${delivery.active === false ? " — Inactivo" : ""}</option>`).join("")
     : '<option value="">No hay DELIVERY disponible</option>';
 
   if (previous && available.some(delivery => delivery.id === previous)) {
@@ -5539,7 +5543,9 @@ async function syncMasterDeliveryWorkspace(){
   if(!id)return;
   for(const selectId of ["coverageDelivery","feeDelivery","userManagerDelivery"]){
     const s=document.getElementById(selectId);
-    if(s&&[...s.options].some(o=>o.value===id))s.value=id;
+    if(s){
+      s.value=[...s.options].some(o=>o.value===id)?id:"";
+    }
   }
   renderMasterDeliveryUserOptions();
   await Promise.all([
