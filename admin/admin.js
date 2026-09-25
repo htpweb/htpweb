@@ -164,7 +164,7 @@ function showSection(name) {
 async function loadScopes() {
   if (state.role === "MASTER") {
     const [dRes, lRes] = await Promise.all([
-      supabaseClient.from("deliveries").select("id,name,slug,active").order("name"),
+      supabaseClient.from("deliveries").select("id,name,slug,description,logo_url,phone,whatsapp,active,city_id").order("name"),
       supabaseClient.from("locals").select("id,name,active").order("name")
     ]);
 
@@ -2369,6 +2369,9 @@ function editMasterDeliveryRecord(deliveryId) {
 async function saveDelivery() {
   try {
     const editingId = $("deliveryEditId")?.value || null;
+    const cityId = $("deliveryCity").value || null;
+    if (!$("deliveryName").value.trim()) throw new Error("Escribe el nombre del DELIVERY.");
+    if (!cityId) throw new Error("Selecciona la ciudad del DELIVERY.");
     const deliveryId = await rpc("master_save_delivery", {
       p_delivery_id: editingId,
       p_name: $("deliveryName").value.trim(),
@@ -2377,7 +2380,7 @@ async function saveDelivery() {
       p_logo_url: null,
       p_phone: $("deliveryPhone").value.trim() || null,
       p_whatsapp: $("deliveryWhatsapp").value.trim() || null,
-      p_city_id: $("deliveryCity").value || null,
+      p_city_id: cityId,
       p_active: $("deliveryActive") ? $("deliveryActive").value === "true" : true
     });
 
