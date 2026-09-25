@@ -391,11 +391,19 @@
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
             <h2>Repartidores y despacho</h2>
-            <p class="muted">El plan define la capacidad. El DELIVERY decide qué repartidores activa y a qué pedido READY los asigna.</p>
+            <p class="muted">El plan define capacidad y modos disponibles. El DELIVERY elige cómo despachar sus pedidos dentro de lo contratado.</p>
           </div>
           <select id="driversDelivery" style="max-width:340px"></select>
         </div>
         <div id="driversPlanNotice" class="workspace-note" style="margin-top:12px">Consultando capacidad…</div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:end;margin-top:12px">
+          <div style="min-width:240px;flex:1">
+            <label>Modo de despacho</label>
+            <select id="dispatchModeSelect"></select>
+          </div>
+          <button id="dispatchModeSave" class="btn-primary" type="button">Guardar modo</button>
+        </div>
+        <small id="dispatchModeHelp" class="muted"></small>
       </div>
 
       <div class="card" id="driverAdminTools">
@@ -427,8 +435,8 @@
       </div>
 
       <div class="card">
-        <h3>Despacho manual</h3>
-        <p class="muted">Solo los pedidos READY pueden asignarse o reasignarse. Al pasar a EN_ROUTE la asignación queda bloqueada hasta completar o cancelar.</p>
+        <h3>Despacho</h3>
+        <p class="muted">MANUAL permite elegir repartidor; HYBRID sugiere y espera confirmación; AUTO asigna según capacidad disponible. Al pasar a EN_ROUTE la asignación queda bloqueada.</p>
         <div id="dispatchOrders"></div>
       </div>
     </section>
