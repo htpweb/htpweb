@@ -4,7 +4,7 @@ const fs=require('node:fs');
 
 const access=fs.readFileSync('app/acceso.html','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
-const migration=fs.readFileSync('supabase/migrations/20260925030000_single_login_delivery_authorization.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260925025856_single_login_delivery_authorization.sql','utf8');
 
 test('single login claims authorized DELIVERY access before routing',()=>{
   assert.match(access,/signInWithPassword/);
