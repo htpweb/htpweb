@@ -70,3 +70,31 @@ test('activar Zona detallada conserva lo escrito antes de guardar',()=>{
   assert.doesNotMatch(tail,/setFeeZoneView/);
   assert.match(admin,/function snapshotFeeZoneDetailedInputs/);
 });
+
+
+test('ultimo rango muestra Más de X km en lugar de Sin límite',()=>{
+  assert.match(admin,/function feeUnlimitedDistanceLabel/);
+  assert.match(admin,/Más de /);
+  assert.match(admin,/data-fee-band-unlimited-label/);
+  assert.doesNotMatch(admin,/<span class="badge">Sin límite<\/span>/);
+  assert.match(html,/Más de 6 km/);
+});
+
+test('la tarjeta seleccionada usa el estado visual seleccionado, no la modalidad activa',()=>{
+  const start=admin.indexOf('function renderFeeModeCards');
+  const end=admin.indexOf('function selectFeeModePanel',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/selection-button/);
+  assert.match(block,/is-selected/);
+  assert.match(block,/aria-pressed/);
+  assert.doesNotMatch(block,/buttonClass=active/);
+});
+
+test('Simple y Detallada usan selección visual consistente',()=>{
+  const start=admin.indexOf('function setFeeZoneView');
+  const end=admin.indexOf('function renderFeeZonePanel',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/selection-button/);
+  assert.match(block,/is-selected/);
+  assert.match(block,/aria-pressed/);
+});
