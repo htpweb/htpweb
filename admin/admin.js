@@ -1851,7 +1851,7 @@ function buildShortSharedLocalUrl(localId = null) {
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
   if (!local?.share_code) return buildSharedLocalUrl(localId);
-  return new URL("../p/?s="+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
+  return new URL("../p/"+encodeURIComponent(local.share_code)+"/", publicAppRootUrl()).toString();
 }
 
 function shareLocalCategory(local) {
