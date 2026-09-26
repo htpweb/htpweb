@@ -61,3 +61,10 @@ test('usa imágenes reales de LOCAL y producto',()=>{
   assert.match(admin,/price,image_url,active/);
   assert.match(admin,/product\.image_url \|\| local\.banner_url/);
 });
+
+
+test('usa foto de producto como portada cuando el LOCAL no tiene banner',()=>{
+  assert.match(admin,/function shareLocalVisualUrl/);
+  assert.match(admin,/first_product_image_url/);
+  assert.match(admin,/select\("local_id,image_url,display_order"\)/);
+});
