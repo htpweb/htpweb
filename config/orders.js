@@ -35,7 +35,7 @@ async function obtenerPedidoCliente(deliveryId, orderId) {
   const customerId = await contextoPedidosCliente();
   if (!customerId) return null;
   const result = await supabaseClient.from('orders')
-    .select(CLIENT_ORDER_FIELDS + ',order_items(local_id,product_name,variant_name,unit_price,quantity,subtotal),order_locals(local_id,status,subtotal,delivery_fee,locals(name))')
+    .select(CLIENT_ORDER_FIELDS + ',order_items(local_id,product_name,variant_name,unit_price,quantity,subtotal,promotion_id,promotion_title),order_locals(local_id,status,subtotal,delivery_fee,locals(name))')
     .eq('id', orderId).eq('customer_id', customerId).eq('delivery_id', deliveryId).maybeSingle();
   if (result.error) throw result.error;
   return result.data;
