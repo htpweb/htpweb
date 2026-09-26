@@ -42,18 +42,25 @@ test('genera una imagen vertical para compartir',()=>{
   assert.match(admin,/ctx\.fillText\("PIDE AQUÍ"/);
 });
 
-test('usa Web Share con archivo cuando el dispositivo lo permite',()=>{
+test('usa Web Share priorizando el archivo de imagen',()=>{
   assert.match(admin,/navigator\.canShare/);
   assert.match(admin,/navigator\.share\(\{/);
-  assert.match(admin,/files: \[file\]/);
+  assert.match(admin,/files:\[prepared\.file\]/);
   assert.match(admin,/text: payload\.text/);
-  assert.match(admin,/url: payload\.url/);
+  const start=admin.indexOf('async function nativeShare');
+  const end=admin.indexOf('async function loadLocalProfile',start);
+  const block=admin.slice(start,end);
+  assert.doesNotMatch(block,/url: payload\.url/);
+  assert.doesNotMatch(block,/navigator\.share\(\{[\s\S]*url:/);
 });
 
-test('en escritorio conserva imagen y enlace como fallback',()=>{
-  assert.match(admin,/downloadShareFile\(file\)/);
-  assert.match(admin,/copyShareLink\(kind\)/);
-  assert.match(admin,/Imagen preparada y enlace PIDE AQUÍ copiado/);
+test('si el navegador no comparte archivos no degrada a solo link',()=>{
+  const start=admin.indexOf('async function nativeShare');
+  const end=admin.indexOf('async function loadLocalProfile',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/await downloadShareImage\(kind\)/);
+  assert.match(block,/no permite enviar archivos de imagen/);
+  assert.doesNotMatch(block,/copyShareLink\(kind\)/);
 });
 
 test('usa imágenes reales de LOCAL y producto',()=>{
@@ -67,4 +74,26 @@ test('usa foto de producto como portada cuando el LOCAL no tiene banner',()=>{
   assert.match(admin,/function shareLocalVisualUrl/);
   assert.match(admin,/first_product_image_url/);
   assert.match(admin,/select\("local_id,image_url,display_order"\)/);
+});
+
+
+test('Compartir abre un modal fijo sin desplazar la página',()=>{
+  assert.match(html,/id="shareArtworkPreviewCard" class="share-modal hidden"/);
+  assert.match(html,/id="shareModalCloseBtn"/);
+  assert.match(css,/\.share-modal\{position:fixed/);
+  assert.match(admin,/function closeShareOptions/);
+  const start=admin.indexOf('async function openShareOptions');
+  const end=admin.indexOf('async function browserShare',start);
+  const block=admin.slice(start,end);
+  assert.doesNotMatch(block,/scrollIntoView/);
+});
+
+test('WhatsApp Web recibe la imagen preparada y no abre un link prefabricado',()=>{
+  const start=admin.indexOf('async function browserShare');
+  const end=admin.indexOf('async function nativeShare',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/copyPreparedImageToClipboard/);
+  assert.match(block,/https:\/\/web\.whatsapp\.com\//);
+  assert.doesNotMatch(block,/web\.whatsapp\.com\/send\?text=/);
+  assert.match(block,/No se está compartiendo solo un enlace/);
 });
