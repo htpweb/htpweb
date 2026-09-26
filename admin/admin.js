@@ -2008,12 +2008,16 @@ function renderShareGallery() {
       '<div class="share-gallery-image"><img src="'+esc(image.image_url)+'" alt="Foto '+(index+1)+' de '+esc(local.name)+'" loading="lazy"></div>'+
       '<div class="share-gallery-actions">'+
         '<button type="button" class="btn-primary" data-share-gallery-image="'+esc(image.id)+'">Compartir foto</button>'+
+        '<button type="button" class="btn-muted" data-share-gallery-copy="'+esc(image.id)+'">Copiar Link</button>'+
       '</div>'+
     '</article>'
   ).join(""):'<div class="overview-empty">Este LOCAL todavía no tiene fotos en su Galería.</div>';
 
   box.querySelectorAll("[data-share-gallery-image]").forEach(button=>{
     button.onclick=()=>shareOriginalGalleryImage(button.dataset.shareGalleryImage);
+  });
+  box.querySelectorAll("[data-share-gallery-copy]").forEach(button=>{
+    button.onclick=()=>copyShareLocalOrderLink();
   });
 }
 
