@@ -28,7 +28,7 @@
       <button data-section="overview">Resumen</button>
       <button data-section="mydelivery">Mi Delivery</button>
       <button data-section="myplan">Mi Plan</button>
-      <button data-section="share">Compartir</button>
+      <button data-section="share">Preparar Estado</button>
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="drivers">Repartidores</button>
@@ -296,7 +296,7 @@
           </div>
           <div class="row" style="gap:8px">
             <a id="shareLocalOrderLink" class="btn-primary share-order-link" target="_blank" rel="noopener">PIDE AQUÍ</a>
-            <button class="btn-primary" id="shareLocalNativeBtn" type="button">Compartir</button>
+            <button class="btn-primary" id="shareLocalNativeBtn" type="button">Preparar Estado</button>
           </div>
         </div>
       </div>
@@ -318,7 +318,7 @@
         <div class="share-modal-dialog">
           <div class="row between" style="gap:12px">
             <div>
-              <h3 id="shareModalTitle" style="margin:0">Compartir imagen</h3>
+              <h3 id="shareModalTitle" style="margin:0">Preparar Estado</h3>
               <p id="shareModalSubtitle" class="muted" style="margin:5px 0 0">Preparando la imagen promocional…</p>
             </div>
             <button id="shareModalCloseBtn" class="btn-muted" type="button" aria-label="Cerrar">Cerrar</button>
@@ -326,21 +326,47 @@
 
           <div class="share-modal-layout">
             <div class="share-artwork-preview-wrap">
-              <canvas id="shareArtworkPreview" width="540" height="960" aria-label="Vista previa de la imagen para compartir"></canvas>
+              <canvas id="shareArtworkPreview" width="540" height="960" aria-label="Vista previa del Estado"></canvas>
             </div>
 
             <div id="shareBrowserPanel" class="share-browser-panel">
-              <h4 style="margin-top:0">¿Cómo quieres compartir?</h4>
-              <p class="muted"><strong>WhatsApp chat</strong> y <strong>Facebook</strong> usan un enlace enriquecido para mostrar foto + contenido + enlace clicable. Para Estado/historias puedes compartir la imagen promocional.</p>
-              <div class="share-browser-actions">
-                <button id="shareWhatsappWebBtn" class="btn-primary" type="button">WhatsApp chat</button>
-                <button id="shareFacebookWebBtn" class="btn-muted" type="button">Facebook</button>
-                <button id="shareNativeDeviceBtn" class="btn-muted" type="button">Imagen / Estado</button>
-                <button id="shareTiktokWebBtn" class="btn-muted" type="button">TikTok</button>
-                <button id="shareDownloadImageBtn" class="btn-muted" type="button">Descargar imagen</button>
-                <button id="shareCopyTextBtn" class="btn-muted" type="button">Copiar PIDE AQUÍ</button>
+              <h4 style="margin-top:0">Estado listo para publicar</h4>
+              <p class="muted">El DELIVERY sigue publicando una foto como siempre. HTPWEB prepara la imagen y el texto <strong>PIDE AQUÍ</strong> para que el cliente llegue directamente al LOCAL o producto.</p>
+
+              <div class="share-status-step">
+                <strong>1. Imagen del Estado</strong>
+                <p class="muted">Guarda o comparte esta imagen y selecciónala en Mi estado.</p>
+                <div class="share-browser-actions">
+                  <button id="shareNativeDeviceBtn" class="btn-primary" type="button">Compartir imagen</button>
+                  <button id="shareDownloadImageBtn" class="btn-muted" type="button">Guardar imagen</button>
+                </div>
               </div>
-              <a id="shareArtworkOrderLink" class="btn-muted share-order-link" target="_blank" rel="noopener" style="margin-top:10px">Abrir PIDE AQUÍ</a>
+
+              <div class="share-status-step">
+                <strong>2. Texto del Estado</strong>
+                <p class="muted">Pega este texto como comentario de la foto para que el cliente pueda tocar el enlace.</p>
+                <textarea id="shareStatusText" class="share-status-text" rows="4" readonly></textarea>
+                <div class="share-browser-actions">
+                  <button id="shareCopyTextBtn" class="btn-primary" type="button">Copiar PIDE AQUÍ</button>
+                  <a id="shareArtworkOrderLink" class="btn-muted share-order-link" target="_blank" rel="noopener">Probar enlace</a>
+                </div>
+              </div>
+
+              <div class="share-status-step">
+                <strong>3. Publicar en WhatsApp</strong>
+                <p class="muted">Abre WhatsApp → Novedades/Estado → Mi estado → selecciona la imagen → pega el texto PIDE AQUÍ.</p>
+                <button id="shareOpenWhatsappBtn" class="btn-primary" type="button">Abrir WhatsApp</button>
+              </div>
+
+              <details class="share-secondary-options">
+                <summary>Otras formas de compartir</summary>
+                <div class="share-browser-actions" style="margin-top:10px">
+                  <button id="shareWhatsappWebBtn" class="btn-muted" type="button">WhatsApp chat</button>
+                  <button id="shareFacebookWebBtn" class="btn-muted" type="button">Facebook</button>
+                  <button id="shareTiktokWebBtn" class="btn-muted" type="button">TikTok</button>
+                </div>
+              </details>
+
               <div id="shareBrowserHint" class="workspace-note" style="margin-top:10px">Preparando imagen…</div>
             </div>
           </div>
