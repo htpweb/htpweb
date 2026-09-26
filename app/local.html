@@ -124,6 +124,7 @@ async function init() {
     }
 
     render();
+    window.dispatchEvent(new CustomEvent("htpweb:local-ready"));
 
     if (sharedProductId) {
       requestAnimationFrame(() => {
