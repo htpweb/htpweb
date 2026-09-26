@@ -50,6 +50,16 @@ const roleSections = {
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
 
+function completeAdminRoleBoot() {
+  document.body.classList.remove("admin-role-loading","admin-role-error");
+  document.body.classList.add("admin-role-ready");
+}
+
+function failAdminRoleBoot() {
+  document.body.classList.remove("admin-role-loading","admin-role-ready");
+  document.body.classList.add("admin-role-error");
+}
+
 const globalTransitions = {
   PENDING: ["CONFIRMED","CANCELLED"],
   CONFIRMED: ["PREPARING","CANCELLED"],
@@ -99,6 +109,7 @@ function deliveryServiceStateLabel(stateValue){
 }
 
 function renderDeliveryServiceBlocked(access){
+  failAdminRoleBoot();
   const deliveries=Array.isArray(access?.deliveries)?access.deliveries:[];
   const latest=deliveries[0]||{};
   document.body.innerHTML=`
@@ -189,6 +200,7 @@ async function init() {
     }
 
     if (!roleSections[state.role]) {
+      failAdminRoleBoot();
       document.body.innerHTML = `
         <main style="max-width:720px;margin:60px auto;font-family:Arial;padding:20px">
           <h1>Acceso administrativo no disponible</h1>
@@ -216,6 +228,7 @@ async function init() {
     await refreshAll();
   } catch (error) {
     console.error(error);
+    failAdminRoleBoot();
     message(error.message || "No se pudo abrir el panel.", "error");
   }
 }
@@ -275,6 +288,7 @@ function configureNavigation() {
 
   organizeDeliveryAdminNavigation();
   showSection(roleSections[state.role][0]);
+  completeAdminRoleBoot();
 }
 
 function showSection(name) {
