@@ -17,7 +17,7 @@ test("LOCAL carga el visor multimedia del cliente", () => {
 
 test("visor conserva la lógica existente de carrito y variantes", () => {
   assert.match(viewer, /variantInput\.value = \$v\("mediaViewerVariant"\)\.value/);
-  assert.match(viewer, /qtyInput\.value = Math\.max/);
+  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
   assert.match(viewer, /typeof addProduct !== "function"/);
   assert.doesNotMatch(viewer, /carritoAgregar\(/);
 });
@@ -51,7 +51,7 @@ test("agregar desde el visor no lo cierra automáticamente", () => {
   const block = viewer.slice(start, end);
   assert.match(block, /addProduct\(productId\)/);
   assert.doesNotMatch(block, /close\(\)/);
-  assert.match(block, /Agregado ✓/);
+  assert.match(block, /En carrito:/);
   assert.match(block, /mediaViewerQty/);
 });
 
