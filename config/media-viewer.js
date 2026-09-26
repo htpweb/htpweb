@@ -45,8 +45,9 @@
             <div id="mediaViewerPurchase" class="hidden">
               <label id="mediaViewerVariantLabel" for="mediaViewerVariant">Variante</label>
               <select id="mediaViewerVariant"></select>
+              <label for="mediaViewerQty">Cantidad en carrito</label>
               <div class="media-viewer-actions">
-                <input id="mediaViewerQty" type="number" min="1" value="1" inputmode="numeric" aria-label="Cantidad">
+                <input id="mediaViewerQty" type="number" min="0" value="0" inputmode="numeric" aria-label="Cantidad en carrito" readonly>
                 <button id="mediaViewerAdd" class="btn btn-primary" type="button">Agregar al carrito</button>
               </div>
             </div>
@@ -135,7 +136,6 @@
     baseOpen(product.image_url || local?.banner_url || "", product.name || "Producto", product.description || "");
     $v("mediaViewerLocalAction").classList.add("hidden");
     $v("mediaViewerPurchase").classList.remove("hidden");
-    $v("mediaViewerQty").value = 1;
     $v("mediaViewerAdd").dataset.productId = product.id;
     galleryNavigation(false);
 
@@ -154,6 +154,8 @@
       $v("mediaViewerPrice").textContent = "$ " + Number(product.price || 0).toFixed(2);
     }
 
+    syncViewerCartQuantity(product.id);
+
     const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
     $v("mediaViewerAdd").disabled = Boolean(closed);
     $v("mediaViewerAdd").textContent = closed ? "Local cerrado" : "Agregar al carrito";
@@ -165,10 +167,37 @@
     }[ch]));
   }
 
+  function viewerMatcher(productId) {
+    const variantSelect = $v("mediaViewerVariant");
+    const variantId = variantSelect && !variantSelect.classList.contains("hidden")
+      ? (variantSelect.value || null)
+      : null;
+    const local = typeof localActual !== "undefined" ? localActual : null;
+
+    return {
+      local_id: local?.id || "",
+      product_id: productId,
+      variant_id: variantId
+    };
+  }
+
+  function syncViewerCartQuantity(productId = $v("mediaViewerAdd")?.dataset?.productId || "") {
+    if (!productId || typeof carritoCantidadItem !== "function" || typeof negocioActual === "undefined" || !negocioActual?.slug) {
+      $v("mediaViewerQty").value = 0;
+      return 0;
+    }
+
+    const total = carritoCantidadItem(negocioActual.slug, viewerMatcher(productId));
+    $v("mediaViewerQty").value = total;
+    return total;
+  }
+
   function syncVariantPrice() {
     const option = $v("mediaViewerVariant")?.selectedOptions?.[0];
-    if (!option) return;
-    $v("mediaViewerPrice").textContent = "$ " + Number(option.dataset.price || 0).toFixed(2);
+    if (option) {
+      $v("mediaViewerPrice").textContent = "$ " + Number(option.dataset.price || 0).toFixed(2);
+    }
+    syncViewerCartQuantity();
   }
 
   function addFromViewer() {
@@ -177,19 +206,22 @@
 
     const qtyInput = document.getElementById("qty-" + productId);
     const variantInput = document.getElementById("variant-" + productId);
-    if (qtyInput) qtyInput.value = Math.max(1, Number.parseInt($v("mediaViewerQty").value, 10) || 1);
+
+    // Cada pulsación suma una unidad del producto/variante actual.
+    // El campo del visor muestra el acumulado real que ya está en el carrito.
+    if (qtyInput) qtyInput.value = 1;
     if (variantInput && !$v("mediaViewerVariant").classList.contains("hidden")) {
       variantInput.value = $v("mediaViewerVariant").value;
       if (typeof syncVariantPrice === "function") syncVariantPrice(productId);
     }
 
     addProduct(productId);
-    $v("mediaViewerQty").value = 1;
+    const total = syncViewerCartQuantity(productId);
 
     const addButton = $v("mediaViewerAdd");
     if (addButton && !addButton.disabled) {
       const defaultText = "Agregar al carrito";
-      addButton.textContent = "Agregado ✓";
+      addButton.textContent = `En carrito: ${total} ✓`;
       addButton.classList.add("is-added");
       window.clearTimeout(addButton._htpwebFeedbackTimer);
       addButton._htpwebFeedbackTimer = window.setTimeout(() => {
