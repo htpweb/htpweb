@@ -23,7 +23,7 @@ test('Día Noche es una configuración común',()=>{
 
 test('distancia usa rangos editables y botón Nuevo',()=>{
   assert.match(html,/id="addDistanceBandBtn"[^>]*>\+ Nuevo</);
-  assert.match(html,/El último rango debe quedar como <strong>Sin límite<\/strong>/);
+  assert.match(html,/El último rango cubre automáticamente todas las distancias mayores al límite anterior/);
   assert.match(admin,/delivery_replace_distance_bands/);
   assert.match(admin,/function collectFeeDistanceBands/);
   assert.doesNotMatch(html,/Costo por km \(USD\)/);
