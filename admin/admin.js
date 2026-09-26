@@ -8204,15 +8204,75 @@ function renderRestrictedAreaMap(){
   securityState.points.forEach((p,i)=>securityState.map.marker(p,(lat,lng)=>{securityState.points[i]=[lat,lng];renderRestrictedAreaMap();}));
   if($("restrictedAreaPointCount"))$("restrictedAreaPointCount").textContent=securityState.points.length+" puntos.";
 }
+function syncRestrictedAreaRulesFromDom(){
+  securityState.rules=(securityState.rules||[]).map((r,i)=>({
+    ...r,
+    day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week??1),
+    start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||String(r.start_time||"19:00").slice(0,5),
+    end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||String(r.end_time||"06:00").slice(0,5)
+  }));
+  return securityState.rules;
+}
+
+function nextRestrictedAreaDay(){
+  const used=new Set(syncRestrictedAreaRulesFromDom().map(r=>Number(r.day_of_week)));
+  return [1,2,3,4,5,6,0].find(day=>!used.has(day))??null;
+}
+
+function addRestrictedAreaRule(){
+  const rules=syncRestrictedAreaRulesFromDom();
+  const day=nextRestrictedAreaDay();
+  if(day===null){
+    message("Ya tienes una regla para cada día de la semana.");
+    return;
+  }
+  const source=rules[rules.length-1]||{start_time:"19:00",end_time:"06:00"};
+  securityState.rules.push({
+    day_of_week:day,
+    start_time:String(source.start_time||"19:00").slice(0,5),
+    end_time:String(source.end_time||"06:00").slice(0,5)
+  });
+  renderRestrictedAreaRules();
+}
+
+function copyRestrictedAreaRuleToAllDays(){
+  const rules=syncRestrictedAreaRulesFromDom();
+  if(!rules.length){
+    message("Agrega una regla y define el horario que deseas copiar.","error");
+    return;
+  }
+  const source=rules[0];
+  const start=String(source.start_time||"19:00").slice(0,5);
+  const end=String(source.end_time||"06:00").slice(0,5);
+  securityState.rules=[1,2,3,4,5,6,0].map(day=>({
+    day_of_week:day,
+    start_time:start,
+    end_time:end
+  }));
+  renderRestrictedAreaRules();
+  message("Horario copiado de lunes a domingo.");
+}
+
 function renderRestrictedAreaRules(){
   const box=$("restrictedAreaRules");if(!box)return;
   const show=$("restrictedAreaMode")?.value==="SCHEDULE";$("restrictedAreaSchedule")?.classList.toggle("hidden",!show);
   if(!show)return;
   const rules=securityState.rules||[];
   box.innerHTML=rules.length?'<div class="table-wrap"><table><thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th></th></tr></thead><tbody>'+rules.map((r,i)=>'<tr><td><select data-sec-day="'+i+'">'+[0,1,2,3,4,5,6].map(d=>'<option value="'+d+'" '+(Number(r.day_of_week)===d?'selected':'')+'>'+networkDayName(d)+'</option>').join("")+'</select></td><td><input type="time" data-sec-start="'+i+'" value="'+esc(String(r.start_time||"19:00").slice(0,5))+'"></td><td><input type="time" data-sec-end="'+i+'" value="'+esc(String(r.end_time||"06:00").slice(0,5))+'"></td><td><button class="btn-danger" data-sec-remove="'+i+'" type="button">Quitar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Agrega al menos una regla horaria.</div>';
-  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{securityState.rules.splice(Number(b.dataset.secRemove),1);renderRestrictedAreaRules();});
+
+  box.querySelectorAll("[data-sec-day],[data-sec-start],[data-sec-end]").forEach(control=>{
+    const sync=()=>syncRestrictedAreaRulesFromDom();
+    control.onchange=sync;
+    if(control.matches("input"))control.oninput=sync;
+  });
+
+  box.querySelectorAll("[data-sec-remove]").forEach(b=>b.onclick=()=>{
+    syncRestrictedAreaRulesFromDom();
+    securityState.rules.splice(Number(b.dataset.secRemove),1);
+    renderRestrictedAreaRules();
+  });
 }
-function collectRestrictedRules(){return (securityState.rules||[]).map((r,i)=>({day_of_week:Number(document.querySelector('[data-sec-day="'+i+'"]')?.value??r.day_of_week),start_time:document.querySelector('[data-sec-start="'+i+'"]')?.value||"19:00",end_time:document.querySelector('[data-sec-end="'+i+'"]')?.value||"06:00"}));}
+function collectRestrictedRules(){return syncRestrictedAreaRulesFromDom().map(r=>({day_of_week:Number(r.day_of_week),start_time:String(r.start_time||"19:00").slice(0,5),end_time:String(r.end_time||"06:00").slice(0,5)}));}
 function clearRestrictedArea(){
   if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
 }
@@ -8258,7 +8318,8 @@ function bindEvents() {
   if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
   if ($("restrictedAreaUndo")) $("restrictedAreaUndo").onclick = () => { securityState.points.pop(); renderRestrictedAreaMap(); };
   if ($("restrictedAreaClear")) $("restrictedAreaClear").onclick = () => { securityState.points=[]; renderRestrictedAreaMap(); };
-  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = () => { securityState.rules.push({day_of_week:1,start_time:"19:00",end_time:"06:00"}); renderRestrictedAreaRules(); };
+  if ($("restrictedAreaAddRule")) $("restrictedAreaAddRule").onclick = addRestrictedAreaRule;
+  if ($("restrictedAreaCopyAllDays")) $("restrictedAreaCopyAllDays").onclick = copyRestrictedAreaRuleToAllDays;
   if ($("restrictedAreaSave")) $("restrictedAreaSave").onclick = saveRestrictedArea;
   if ($("restrictedAreaNew")) $("restrictedAreaNew").onclick = clearRestrictedArea;
   if ($("networkDelivery")) $("networkDelivery").onchange = loadCustomerNetwork;
