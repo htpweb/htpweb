@@ -42,7 +42,32 @@ const ZoneMaps = (() => {
       center:(p,z=16)=>map.setView(p,z),
       resize:()=>map.invalidateSize(),
       clear:()=>layer.clearLayers(),
-      polygon:(ring,color)=>L.polygon(ring,{color,weight:2,fillOpacity:.13,interactive:false}).addTo(layer),
+      polygon:(ring,colorOrOptions,onClick)=>{
+        const options=typeof colorOrOptions==="string"
+          ? {color:colorOrOptions,weight:2,fillOpacity:.13,interactive:false}
+          : {
+              color:colorOrOptions?.color||"#2563eb",
+              fillColor:colorOrOptions?.fillColor||colorOrOptions?.color||"#2563eb",
+              weight:colorOrOptions?.weight??2,
+              fillOpacity:colorOrOptions?.fillOpacity??.13,
+              opacity:colorOrOptions?.opacity??1,
+              interactive:colorOrOptions?.interactive??Boolean(onClick)
+            };
+        const polygon=L.polygon(ring,options).addTo(layer);
+        if(onClick)polygon.on("click",e=>{
+          L.DomEvent.stopPropagation(e);
+          onClick(e);
+        });
+        return polygon;
+      },
+      fit:(rings,padding=24)=>{
+        const points=(Array.isArray(rings)?rings:[])
+          .flatMap(ring=>Array.isArray(ring?.[0])?ring:[ring])
+          .filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1])));
+        if(!points.length)return;
+        const bounds=L.latLngBounds(points.map(p=>[Number(p[0]),Number(p[1])]));
+        if(bounds.isValid())map.fitBounds(bounds,{padding:[padding,padding]});
+      },
       marker:(p,onMove)=>{
         const m=L.marker(p,{draggable:!!onMove}).addTo(layer);
         if(onMove)m.on("dragend",()=>onMove(m.getLatLng().lat,m.getLatLng().lng));
