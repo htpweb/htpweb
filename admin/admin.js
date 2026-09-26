@@ -1955,7 +1955,7 @@ function renderShareLocals() {
     button.onclick = async event => {
       event.stopPropagation();
       await selectShareLocal(button.dataset.shareLocalNative);
-      await nativeShare("local");
+      await openShareOptions("local");
     };
   });
 }
@@ -2035,7 +2035,7 @@ function renderShareProducts() {
     button.onclick = async event => {
       event.stopPropagation();
       selectShareProduct(button.dataset.shareProductNative);
-      await nativeShare("product");
+      await openShareOptions("product");
     };
   });
 }
@@ -2211,7 +2211,8 @@ function sharePayload(kind) {
       text: local.name + " en " + delivery.name + "\n\nPIDE AQUÍ 👇\n" + url,
       url,
       imageUrl: shareLocalVisualUrl(local),
-      logoUrl: local.logo_url || delivery.logo_url || "",
+      logoUrl: delivery.logo_url || local.logo_url || "",
+      deliveryName: delivery.name,
       headline: local.name,
       subline: shareCategoryName(local),
       price: null
@@ -2224,9 +2225,10 @@ function sharePayload(kind) {
     text: product.name + " · " + local.name + "\n\nPIDE AQUÍ 👇\n" + url,
     url,
     imageUrl: product.image_url || shareLocalVisualUrl(local),
-    logoUrl: local.logo_url || delivery.logo_url || "",
+    logoUrl: delivery.logo_url || local.logo_url || "",
+    deliveryName: delivery.name,
     headline: product.name,
-    subline: local.name + " · " + delivery.name,
+    subline: local.name,
     price: Number(product.price || 0)
   } : null;
 }
@@ -2371,11 +2373,14 @@ async function drawShareArtwork(canvas,kind) {
 
   ctx.fillStyle = "#64748b";
   ctx.font = "600 "+Math.round(27*scale)+"px Arial";
-  ctx.fillText("Abre el enlace compartido para pedir en HTPWEB",width/2,buttonY+buttonH+Math.round(62*scale));
+  ctx.fillText("Pide directamente con "+String(payload.deliveryName||"tu DELIVERY"),width/2,buttonY+buttonH+Math.round(62*scale));
 
   ctx.fillStyle = "#111827";
-  ctx.font = "800 "+Math.round(28*scale)+"px Arial";
-  ctx.fillText("HTPWEB",width/2,height-Math.round(55*scale));
+  ctx.font = "800 "+Math.round(31*scale)+"px Arial";
+  ctx.fillText(String(payload.deliveryName||"DELIVERY"),width/2,height-Math.round(78*scale));
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "600 "+Math.round(20*scale)+"px Arial";
+  ctx.fillText("Plataforma HTPWEB",width/2,height-Math.round(42*scale));
   ctx.textAlign = "left";
 }
 
@@ -2448,6 +2453,127 @@ function downloadShareFile(file) {
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url),1000);
+}
+
+async function copyShareText(kind) {
+  const payload=sharePayload(kind);
+  if(!payload)return false;
+  const text=payload.text;
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch{
+    const helper=document.createElement("textarea");
+    helper.value=text;
+    helper.setAttribute("readonly","");
+    helper.style.position="fixed";
+    helper.style.opacity="0";
+    document.body.appendChild(helper);
+    helper.select();
+    const ok=document.execCommand("copy");
+    helper.remove();
+    return ok;
+  }
+}
+
+async function createSharePngBlob(kind) {
+  const payload=sharePayload(kind);
+  if(!payload)throw new Error("Selecciona qué deseas compartir.");
+  const canvas=document.createElement("canvas");
+  canvas.width=1080;
+  canvas.height=1920;
+  await drawShareArtwork(canvas,kind);
+  return await new Promise((resolve,reject)=>{
+    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("No se pudo crear la imagen.")),"image/png");
+  });
+}
+
+async function copyShareImageToClipboard(kind) {
+  if(!navigator.clipboard?.write || typeof ClipboardItem==="undefined")return false;
+  try{
+    const blob=await createSharePngBlob(kind);
+    await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+    return true;
+  }catch{
+    return false;
+  }
+}
+
+async function downloadShareImage(kind) {
+  const file=await createShareImageFile(kind);
+  downloadShareFile(file);
+  return file;
+}
+
+function setShareBrowserHint(text) {
+  if($("shareBrowserHint"))$("shareBrowserHint").textContent=text||"";
+}
+
+async function openShareOptions(kind) {
+  const payload=sharePayload(kind);
+  if(!payload)return;
+  state.shareSelectedArtworkKind=kind;
+  await renderShareArtworkPreview(kind);
+  const panel=$("shareBrowserPanel");
+  panel?.classList.remove("hidden");
+  setShareBrowserHint("Elige una opción. En móvil puedes usar Apps del dispositivo; en escritorio puedes usar WhatsApp Web, Facebook o preparar la imagen para otras redes.");
+  panel?.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+async function browserShare(kind,platform) {
+  const payload=sharePayload(kind);
+  if(!payload)return;
+  state.shareSelectedArtworkKind=kind;
+
+  let popup=null;
+  if(["whatsapp","facebook","tiktok"].includes(platform)){
+    popup=window.open("about:blank","_blank");
+  }
+
+  try{
+    if(platform==="whatsapp"){
+      const copiedImage=await copyShareImageToClipboard(kind);
+      if(!copiedImage)await downloadShareImage(kind);
+      const target="https://web.whatsapp.com/send?text="+encodeURIComponent(payload.text);
+      if(popup)popup.location.href=target; else window.open(target,"_blank");
+      setShareBrowserHint(copiedImage
+        ? "WhatsApp Web abierto. La imagen quedó copiada: pégala con Ctrl+V. El texto PIDE AQUÍ se abrió con el enlace."
+        : "WhatsApp Web abierto. La imagen se descargó para que la adjuntes y el texto PIDE AQUÍ se abrió con el enlace.");
+      return;
+    }
+
+    if(platform==="facebook"){
+      await downloadShareImage(kind);
+      const target="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(payload.url);
+      if(popup)popup.location.href=target; else window.open(target,"_blank");
+      setShareBrowserHint("Facebook abierto con el enlace. La imagen promocional se descargó para que puedas añadirla a la publicación si lo deseas.");
+      return;
+    }
+
+    if(platform==="tiktok"){
+      await downloadShareImage(kind);
+      await copyShareText(kind);
+      const target="https://www.tiktok.com/upload";
+      if(popup)popup.location.href=target; else window.open(target,"_blank");
+      setShareBrowserHint("TikTok abierto. La imagen promocional se descargó y el texto PIDE AQUÍ quedó copiado.");
+      return;
+    }
+
+    if(platform==="download"){
+      await downloadShareImage(kind);
+      setShareBrowserHint("Imagen promocional descargada.");
+      return;
+    }
+
+    if(platform==="copy"){
+      await copyShareText(kind);
+      setShareBrowserHint("Texto PIDE AQUÍ y enlace copiados.");
+      return;
+    }
+  }catch(e){
+    if(popup&&!popup.closed)popup.close();
+    message(e.message||"No se pudo preparar el contenido para compartir.","error");
+  }
 }
 
 async function nativeShare(kind) {
@@ -4020,6 +4146,24 @@ function cityLabel(cityId) {
   return [city.name, city.province, city.country].filter(Boolean).join(" — ");
 }
 
+function coverageLimitReached() {
+  const context=state.zoneContext;
+  if(!context)return false;
+  const max=context.max_zones;
+  return max!==null&&max!==undefined&&Number(context.current_zones||0)>=Number(max);
+}
+
+function coverageVisibleZones() {
+  const context=state.zoneContext;
+  const term=String($("coverageZoneSearch")?.value||"").trim().toLowerCase();
+  const onlyActive=state.coverageOnlyActive===true;
+  return (Array.isArray(context?.zones)?context.zones:[]).filter(zone=>{
+    if(onlyActive&&!zone.assigned)return false;
+    const haystack=[zone.code,zone.name,zone.city_name,zone.province].filter(Boolean).join(" ").toLowerCase();
+    return !term||haystack.includes(term);
+  });
+}
+
 function renderCoverageSummary() {
   const context = state.zoneContext;
   const container = $("coverageSummary");
@@ -4031,17 +4175,25 @@ function renderCoverageSummary() {
   }
 
   const max = context.max_zones === null || context.max_zones === undefined
-    ? "Sin límite configurado"
+    ? "Sin límite"
     : context.max_zones;
+  const activeZones=(context.zones||[]).filter(zone=>zone.assigned);
+  const visibleLocals=activeZones.reduce((sum,zone)=>sum+Number(zone.local_count||0),0);
+  const atLimit=coverageLimitReached();
 
-  container.innerHTML = `
-    <div><strong>Delivery:</strong> ${esc(context.delivery.name || "—")}</div>
-    <div><strong>Cantón:</strong> ${esc(context.city
-      ? [context.city.name, context.city.province].filter(Boolean).join(" — ")
-      : "Sin cantón asignado")}</div>
-    <div><strong>Zonas activas:</strong> ${esc(context.current_zones ?? 0)} / ${esc(max)}</div>
-    <div><strong>Selección operativa:</strong> ${context.selection_reset_pending ? "Requiere nueva selección por cambio de plan" : "Lista"}</div>
-  `;
+  container.innerHTML =
+    '<div class="coverage-summary-grid">'+
+      '<div><span class="muted">DELIVERY</span><strong>'+esc(context.delivery.name||"—")+'</strong></div>'+
+      '<div><span class="muted">Cantón</span><strong>'+esc(context.city?[context.city.name,context.city.province].filter(Boolean).join(" — "):"Sin cantón")+'</strong></div>'+
+      '<div><span class="muted">Zonas activas</span><strong>'+esc(context.current_zones??0)+' / '+esc(max)+'</strong></div>'+
+      '<div><span class="muted">Locales visibles</span><strong>'+esc(visibleLocals)+'</strong></div>'+
+    '</div>'+
+    (atLimit&&state.role==="DELIVERY_ADMIN"
+      ? '<div class="workspace-warning" style="margin-top:10px"><strong>Límite del plan alcanzado.</strong> Para activar otra zona, primero desactiva una de las zonas actuales. Puedes seguir visualizando todas en el mapa.</div>'
+      : '')+
+    (context.selection_reset_pending
+      ? '<div class="workspace-warning" style="margin-top:10px">Tu plan cambió: vuelve a seleccionar las zonas que deseas operar dentro del nuevo límite.</div>'
+      : '');
 }
 
 function renderCoverageZones() {
@@ -4049,16 +4201,10 @@ function renderCoverageZones() {
   const container = $("coverageZonesList");
   if (!container) return;
 
-  if (state.role === "MASTER") {
-    container.innerHTML = '<div class="muted">La selección de zonas operativas corresponde al DELIVERY_ADMIN. MASTER define la capacidad máxima desde el plan comercial.</div>';
-    return;
-  }
-
   if (!context?.delivery) {
     container.innerHTML = '<div class="muted">Selecciona un DELIVERY.</div>';
     return;
   }
-
   if (!context.city) {
     container.innerHTML = state.role === "MASTER"
       ? '<div class="message error">Este DELIVERY todavía no tiene cantón. Asígnalo desde la configuración MASTER.</div>'
@@ -4066,49 +4212,311 @@ function renderCoverageZones() {
     return;
   }
 
-  const zones = Array.isArray(context.zones) ? context.zones : [];
-  if (!zones.length) {
-    container.innerHTML = state.role === "MASTER"
-      ? '<div class="muted">No existen zonas activas. Créala en el catálogo de zonas.</div>'
-      : '<div class="muted">HTPWEB todavía no ha creado zonas activas.</div>';
+  const zones=coverageVisibleZones();
+  if(!zones.length){
+    container.innerHTML='<div class="muted">No hay zonas que coincidan con el filtro.</div>';
     return;
   }
 
-  const canAssign = state.role === "DELIVERY_ADMIN";
+  const canAssign=state.role==="DELIVERY_ADMIN";
+  const limitReached=coverageLimitReached();
 
-  container.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Zona</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${zones.map(zone => `
-            <tr>
-              <td><strong>${esc(zone.code || "")} — ${esc(zone.name)}</strong>${zone.city_name ? `<div class="muted">Referencia: ${esc(zone.city_name)}${zone.province ? " · "+esc(zone.province) : ""}</div>` : ""}</td>
-              <td>${zone.assigned ? "Asignada" : "Disponible"}</td>
-              <td>
-                <button
-                  class="${zone.assigned ? "btn-danger" : "btn-primary"}"
-                  onclick="toggleDeliveryZone('${zone.id}', ${zone.assigned ? "false" : "true"})"
-                  ${canAssign ? "" : "disabled"}
-                >
-                  ${state.role === "DELIVERY_ADMIN" ? (zone.assigned ? "Desactivar" : "Activar") : (zone.assigned ? "Seleccionada por DELIVERY" : "Disponible")}
-                </button>
-              </td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-    ${state.role === "DELIVERY_ADMIN" && context.selection_reset_pending
-      ? '<p class="workspace-warning" style="margin-top:10px">Tu plan cambió: vuelve a seleccionar las zonas que deseas operar dentro del nuevo límite.</p>'
-      : ""}
-  `;
+  container.innerHTML=zones.map(zone=>{
+    const selected=zone.id===state.coverageSelectedZoneId;
+    const activateBlocked=canAssign&&!zone.assigned&&limitReached;
+    return '<article class="coverage-zone-card '+(selected?'is-selected':'')+'" data-coverage-zone="'+esc(zone.id)+'">'+
+      '<div class="row between" style="gap:8px">'+
+        '<div><strong>'+esc((zone.code||"")+" — "+zone.name)+'</strong>'+
+        '<div class="muted">'+esc(zone.local_count||0)+' LOCAL · '+esc(zone.city_name||"")+'</div></div>'+
+        '<span class="badge">'+(zone.assigned?'Activa':'Disponible')+'</span>'+
+      '</div>'+
+      '<div class="row" style="margin-top:10px;gap:8px">'+
+        '<button type="button" class="'+(zone.assigned?'btn-danger':'btn-primary')+'" data-coverage-toggle="'+esc(zone.id)+'" '+
+        ((canAssign&&!activateBlocked)?'':'disabled')+'>'+
+          (zone.assigned?'Desactivar':'Activar')+
+        '</button>'+
+        '<button type="button" class="btn-muted" data-coverage-focus="'+esc(zone.id)+'">Ver en mapa</button>'+
+      '</div>'+
+      (activateBlocked?'<div class="muted" style="margin-top:7px">Límite del plan alcanzado.</div>':'')+
+    '</article>';
+  }).join("");
+
+  container.querySelectorAll("[data-coverage-zone]").forEach(card=>{
+    card.onclick=event=>{
+      if(event.target.closest("button"))return;
+      selectCoverageZone(card.dataset.coverageZone,true);
+    };
+  });
+  container.querySelectorAll("[data-coverage-focus]").forEach(button=>{
+    button.onclick=()=>selectCoverageZone(button.dataset.coverageFocus,true);
+  });
+  container.querySelectorAll("[data-coverage-toggle]").forEach(button=>{
+    button.onclick=()=> {
+      const zone=(state.zoneContext?.zones||[]).find(z=>z.id===button.dataset.coverageToggle);
+      if(zone)toggleDeliveryZone(zone.id,!zone.assigned);
+    };
+  });
+}
+
+async function ensureCoverageMap() {
+  if(state.coverageMap||!$("coverageMap"))return;
+  state.coverageMap=await ZoneMaps.create("coverageMap");
+}
+
+function coverageZoneColor(zone) {
+  if(zone.id===state.coverageSelectedZoneId)return "#2563eb";
+  return zone.assigned?"#e53935":"#94a3b8";
+}
+
+function renderCoverageMapDetail() {
+  const box=$("coverageMapDetail");
+  if(!box)return;
+  const zone=(state.zoneContext?.zones||[]).find(z=>z.id===state.coverageSelectedZoneId);
+  if(!zone){
+    box.textContent="Selecciona una zona en la lista o en el mapa.";
+    return;
+  }
+  box.innerHTML='<strong>'+esc((zone.code||"")+" — "+zone.name)+'</strong>'+
+    '<div style="margin-top:5px">'+(zone.assigned?'Zona activa':'Zona disponible')+
+    ' · '+esc(zone.local_count||0)+' LOCAL</div>';
+}
+
+function renderCoverageMap(fitAll=false) {
+  const map=state.coverageMap;
+  if(!map)return;
+  map.clear();
+  const zones=coverageVisibleZones().filter(zone=>Array.isArray(zone.boundary)&&zone.boundary.length>=3);
+
+  zones.forEach(zone=>{
+    const selected=zone.id===state.coverageSelectedZoneId;
+    map.polygon(zone.boundary,{
+      color:coverageZoneColor(zone),
+      fillColor:coverageZoneColor(zone),
+      weight:selected?4:2,
+      fillOpacity:zone.assigned?.22:.08,
+      opacity:1,
+      interactive:true
+    },()=>selectCoverageZone(zone.id,false));
+  });
+
+  renderCoverageMapDetail();
+  if(fitAll&&zones.length)map.fit(zones.map(zone=>zone.boundary),30);
+  map.resize();
+}
+
+function selectCoverageZone(zoneId,focus=false) {
+  const zone=(state.zoneContext?.zones||[]).find(item=>item.id===zoneId);
+  if(!zone)return;
+  state.coverageSelectedZoneId=zoneId;
+  renderCoverageZones();
+  renderCoverageMap(false);
+  if(focus&&Array.isArray(zone.boundary)&&zone.boundary.length>=3){
+    state.coverageMap?.fit([zone.boundary],42);
+  }
+}
+
+function toggleCoverageOnlyActive() {
+  state.coverageOnlyActive=!state.coverageOnlyActive;
+  const button=$("coverageOnlyActiveBtn");
+  if(button){
+    button.className="selection-button "+(state.coverageOnlyActive?"is-selected":"");
+    button.setAttribute("aria-pressed",String(state.coverageOnlyActive));
+  }
+  renderCoverageZones();
+  renderCoverageMap(true);
+}
+
+async function loadCoverage() {
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+
+  const select = $("coverageDelivery");
+  const previous = select.value;
+  const available = state.role === "MASTER"
+    ? state.deliveries
+    : state.deliveries.filter(delivery => delivery.active !== false);
+
+  select.innerHTML = available.length
+    ? available.map(delivery => '<option value="'+esc(delivery.id)+'">'+esc(delivery.name)+'</option>').join("")
+    : '<option value="">No hay DELIVERY disponible</option>';
+
+  if (previous && available.some(delivery => delivery.id === previous)) select.value = previous;
+
+  if (state.role === "MASTER") {
+    const activeCities = state.cities.filter(city => city.active);
+    $("coverageCity").innerHTML = activeCities.length
+      ? activeCities.map(city => '<option value="'+city.id+'">'+esc(cityLabel(city.id))+'</option>').join("")
+      : '<option value="">Primero crea una ciudad</option>';
+    await loadZoneCatalog();
+  }
+
+  await loadCoverageContext();
+}
+
+async function loadCoverageContext() {
+  const delivery = coverageDeliveryRecord();
+
+  if (!delivery) {
+    state.zoneContext = null;
+    renderCoverageSummary();
+    renderCoverageZones();
+    if(state.coverageMap)renderCoverageMap(false);
+    return;
+  }
+
+  try {
+    state.zoneContext = await rpc("delivery_zone_context", {
+      p_delivery_id: delivery.id
+    });
+
+    if (state.role === "MASTER" && state.zoneContext?.delivery?.city_id && $("coverageCity")) {
+      $("coverageCity").value = state.zoneContext.delivery.city_id;
+    }
+
+    const zones=state.zoneContext?.zones||[];
+    if(!zones.some(zone=>zone.id===state.coverageSelectedZoneId)){
+      state.coverageSelectedZoneId=zones.find(zone=>zone.assigned)?.id||zones[0]?.id||null;
+    }
+
+    renderCoverageSummary();
+    renderCoverageZones();
+    await ensureCoverageMap();
+    renderCoverageMap(true);
+  } catch (e) {
+    state.zoneContext = null;
+    renderCoverageSummary();
+    $("coverageZonesList").innerHTML = '<div class="message error">'+esc(e.message || "No se pudo cargar la cobertura.")+'</div>';
+  }
+}
+
+async function toggleDeliveryZone(zoneId, active) {
+  const delivery = coverageDeliveryRecord();
+  if (!delivery) return;
+
+  try {
+    if (state.role !== "DELIVERY_ADMIN") {
+      throw new Error("MASTER define el territorio y el plan; el DELIVERY selecciona sus zonas operativas.");
+    }
+    state.coverageSelectedZoneId=zoneId;
+    await rpc("delivery_set_zone_choice", {
+      p_delivery_id: delivery.id,
+      p_zone_id: zoneId,
+      p_active: Boolean(active)
+    });
+    message(active ? "Zona activada para operar." : "Zona desactivada.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo modificar la cobertura.", "error");
+  }
+}
+
+async function setCoverageDeliveryCity() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    const cityId = $("coverageCity").value || null;
+
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+    if (!cityId) throw new Error("Selecciona un cantón.");
+
+    await rpc("master_set_delivery_city", {
+      p_delivery_id: delivery.id,
+      p_city_id: cityId
+    });
+
+    message("Cantón del DELIVERY actualizado.");
+    await Promise.all([loadScopes(), loadDeliveriesModule()]);
+    await loadCoverage();
+  } catch (e) {
+    message(e.message || "No se pudo asignar la ciudad.", "error");
+  }
+}
+
+async function setCoverageLimit() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    const raw = $("coverageMaxZones")?.value?.trim?.()||"";
+
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+    if (raw === "") throw new Error("Escribe el límite máximo de zonas.");
+
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0) throw new Error("El límite debe ser un número entero igual o mayor que 0.");
+
+    await rpc("master_set_delivery_limit", {
+      p_delivery_id: delivery.id,
+      p_limit_code: "max_zones",
+      p_max_value: value
+    });
+
+    message("Límite de zonas actualizado.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo guardar el límite.", "error");
+  }
+}
+
+async function enableZonesManagement() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const delivery = coverageDeliveryRecord();
+    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+
+    await rpc("master_set_delivery_capability", {
+      p_delivery_id: delivery.id,
+      p_capability_code: "zones.manage",
+      p_enabled: true
+    });
+
+    message("Gestión de zonas habilitada para este DELIVERY.");
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo habilitar la gestión de zonas.", "error");
+  }
+}
+
+function editZone(zoneId) {
+  if (state.role !== "MASTER") return;
+
+  const zone = state.zonesCatalog.find(item => item.id === zoneId);
+  if (!zone) return;
+
+  $("zoneEditId").value = zone.id;
+  $("zoneEditCity").value = zone.city_id;
+  $("zoneEditName").value = zone.name || "";
+  $("zoneEditActive").value = String(zone.active);
+  $("saveZoneBtn").textContent = "Actualizar zona";
+  $("zoneEditName").focus();
+}
+
+async function saveZone() {
+  if (state.role !== "MASTER") return;
+
+  try {
+    const zoneId = $("zoneEditId").value || null;
+    const cityId = $("zoneEditCity").value || null;
+    const name = $("zoneEditName").value.trim();
+
+    if (!cityId) throw new Error("Selecciona una ciudad.");
+    if (!name) throw new Error("Escribe el nombre de la zona.");
+
+    await rpc("master_save_zone", {
+      p_zone_id: zoneId,
+      p_city_id: cityId,
+      p_name: name,
+      p_active: $("zoneEditActive").value === "true"
+    });
+
+    message(zoneId ? "Zona actualizada." : "Zona creada.");
+    clearZoneForm();
+    await loadZoneCatalog();
+    await loadCoverageContext();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la zona.", "error");
+  }
 }
 
 function clearZoneForm() {
@@ -9247,7 +9655,13 @@ function bindEvents() {
   if ($("shareDelivery")) $("shareDelivery").onchange = loadShareLocals;
   if ($("shareSearch")) $("shareSearch").oninput = renderShareLocals;
   if ($("shareProductSearch")) $("shareProductSearch").oninput = renderShareProducts;
-  if ($("shareLocalNativeBtn")) $("shareLocalNativeBtn").onclick = () => nativeShare("local");
+  if ($("shareLocalNativeBtn")) $("shareLocalNativeBtn").onclick = () => openShareOptions("local");
+  if ($("shareNativeDeviceBtn")) $("shareNativeDeviceBtn").onclick = () => nativeShare(state.shareSelectedArtworkKind||"local");
+  if ($("shareWhatsappWebBtn")) $("shareWhatsappWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","whatsapp");
+  if ($("shareFacebookWebBtn")) $("shareFacebookWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","facebook");
+  if ($("shareTiktokWebBtn")) $("shareTiktokWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","tiktok");
+  if ($("shareDownloadImageBtn")) $("shareDownloadImageBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","download");
+  if ($("shareCopyTextBtn")) $("shareCopyTextBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","copy");
   if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
@@ -9271,6 +9685,9 @@ function bindEvents() {
   if ($("saveZoneDetailedBtn")) $("saveZoneDetailedBtn").onclick = () => saveZoneDetailed().catch(e=>message(e.message||"No se pudo guardar la matriz de zonas.","error"));
   if ($("activateZoneDetailedBtn")) $("activateZoneDetailedBtn").onclick = () => activateFeeMode("ZONE");
   if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
+  if ($("coverageZoneSearch")) $("coverageZoneSearch").oninput = () => { renderCoverageZones(); renderCoverageMap(false); };
+  if ($("coverageShowAllBtn")) $("coverageShowAllBtn").onclick = () => renderCoverageMap(true);
+  if ($("coverageOnlyActiveBtn")) $("coverageOnlyActiveBtn").onclick = toggleCoverageOnlyActive;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
   $("saveZoneBtn").onclick = saveZone;
   $("clearZoneBtn").onclick = clearZoneForm;
