@@ -8192,8 +8192,55 @@ async function createNetworkReferral(){
     await loadCustomerNetwork();
   }catch(e){message(e.message,"error");}
 }
-const securityState={context:null,points:[],rules:[],map:null};
+const securityState={context:null,points:[],rules:[],map:null,plan:null};
 function securityDeliveryId(){return $("securityDelivery")?.value||state.deliveries[0]?.id||null;}
+
+function restrictedAreaLimitReached(){
+  const used=Number(securityState.context?.used||0);
+  const limit=securityState.context?.limit;
+  return limit!==null&&limit!==undefined&&Number.isFinite(Number(limit))&&used>=Number(limit);
+}
+
+function restrictedAreaIsEditing(){
+  return Boolean($("restrictedAreaId")?.value);
+}
+
+function updateRestrictedAreaLimitUi(){
+  const context=securityState.context||{};
+  const plan=securityState.plan?.current||{};
+  const planName=plan.plan_name||"Sin plan";
+  const used=Number(context.used||0);
+  const limit=context.limit;
+  const schedule=context.schedule_enabled===true;
+  const reached=restrictedAreaLimitReached();
+  const editing=restrictedAreaIsEditing();
+
+  if($("securityPlanNotice")){
+    $("securityPlanNotice").className=reached?"workspace-warning":"workspace-note";
+    $("securityPlanNotice").innerHTML=reached
+      ? '<strong>Plan: '+esc(planName)+'</strong> · Áreas activas: <strong>'+esc(used)+' / '+esc(limit)+'</strong> · <strong>Límite alcanzado</strong> · Por horario: '+(schedule?"Sí":"No")+
+        '<div style="margin-top:6px">Ya utilizaste todas las áreas restringidas permitidas por tu plan. Puedes editar o desactivar una existente para liberar un cupo.</div>'
+      : '<strong>Plan: '+esc(planName)+'</strong> · Áreas activas: '+esc(used)+' / '+esc(limit??0)+' · Disponibles: '+esc(Math.max(0,Number(limit||0)-used))+' · Por horario: '+(schedule?"Sí":"No");
+  }
+
+  const locked=reached&&!editing;
+  $("restrictedAreaEditorBody")?.classList.toggle("hidden",locked);
+  $("restrictedAreaLimitNotice")?.classList.toggle("hidden",!locked);
+
+  if($("restrictedAreaEditorTitle")){
+    $("restrictedAreaEditorTitle").textContent=editing?"Editar área restringida":"Nueva área restringida";
+  }
+
+  if(locked&&$("restrictedAreaLimitNotice")){
+    $("restrictedAreaLimitNotice").innerHTML=
+      '<strong>No puedes crear otra área restringida.</strong>'+
+      '<div style="margin-top:6px">Tu plan '+esc(planName)+' permite '+esc(limit)+' áreas activas y ya tienes '+esc(used)+'. Edita o desactiva una de las áreas configuradas abajo para liberar un cupo.</div>';
+  }
+
+  if(!locked&&securityState.map){
+    setTimeout(()=>securityState.map?.resize(),0);
+  }
+}
 function renderRestrictedAreaMap(){
   if(!securityState.map)return;
   securityState.map.clear();
@@ -8274,19 +8321,98 @@ function renderRestrictedAreaRules(){
 }
 function collectRestrictedRules(){return syncRestrictedAreaRulesFromDom().map(r=>({day_of_week:Number(r.day_of_week),start_time:String(r.start_time||"19:00").slice(0,5),end_time:String(r.end_time||"06:00").slice(0,5)}));}
 function clearRestrictedArea(){
-  if($("restrictedAreaId"))$("restrictedAreaId").value="";if($("restrictedAreaName"))$("restrictedAreaName").value="";if($("restrictedAreaReason"))$("restrictedAreaReason").value="";if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";securityState.points=[];securityState.rules=[];renderRestrictedAreaRules();renderRestrictedAreaMap();
+  if($("restrictedAreaId"))$("restrictedAreaId").value="";
+  if($("restrictedAreaName"))$("restrictedAreaName").value="";
+  if($("restrictedAreaReason"))$("restrictedAreaReason").value="";
+  if($("restrictedAreaMode"))$("restrictedAreaMode").value="PERMANENT";
+  if($("restrictedAreaActive"))$("restrictedAreaActive").value="true";
+  securityState.points=[];
+  securityState.rules=[];
+  renderRestrictedAreaRules();
+  renderRestrictedAreaMap();
+  updateRestrictedAreaLimitUi();
 }
 function renderRestrictedAreasList(){
-  const box=$("restrictedAreasList");if(!box)return;const items=securityState.context?.areas||[];
-  box.innerHTML=items.length?'<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode)+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+'</tbody></table></div>':'<div class="muted">No hay áreas restringidas configuradas.</div>';
-  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{const a=items.find(x=>x.id===b.dataset.secEdit);if(!a)return;$("restrictedAreaId").value=a.id;$("restrictedAreaZone").value=a.zone_id;$("restrictedAreaName").value=a.name||"";$("restrictedAreaReason").value=a.reason||"";$("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";$("restrictedAreaActive").value=String(a.active);securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));securityState.rules=(a.rules||[]).map(r=>({...r}));renderRestrictedAreaRules();renderRestrictedAreaMap();if(securityState.points.length)securityState.map?.center(securityState.points[0],15);});
+  const box=$("restrictedAreasList");if(!box)return;
+  const items=securityState.context?.areas||[];
+  box.innerHTML=items.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Área</th><th>Zona</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>'+
+      items.map(a=>'<tr><td><strong>'+esc(a.name)+'</strong><div class="muted">'+esc(a.reason||"")+'</div></td><td>'+esc((a.zone_code||"")+" "+(a.zone_name||""))+'</td><td>'+esc(a.restriction_mode==="SCHEDULE"?"Por horario":"Permanente")+'</td><td>'+(a.active?"Activa":"Inactiva")+'</td><td><button class="btn-muted" type="button" data-sec-edit="'+esc(a.id)+'">Editar</button></td></tr>').join("")+
+      '</tbody></table></div>'
+    : '<div class="muted">No hay áreas restringidas configuradas.</div>';
+
+  box.querySelectorAll("[data-sec-edit]").forEach(b=>b.onclick=()=>{
+    const a=items.find(x=>x.id===b.dataset.secEdit);
+    if(!a)return;
+    $("restrictedAreaId").value=a.id;
+    $("restrictedAreaZone").value=a.zone_id;
+    $("restrictedAreaName").value=a.name||"";
+    $("restrictedAreaReason").value=a.reason||"";
+    $("restrictedAreaMode").value=a.restriction_mode||"PERMANENT";
+    $("restrictedAreaActive").value=String(a.active);
+    securityState.points=JSON.parse(JSON.stringify(a.boundary||[]));
+    securityState.rules=(a.rules||[]).map(r=>({...r}));
+    updateRestrictedAreaLimitUi();
+    renderRestrictedAreaRules();
+    renderRestrictedAreaMap();
+    if(securityState.points.length)securityState.map?.center(securityState.points[0],15);
+    securityState.map?.resize();
+    $("restrictedAreaEditorTitle")?.scrollIntoView({behavior:"smooth",block:"start"});
+  });
 }
 async function loadRestrictedAreas(){
-  if(state.role!=="DELIVERY_ADMIN")return;const sel=$("securityDelivery");if(!sel)return;const previous=sel.value;sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;const id=securityDeliveryId();if(!id)return;
-  try{const [context,plan]=await Promise.all([rpc("delivery_restricted_area_context",{p_delivery_id:id}),rpc("delivery_plan_snapshot",{p_delivery_id:id})]);securityState.context=context||{};$("restrictedAreaZone").innerHTML=(context?.zones||[]).map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>').join("");const ent=plan?.current?.entitlements||{};const manage=ent["restricted_areas.manage"]===true,schedule=ent["restricted_areas.schedule"]===true;$("securityPlanNotice").innerHTML='<strong>Plan: '+esc(plan?.current?.plan_name||"Sin plan")+'</strong> · Áreas: '+esc(context?.used||0)+' / '+esc(context?.limit??0)+' · Por horario: '+(schedule?"Sí":"No");$("restrictedAreaSave").disabled=!manage;$("restrictedAreaMode").disabled=!manage;if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";renderRestrictedAreaRules();renderRestrictedAreasList();if(!securityState.map){securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{securityState.points.push([lat,lng]);renderRestrictedAreaMap();});}securityState.map.resize();renderRestrictedAreaMap();}catch(e){message(e.message||"No se pudo cargar Seguridad.","error");}
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const sel=$("securityDelivery");
+  if(!sel)return;
+  const previous=sel.value;
+  sel.innerHTML=state.deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+  if(previous&&state.deliveries.some(d=>d.id===previous))sel.value=previous;
+  const id=securityDeliveryId();
+  if(!id)return;
+
+  try{
+    const [context,plan]=await Promise.all([
+      rpc("delivery_restricted_area_context",{p_delivery_id:id}),
+      rpc("delivery_plan_snapshot",{p_delivery_id:id})
+    ]);
+    securityState.context=context||{};
+    securityState.plan=plan||null;
+
+    $("restrictedAreaZone").innerHTML=(context?.zones||[])
+      .map(z=>'<option value="'+esc(z.id)+'">'+esc(z.code+" "+z.name)+'</option>')
+      .join("");
+
+    const ent=plan?.current?.entitlements||{};
+    const manage=ent["restricted_areas.manage"]===true;
+    const schedule=ent["restricted_areas.schedule"]===true;
+
+    $("restrictedAreaSave").disabled=!manage;
+    $("restrictedAreaMode").disabled=!manage;
+    if(!schedule&&$("restrictedAreaMode").value==="SCHEDULE")$("restrictedAreaMode").value="PERMANENT";
+
+    renderRestrictedAreaRules();
+    renderRestrictedAreasList();
+
+    if(!securityState.map){
+      securityState.map=await ZoneMaps.create("restrictedAreaMap",(lat,lng)=>{
+        if(restrictedAreaLimitReached()&&!restrictedAreaIsEditing())return;
+        securityState.points.push([lat,lng]);
+        renderRestrictedAreaMap();
+      });
+    }
+
+    updateRestrictedAreaLimitUi();
+    securityState.map.resize();
+    renderRestrictedAreaMap();
+  }catch(e){
+    message(e.message||"No se pudo cargar Seguridad.","error");
+  }
 }
 async function saveRestrictedArea(){
-  try{const deliveryId=securityDeliveryId();if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
+  try{
+    const deliveryId=securityDeliveryId();
+    if(restrictedAreaLimitReached()&&!restrictedAreaIsEditing())throw new Error("Has alcanzado el límite de áreas restringidas de tu plan.");
+    if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
 }
 function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
