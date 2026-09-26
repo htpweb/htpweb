@@ -26,6 +26,7 @@ const state = {
   schedules: [],
   shareLocals: [],
   shareProducts: [],
+  shareGallery: [],
   advertisements: [],
   advertisementDeliveries: [],
   advertisementLocals: [],
@@ -1830,13 +1831,7 @@ function currentShareDelivery() {
 }
 
 function currentShareLocal() {
-  const id = $("shareLocal")?.value || "";
-  return state.shareLocals.find(local => local.id === id) || null;
-}
-
-function currentShareProduct() {
-  const id = $("shareProduct")?.value || "";
-  return state.shareProducts.find(product => product.id === id) || null;
+  return state.shareLocals.find(local => local.id === state.shareSelectedLocalId) || null;
 }
 
 function buildSharedLocalUrl(localId = null) {
@@ -1845,73 +1840,32 @@ function buildSharedLocalUrl(localId = null) {
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
   if (!delivery?.slug || !local?.id) return "";
-
   const url = new URL("local.html", publicAppRootUrl());
   url.searchParams.set("delivery", delivery.slug);
   url.searchParams.set("local", local.id);
   return url.toString();
 }
 
-function buildSharedProductUrl(productId = null) {
-  const delivery = currentShareDelivery();
-  const local = currentShareLocal();
-  const product = productId
-    ? state.shareProducts.find(item => item.id === productId)
-    : currentShareProduct();
-  if (!delivery?.slug || !local?.id || !product?.id) return "";
-
-  const url = new URL("local.html", publicAppRootUrl());
-  url.searchParams.set("delivery", delivery.slug);
-  url.searchParams.set("local", local.id);
-  url.searchParams.set("product", product.id);
-  return url.toString();
+function shareLocalCategory(local) {
+  return local?.business_category_name || "Otros";
 }
 
-function buildSharePreviewUrl(kind, itemId = null) {
-  const delivery = currentShareDelivery();
-  const local = currentShareLocal();
-  const product = kind === "product"
-    ? (itemId ? state.shareProducts.find(item => item.id === itemId) : currentShareProduct())
-    : null;
-
-  if (!delivery?.slug || !local?.id) return "";
-  if (kind === "product" && !product?.id) return "";
-
-  const url = new URL("https://hwfloywzqlgqieonuswl.supabase.co/functions/v1/share-preview");
-  url.searchParams.set("d", delivery.slug);
-  url.searchParams.set("l", local.id);
-  if (product?.id) url.searchParams.set("p", product.id);
-  return url.toString();
-}
-
-function shareCategoryName(local) {
-  if (!local?.business_category_id) return "Otros";
-  return state.shareBusinessCategories?.find(cat => cat.id === local.business_category_id)?.name || "Otros";
-}
-
-function shareLocalVisualUrl(local) {
-  const delivery = state.shareDeliveryDetails || {};
-  return local?.banner_url || local?.logo_url || local?.first_product_image_url || delivery.logo_url || "";
+function shareLocalCover(local) {
+  return local?.first_gallery_image_url || local?.banner_url || local?.logo_url || "";
 }
 
 function renderShareCategoryFilters() {
-  const box = $("shareCategoryFilters");
-  if (!box) return;
-
-  const present = new Set((state.shareLocals || []).map(local => local.business_category_id).filter(Boolean));
-  const categories = (state.shareBusinessCategories || []).filter(cat => present.has(cat.id));
-  const selected = state.shareCategoryFilter || "ALL";
-
-  box.innerHTML = [
+  const box=$("shareCategoryFilters");
+  if(!box)return;
+  const categories=[...new Set((state.shareLocals||[]).map(shareLocalCategory).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  const selected=state.shareCategoryFilter||"ALL";
+  box.innerHTML=[
     '<button type="button" class="selection-button '+(selected==="ALL"?"is-selected":"")+'" data-share-category="ALL">Todos</button>',
-    ...categories.map(cat =>
-      '<button type="button" class="selection-button '+(selected===cat.id?"is-selected":"")+'" data-share-category="'+esc(cat.id)+'">'+esc(cat.name)+'</button>'
-    )
+    ...categories.map(name=>'<button type="button" class="selection-button '+(selected===name?"is-selected":"")+'" data-share-category="'+esc(name)+'">'+esc(name)+'</button>')
   ].join("");
-
-  box.querySelectorAll("[data-share-category]").forEach(button => {
-    button.onclick = () => {
-      state.shareCategoryFilter = button.dataset.shareCategory;
+  box.querySelectorAll("[data-share-category]").forEach(button=>{
+    button.onclick=()=>{
+      state.shareCategoryFilter=button.dataset.shareCategory;
       renderShareCategoryFilters();
       renderShareLocals();
     };
@@ -1919,767 +1873,205 @@ function renderShareCategoryFilters() {
 }
 
 function shareVisualFallback(label) {
-  return '<div class="share-visual-fallback"><span>'+esc((label || "HTPWEB").slice(0,1).toUpperCase())+'</span></div>';
+  return '<div class="share-visual-fallback"><span>'+esc((label||"L").slice(0,1).toUpperCase())+'</span></div>';
 }
 
 function renderShareLocals() {
-  const box = $("shareLocalsGrid");
-  if (!box) return;
-
-  const term = String($("shareSearch")?.value || "").trim().toLowerCase();
-  const category = state.shareCategoryFilter || "ALL";
-  const selectedId = $("shareLocal")?.value || "";
-
-  const filtered = (state.shareLocals || []).filter(local => {
-    const categoryName = shareCategoryName(local);
-    const matchesCategory = category === "ALL" || local.business_category_id === category;
-    const haystack = [local.name, local.description, categoryName].filter(Boolean).join(" ").toLowerCase();
-    return matchesCategory && (!term || haystack.includes(term));
+  const box=$("shareLocalsGrid");
+  if(!box)return;
+  const term=String($("shareSearch")?.value||"").trim().toLowerCase();
+  const category=state.shareCategoryFilter||"ALL";
+  const filtered=(state.shareLocals||[]).filter(local=>{
+    const categoryName=shareLocalCategory(local);
+    const matchCategory=category==="ALL"||categoryName===category;
+    const text=[local.name,categoryName,local.description].filter(Boolean).join(" ").toLowerCase();
+    return matchCategory&&(!term||text.includes(term));
   });
-
-  if ($("shareLocalCount")) {
-    $("shareLocalCount").textContent = filtered.length + " LOCAL" + (filtered.length === 1 ? "" : " disponibles");
-  }
-
-  box.innerHTML = filtered.length
-    ? filtered.map(local => {
-        const selected = local.id === selectedId;
-        const image = shareLocalVisualUrl(local);
-        const url = buildSharedLocalUrl(local.id);
-        return '<article class="share-local-card '+(selected?"is-selected":"")+'" data-share-local-card="'+esc(local.id)+'">'+
-          '<div class="share-local-banner">'+
-            (image ? '<img src="'+esc(image)+'" alt="" loading="lazy">' : shareVisualFallback(local.name))+
-            (local.logo_url ? '<img class="share-local-logo" src="'+esc(local.logo_url)+'" alt="" loading="lazy">' : '')+
-          '</div>'+
-          '<div class="share-local-card-body">'+
-            '<div><strong>'+esc(local.name)+'</strong><div class="muted">'+esc(shareCategoryName(local))+'</div></div>'+
-            '<div class="row" style="gap:7px">'+
-              '<a class="share-order-link btn-muted" href="'+esc(url)+'" target="_blank" rel="noopener">PIDE AQUÍ</a>'+
-              '<button type="button" class="btn-primary" data-share-local-native="'+esc(local.id)+'">Compartir</button>'+
-            '</div>'+
-          '</div>'+
-        '</article>';
-      }).join("")
-    : '<div class="overview-empty">No hay LOCAL que coincidan con la búsqueda.</div>';
-
-  box.querySelectorAll("[data-share-local-card]").forEach(card => {
-    card.onclick = event => {
-      if (event.target.closest("button,a")) return;
-      selectShareLocal(card.dataset.shareLocalCard);
+  if($("shareLocalCount"))$("shareLocalCount").textContent=filtered.length+" LOCAL"+(filtered.length===1?"":" disponibles");
+  box.innerHTML=filtered.length?filtered.map(local=>{
+    const cover=shareLocalCover(local);
+    const count=Number(local.gallery_count||0);
+    return '<article class="share-local-card" data-share-open-local="'+esc(local.id)+'">'+
+      '<div class="share-local-banner">'+(cover?'<img src="'+esc(cover)+'" alt="" loading="lazy">':shareVisualFallback(local.name))+'</div>'+
+      '<div class="share-local-card-body">'+
+        '<div><strong>'+esc(local.name)+'</strong><div class="muted">'+esc(shareLocalCategory(local))+'</div>'+
+        '<div class="muted">'+count+' foto'+(count===1?"":"s")+' en Galería</div></div>'+
+        '<button type="button" class="btn-primary" data-share-open-gallery="'+esc(local.id)+'">Ver Galería</button>'+
+      '</div>'+
+    '</article>';
+  }).join(""):'<div class="overview-empty">No hay LOCAL que coincidan con la búsqueda.</div>';
+  box.querySelectorAll("[data-share-open-local]").forEach(card=>{
+    card.onclick=e=>{
+      if(e.target.closest("button"))return;
+      openShareLocalGallery(card.dataset.shareOpenLocal);
     };
   });
-  box.querySelectorAll("[data-share-local-native]").forEach(button => {
-    button.onclick = async event => {
-      event.stopPropagation();
-      await selectShareLocal(button.dataset.shareLocalNative);
-      await openShareOptions("local");
+  box.querySelectorAll("[data-share-open-gallery]").forEach(button=>{
+    button.onclick=e=>{
+      e.stopPropagation();
+      openShareLocalGallery(button.dataset.shareOpenGallery);
     };
   });
-}
-
-function renderSelectedShareLocal() {
-  const local = currentShareLocal();
-  const card = $("shareSelectedLocalCard");
-  const productsCard = $("shareProductsCard");
-  if (!card || !productsCard) return;
-
-  const ready = Boolean(local);
-  card.classList.toggle("hidden", !ready);
-  productsCard.classList.toggle("hidden", !ready);
-  if (!ready) return;
-
-  const hero = $("shareSelectedLocalHero");
-  const image = shareLocalVisualUrl(local);
-  hero.innerHTML = image
-    ? '<img src="'+esc(image)+'" alt="" class="share-selected-local-image">'
-    : shareVisualFallback(local.name);
-
-  $("shareSelectedLocalName").textContent = local.name || "LOCAL";
-  $("shareSelectedLocalMeta").textContent = shareCategoryName(local);
-  const url = buildSharedLocalUrl();
-  $("shareLocalOrderLink").href = url || "#";
-}
-
-async function selectShareLocal(localId) {
-  const select = $("shareLocal");
-  if (!select || !state.shareLocals.some(local => local.id === localId)) return;
-  select.value = localId;
-  state.shareSelectedArtworkKind = "local";
-  renderShareLocals();
-  renderSelectedShareLocal();
-  await loadShareProducts();
-}
-
-function renderShareProducts() {
-  const box = $("shareProductsGrid");
-  if (!box) return;
-  const term = String($("shareProductSearch")?.value || "").trim().toLowerCase();
-  const selectedId = $("shareProduct")?.value || "";
-
-  const filtered = (state.shareProducts || []).filter(product => {
-    const haystack = [product.name, product.description].filter(Boolean).join(" ").toLowerCase();
-    return !term || haystack.includes(term);
-  });
-
-  box.innerHTML = filtered.length
-    ? filtered.map(product => {
-        const selected = product.id === selectedId;
-        const url = buildSharedProductUrl(product.id);
-        return '<article class="share-product-card '+(selected?"is-selected":"")+'" data-share-product-card="'+esc(product.id)+'">'+
-          '<div class="share-product-image">'+
-            (product.image_url ? '<img src="'+esc(product.image_url)+'" alt="" loading="lazy">' : shareVisualFallback(product.name))+
-          '</div>'+
-          '<div class="share-product-body">'+
-            '<strong>'+esc(product.name)+'</strong>'+
-            '<div class="share-product-price">'+feeMoney(product.price)+'</div>'+
-            '<div class="row" style="gap:7px;margin-top:auto">'+
-              '<a class="share-order-link btn-muted" href="'+esc(url)+'" target="_blank" rel="noopener">PIDE AQUÍ</a>'+
-              '<button type="button" class="btn-primary" data-share-product-native="'+esc(product.id)+'">Compartir</button>'+
-            '</div>'+
-          '</div>'+
-        '</article>';
-      }).join("")
-    : '<div class="overview-empty">No hay productos que coincidan con la búsqueda.</div>';
-
-  box.querySelectorAll("[data-share-product-card]").forEach(card => {
-    card.onclick = event => {
-      if (event.target.closest("button,a")) return;
-      selectShareProduct(card.dataset.shareProductCard);
-    };
-  });
-  box.querySelectorAll("[data-share-product-native]").forEach(button => {
-    button.onclick = async event => {
-      event.stopPropagation();
-      selectShareProduct(button.dataset.shareProductNative);
-      await openShareOptions("product");
-    };
-  });
-}
-
-function selectShareProduct(productId) {
-  const select = $("shareProduct");
-  if (!select || !state.shareProducts.some(product => product.id === productId)) return;
-  select.value = productId;
-  state.shareSelectedArtworkKind = "product";
-  renderShareProducts();
 }
 
 async function loadShareModule() {
-  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
-
-  const select = $("shareDelivery");
-  if (!select) return;
-
-  const previous = select.value;
-  const available = state.deliveries.filter(delivery => delivery.active !== false);
-
-  select.innerHTML = available.length
-    ? available.map(delivery => '<option value="'+esc(delivery.id)+'">'+esc(delivery.name)+'</option>').join("")
-    : '<option value="">No hay DELIVERY disponible</option>';
-
-  if (previous && available.some(delivery => delivery.id === previous)) select.value = previous;
-  state.shareCategoryFilter = "ALL";
+  if(!["MASTER","DELIVERY_ADMIN"].includes(state.role))return;
+  const select=$("shareDelivery");
+  if(!select)return;
+  const previous=select.value;
+  const available=state.deliveries.filter(delivery=>delivery.active!==false);
+  select.innerHTML=available.length
+    ?available.map(delivery=>'<option value="'+esc(delivery.id)+'">'+esc(delivery.name)+'</option>').join("")
+    :'<option value="">No hay DELIVERY disponible</option>';
+  if(previous&&available.some(delivery=>delivery.id===previous))select.value=previous;
+  state.shareCategoryFilter="ALL";
+  state.shareSelectedLocalId=null;
+  $("shareBrowseView")?.classList.remove("hidden");
+  $("shareGalleryView")?.classList.add("hidden");
   await loadShareLocals();
 }
 
 async function loadShareLocals() {
-  const delivery = currentShareDelivery();
-  state.shareLocals = [];
-  state.shareProducts = [];
-  state.shareBusinessCategories = [];
-  state.shareDeliveryDetails = null;
-
-  if (!delivery) {
-    if ($("shareLocalsGrid")) $("shareLocalsGrid").innerHTML = '<div class="muted">No hay DELIVERY seleccionado.</div>';
-    renderSelectedShareLocal();
-    return;
-  }
-
-  try {
-    const [rel,deliveryRes] = await Promise.all([
-      supabaseClient.from("local_deliveries").select("local_id").eq("delivery_id", delivery.id).eq("active", true),
-      supabaseClient.from("deliveries").select("id,name,slug,logo_url,description,active").eq("id", delivery.id).single()
-    ]);
-    if (rel.error) throw rel.error;
-    if (deliveryRes.error) throw deliveryRes.error;
-    state.shareDeliveryDetails = deliveryRes.data || delivery;
-
-    const localIds = [...new Set((rel.data || []).map(row => row.local_id).filter(Boolean))];
-    if (!localIds.length) {
-      $("shareLocal").innerHTML = '<option value="">Sin LOCAL</option>';
-      renderShareCategoryFilters();
-      renderShareLocals();
-      renderSelectedShareLocal();
-      return;
-    }
-
-    const localRes = await supabaseClient
-      .from("locals")
-      .select("id,name,description,banner_url,logo_url,business_category_id,zone_id,active")
-      .in("id", localIds)
-      .eq("active", true)
-      .order("name");
-    if (localRes.error) throw localRes.error;
-
-    state.shareLocals = localRes.data || [];
-
-    const visualRes = await supabaseClient
-      .from("products")
-      .select("local_id,image_url,display_order")
-      .in("local_id", localIds)
-      .eq("active", true)
-      .not("image_url", "is", null)
-      .order("display_order")
-      .limit(1000);
-
-    if (!visualRes.error) {
-      const firstImageByLocal = new Map();
-      (visualRes.data || []).forEach(product => {
-        if (product.local_id && product.image_url && !firstImageByLocal.has(product.local_id)) {
-          firstImageByLocal.set(product.local_id, product.image_url);
-        }
-      });
-      state.shareLocals = state.shareLocals.map(local => ({
-        ...local,
-        first_product_image_url: firstImageByLocal.get(local.id) || null
-      }));
-    }
-
-    const categoryIds = [...new Set(state.shareLocals.map(local => local.business_category_id).filter(Boolean))];
-    if (categoryIds.length) {
-      const categoryRes = await supabaseClient
-        .from("local_business_categories")
-        .select("id,name,active")
-        .in("id", categoryIds)
-        .eq("active", true)
-        .order("name");
-      if (categoryRes.error) throw categoryRes.error;
-      state.shareBusinessCategories = categoryRes.data || [];
-    }
-
-    $("shareLocal").innerHTML = state.shareLocals.length
-      ? state.shareLocals.map(local => '<option value="'+esc(local.id)+'">'+esc(local.name)+'</option>').join("")
-      : '<option value="">Sin LOCAL</option>';
-
-    renderShareCategoryFilters();
-    renderShareLocals();
-
-    if (state.shareLocals.length) {
-      await selectShareLocal(state.shareLocals[0].id);
-    } else {
-      renderSelectedShareLocal();
-    }
-  } catch (e) {
-    state.shareLocals = [];
-    state.shareProducts = [];
-    renderShareCategoryFilters();
-    renderShareLocals();
-    renderSelectedShareLocal();
-    message(e.message || "No se pudieron cargar los LOCAL para compartir.", "error");
-  }
-}
-
-async function loadShareProducts() {
-  const local = currentShareLocal();
-  state.shareProducts = [];
-
-  if (!local) {
-    $("shareProduct").innerHTML = '<option value="">Sin productos</option>';
-    renderShareProducts();
-    return;
-  }
-
-  try {
-    const productRes = await supabaseClient
-      .from("products")
-      .select("id,local_id,category_id,name,description,price,image_url,active")
-      .eq("local_id", local.id)
-      .eq("active", true)
-      .order("display_order")
-      .order("name");
-
-    if (productRes.error) throw productRes.error;
-    state.shareProducts = productRes.data || [];
-
-    $("shareProduct").innerHTML = state.shareProducts.length
-      ? state.shareProducts.map(product => '<option value="'+esc(product.id)+'">'+esc(product.name)+'</option>').join("")
-      : '<option value="">Sin productos</option>';
-
-    renderShareProducts();
-  } catch (e) {
-    state.shareProducts = [];
-    $("shareProduct").innerHTML = '<option value="">Sin productos</option>';
-    renderShareProducts();
-    message(e.message || "No se pudieron cargar los productos para compartir.", "error");
-  }
-}
-
-function sharePayload(kind) {
-  const delivery = state.shareDeliveryDetails || currentShareDelivery();
-  const local = currentShareLocal();
-  const product = currentShareProduct();
-
-  if (kind === "local") {
-    const targetUrl = buildSharedLocalUrl();
-    const url = buildSharePreviewUrl("local");
-    return url && targetUrl && delivery && local ? {
-      title: local.name + " | " + delivery.name,
-      text: local.name + " en " + delivery.name + "\n\nPIDE AQUÍ 👇\n" + url,
-      url,
-      targetUrl,
-      imageUrl: shareLocalVisualUrl(local),
-      logoUrl: delivery.logo_url || local.logo_url || "",
-      deliveryName: delivery.name,
-      headline: local.name,
-      subline: shareCategoryName(local),
-      price: null
-    } : null;
-  }
-
-  const targetUrl = buildSharedProductUrl();
-  const url = buildSharePreviewUrl("product");
-  return url && targetUrl && delivery && local && product ? {
-    title: product.name + " | " + local.name,
-    text: product.name + " · " + local.name + "\n\nPIDE AQUÍ 👇\n" + url,
-    url,
-    targetUrl,
-    imageUrl: product.image_url || shareLocalVisualUrl(local),
-    logoUrl: delivery.logo_url || local.logo_url || "",
-    deliveryName: delivery.name,
-    headline: product.name,
-    subline: local.name,
-    price: Number(product.price || 0)
-  } : null;
-}
-
-async function loadShareBitmap(url) {
-  if (!url) return null;
-  try {
-    const response = await fetch(url, { mode: "cors", cache: "force-cache" });
-    if (!response.ok) throw new Error("image");
-    const blob = await response.blob();
-    if ("createImageBitmap" in window) return await createImageBitmap(blob);
-
-    return await new Promise((resolve,reject) => {
-      const objectUrl = URL.createObjectURL(blob);
-      const image = new Image();
-      image.onload = () => { URL.revokeObjectURL(objectUrl); resolve(image); };
-      image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("image")); };
-      image.src = objectUrl;
-    });
-  } catch {
-    return null;
-  }
-}
-
-function drawShareCover(ctx,image,x,y,w,h) {
-  if (!image) {
-    ctx.fillStyle = "#111827";
-    ctx.fillRect(x,y,w,h);
-    ctx.fillStyle = "#e53935";
-    ctx.fillRect(x,y+h*0.72,w,h*0.28);
-    return;
-  }
-  const iw = image.width || image.naturalWidth || w;
-  const ih = image.height || image.naturalHeight || h;
-  const scale = Math.max(w/iw,h/ih);
-  const sw = w/scale;
-  const sh = h/scale;
-  const sx = Math.max(0,(iw-sw)/2);
-  const sy = Math.max(0,(ih-sh)/2);
-  ctx.drawImage(image,sx,sy,sw,sh,x,y,w,h);
-}
-
-function wrapShareCanvasText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3) {
-  const words = String(text || "").split(/\s+/).filter(Boolean);
-  const lines = [];
-  let line = "";
-  for (const word of words) {
-    const probe = line ? line + " " + word : word;
-    if (ctx.measureText(probe).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-      if (lines.length >= maxLines) break;
-    } else {
-      line = probe;
-    }
-  }
-  if (line && lines.length < maxLines) lines.push(line);
-  lines.forEach((value,index) => ctx.fillText(value,x,y+(index*lineHeight)));
-  return y + lines.length*lineHeight;
-}
-
-async function drawShareArtwork(canvas,kind) {
-  const payload = sharePayload(kind);
-  if (!payload) throw new Error("Selecciona qué deseas compartir.");
-
-  const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-  const scale = width / 1080;
-
-  ctx.clearRect(0,0,width,height);
-  ctx.fillStyle = "#f8fafc";
-  ctx.fillRect(0,0,width,height);
-
-  const [image,logo] = await Promise.all([
-    loadShareBitmap(payload.imageUrl),
-    loadShareBitmap(payload.logoUrl)
-  ]);
-
-  const heroHeight = Math.round(1110*scale);
-  drawShareCover(ctx,image,0,0,width,heroHeight);
-
-  const gradient = ctx.createLinearGradient(0,heroHeight*0.45,0,heroHeight);
-  gradient.addColorStop(0,"rgba(17,24,39,0)");
-  gradient.addColorStop(1,"rgba(17,24,39,.82)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0,0,width,heroHeight);
-
-  const panelY = Math.round(1000*scale);
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.roundRect(0,panelY,width,height-panelY,Math.round(54*scale));
-  ctx.fill();
-
-  if (logo) {
-    const size = Math.round(170*scale);
-    const x = Math.round(70*scale);
-    const y = panelY - Math.round(85*scale);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
-    ctx.clip();
-    drawShareCover(ctx,logo,x,y,size,size);
-    ctx.restore();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = Math.round(10*scale);
-    ctx.beginPath();
-    ctx.arc(x+size/2,y+size/2,size/2,0,Math.PI*2);
-    ctx.stroke();
-  }
-
-  const left = Math.round(70*scale);
-  let y = panelY + Math.round(150*scale);
-  ctx.fillStyle = "#111827";
-  ctx.font = "800 "+Math.round(70*scale)+"px Arial";
-  y = wrapShareCanvasText(ctx,payload.headline,left,y,width-Math.round(140*scale),Math.round(82*scale),3);
-
-  ctx.fillStyle = "#64748b";
-  ctx.font = "600 "+Math.round(34*scale)+"px Arial";
-  y = wrapShareCanvasText(ctx,payload.subline,left,y+Math.round(18*scale),width-Math.round(140*scale),Math.round(46*scale),2);
-
-  if (payload.price !== null) {
-    ctx.fillStyle = "#111827";
-    ctx.font = "900 "+Math.round(78*scale)+"px Arial";
-    ctx.fillText(feeMoney(payload.price),left,y+Math.round(80*scale));
-    y += Math.round(110*scale);
-  }
-
-  const buttonY = Math.max(y+Math.round(70*scale),height-Math.round(370*scale));
-  const buttonX = left;
-  const buttonW = width-Math.round(140*scale);
-  const buttonH = Math.round(150*scale);
-  ctx.fillStyle = "#e53935";
-  ctx.beginPath();
-  ctx.roundRect(buttonX,buttonY,buttonW,buttonH,Math.round(34*scale));
-  ctx.fill();
-
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.font = "900 "+Math.round(54*scale)+"px Arial";
-  ctx.fillText("PIDE AQUÍ",width/2,buttonY+Math.round(94*scale));
-
-  ctx.fillStyle = "#64748b";
-  ctx.font = "600 "+Math.round(27*scale)+"px Arial";
-  ctx.fillText("Pide directamente con "+String(payload.deliveryName||"tu DELIVERY"),width/2,buttonY+buttonH+Math.round(62*scale));
-
-  ctx.fillStyle = "#111827";
-  ctx.font = "800 "+Math.round(31*scale)+"px Arial";
-  ctx.fillText(String(payload.deliveryName||"DELIVERY"),width/2,height-Math.round(78*scale));
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "600 "+Math.round(20*scale)+"px Arial";
-  ctx.fillText("Plataforma HTPWEB",width/2,height-Math.round(42*scale));
-  ctx.textAlign = "left";
-}
-
-async function renderShareArtworkPreview(kind) {
-  const canvas = $("shareArtworkPreview");
-  const payload = sharePayload(kind);
-  if (!canvas || !payload) return false;
-  if ($("shareArtworkOrderLink")) $("shareArtworkOrderLink").href = payload.targetUrl || payload.url;
-  await drawShareArtwork(canvas,kind);
-  return true;
-}
-
-function shareCanvasBlob(canvas) {
-  return new Promise((resolve,reject) => {
-    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("No se pudo crear la imagen.")),"image/jpeg",0.9);
-  });
-}
-
-function shareSafeFilename(value) {
-  return String(value || "htpweb")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-zA-Z0-9_-]+/g,"-")
-    .replace(/^-+|-+$/g,"")
-    .toLowerCase() || "htpweb";
-}
-
-async function createShareImageFile(kind) {
-  const payload = sharePayload(kind);
-  if (!payload) throw new Error("Selecciona qué deseas compartir.");
-  const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1920;
-  await drawShareArtwork(canvas,kind);
-  const blob = await shareCanvasBlob(canvas);
-  return new File([blob],shareSafeFilename(payload.headline)+"-htpweb.jpg",{type:"image/jpeg"});
-}
-
-async function copyShareLink(kind) {
-  const payload = sharePayload(kind);
-  if (!payload) return;
-  try {
-    await navigator.clipboard.writeText(payload.url);
-  } catch {
-    const helper = document.createElement("textarea");
-    helper.value = payload.url;
-    helper.setAttribute("readonly","");
-    helper.style.position = "fixed";
-    helper.style.opacity = "0";
-    document.body.appendChild(helper);
-    helper.select();
-    document.execCommand("copy");
-    helper.remove();
-  }
-}
-
-function downloadShareFile(file) {
-  const url = URL.createObjectURL(file);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = file.name;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url),1000);
-}
-
-function shareStatusText(kind) {
-  const payload=sharePayload(kind);
-  if(!payload)return "";
-  const price=payload.price!==null&&payload.price!==undefined ? " · "+feeMoney(payload.price) : "";
-  return payload.headline+price+"\nPIDE AQUÍ 👇\n"+(payload.targetUrl||payload.url);
-}
-
-async function copyShareText(kind) {
-  const payload=sharePayload(kind);
-  if(!payload)return false;
-  const text=shareStatusText(kind);
-  try{
-    await navigator.clipboard.writeText(text);
-    return true;
-  }catch{
-    const helper=document.createElement("textarea");
-    helper.value=text;
-    helper.setAttribute("readonly","");
-    helper.style.position="fixed";
-    helper.style.opacity="0";
-    document.body.appendChild(helper);
-    helper.select();
-    const ok=document.execCommand("copy");
-    helper.remove();
-    return ok;
-  }
-}
-
-async function createSharePngBlob(kind) {
-  const payload=sharePayload(kind);
-  if(!payload)throw new Error("Selecciona qué deseas compartir.");
-  const canvas=document.createElement("canvas");
-  canvas.width=1080;
-  canvas.height=1920;
-  await drawShareArtwork(canvas,kind);
-  return await new Promise((resolve,reject)=>{
-    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("No se pudo crear la imagen.")),"image/png");
-  });
-}
-
-function sharePreparationKey(kind) {
   const delivery=currentShareDelivery();
-  const local=currentShareLocal();
-  const product=currentShareProduct();
-  return [kind,delivery?.id||"",local?.id||"",kind==="product"?(product?.id||""):""].join(":");
+  state.shareLocals=[];
+  state.shareGallery=[];
+  if(!delivery){
+    renderShareCategoryFilters();
+    renderShareLocals();
+    return;
+  }
+  try{
+    const data=await rpc("delivery_share_locals",{p_delivery_id:delivery.id});
+    state.shareLocals=Array.isArray(data)?data:[];
+    renderShareCategoryFilters();
+    renderShareLocals();
+  }catch(e){
+    message(e.message||"No se pudieron cargar los LOCAL para compartir.","error");
+  }
 }
 
-function setShareModalBusy(busy) {
-  [
-    "shareNativeDeviceBtn","shareWhatsappWebBtn","shareFacebookWebBtn",
-    "shareTiktokWebBtn","shareDownloadImageBtn","shareCopyTextBtn","shareOpenWhatsappBtn"
-  ].forEach(id=>{
-    const button=$(id);
-    if(button)button.disabled=Boolean(busy);
+function showShareBrowse() {
+  state.shareSelectedLocalId=null;
+  state.shareGallery=[];
+  $("shareBrowseView")?.classList.remove("hidden");
+  $("shareGalleryView")?.classList.add("hidden");
+}
+
+async function openShareLocalGallery(localId) {
+  const delivery=currentShareDelivery();
+  const local=state.shareLocals.find(item=>item.id===localId);
+  if(!delivery||!local)return;
+  state.shareSelectedLocalId=localId;
+  $("shareBrowseView")?.classList.add("hidden");
+  $("shareGalleryView")?.classList.remove("hidden");
+  if($("shareGalleryLocalName"))$("shareGalleryLocalName").textContent=local.name||"LOCAL";
+  if($("shareGalleryLocalMeta"))$("shareGalleryLocalMeta").textContent=shareLocalCategory(local)+" · "+Number(local.gallery_count||0)+" foto(s)";
+  const url=buildSharedLocalUrl();
+  if($("shareGalleryLocalLink"))$("shareGalleryLocalLink").href=url||"#";
+  if($("shareGalleryGrid"))$("shareGalleryGrid").innerHTML='<div class="muted">Cargando Galería…</div>';
+  try{
+    const data=await rpc("delivery_share_local_gallery",{p_delivery_id:delivery.id,p_local_id:local.id});
+    state.shareGallery=Array.isArray(data)?data:[];
+    renderShareGallery();
+  }catch(e){
+    state.shareGallery=[];
+    if($("shareGalleryGrid"))$("shareGalleryGrid").innerHTML='<div class="message error">'+esc(e.message||"No se pudo cargar la Galería.")+'</div>';
+  }
+}
+
+function renderShareGallery() {
+  const box=$("shareGalleryGrid");
+  const local=currentShareLocal();
+  if(!box||!local)return;
+  const localUrl=buildSharedLocalUrl();
+  box.innerHTML=state.shareGallery.length?state.shareGallery.map((image,index)=>
+    '<article class="share-gallery-card">'+
+      '<div class="share-gallery-image"><img src="'+esc(image.image_url)+'" alt="Foto '+(index+1)+' de '+esc(local.name)+'" loading="lazy"></div>'+
+      '<div class="share-gallery-actions">'+
+        '<button type="button" class="btn-primary" data-share-gallery-image="'+esc(image.id)+'">Compartir foto</button>'+
+        '<button type="button" class="btn-muted" data-share-gallery-copy="'+esc(image.id)+'">Copiar PIDE AQUÍ</button>'+
+        '<a class="share-gallery-order-link" href="'+esc(localUrl)+'" target="_blank" rel="noopener">PIDE AQUÍ</a>'+
+      '</div>'+
+    '</article>'
+  ).join(""):'<div class="overview-empty">Este LOCAL todavía no tiene fotos en su Galería.</div>';
+
+  box.querySelectorAll("[data-share-gallery-image]").forEach(button=>{
+    button.onclick=()=>shareOriginalGalleryImage(button.dataset.shareGalleryImage);
+  });
+  box.querySelectorAll("[data-share-gallery-copy]").forEach(button=>{
+    button.onclick=()=>copyShareLocalOrderLink();
   });
 }
 
-function setShareBrowserHint(text) {
-  if($("shareBrowserHint"))$("shareBrowserHint").textContent=text||"";
+function shareLocalOrderPlainText() {
+  const url=buildSharedLocalUrl();
+  return url?"PIDE AQUÍ 👇\n"+url:"";
 }
 
-function closeShareOptions() {
-  $("shareArtworkPreviewCard")?.classList.add("hidden");
-  document.body.classList.remove("share-modal-open");
-}
-
-async function prepareShareAssets(kind) {
-  const key=sharePreparationKey(kind);
-  if(state.sharePrepared?.key===key&&state.sharePrepared.file&&state.sharePrepared.pngBlob){
-    return state.sharePrepared;
-  }
-
-  const payload=sharePayload(kind);
-  if(!payload)throw new Error("Selecciona qué deseas compartir.");
-
-  const [file,pngBlob]=await Promise.all([
-    createShareImageFile(kind),
-    createSharePngBlob(kind)
-  ]);
-
-  state.sharePrepared={key,kind,payload,file,pngBlob};
-  return state.sharePrepared;
-}
-
-async function copyPreparedImageToClipboard(kind) {
-  if(!navigator.clipboard?.write || typeof ClipboardItem==="undefined")return false;
+async function copyShareLocalOrderLink() {
+  const url=buildSharedLocalUrl();
+  if(!url)return;
+  const plain=shareLocalOrderPlainText();
   try{
-    const prepared=await prepareShareAssets(kind);
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png":prepared.pngBlob
-      })
-    ]);
-    return true;
+    if(navigator.clipboard?.write&&typeof ClipboardItem!=="undefined"){
+      const html='<a href="'+esc(url)+'">PIDE AQUÍ</a>';
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/plain":new Blob([plain],{type:"text/plain"}),
+        "text/html":new Blob([html],{type:"text/html"})
+      })]);
+    }else{
+      await navigator.clipboard.writeText(plain);
+    }
+    message("PIDE AQUÍ copiado. Pégalo como texto de la foto.");
   }catch{
-    return false;
+    try{
+      await navigator.clipboard.writeText(plain);
+      message("PIDE AQUÍ copiado. Pégalo como texto de la foto.");
+    }catch{
+      message("No se pudo copiar el enlace.","error");
+    }
   }
 }
 
-async function downloadShareImage(kind) {
-  const prepared=await prepareShareAssets(kind);
-  downloadShareFile(prepared.file);
-  return prepared.file;
+function extensionFromMime(type) {
+  const map={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"};
+  return map[type]||"jpg";
 }
 
-async function openShareOptions(kind) {
-  const payload=sharePayload(kind);
-  if(!payload)return;
+async function galleryImageFile(image) {
+  const response=await fetch(image.image_url,{mode:"cors",cache:"force-cache"});
+  if(!response.ok)throw new Error("No se pudo preparar la foto.");
+  const blob=await response.blob();
+  const ext=extensionFromMime(blob.type);
+  return new File([blob],"htpweb-galeria-"+image.id+"."+ext,{type:blob.type||"image/jpeg"});
+}
 
-  state.shareSelectedArtworkKind=kind;
-  const modal=$("shareArtworkPreviewCard");
-  modal?.classList.remove("hidden");
-  document.body.classList.add("share-modal-open");
-  setShareModalBusy(true);
+function downloadOriginalFile(file) {
+  const url=URL.createObjectURL(file);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 
-  if($("shareModalSubtitle")){
-    $("shareModalSubtitle").textContent=(kind==="product"?"Producto: ":"LOCAL: ")+payload.headline;
-  }
-  if($("shareStatusText"))$("shareStatusText").value=shareStatusText(kind);
-  setShareBrowserHint("Preparando la imagen del Estado…");
-
+async function shareOriginalGalleryImage(imageId) {
+  const image=state.shareGallery.find(item=>item.id===imageId);
+  if(!image)return;
   try{
-    await renderShareArtworkPreview(kind);
-    await prepareShareAssets(kind);
-    setShareBrowserHint("Estado listo: guarda/compartir la imagen y copia PIDE AQUÍ como texto de la foto.");
+    const file=await galleryImageFile(image);
+    const canShare=Boolean(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]})));
+    if(canShare){
+      await navigator.share({files:[file]});
+      return;
+    }
+    downloadOriginalFile(file);
+    message("La foto original se descargó. Puedes publicarla directamente en tu Estado.");
   }catch(e){
-    setShareBrowserHint(e.message||"No se pudo preparar la imagen.");
-  }finally{
-    setShareModalBusy(false);
-  }
-}
-
-function openWhatsappForStatus() {
-  setShareBrowserHint("WhatsApp abierto. Ve a Novedades/Estado → Mi estado, selecciona la imagen preparada y pega el texto PIDE AQUÍ.");
-  window.location.href="whatsapp://";
-}
-
-async function browserShare(kind,platform) {
-  const payload=sharePayload(kind);
-  if(!payload)return;
-  state.shareSelectedArtworkKind=kind;
-
-  let popup=null;
-  if(["facebook","tiktok"].includes(platform)){
-    popup=window.open("about:blank","_blank");
-  }
-
-  try{
-    await prepareShareAssets(kind);
-
-    if(platform==="whatsapp"){
-      const chatText="PIDE AQUÍ 👇\n"+payload.url;
-      try{ await navigator.clipboard.writeText(chatText); }catch{}
-      const appTarget="whatsapp://send?text="+encodeURIComponent(chatText);
-      window.location.href=appTarget;
-      setShareBrowserHint("Abriendo WhatsApp chat con el enlace enriquecido. Para Estado usa el flujo principal de arriba.");
-      return;
-    }
-
-    if(platform==="facebook"){
-      const target="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(payload.url);
-      if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint("Facebook abrió el enlace enriquecido. La publicación debe tomar la imagen y el texto del producto/LOCAL automáticamente.");
-      return;
-    }
-
-    if(platform==="tiktok"){
-      await downloadShareImage(kind);
-      const target="https://www.tiktok.com/upload";
-      if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint("TikTok abierto. La IMAGEN promocional se descargó para subirla; usa PIDE AQUÍ como texto/enlace cuando TikTok lo permita.");
-      return;
-    }
-
-    if(platform==="download"){
-      await downloadShareImage(kind);
-      setShareBrowserHint("Imagen promocional descargada.");
-      return;
-    }
-
-    if(platform==="copy"){
-      await copyShareText(kind);
-      setShareBrowserHint("Texto PIDE AQUÍ copiado. Pégalo como comentario de la foto en tu Estado.");
-      return;
-    }
-  }catch(e){
-    if(popup&&!popup.closed)popup.close();
-    message(e.message||"No se pudo preparar la imagen para compartir.","error");
-  }
-}
-
-async function nativeShare(kind) {
-  const payload = sharePayload(kind);
-  if (!payload) return;
-
-  try {
-    state.shareSelectedArtworkKind = kind;
-    const prepared=await prepareShareAssets(kind);
-    const fileShare={files:[prepared.file]};
-    const canShareFile=Boolean(navigator.share && (!navigator.canShare || navigator.canShare(fileShare)));
-
-    if(canShareFile){
-      await navigator.share({
-        title: payload.title,
-        files:[prepared.file]
-      });
-      return;
-    }
-
-    await downloadShareImage(kind);
-    setShareBrowserHint("Este navegador no permite enviar archivos de imagen al menú Compartir. La imagen se descargó; usa WhatsApp Web, Facebook o TikTok desde este mismo cuadro.");
-  } catch (e) {
-    if (e?.name === "AbortError") return;
-    message(e.message || "No se pudo preparar la imagen para compartir.","error");
+    if(e?.name==="AbortError")return;
+    message(e.message||"No se pudo compartir la foto.","error");
   }
 }
 
@@ -9529,22 +8921,10 @@ function bindEvents() {
   if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
   $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
   $("profileGoStorageBtn").onclick = openDeliveryStorage;
-  if ($("shareDelivery")) $("shareDelivery").onchange = loadShareLocals;
+  if ($("shareDelivery")) $("shareDelivery").onchange = () => { state.shareCategoryFilter="ALL"; showShareBrowse(); loadShareLocals(); };
   if ($("shareSearch")) $("shareSearch").oninput = renderShareLocals;
-  if ($("shareProductSearch")) $("shareProductSearch").oninput = renderShareProducts;
-  if ($("shareLocalNativeBtn")) $("shareLocalNativeBtn").onclick = () => openShareOptions("local");
-  if ($("shareNativeDeviceBtn")) $("shareNativeDeviceBtn").onclick = () => nativeShare(state.shareSelectedArtworkKind||"local");
-  if ($("shareWhatsappWebBtn")) $("shareWhatsappWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","whatsapp");
-  if ($("shareFacebookWebBtn")) $("shareFacebookWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","facebook");
-  if ($("shareTiktokWebBtn")) $("shareTiktokWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","tiktok");
-  if ($("shareDownloadImageBtn")) $("shareDownloadImageBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","download");
-  if ($("shareCopyTextBtn")) $("shareCopyTextBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","copy");
-  if ($("shareOpenWhatsappBtn")) $("shareOpenWhatsappBtn").onclick = openWhatsappForStatus;
-  if ($("shareModalCloseBtn")) $("shareModalCloseBtn").onclick = closeShareOptions;
-  document.querySelectorAll("[data-share-modal-close]").forEach(el=>el.onclick=closeShareOptions);
-  document.addEventListener("keydown",event=>{
-    if(event.key==="Escape"&&!$("shareArtworkPreviewCard")?.classList.contains("hidden"))closeShareOptions();
-  });
+  if ($("shareBackToLocalsBtn")) $("shareBackToLocalsBtn").onclick = showShareBrowse;
+  if ($("shareCopyLocalLinkBtn")) $("shareCopyLocalLinkBtn").onclick = copyShareLocalOrderLink;
   if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
