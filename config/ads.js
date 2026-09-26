@@ -87,6 +87,7 @@
       if (error || !relation) return null;
       const params = { local: localId };
       if (productId) params.product = productId;
+      else params.view = "banner";
       return urlDelivery("local.html", params);
     }
     return urlDelivery("index.html");
