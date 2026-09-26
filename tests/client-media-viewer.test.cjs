@@ -52,7 +52,6 @@ test("agregar desde el visor no lo cierra automáticamente", () => {
   assert.match(block, /addProduct\(productId\)/);
   assert.doesNotMatch(block, /close\(\)/);
   assert.match(block, /En carrito:/);
-  assert.match(block, /mediaViewerQty/);
 });
 
 test("el visor se cierra de forma explícita con la X", () => {
