@@ -60,3 +60,19 @@ test("el visor se cierra de forma explícita con la X", () => {
   assert.doesNotMatch(viewer, /event\.key === "Escape"\) close\(\)/);
   assert.match(viewer, /el CLIENT decide cuándo salir usando la X/);
 });
+
+
+test("cantidad del visor refleja el acumulado real del carrito", () => {
+  assert.match(viewer, /Cantidad en carrito/);
+  assert.match(viewer, /readonly/);
+  assert.match(viewer, /carritoCantidadItem\(negocioActual\.slug, viewerMatcher\(productId\)\)/);
+  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
+  assert.match(viewer, /En carrito: \${total} ✓/);
+  assert.doesNotMatch(viewer, /mediaViewerQty"\)\.value = 1/);
+});
+
+test("cambiar variante sincroniza su propia cantidad en carrito", () => {
+  assert.match(viewer, /function viewerMatcher\(productId\)/);
+  assert.match(viewer, /variant_id: variantId/);
+  assert.match(viewer, /function syncVariantPrice\(\)[\s\S]*syncViewerCartQuantity\(\)/);
+});
