@@ -44,3 +44,30 @@ test('el menú agrupado tiene estilos discretos',()=>{
   assert.match(css,/text-transform:uppercase/);
   assert.match(css,/color:#94a3b8/);
 });
+
+
+test('el panel nace oculto hasta conocer el rol',()=>{
+  assert.match(html,/<body class="admin-role-loading">/);
+  assert.match(css,/body\.admin-role-loading #nav/);
+  assert.match(css,/body\.admin-role-loading \.content>\*/);
+  assert.match(css,/Preparando tu panel/);
+});
+
+test('la navegación se revela solo después de aplicar el rol',()=>{
+  assert.match(admin,/function completeAdminRoleBoot/);
+  assert.match(admin,/function failAdminRoleBoot/);
+  const start=admin.indexOf('function configureNavigation');
+  const end=admin.indexOf('function showSection',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/organizeDeliveryAdminNavigation\(\)/);
+  assert.match(block,/showSection\(roleSections\[state\.role\]\[0\]\)/);
+  assert.match(block,/completeAdminRoleBoot\(\)/);
+});
+
+test('un fallo de rol no vuelve a mostrar el menú completo',()=>{
+  assert.match(css,/body\.admin-role-error #nav/);
+  const start=admin.indexOf('async function init');
+  const end=admin.indexOf('function organizeDeliveryAdminNavigation',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/failAdminRoleBoot\(\)/);
+});
