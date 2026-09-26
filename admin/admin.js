@@ -936,6 +936,10 @@ async function overviewGo(action) {
     showSection("advertising");
     return;
   }
+  if (["drivers","coverage","fees","network","myplan","mydelivery","catalog"].includes(action)) {
+    showSection(action);
+    return;
+  }
   if (action === "zones") {
     showSection("zonesmaster");
     return;
@@ -978,12 +982,13 @@ function renderOverviewAttention(items) {
   const container = $("overviewAttention");
   if (!container) return;
 
-  const relevant = items.filter(item => item.value === null || Number(item.value) > 0);
+  const relevant = items.filter(item => item.show === true || item.value === null || Number(item.value) > 0);
   if (!relevant.length) {
+    const deliveryMode=state.role==="DELIVERY_ADMIN";
     container.innerHTML = `
       <div class="overview-all-good">
-        <strong>Sin pendientes críticos</strong>
-        <span>Los controles principales no muestran elementos que requieran atención.</span>
+        <strong>${deliveryMode?"Sin incidencias operativas":"Sin pendientes críticos"}</strong>
+        <span>${deliveryMode?"No hay pendientes que requieran acción del DELIVERY.":"Los controles principales no muestran elementos que requieran atención."}</span>
       </div>
     `;
     return;
@@ -996,7 +1001,7 @@ function renderOverviewAttention(items) {
         <span class="muted">${esc(item.detail)}</span>
       </div>
       <div class="row">
-        <span class="overview-attention-value">${item.value === null ? "—" : esc(item.value)}</span>
+        <span class="overview-attention-value">${item.displayValue!==undefined?esc(item.displayValue):(item.value === null ? "—" : esc(item.value))}</span>
         ${item.action ? `<button class="btn-muted" type="button" data-overview-action="${esc(item.action)}">Revisar</button>` : ""}
       </div>
     </div>
@@ -1044,7 +1049,7 @@ function renderOverviewRecentOrders(rows) {
       </div>
       <div class="overview-order-meta">
         <span class="badge status-${esc(order.status)}">${esc(overviewStatusLabel(order.status))}</span>
-        <strong>${esc(overviewMoney(order.total))}</strong>
+        <strong>${esc(state.role==="DELIVERY_ADMIN"?"Entrega "+overviewMoney(order.delivery_fee):overviewMoney(order.total))}</strong>
       </div>
     </div>
   `).join("");
@@ -1062,14 +1067,29 @@ function renderOverviewQuickActions() {
     ["zones","Zonas","Cobertura geográfica de HTPWEB"]
   ];
 
-  const generalActions = state.role === "MASTER"
-    ? masterActions
-    : [
-        ["orders","Revisar pedidos","Operación visible para tu cuenta"],
-        ["locals","Gestionar catálogo","Productos y contenido de tus LOCAL"]
-      ];
+  let actions=masterActions;
+  if(state.role==="DELIVERY_ADMIN"){
+    actions=[
+      ["orders","Revisar pedidos","Pedidos abiertos, listos y en ruta"],
+      ["drivers","Repartidores","Equipo de reparto y asignaciones"],
+      ["coverage","Zonas y cobertura","Zonas operativas de tu DELIVERY"],
+      ["fees","Tarifas","Configurar el cobro por entrega"],
+      ["network","Clientes y referidos","Red privada, referidos y horarios"],
+      ["myplan","Mi plan","Capacidad, funciones y vencimiento"]
+    ];
+  }else if(state.role==="DELIVERY_OPERATOR"){
+    actions=[
+      ["orders","Revisar pedidos","Operación y estados de pedidos"],
+      ["drivers","Repartidores","Asignación y seguimiento de entregas"]
+    ];
+  }else if(state.role==="LOCAL_ADMIN"){
+    actions=[
+      ["orders","Revisar pedidos","Pedidos de tus LOCAL"],
+      ["catalog","Gestionar catálogo","Productos y contenido de tus LOCAL"]
+    ];
+  }
 
-  container.innerHTML = generalActions.map(([action,label,detail]) => `
+  container.innerHTML = actions.map(([action,label,detail]) => `
     <button class="overview-action-card" type="button" data-overview-action="${esc(action)}">
       <strong>${esc(label)}</strong>
       <span>${esc(detail)}</span>
@@ -1077,11 +1097,191 @@ function renderOverviewQuickActions() {
   `).join("");
 }
 
+function overviewSetModeLabels(){
+  const deliveryMode=state.role==="DELIVERY_ADMIN";
+  if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode?"Estado de mi operación":"Estado de HTPWEB";
+  if($("overviewAttentionSubtitle"))$("overviewAttentionSubtitle").textContent=deliveryMode
+    ?"Pendientes que requieren acción del DELIVERY."
+    :"Pendientes que pueden afectar la operación o la calidad del catálogo.";
+  if($("overviewHealthTitle"))$("overviewHealthTitle").textContent=deliveryMode?"Capacidad operativa":"Salud de la plataforma";
+  if($("overviewHealthSubtitle"))$("overviewHealthSubtitle").textContent=deliveryMode
+    ?"Uso actual frente a los límites de tu plan."
+    :"Qué tan completo y publicado está HTPWEB.";
+  if($("overviewQuickActionsSubtitle"))$("overviewQuickActionsSubtitle").textContent=deliveryMode
+    ?"Accesos frecuentes de la operación DELIVERY."
+    :"Tareas frecuentes del MASTER.";
+}
+
+function overviewUsageAggregate(snapshots,key){
+  let used=0,max=0,hasMax=false;
+  for(const snapshot of snapshots){
+    const item=snapshot?.plan_summary?.usage?.[key]||{};
+    if(item.used!==null&&item.used!==undefined)used+=Number(item.used)||0;
+    if(item.max!==null&&item.max!==undefined){
+      max+=Number(item.max)||0;
+      hasMax=true;
+    }
+  }
+  return {used,max:hasMax?max:null};
+}
+
+async function loadDeliveryAdminOverview(todayIso){
+  overviewSetModeLabels();
+  const deliveries=Array.isArray(state.deliveries)?state.deliveries:[];
+  if(!deliveries.length){
+    if($("metrics"))$("metrics").innerHTML='<div class="message error">No tienes un DELIVERY activo asignado.</div>';
+    renderOverviewAttention([]);
+    renderOverviewHealth([]);
+    renderOverviewRecentOrders([]);
+    renderOverviewQuickActions();
+    bindOverviewActions();
+    return;
+  }
+
+  const snapshots=await Promise.all(deliveries.map(d=>
+    rpc("delivery_admin_overview_snapshot",{p_delivery_id:d.id,p_today_start:todayIso})
+  ));
+
+  const sum=key=>snapshots.reduce((total,row)=>total+Number(row?.[key]||0),0);
+  const ordersToday=sum("orders_today");
+  const openOrders=sum("open_orders");
+  const enRoute=sum("en_route");
+  const readyUnassigned=sum("ready_unassigned");
+  const deliveredToday=sum("delivered_today_count");
+  const deliveryRevenue=sum("delivery_revenue_today");
+
+  const recentOrders=snapshots
+    .flatMap(row=>Array.isArray(row?.recent_orders)?row.recent_orders:[])
+    .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+    .slice(0,5);
+
+  const drivers=overviewUsageAggregate(snapshots,"drivers");
+  const zones=overviewUsageAggregate(snapshots,"zones");
+  const operators=overviewUsageAggregate(snapshots,"operators");
+  const zoneExcess=zones.max===null?0:Math.max(0,zones.used-zones.max);
+
+  const currentPlans=snapshots
+    .map(row=>row?.plan_summary?.plan)
+    .filter(Boolean);
+  const expiring=currentPlans.filter(plan=>plan.expiring_soon);
+  const singlePlan=deliveries.length===1?currentPlans[0]:null;
+  const current=singlePlan?.current||null;
+
+  const kpis=[
+    {
+      label:"Pedidos hoy",
+      value:ordersToday,
+      detail:deliveredToday+" entregado"+(deliveredToday===1?"":"s")+" hoy",
+      tone:"neutral"
+    },
+    {
+      label:"Pedidos en curso",
+      value:openOrders,
+      detail:enRoute+" en ruta ahora",
+      tone:openOrders>0?"attention":"success"
+    },
+    {
+      label:"Ingresos por entregas",
+      value:overviewMoney(deliveryRevenue),
+      detail:"Tarifas de entrega cobradas hoy",
+      tone:"success"
+    },
+    {
+      label:"Repartidores activos",
+      value:drivers.used,
+      detail:drivers.max===null?"Límite no disponible":"de "+drivers.max+" permitidos por plan",
+      tone:drivers.max!==null&&drivers.used>=drivers.max?"attention":"neutral"
+    }
+  ];
+
+  if($("metrics")){
+    $("metrics").innerHTML=kpis.map(kpi=>`
+      <div class="overview-kpi overview-kpi-${esc(kpi.tone)}">
+        <span>${esc(kpi.label)}</span>
+        <strong>${esc(kpi.value)}</strong>
+        <small>${esc(kpi.detail)}</small>
+      </div>
+    `).join("");
+  }
+
+  renderOverviewAttention([
+    {
+      label:"Pedidos listos sin repartidor",
+      detail:"Pedidos READY que todavía no tienen una asignación activa.",
+      value:readyUnassigned,
+      action:"orders"
+    },
+    {
+      label:"Pedidos en curso",
+      detail:"Pedidos que aún requieren seguimiento operativo.",
+      value:openOrders,
+      action:"orders"
+    },
+    {
+      label:"Zonas sobre el límite del plan",
+      detail:zoneExcess>0?"Tienes "+zones.used+" zonas activas y el plan permite "+zones.max+".":"Las zonas están dentro del cupo contratado.",
+      value:zoneExcess,
+      action:"coverage"
+    },
+    ...expiring.map(plan=>({
+      label:"Plan próximo a vencer",
+      detail:"Revisa la renovación para evitar interrupciones.",
+      value:plan.days_remaining,
+      displayValue:plan.days_remaining+" día"+(Number(plan.days_remaining)===1?"":"s"),
+      show:true,
+      action:"myplan"
+    }))
+  ]);
+
+  renderOverviewHealth([
+    {
+      label:"Repartidores activos",
+      value:drivers.used,
+      total:drivers.max,
+      detail:"Repartidores habilitados frente al máximo del plan."
+    },
+    {
+      label:"Zonas operativas",
+      value:zones.used,
+      total:zones.max,
+      detail:zoneExcess>0?"Actualmente superas el máximo contratado.":"Zonas seleccionadas para operar."
+    },
+    {
+      label:"Operadores",
+      value:operators.used,
+      total:operators.max,
+      detail:"Usuarios operativos frente al máximo del plan."
+    }
+  ]);
+
+  renderOverviewRecentOrders(recentOrders);
+  renderOverviewQuickActions();
+
+  if($("overviewUpdatedAt")){
+    let extra="";
+    if(current){
+      extra=" · Plan "+(current.plan_name||current.plan_code||"—")+" · vence "+formatServiceDate(current.ends_at);
+    }else if(deliveries.length>1){
+      extra=" · "+deliveries.length+" DELIVERY";
+    }
+    $("overviewUpdatedAt").textContent=
+      "Actualizado "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+extra;
+  }
+
+  bindOverviewActions();
+}
+
 async function loadOverview() {
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayIso = today.toISOString();
 
+  if(state.role==="DELIVERY_ADMIN"){
+    await loadDeliveryAdminOverview(todayIso);
+    return;
+  }
+
+  overviewSetModeLabels();
   const openStatuses = ["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"];
 
   let ordersToday = null;
