@@ -29,16 +29,21 @@ test('cada foto se comparte sin generar una pieza nueva',()=>{
   assert.doesNotMatch(admin,/drawShareArtwork/);
 });
 
-test('Galería no ofrece PIDE AQUÍ ni acciones de pedido',()=>{
+test('Galería deja Compartir foto y Copiar Link sin botón PIDE AQUÍ',()=>{
   assert.doesNotMatch(html,/id="shareCopyLocalLinkBtn"/);
   assert.doesNotMatch(html,/id="shareGalleryLocalLink"/);
   const start=admin.indexOf('function renderShareGallery');
   const end=admin.indexOf('function shareLocalOrderPlainText',start);
   const block=admin.slice(start,end);
   assert.match(block,/Compartir foto/);
-  assert.doesNotMatch(block,/PIDE AQUÍ/);
-  assert.doesNotMatch(block,/data-share-gallery-copy/);
+  assert.match(block,/Copiar Link/);
+  assert.match(block,/data-share-gallery-copy/);
   assert.doesNotMatch(block,/share-gallery-order-link/);
+  assert.doesNotMatch(block,/>PIDE AQUÍ</);
+});
+
+test('Copiar Link conserva el texto comercial PIDE AQUÍ y el DELIVERY',()=>{
+  assert.match(admin,/return url&&delivery\?"PIDE AQUÍ \| "\+delivery\.name\+"\\n"\+url/);
 });
 
 test('la portada del LOCAL prioriza su propia Galería',()=>{
