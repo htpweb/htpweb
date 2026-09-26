@@ -29,13 +29,16 @@ test('cada foto se comparte sin generar una pieza nueva',()=>{
   assert.doesNotMatch(admin,/drawShareArtwork/);
 });
 
-test('cada foto permite copiar PIDE AQUÍ del LOCAL',()=>{
-  assert.match(html,/id="shareCopyLocalLinkBtn"/);
-  assert.match(admin,/data-share-gallery-copy/);
-  assert.match(admin,/function copyShareLocalOrderLink/);
-  assert.match(admin,/PIDE AQUÍ \| /);
-  assert.match(admin,/buildShortSharedLocalUrl/);
-  assert.match(admin,/\.\.\/p\//);
+test('Galería no ofrece PIDE AQUÍ ni acciones de pedido',()=>{
+  assert.doesNotMatch(html,/id="shareCopyLocalLinkBtn"/);
+  assert.doesNotMatch(html,/id="shareGalleryLocalLink"/);
+  const start=admin.indexOf('function renderShareGallery');
+  const end=admin.indexOf('function shareLocalOrderPlainText',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/Compartir foto/);
+  assert.doesNotMatch(block,/PIDE AQUÍ/);
+  assert.doesNotMatch(block,/data-share-gallery-copy/);
+  assert.doesNotMatch(block,/share-gallery-order-link/);
 });
 
 test('la portada del LOCAL prioriza su propia Galería',()=>{
