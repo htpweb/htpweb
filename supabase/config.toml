@@ -17,6 +17,8 @@ enabled = true
 
 [auth]
 enabled = true
+site_url = "https://htpweb.github.io/htpweb/"
+additional_redirect_urls = ["https://htpweb.github.io/htpweb/**"]
 
 [functions.crear-pedido]
 verify_jwt = true
