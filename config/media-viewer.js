@@ -49,7 +49,7 @@
               <div class="media-viewer-actions">
                 <div class="quantity-stepper media-viewer-stepper" aria-label="Cantidad en carrito">
                   <button id="mediaViewerMinus" type="button" class="qty-step-btn" aria-label="Disminuir cantidad">−</button>
-                  <input id="mediaViewerQty" type="number" min="0" value="0" inputmode="numeric" aria-label="Cantidad en carrito" readonly>
+                  <input id="mediaViewerQty" type="number" min="0" step="1" value="0" inputmode="numeric" aria-label="Cantidad en carrito">
                   <button id="mediaViewerPlus" type="button" class="qty-step-btn" aria-label="Aumentar cantidad">+</button>
                 </div>
                 <button id="mediaViewerAdd" class="btn btn-primary" type="button">Agregar al carrito</button>
@@ -69,6 +69,7 @@
         }
       };
       $v("mediaViewerVariant").onchange = syncVariantPrice;
+      $v("mediaViewerQty").oninput = setViewerQuantityFromInput;
       $v("mediaViewerMinus").onclick = () => adjustViewerQuantity(-1);
       $v("mediaViewerPlus").onclick = () => adjustViewerQuantity(1);
       $v("mediaViewerAdd").onclick = addFromViewer;
@@ -213,6 +214,27 @@
     return variantSelect && !variantSelect.classList.contains("hidden")
       ? (variantSelect.value || null)
       : null;
+  }
+
+  function setViewerQuantityFromInput() {
+    const productId = $v("mediaViewerAdd")?.dataset?.productId || "";
+    const input = $v("mediaViewerQty");
+    if (!productId || !input || typeof window.htpwebSetProductQuantity !== "function") return;
+
+    const total = window.htpwebSetProductQuantity(
+      productId,
+      input.value,
+      selectedViewerVariantId()
+    );
+
+    const cardVariant = document.getElementById("variant-" + productId);
+    if (cardVariant && selectedViewerVariantId()) {
+      cardVariant.value = selectedViewerVariantId();
+      if (typeof window.syncVariantPrice === "function") window.syncVariantPrice(productId);
+    }
+
+    syncViewerCartQuantity(productId);
+    return total;
   }
 
   function adjustViewerQuantity(delta) {
