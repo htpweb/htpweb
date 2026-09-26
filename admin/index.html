@@ -1404,6 +1404,24 @@
         <p class="muted">Bucket público: <code>htpweb-media</code>. Solo se sube una imagen cuando seleccionas un archivo nuevo.</p>
       </div>
 
+      <div class="card master-only" id="masterBrandingFolderCard">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Cargar branding de LOCAL desde carpeta</h3>
+            <p class="muted" style="margin:.35rem 0 0">
+              Selecciona la carpeta <strong>Branding</strong> de Menú. Dentro debe existir una carpeta por LOCAL con
+              <code>banner.jpg/png/webp</code> y/o <code>logo.jpg/png/webp</code>.
+            </p>
+          </div>
+          <button class="btn-primary" id="selectBrandingFolderBtn" type="button">Cargar banners y logos</button>
+        </div>
+        <input id="brandingFolderInput" class="hidden" type="file" multiple webkitdirectory directory
+               accept="image/jpeg,image/png,image/webp">
+        <div id="brandingFolderStatus" class="workspace-note" style="margin-top:12px">
+          MASTER selecciona la carpeta; HTPWEB empareja cada subcarpeta con el nombre del LOCAL y actualiza solo los archivos encontrados.
+        </div>
+      </div>
+
       <div class="card" id="storageDeliveryCard">
         <div class="row between">
           <h3>Logo de DELIVERY</h3>
