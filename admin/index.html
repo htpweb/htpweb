@@ -257,119 +257,60 @@
         <div class="row between" style="gap:14px;flex-wrap:wrap">
           <div>
             <h2 style="margin-bottom:6px">Compartir</h2>
-            <p class="muted" style="margin:0">Explora tus LOCAL como un catálogo y comparte una imagen promocional con acceso directo a HTPWEB.</p>
+            <p class="muted" style="margin:0">Elige un LOCAL y comparte directamente las fotos que ya tiene cargadas en su Galería.</p>
           </div>
           <select id="shareDelivery" style="max-width:340px"></select>
         </div>
       </div>
 
-      <div class="card">
-        <div class="share-toolbar">
-          <div>
-            <label>Buscar LOCAL</label>
-            <input id="shareSearch" type="search" placeholder="Buscar por nombre...">
-          </div>
-          <div>
-            <label>Categoría</label>
-            <div id="shareCategoryFilters" class="share-filter-row"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row between" style="gap:12px;flex-wrap:wrap">
-          <div>
-            <h3 style="margin:0">LOCAL disponibles</h3>
-            <p id="shareLocalCount" class="muted" style="margin:5px 0 0"></p>
-          </div>
-        </div>
-        <select id="shareLocal" class="hidden" aria-hidden="true"></select>
-        <div id="shareLocalsGrid" class="share-local-grid" style="margin-top:14px"></div>
-      </div>
-
-      <div id="shareSelectedLocalCard" class="card hidden">
-        <div id="shareSelectedLocalHero"></div>
-        <div class="share-local-detail">
-          <div>
-            <h3 id="shareSelectedLocalName" style="margin:0"></h3>
-            <p id="shareSelectedLocalMeta" class="muted" style="margin:6px 0 0"></p>
-          </div>
-          <div class="row" style="gap:8px">
-            <a id="shareLocalOrderLink" class="btn-primary share-order-link" target="_blank" rel="noopener">PIDE AQUÍ</a>
-            <button class="btn-primary" id="shareLocalNativeBtn" type="button">Preparar Estado</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="shareProductsCard" class="card hidden">
-        <div class="row between" style="gap:12px;flex-wrap:wrap">
-          <div>
-            <h3 style="margin:0">Productos del LOCAL</h3>
-            <p class="muted" style="margin:5px 0 0">Selecciona un producto para compartirlo como imagen.</p>
-          </div>
-          <input id="shareProductSearch" type="search" placeholder="Buscar producto..." style="max-width:320px">
-        </div>
-        <select id="shareProduct" class="hidden" aria-hidden="true"></select>
-        <div id="shareProductsGrid" class="share-product-grid" style="margin-top:14px"></div>
-      </div>
-
-      <div id="shareArtworkPreviewCard" class="share-modal hidden" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
-        <div class="share-modal-backdrop" data-share-modal-close></div>
-        <div class="share-modal-dialog">
-          <div class="row between" style="gap:12px">
+      <div id="shareBrowseView">
+        <div class="card">
+          <div class="share-toolbar">
             <div>
-              <h3 id="shareModalTitle" style="margin:0">Preparar Estado</h3>
-              <p id="shareModalSubtitle" class="muted" style="margin:5px 0 0">Preparando la imagen promocional…</p>
+              <label>Buscar LOCAL</label>
+              <input id="shareSearch" type="search" placeholder="Buscar por nombre...">
             </div>
-            <button id="shareModalCloseBtn" class="btn-muted" type="button" aria-label="Cerrar">Cerrar</button>
-          </div>
-
-          <div class="share-modal-layout">
-            <div class="share-artwork-preview-wrap">
-              <canvas id="shareArtworkPreview" width="540" height="960" aria-label="Vista previa del Estado"></canvas>
-            </div>
-
-            <div id="shareBrowserPanel" class="share-browser-panel">
-              <h4 style="margin-top:0">Estado listo para publicar</h4>
-              <p class="muted">El DELIVERY sigue publicando una foto como siempre. HTPWEB prepara la imagen y el texto <strong>PIDE AQUÍ</strong> para que el cliente llegue directamente al LOCAL o producto.</p>
-
-              <div class="share-status-step">
-                <strong>1. Imagen del Estado</strong>
-                <p class="muted">Guarda o comparte esta imagen y selecciónala en Mi estado.</p>
-                <div class="share-browser-actions">
-                  <button id="shareNativeDeviceBtn" class="btn-primary" type="button">Compartir imagen</button>
-                  <button id="shareDownloadImageBtn" class="btn-muted" type="button">Guardar imagen</button>
-                </div>
-              </div>
-
-              <div class="share-status-step">
-                <strong>2. Texto del Estado</strong>
-                <p class="muted">Pega este texto como comentario de la foto para que el cliente pueda tocar el enlace.</p>
-                <textarea id="shareStatusText" class="share-status-text" rows="4" readonly></textarea>
-                <div class="share-browser-actions">
-                  <button id="shareCopyTextBtn" class="btn-primary" type="button">Copiar PIDE AQUÍ</button>
-                  <a id="shareArtworkOrderLink" class="btn-muted share-order-link" target="_blank" rel="noopener">Probar enlace</a>
-                </div>
-              </div>
-
-              <div class="share-status-step">
-                <strong>3. Publicar en WhatsApp</strong>
-                <p class="muted">Abre WhatsApp → Novedades/Estado → Mi estado → selecciona la imagen → pega el texto PIDE AQUÍ.</p>
-                <button id="shareOpenWhatsappBtn" class="btn-primary" type="button">Abrir WhatsApp</button>
-              </div>
-
-              <details class="share-secondary-options">
-                <summary>Otras formas de compartir</summary>
-                <div class="share-browser-actions" style="margin-top:10px">
-                  <button id="shareWhatsappWebBtn" class="btn-muted" type="button">WhatsApp chat</button>
-                  <button id="shareFacebookWebBtn" class="btn-muted" type="button">Facebook</button>
-                  <button id="shareTiktokWebBtn" class="btn-muted" type="button">TikTok</button>
-                </div>
-              </details>
-
-              <div id="shareBrowserHint" class="workspace-note" style="margin-top:10px">Preparando imagen…</div>
+            <div>
+              <label>Categoría</label>
+              <div id="shareCategoryFilters" class="share-filter-row"></div>
             </div>
           </div>
+        </div>
+
+        <div class="card">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">LOCAL disponibles</h3>
+              <p id="shareLocalCount" class="muted" style="margin:5px 0 0"></p>
+            </div>
+          </div>
+          <div id="shareLocalsGrid" class="share-local-grid" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div id="shareGalleryView" class="hidden">
+        <div class="card">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div class="row" style="gap:10px">
+              <button id="shareBackToLocalsBtn" class="btn-muted" type="button">← Volver a LOCAL</button>
+              <div>
+                <h3 id="shareGalleryLocalName" style="margin:0"></h3>
+                <p id="shareGalleryLocalMeta" class="muted" style="margin:5px 0 0"></p>
+              </div>
+            </div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <a id="shareGalleryLocalLink" class="btn-primary share-order-link" target="_blank" rel="noopener">PIDE AQUÍ</a>
+              <button id="shareCopyLocalLinkBtn" class="btn-muted" type="button">Copiar PIDE AQUÍ</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div>
+            <h3 style="margin:0">Galería del LOCAL</h3>
+            <p class="muted" style="margin:5px 0 0">Estas son las mismas fotos cargadas en la Galería del LOCAL. No se modifican ni se generan imágenes nuevas.</p>
+          </div>
+          <div id="shareGalleryGrid" class="share-gallery-grid" style="margin-top:14px"></div>
         </div>
       </div>
     </section>
