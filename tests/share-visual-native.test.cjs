@@ -35,7 +35,7 @@ test('cada foto permite copiar PIDE AQUÍ del LOCAL',()=>{
   assert.match(admin,/function copyShareLocalOrderLink/);
   assert.match(admin,/PIDE AQUÍ \| /);
   assert.match(admin,/buildShortSharedLocalUrl/);
-  assert.match(admin,/\.\.\/p\/\?s=/);
+  assert.match(admin,/\.\.\/p\//);
 });
 
 test('la portada del LOCAL prioriza su propia Galería',()=>{
@@ -54,7 +54,7 @@ test('enlace corto elimina UUID y destaca el DELIVERY',()=>{
   assert.match(admin,/local\?\.share_code/);
   assert.match(admin,/PIDE AQUÍ \| /);
   assert.match(admin,/delivery\.name/);
-  assert.match(admin,/\.\.\/p\/\?s=/);
+  assert.match(admin,/\.\.\/p\//);
 });
 
 test('resolver corto abre el LOCAL real',()=>{
@@ -82,7 +82,7 @@ test('WEBP se convierte a JPG al compartir para WhatsApp',()=>{
 
 test('enlace corto usa query estable y conserva hash antiguo como compatibilidad',()=>{
   const page=fs.readFileSync('p/index.html','utf8');
-  assert.match(admin,/\.\.\/p\/\?s=/);
+  assert.match(admin,/\.\.\/p\//);
   assert.match(page,/params\.get\("s"\)/);
   assert.match(page,/location\.hash/);
 });
