@@ -49,4 +49,4 @@ verify_jwt = false
 
 [auth.email.template.confirmation]
 subject = "HTPWEB | Confirma tu correo electronico"
-content_path = "./templates/confirmation.html"
+content_path = "./supabase/templates/confirmation.html"
