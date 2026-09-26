@@ -43,3 +43,20 @@ test("visor es responsive y bloquea scroll de fondo", () => {
   assert.match(css, /@media\(max-width:760px\)/);
   assert.match(css, /\.local-gallery-public/);
 });
+
+
+test("agregar desde el visor no lo cierra automáticamente", () => {
+  const start = viewer.indexOf("function addFromViewer");
+  const end = viewer.indexOf("async function loadGallery");
+  const block = viewer.slice(start, end);
+  assert.match(block, /addProduct\(productId\)/);
+  assert.doesNotMatch(block, /close\(\)/);
+  assert.match(block, /Agregado ✓/);
+  assert.match(block, /mediaViewerQty/);
+});
+
+test("el visor se cierra de forma explícita con la X", () => {
+  assert.match(viewer, /mediaViewerClose"\)\.onclick = close/);
+  assert.doesNotMatch(viewer, /event\.key === "Escape"\) close\(\)/);
+  assert.match(viewer, /el CLIENT decide cuándo salir usando la X/);
+});
