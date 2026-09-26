@@ -373,7 +373,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       throw new HttpError(400, "El pedido debe contener al menos un local");
     }
     if (!Array.isArray(body.items) || body.items.length === 0) {
-      throw new HttpError(400, "El pedido debe contener al menos un producto");
+      throw new HttpError(400, "El pedido debe contener al menos un producto o promoción");
     }
     /* ======================================================
          8. EXTRAER ÚNICAMENTE LOCAL_ID
@@ -459,23 +459,51 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
          PRECIOS:
          Nunca llegan con autoridad desde navegador.
-         SQL los consulta de nuevo.
+         SQL vuelve a validar productos, promociones y precios.
          ====================================================== */ for (const item of body.items){
       if (!isValidUuid(item?.local_id)) {
         throw new HttpError(400, "Existe un item con local_id inválido");
       }
-      if (!isValidUuid(item?.product_id)) {
-        throw new HttpError(400, "Existe un item con product_id inválido");
+
+      const hasPromotion = item?.promotion_id !== undefined &&
+        item?.promotion_id !== null &&
+        item?.promotion_id !== "";
+
+      if (hasPromotion) {
+        if (!isValidUuid(item.promotion_id)) {
+          throw new HttpError(400, "Existe un promotion_id inválido");
+        }
+        if (
+          item?.promotion_item_id !== undefined &&
+          item?.promotion_item_id !== null &&
+          item?.promotion_item_id !== "" &&
+          !isValidUuid(item.promotion_item_id)
+        ) {
+          throw new HttpError(400, "Existe un promotion_item_id inválido");
+        }
+        if (item?.product_id) {
+          throw new HttpError(400, "Un item promocional no debe incluir product_id");
+        }
+      } else {
+        if (!isValidUuid(item?.product_id)) {
+          throw new HttpError(400, "Existe un item con product_id inválido");
+        }
+        if (
+          item?.variant_id !== undefined &&
+          item?.variant_id !== null &&
+          item?.variant_id !== "" &&
+          !isValidUuid(item.variant_id)
+        ) {
+          throw new HttpError(400, "Existe un variant_id inválido");
+        }
       }
-      if (item?.variant_id !== undefined && item?.variant_id !== null && item?.variant_id !== "" && !isValidUuid(item.variant_id)) {
-        throw new HttpError(400, "Existe un variant_id inválido");
-      }
+
       const quantity = Number(item?.quantity);
-      if (!Number.isInteger(quantity) || quantity <= 0) {
-        throw new HttpError(400, "La cantidad de cada producto debe ser un entero mayor a 0");
+      if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 999) {
+        throw new HttpError(400, "La cantidad de cada producto o promoción debe estar entre 1 y 999");
       }
       if (!localIds.includes(item.local_id)) {
-        throw new HttpError(400, "Existe un producto asociado a un local que no forma parte del pedido");
+        throw new HttpError(400, "Existe un item asociado a un local que no forma parte del pedido");
       }
     }
     /* ======================================================
@@ -534,12 +562,27 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       p_invoice_email: optionalText(body.invoice_email),
       p_notes: optionalText(body.notes),
       p_locals: localsWithDistance,
-      p_items: body.items.map((item)=>({
+      p_items: body.items.map((item)=>{
+        const hasPromotion = item?.promotion_id !== undefined &&
+          item?.promotion_id !== null &&
+          item?.promotion_id !== "";
+
+        if (hasPromotion) {
+          return {
+            local_id: item.local_id,
+            promotion_id: item.promotion_id,
+            promotion_item_id: item.promotion_item_id ?? null,
+            quantity: Number(item.quantity)
+          };
+        }
+
+        return {
           local_id: item.local_id,
           product_id: item.product_id,
           variant_id: item.variant_id ?? null,
           quantity: Number(item.quantity)
-        }))
+        };
+      })
     });
     if (transactionError) {
       console.error("Error create_order_transaction:", transactionError);
