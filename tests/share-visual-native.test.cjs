@@ -59,7 +59,7 @@ test('en escritorio conserva imagen y enlace como fallback',()=>{
 test('usa imágenes reales de LOCAL y producto',()=>{
   assert.match(admin,/banner_url,logo_url,business_category_id/);
   assert.match(admin,/price,image_url,active/);
-  assert.match(admin,/product\.image_url \|\| local\.banner_url/);
+  assert.match(admin,/product\.image_url \|\| shareLocalVisualUrl\(local\)/);
 });
 
 
