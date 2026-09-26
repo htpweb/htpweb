@@ -1872,6 +1872,11 @@ function shareCategoryName(local) {
   return state.shareBusinessCategories?.find(cat => cat.id === local.business_category_id)?.name || "Otros";
 }
 
+function shareLocalVisualUrl(local) {
+  const delivery = state.shareDeliveryDetails || {};
+  return local?.banner_url || local?.logo_url || local?.first_product_image_url || delivery.logo_url || "";
+}
+
 function renderShareCategoryFilters() {
   const box = $("shareCategoryFilters");
   if (!box) return;
@@ -1922,7 +1927,7 @@ function renderShareLocals() {
   box.innerHTML = filtered.length
     ? filtered.map(local => {
         const selected = local.id === selectedId;
-        const image = local.banner_url || local.logo_url || "";
+        const image = shareLocalVisualUrl(local);
         const url = buildSharedLocalUrl(local.id);
         return '<article class="share-local-card '+(selected?"is-selected":"")+'" data-share-local-card="'+esc(local.id)+'">'+
           '<div class="share-local-banner">'+
@@ -1967,7 +1972,7 @@ function renderSelectedShareLocal() {
   if (!ready) return;
 
   const hero = $("shareSelectedLocalHero");
-  const image = local.banner_url || local.logo_url || "";
+  const image = shareLocalVisualUrl(local);
   hero.innerHTML = image
     ? '<img src="'+esc(image)+'" alt="" class="share-selected-local-image">'
     : shareVisualFallback(local.name);
@@ -2103,6 +2108,28 @@ async function loadShareLocals() {
 
     state.shareLocals = localRes.data || [];
 
+    const visualRes = await supabaseClient
+      .from("products")
+      .select("local_id,image_url,display_order")
+      .in("local_id", localIds)
+      .eq("active", true)
+      .not("image_url", "is", null)
+      .order("display_order")
+      .limit(1000);
+
+    if (!visualRes.error) {
+      const firstImageByLocal = new Map();
+      (visualRes.data || []).forEach(product => {
+        if (product.local_id && product.image_url && !firstImageByLocal.has(product.local_id)) {
+          firstImageByLocal.set(product.local_id, product.image_url);
+        }
+      });
+      state.shareLocals = state.shareLocals.map(local => ({
+        ...local,
+        first_product_image_url: firstImageByLocal.get(local.id) || null
+      }));
+    }
+
     const categoryIds = [...new Set(state.shareLocals.map(local => local.business_category_id).filter(Boolean))];
     if (categoryIds.length) {
       const categoryRes = await supabaseClient
@@ -2183,7 +2210,7 @@ function sharePayload(kind) {
       title: local.name + " | " + delivery.name,
       text: local.name + " en " + delivery.name + "\n\nPIDE AQUÍ 👇\n" + url,
       url,
-      imageUrl: local.banner_url || local.logo_url || delivery.logo_url || "",
+      imageUrl: shareLocalVisualUrl(local),
       logoUrl: local.logo_url || delivery.logo_url || "",
       headline: local.name,
       subline: shareCategoryName(local),
@@ -2196,7 +2223,7 @@ function sharePayload(kind) {
     title: product.name + " | " + local.name,
     text: product.name + " · " + local.name + "\n\nPIDE AQUÍ 👇\n" + url,
     url,
-    imageUrl: product.image_url || local.banner_url || local.logo_url || delivery.logo_url || "",
+    imageUrl: product.image_url || shareLocalVisualUrl(local),
     logoUrl: local.logo_url || delivery.logo_url || "",
     headline: product.name,
     subline: local.name + " · " + delivery.name,
