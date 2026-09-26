@@ -125,7 +125,7 @@ test('Preparar Estado usa imagen y enlace directo al LOCAL o producto',()=>{
 
 test('Preparar Estado no obliga a compartir por chat',()=>{
   assert.match(html,/Estado listo para publicar/);
-  assert.match(html,/Abrir WhatsApp → Novedades\/Estado → Mi estado/);
+  assert.match(html,/Abre WhatsApp → Novedades\\/Estado → Mi estado/);
   assert.match(admin,/function openWhatsappForStatus/);
   assert.match(admin,/whatsapp:\/\//);
 });
