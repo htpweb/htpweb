@@ -88,12 +88,25 @@ test('Compartir abre un modal fijo sin desplazar la página',()=>{
   assert.doesNotMatch(block,/scrollIntoView/);
 });
 
-test('WhatsApp Web recibe la imagen preparada y no abre un link prefabricado',()=>{
+test('WhatsApp chat usa el enlace enriquecido del producto o LOCAL',()=>{
+  assert.match(admin,/function buildSharePreviewUrl/);
+  assert.match(admin,/functions\/v1\/share-preview/);
   const start=admin.indexOf('async function browserShare');
   const end=admin.indexOf('async function nativeShare',start);
   const block=admin.slice(start,end);
-  assert.match(block,/copyPreparedImageToClipboard/);
-  assert.match(block,/https:\/\/web\.whatsapp\.com\//);
-  assert.doesNotMatch(block,/web\.whatsapp\.com\/send\?text=/);
-  assert.match(block,/No se está compartiendo solo un enlace/);
+  assert.match(block,/whatsapp:\/\/send\?text=/);
+  assert.match(block,/api\.whatsapp\.com\/send\?text=/);
+  assert.match(block,/payload\.url/);
+  assert.match(block,/vista previa con la foto/);
+});
+
+
+test('share-preview publica metadatos Open Graph para previews sociales',()=>{
+  const edge=fs.readFileSync('supabase/functions/share-preview/index.ts','utf8');
+  assert.match(edge,/og:title/);
+  assert.match(edge,/og:description/);
+  assert.match(edge,/og:image/);
+  assert.match(edge,/og:url/);
+  assert.match(edge,/twitter:card/);
+  assert.match(edge,/setTimeout\(function\(\)\{ location\.replace/);
 });
