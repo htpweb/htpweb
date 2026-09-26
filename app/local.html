@@ -235,7 +235,7 @@ function render() {
                 onclick="event.stopPropagation(); changeProductQuantity('${product.id}', -1)"
                 ${availability && availability.is_open !== true ? "disabled" : ""}
               >−</button>
-              <input id="qty-${product.id}" type="number" min="0" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" aria-label="Cantidad en carrito" readonly>
+              <input id="qty-${product.id}" type="number" min="0" step="1" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" aria-label="Cantidad en carrito" oninput="event.stopPropagation(); setProductQuantity('${product.id}', this.value)">
               <button
                 type="button"
                 class="qty-step-btn"
@@ -271,7 +271,7 @@ function productCartMatcher(productId, explicitVariantId = undefined) {
   };
 }
 
-function cartQuantityForProduct(productId, variantId = null) {
+function cartQuantityForProduct(productId, variantId = undefined) {
   if (!negocioActual?.slug || !localActual?.id || typeof carritoCantidadItem !== "function") return 0;
   return carritoCantidadItem(negocioActual.slug, productCartMatcher(productId, variantId));
 }
@@ -365,13 +365,56 @@ function changeProductQuantity(productId, delta, explicitVariantId = undefined) 
   return next;
 }
 
+function setProductQuantity(productId, quantity, explicitVariantId = undefined) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return 0;
+
+  const parsedQuantity = Number.parseInt(quantity, 10);
+  if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+    return syncProductCartQuantity(productId);
+  }
+
+  const variant = resolveProductVariant(productId, explicitVariantId);
+  const matcher = productCartMatcher(productId, variant?.id || null);
+  const current = carritoCantidadItem(negocioActual.slug, matcher);
+  const next = Math.max(0, parsedQuantity);
+
+  if (next === current) {
+    syncProductCartQuantity(productId);
+    return next;
+  }
+
+  if (next === 0) {
+    carritoEliminar(negocioActual.slug, matcher);
+  } else if (current <= 0) {
+    carritoAgregar(negocioActual.slug, {
+      local_id: localActual.id,
+      product_id: product.id,
+      variant_id: variant?.id || null,
+      snapshot: {
+        local_name: localActual.name,
+        product_name: product.name,
+        variant_name: variant?.name || null
+      }
+    }, next);
+  } else {
+    carritoCambiarCantidad(negocioActual.slug, matcher, next);
+  }
+
+  updateCartCount();
+  syncProductCartQuantity(productId);
+  return next;
+}
+
 function addProduct(productId) {
   return addProductUnit(productId);
 }
 
 window.htpwebAddProductUnit = addProductUnit;
 window.htpwebChangeProductQuantity = changeProductQuantity;
+window.htpwebSetProductQuantity = setProductQuantity;
 window.htpwebProductCartMatcher = productCartMatcher;
+window.syncVariantPrice = syncVariantPrice;
 
 function updateCartCount() {
   if (!negocioActual) return;
