@@ -46,3 +46,13 @@ test('customer context can coexist with administrative role',()=>{
   );
   assert.match(migration,/CUSTOMER ya puede coexistir/);
 });
+
+
+test('access screen lets an unconfirmed account resend signup email',()=>{
+  assert.match(access,/id="resendConfirmationBtn"/);
+  assert.match(access,/auth\.resend\(\{/);
+  assert.match(access,/type:\s*"signup"/);
+  assert.match(access,/Correo de confirmación reenviado/);
+  assert.match(access,/email not confirmed/i);
+  assert.match(access,/Espera aproximadamente un minuto/);
+});

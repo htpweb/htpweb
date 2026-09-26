@@ -34,6 +34,7 @@
         <input id="loginPassword" type="password" autocomplete="current-password" required>
 
         <button class="btn btn-primary" style="width:100%" type="submit">Entrar</button>
+        <button id="resendConfirmationBtn" class="btn btn-muted" style="width:100%;margin-top:10px" type="button">Reenviar correo de confirmación</button>
       </form>
 
       <form id="registerForm" class="hidden">
@@ -366,7 +367,45 @@ $("loginForm").onsubmit = async event => {
     }
     location.href = authenticatedDestination(access);
   } catch (e) {
-    showMessage(e.message || "No se pudo iniciar sesión.");
+    const raw = String(e?.message || "");
+    if (/email not confirmed/i.test(raw)) {
+      showMessage("Tu correo todavía no está confirmado. Pulsa ‘Reenviar correo de confirmación’ y revisa tu bandeja de entrada o spam.");
+      return;
+    }
+    showMessage(raw || "No se pudo iniciar sesión.");
+  }
+};
+
+$("resendConfirmationBtn").onclick = async () => {
+  const email = $("loginEmail").value.trim();
+  if (!email) {
+    showMessage("Escribe primero el correo con el que creaste tu cuenta.");
+    $("loginEmail").focus();
+    return;
+  }
+
+  const button = $("resendConfirmationBtn");
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Enviando…";
+
+  try {
+    const { error } = await supabaseClient.auth.resend({
+      type: "signup",
+      email
+    });
+    if (error) throw error;
+    showMessage("Correo de confirmación reenviado. Revisa tu bandeja de entrada y la carpeta de spam.", "success");
+  } catch (e) {
+    const raw = String(e?.message || "");
+    if (/rate limit|too many requests|seconds/i.test(raw)) {
+      showMessage("Espera aproximadamente un minuto antes de solicitar otro correo de confirmación.");
+      return;
+    }
+    showMessage(raw || "No se pudo reenviar el correo de confirmación.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
   }
 };
 
@@ -407,7 +446,7 @@ $("registerForm").onsubmit = async event => {
       return;
     }
 
-    showMessage("Cuenta creada. Revisa tu correo para confirmarla. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
+    showMessage("Cuenta creada. Revisa tu correo para confirmarla. Si no encuentras el mensaje o lo borras, usa ‘Reenviar correo de confirmación’. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
     showLogin();
     $("loginEmail").value = email;
   } catch (e) {
