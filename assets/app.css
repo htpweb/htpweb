@@ -156,3 +156,137 @@ body.has-htpweb-ad{padding-bottom:104px}
   gap:4px;
   margin:.45rem 0;
 }
+
+
+/* CLIENT — visor de productos, banner y galería */
+.client-media-clickable{cursor:zoom-in}
+.local-gallery-public{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.local-gallery-public-item{
+  border:0;
+  padding:0;
+  border-radius:12px;
+  overflow:hidden;
+  background:#f3f4f6;
+  aspect-ratio:1/1;
+  cursor:zoom-in;
+}
+.local-gallery-public-item img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.media-viewer{
+  position:fixed;
+  inset:0;
+  z-index:140;
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.media-viewer-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,.78);
+  backdrop-filter:blur(5px);
+}
+.media-viewer-panel{
+  position:relative;
+  z-index:1;
+  width:min(920px,100%);
+  max-height:min(92vh,920px);
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);
+  overflow:hidden;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 24px 80px rgba(0,0,0,.35);
+}
+.media-viewer-image-wrap{
+  position:relative;
+  min-height:420px;
+  background:#0f172a;
+  display:grid;
+  place-items:center;
+}
+.media-viewer-image{
+  width:100%;
+  height:100%;
+  max-height:78vh;
+  object-fit:contain;
+  display:block;
+}
+.media-viewer-content{
+  padding:24px;
+  overflow:auto;
+}
+.media-viewer-content h2{margin:0 0 8px}
+.media-viewer-price{
+  font-size:1.45rem;
+  font-weight:800;
+  margin:14px 0;
+}
+.media-viewer-actions{
+  display:grid;
+  grid-template-columns:90px 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+.media-viewer-close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:5;
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.92);
+  font-size:28px;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:0 3px 15px rgba(0,0,0,.18);
+}
+.media-viewer-nav{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:4;
+  width:44px;
+  height:52px;
+  border:0;
+  border-radius:12px;
+  background:rgba(255,255,255,.9);
+  font-size:34px;
+  cursor:pointer;
+}
+.media-viewer-prev{left:12px}
+.media-viewer-next{right:12px}
+body.media-viewer-open{overflow:hidden}
+
+@media(max-width:760px){
+  .media-viewer{padding:0}
+  .media-viewer-panel{
+    width:100%;
+    max-height:100vh;
+    height:100vh;
+    border-radius:0;
+    grid-template-columns:1fr;
+    grid-template-rows:minmax(0,56vh) minmax(0,44vh);
+  }
+  .media-viewer-image-wrap{min-height:0}
+  .media-viewer-image{max-height:56vh}
+  .media-viewer-content{padding:18px 16px 24px}
+  .media-viewer-actions{
+    position:sticky;
+    bottom:0;
+    background:#fff;
+    padding-top:10px;
+  }
+  .local-gallery-public{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
