@@ -129,3 +129,12 @@ test('Preparar Estado no obliga a compartir por chat',()=>{
   assert.match(admin,/function openWhatsappForStatus/);
   assert.match(admin,/whatsapp:\/\//);
 });
+
+
+test('share-preview redirige personas y reserva Open Graph para crawlers',()=>{
+  const edge=fs.readFileSync('supabase/functions/share-preview/index.ts','utf8');
+  assert.match(edge,/isPreviewCrawler/);
+  assert.match(edge,/whatsapp\|facebookexternalhit/);
+  assert.match(edge,/return htmlResponse\(page\)/);
+  assert.match(edge,/Response\.redirect\(target\.toString\(\), 302\)/);
+});
