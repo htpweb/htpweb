@@ -12,11 +12,11 @@ test("LOCAL carga el visor multimedia del cliente", () => {
   assert.match(localHtml, /config\/media-viewer\.js/);
   assert.match(viewer, /mediaViewerPurchase/);
   assert.match(viewer, /openProduct\(productId\)/);
-  assert.match(viewer, /addProduct\(productId\)/);
+  assert.match(viewer, /window\.htpwebAddProductUnit\(productId, variantId\)/);
 });
 
 test("visor conserva la lógica existente de carrito y variantes", () => {
-  assert.match(viewer, /variantInput\.value = \$v\("mediaViewerVariant"\)\.value/);
+  assert.match(viewer, /const variantId = selectedViewerVariantId\(\)/);
   assert.match(viewer, /typeof window\.htpwebAddProductUnit !== "function"/);
   assert.match(viewer, /window\.htpwebAddProductUnit\(productId, variantId\)/);
   assert.doesNotMatch(viewer, /carritoAgregar\(/);
