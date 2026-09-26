@@ -1846,6 +1846,14 @@ function buildSharedLocalUrl(localId = null) {
   return url.toString();
 }
 
+function buildShortSharedLocalUrl(localId = null) {
+  const local = localId
+    ? state.shareLocals.find(item => item.id === localId)
+    : currentShareLocal();
+  if (!local?.share_code) return buildSharedLocalUrl(localId);
+  return new URL("../p/#"+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
+}
+
 function shareLocalCategory(local) {
   return local?.business_category_name || "Otros";
 }
@@ -1966,7 +1974,7 @@ async function openShareLocalGallery(localId) {
   $("shareGalleryView")?.classList.remove("hidden");
   if($("shareGalleryLocalName"))$("shareGalleryLocalName").textContent=local.name||"LOCAL";
   if($("shareGalleryLocalMeta"))$("shareGalleryLocalMeta").textContent=shareLocalCategory(local)+" · "+Number(local.gallery_count||0)+" foto(s)";
-  const url=buildSharedLocalUrl();
+  const url=buildShortSharedLocalUrl();
   if($("shareGalleryLocalLink"))$("shareGalleryLocalLink").href=url||"#";
   if($("shareGalleryGrid"))$("shareGalleryGrid").innerHTML='<div class="muted">Cargando Galería…</div>';
   try{
@@ -1983,7 +1991,7 @@ function renderShareGallery() {
   const box=$("shareGalleryGrid");
   const local=currentShareLocal();
   if(!box||!local)return;
-  const localUrl=buildSharedLocalUrl();
+  const localUrl=buildShortSharedLocalUrl();
   box.innerHTML=state.shareGallery.length?state.shareGallery.map((image,index)=>
     '<article class="share-gallery-card">'+
       '<div class="share-gallery-image"><img src="'+esc(image.image_url)+'" alt="Foto '+(index+1)+' de '+esc(local.name)+'" loading="lazy"></div>'+
@@ -2004,12 +2012,13 @@ function renderShareGallery() {
 }
 
 function shareLocalOrderPlainText() {
-  const url=buildSharedLocalUrl();
-  return url?"PIDE AQUÍ 👇\n"+url:"";
+  const delivery=currentShareDelivery();
+  const url=buildShortSharedLocalUrl();
+  return url&&delivery?"PIDE AQUÍ | "+delivery.name+"\n"+url:"";
 }
 
 async function copyShareLocalOrderLink() {
-  const url=buildSharedLocalUrl();
+  const url=buildShortSharedLocalUrl();
   if(!url)return;
   const plain=shareLocalOrderPlainText();
   try{
