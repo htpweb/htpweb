@@ -17,7 +17,6 @@ test("LOCAL carga el visor multimedia del cliente", () => {
 
 test("visor conserva la lógica existente de carrito y variantes", () => {
   assert.match(viewer, /variantInput\.value = \$v\("mediaViewerVariant"\)\.value/);
-  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
   assert.match(viewer, /typeof addProduct !== "function"/);
   assert.doesNotMatch(viewer, /carritoAgregar\(/);
 });
@@ -65,7 +64,6 @@ test("cantidad del visor refleja el acumulado real del carrito", () => {
   assert.match(viewer, /Cantidad en carrito/);
   assert.match(viewer, /readonly/);
   assert.match(viewer, /carritoCantidadItem\(negocioActual\.slug, viewerMatcher\(productId\)\)/);
-  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
   assert.match(viewer, /En carrito: \${total} ✓/);
   assert.doesNotMatch(viewer, /mediaViewerQty"\)\.value = 1/);
 });
@@ -74,4 +72,14 @@ test("cambiar variante sincroniza su propia cantidad en carrito", () => {
   assert.match(viewer, /function viewerMatcher\(productId\)/);
   assert.match(viewer, /variant_id: variantId/);
   assert.match(viewer, /function syncVariantPrice\(\)[\s\S]*syncViewerCartQuantity\(\)/);
+});
+
+
+test("visor no reinicia la cantidad visible de la tarjeta", () => {
+  const start = viewer.indexOf("function addFromViewer");
+  const end = viewer.indexOf("async function loadGallery");
+  const block = viewer.slice(start, end);
+  assert.doesNotMatch(block, /qtyInput/);
+  assert.match(block, /addProduct\(productId\)/);
+  assert.match(block, /syncViewerCartQuantity\(productId\)/);
 });
