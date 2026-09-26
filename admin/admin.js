@@ -2596,7 +2596,7 @@ async function browserShare(kind,platform) {
   state.shareSelectedArtworkKind=kind;
 
   let popup=null;
-  if(["whatsapp","facebook","tiktok"].includes(platform)){
+  if(["facebook","tiktok"].includes(platform)){
     popup=window.open("about:blank","_blank");
   }
 
@@ -2607,15 +2607,8 @@ async function browserShare(kind,platform) {
       await copyShareText(kind);
       const chatText="PIDE AQUÍ 👇\n"+payload.url;
       const appTarget="whatsapp://send?text="+encodeURIComponent(chatText);
-      const webTarget="https://api.whatsapp.com/send?text="+encodeURIComponent(chatText);
-
-      if(popup){
-        popup.location.href=webTarget;
-      }else{
-        window.location.href=appTarget;
-      }
-
-      setShareBrowserHint("Se abrió WhatsApp con el enlace enriquecido. Debe aparecer una vista previa con la foto del producto/LOCAL. Si WhatsApp Desktop no se abre, el texto quedó copiado para pegarlo con Ctrl+V.");
+      window.location.href=appTarget;
+      setShareBrowserHint("Abriendo WhatsApp Desktop con el enlace enriquecido. Debe aparecer una vista previa con la foto del producto/LOCAL. El mismo texto quedó copiado por si necesitas pegarlo con Ctrl+V.");
       return;
     }
 
