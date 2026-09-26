@@ -127,6 +127,7 @@ let items = [];
 let productMap = new Map();
 let variantMap = new Map();
 let localMap = new Map();
+let promotionMap = new Map();
 let savedAddresses = [];
 
 let map = null;
@@ -183,64 +184,137 @@ async function reloadCart() {
   productMap = new Map();
   variantMap = new Map();
   localMap = new Map();
+  promotionMap = new Map();
 
   if (!items.length) {
     renderCart();
     return;
   }
 
-  const productIds = [...new Set(items.map(x => x.product_id))];
-  const variantIds = [...new Set(items.map(x => x.variant_id).filter(Boolean))];
-  const localIds = [...new Set(items.map(x => x.local_id))];
+  const productItems = items.filter(item => !item.promotion_id);
+  const promotionItems = items.filter(item => item.promotion_id);
+  const productIds = [...new Set(productItems.map(x => x.product_id).filter(Boolean))];
+  const variantIds = [...new Set(productItems.map(x => x.variant_id).filter(Boolean))];
+  const localIds = [...new Set(items.map(x => x.local_id).filter(Boolean))];
 
-  const calls = [
-    supabaseClient
+  const localRes = await supabaseClient
+    .from("locals")
+    .select("id,name,active")
+    .in("id", localIds)
+    .eq("active", true);
+  if (localRes.error) throw localRes.error;
+  (localRes.data || []).forEach(x => localMap.set(x.id, x));
+
+  if (productIds.length) {
+    const productRes = await supabaseClient
       .from("products")
       .select("id,local_id,name,price,image_url,active")
       .in("id", productIds)
-      .eq("active", true),
-
-    supabaseClient
-      .from("locals")
-      .select("id,name,active")
-      .in("id", localIds)
-      .eq("active", true)
-  ];
-
-  if (variantIds.length) {
-    calls.push(
-      supabaseClient
-        .from("product_variants")
-        .select("id,product_id,name,price,active")
-        .in("id", variantIds)
-        .eq("active", true)
-    );
+      .eq("active", true);
+    if (productRes.error) throw productRes.error;
+    (productRes.data || []).forEach(x => productMap.set(x.id, x));
   }
 
-  const results = await Promise.all(calls);
-  if (results[0].error) throw results[0].error;
-  if (results[1].error) throw results[1].error;
-  if (results[2]?.error) throw results[2].error;
+  if (variantIds.length) {
+    const variantRes = await supabaseClient
+      .from("product_variants")
+      .select("id,product_id,name,price,active")
+      .in("id", variantIds)
+      .eq("active", true);
+    if (variantRes.error) throw variantRes.error;
+    (variantRes.data || []).forEach(x => variantMap.set(x.id, x));
+  }
 
-  (results[0].data || []).forEach(x => productMap.set(x.id, x));
-  (results[1].data || []).forEach(x => localMap.set(x.id, x));
-  (results[2]?.data || []).forEach(x => variantMap.set(x.id, x));
+  if (promotionItems.length) {
+    const promoLocalIds = [...new Set(promotionItems.map(item => item.local_id))];
+    const promoResults = await Promise.all(
+      promoLocalIds.map(localId =>
+        supabaseClient.rpc("public_active_local_promotions", { p_local_id: localId })
+      )
+    );
 
+    promoResults.forEach(result => {
+      if (result.error) throw result.error;
+      (result.data || []).forEach(promotion => promotionMap.set(promotion.id, promotion));
+    });
+  }
+
+  let removedUnavailablePromotion = false;
   items = items.filter(item => {
+    if (item.promotion_id) {
+      const promotion = promotionMap.get(item.promotion_id);
+      if (!promotion || promotion.local_id !== item.local_id) {
+        removedUnavailablePromotion = true;
+        return false;
+      }
+
+      const promoItems = Array.isArray(promotion.items) ? promotion.items : [];
+      if (!promoItems.length) {
+        removedUnavailablePromotion = true;
+        return false;
+      }
+
+      if (promotion.promotion_type === "OPTIONS") {
+        const option = promoItems.find(row => row.id === item.promotion_item_id);
+        if (!option || option.promo_price === null || option.promo_price === undefined) {
+          removedUnavailablePromotion = true;
+          return false;
+        }
+      } else if (item.promotion_item_id) {
+        removedUnavailablePromotion = true;
+        return false;
+      }
+
+      return localMap.has(item.local_id);
+    }
+
     const product = productMap.get(item.product_id);
     if (!product || product.local_id !== item.local_id) return false;
     if (item.variant_id) {
       const variant = variantMap.get(item.variant_id);
       if (!variant || variant.product_id !== item.product_id) return false;
     }
-    return true;
+    return localMap.has(item.local_id);
   });
 
   carritoGuardar(negocioActual.slug, items);
   renderCart();
+
+  if (removedUnavailablePromotion) {
+    showMessage("Una promoción cambió o dejó de estar disponible y fue retirada del carrito.");
+  }
+}
+
+function promotionContext(item) {
+  const promotion = item?.promotion_id ? promotionMap.get(item.promotion_id) : null;
+  const option = promotion?.promotion_type === "OPTIONS"
+    ? (promotion.items || []).find(row => row.id === item.promotion_item_id) || null
+    : null;
+  return { promotion, option };
+}
+
+function promotionUnitPrice(item) {
+  const { promotion, option } = promotionContext(item);
+  if (!promotion) return 0;
+
+  if (promotion.promotion_type === "OPTIONS") {
+    return Number(option?.promo_price || 0);
+  }
+
+  if (promotion.promotion_price !== null && promotion.promotion_price !== undefined) {
+    return Number(promotion.promotion_price);
+  }
+
+  return (promotion.items || []).reduce((sum, row) => {
+    const line = row.promo_price !== null && row.promo_price !== undefined
+      ? Number(row.promo_price)
+      : Number(row.regular_unit_price || 0) * Number(row.quantity || 1);
+    return sum + line;
+  }, 0);
 }
 
 function itemPrice(item) {
+  if (item.promotion_id) return promotionUnitPrice(item);
   const variant = item.variant_id ? variantMap.get(item.variant_id) : null;
   const product = productMap.get(item.product_id);
   return Number(variant?.price ?? product?.price ?? 0);
@@ -248,7 +322,7 @@ function itemPrice(item) {
 
 function renderCart() {
   if (!items.length) {
-    $("cartList").innerHTML = '<div class="empty"><h2>Tu carrito está vacío</h2><p>Agrega productos para continuar.</p></div>';
+    $("cartList").innerHTML = '<div class="empty"><h2>Tu carrito está vacío</h2><p>Agrega productos o promociones para continuar.</p></div>';
     $("summary").innerHTML = "";
     $("checkoutCard").classList.add("hidden");
     return;
@@ -267,12 +341,42 @@ function renderCart() {
     let localSubtotal = 0;
 
     const body = group.map(item => {
-      const product = productMap.get(item.product_id);
-      const variant = item.variant_id ? variantMap.get(item.variant_id) : null;
       const price = itemPrice(item);
       const line = price * item.quantity;
       localSubtotal += line;
       subtotal += line;
+
+      if (item.promotion_id) {
+        const { promotion, option } = promotionContext(item);
+        const isOptions = promotion?.promotion_type === "OPTIONS";
+        const detail = isOptions
+          ? (option
+              ? `${option.quantity || 1}× ${option.product_name || "Producto"}${option.variant_name ? " · " + option.variant_name : ""}`
+              : "Opción promocional")
+          : (promotion?.items || []).map(row =>
+              `${row.quantity || 1}× ${row.product_name || "Producto"}${row.variant_name ? " · " + row.variant_name : ""}`
+            ).join(" · ");
+
+        return `
+          <div class="cart-item promo-cart-item">
+            <div>
+              <span class="promotion-badge">PROMOCIÓN</span>
+              <strong>${esc(promotion?.title || item.snapshot?.promotion_title || "Promoción")}</strong>
+              <div class="muted">${esc(detail)}</div>
+              <div>$${price.toFixed(2)} × ${item.quantity}</div>
+            </div>
+            <div class="qty">
+              <button class="btn btn-muted" onclick="changePromoQty('${item.local_id}','${item.promotion_id}','${item.promotion_item_id || ""}',${item.quantity - 1})">−</button>
+              <strong>${item.quantity}</strong>
+              <button class="btn btn-muted" onclick="changePromoQty('${item.local_id}','${item.promotion_id}','${item.promotion_item_id || ""}',${item.quantity + 1})">+</button>
+              <button class="btn btn-danger" onclick="removePromo('${item.local_id}','${item.promotion_id}','${item.promotion_item_id || ""}')">×</button>
+            </div>
+          </div>
+        `;
+      }
+
+      const product = productMap.get(item.product_id);
+      const variant = item.variant_id ? variantMap.get(item.variant_id) : null;
 
       return `
         <div class="cart-item">
@@ -301,9 +405,9 @@ function renderCart() {
   }).join("");
 
   $("summary").innerHTML = `
-    <div class="summary-line"><span>Productos (referencial)</span><strong>$${subtotal.toFixed(2)}</strong></div>
+    <div class="summary-line"><span>Productos y promociones (referencial)</span><strong>$${subtotal.toFixed(2)}</strong></div>
     <div class="summary-line"><span>Delivery</span><span>Se calcula en el servidor</span></div>
-    <small class="note">Los precios, distancias, tarifa y total definitivos se vuelven a validar al confirmar.</small>
+    <small class="note">Precios normales y promocionales, vigencia, distancias, tarifa y total se vuelven a validar al confirmar.</small>
     <button class="btn btn-dark" style="width:100%;margin-top:14px" onclick="openCheckout()">Continuar</button>
     <button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="emptyCart()">Vaciar carrito</button>
   `;
@@ -317,6 +421,14 @@ function matcher(localId, productId, variantId) {
   };
 }
 
+function promoMatcher(localId, promotionId, promotionItemId) {
+  return {
+    local_id: localId,
+    promotion_id: promotionId,
+    promotion_item_id: promotionItemId || null
+  };
+}
+
 function changeQty(localId, productId, variantId, quantity) {
   if (quantity <= 0) return removeItem(localId, productId, variantId);
   carritoCambiarCantidad(negocioActual.slug, matcher(localId, productId, variantId), quantity);
@@ -325,6 +437,24 @@ function changeQty(localId, productId, variantId, quantity) {
 
 function removeItem(localId, productId, variantId) {
   carritoEliminar(negocioActual.slug, matcher(localId, productId, variantId));
+  reloadCart();
+}
+
+function changePromoQty(localId, promotionId, promotionItemId, quantity) {
+  if (quantity <= 0) return removePromo(localId, promotionId, promotionItemId);
+  carritoCambiarCantidad(
+    negocioActual.slug,
+    promoMatcher(localId, promotionId, promotionItemId),
+    quantity
+  );
+  reloadCart();
+}
+
+function removePromo(localId, promotionId, promotionItemId) {
+  carritoEliminar(
+    negocioActual.slug,
+    promoMatcher(localId, promotionId, promotionItemId)
+  );
   reloadCart();
 }
 
@@ -635,12 +765,23 @@ async function confirmOrder() {
     const locals = [...new Set(items.map(item => item.local_id))]
       .map(local_id => ({ local_id }));
 
-    const orderItems = items.map(item => ({
-      local_id: item.local_id,
-      product_id: item.product_id,
-      variant_id: item.variant_id || null,
-      quantity: item.quantity
-    }));
+    const orderItems = items.map(item => {
+      if (item.promotion_id) {
+        return {
+          local_id: item.local_id,
+          promotion_id: item.promotion_id,
+          promotion_item_id: item.promotion_item_id || null,
+          quantity: item.quantity
+        };
+      }
+
+      return {
+        local_id: item.local_id,
+        product_id: item.product_id,
+        variant_id: item.variant_id || null,
+        quantity: item.quantity
+      };
+    });
 
     const { data, error } = await supabaseClient.functions.invoke("crear-pedido", {
       body: {
