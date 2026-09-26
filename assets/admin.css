@@ -421,3 +421,30 @@ body.share-modal-open{overflow:hidden}
   .share-gallery-image{height:auto;min-height:260px}
   .share-gallery-image img{height:auto;max-height:70vh}
 }
+
+
+/* Admin secure role boot */
+body.admin-role-loading #nav,
+body.admin-role-loading .sidebar-footer{
+  display:none!important;
+}
+body.admin-role-loading .content>*{
+  display:none!important;
+}
+body.admin-role-loading .content::before{
+  content:"Preparando tu panel…";
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:140px;
+  margin-top:68px;
+  background:#fff;
+  border-radius:15px;
+  box-shadow:0 2px 10px #0000000d;
+  color:#64748b;
+  font-weight:700;
+}
+body.admin-role-error #nav,
+body.admin-role-error .sidebar-footer{
+  display:none!important;
+}
