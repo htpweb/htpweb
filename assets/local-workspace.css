@@ -1,6 +1,13 @@
 .workspace-map{height:380px;border-radius:12px;z-index:0;margin:12px 0;background:#edf2f7}
 .workspace-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-.workspace-tabs button[aria-selected="true"]{background:#1d4ed8;color:white}
+.workspace-tabs button,
+.selection-button{background:#e5e7eb;color:#111827;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.workspace-tabs button.active,
+.workspace-tabs button[aria-selected="true"],
+.workspace-tabs button[aria-pressed="true"],
+.selection-button.is-selected,
+.selection-button[aria-selected="true"],
+.selection-button[aria-pressed="true"]{background:#e53935;color:#fff}
 .workspace-note{padding:12px;border-radius:8px;background:#eff6ff;color:#1e3a8a;margin:12px 0}
 .workspace-warning{background:#fff7ed;color:#9a3412}
 .workspace-title{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
