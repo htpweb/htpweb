@@ -46,7 +46,7 @@ test('usa Web Share priorizando el archivo de imagen',()=>{
   assert.match(admin,/navigator\.canShare/);
   assert.match(admin,/navigator\.share\(\{/);
   assert.match(admin,/files:\[prepared\.file\]/);
-  assert.match(admin,/text: payload\.text/);
+  assert.doesNotMatch(admin,/text: payload\.text/);
   const start=admin.indexOf('async function nativeShare');
   const end=admin.indexOf('async function loadLocalProfile',start);
   const block=admin.slice(start,end);
@@ -96,7 +96,7 @@ test('WhatsApp chat usa el enlace enriquecido del producto o LOCAL',()=>{
   const block=admin.slice(start,end);
   assert.match(block,/whatsapp:\/\/send\?text=/);
   assert.match(block,/payload\.url/);
-  assert.match(block,/vista previa con la foto/);
+  assert.match(block,/Para Estado usa el flujo principal/);
 });
 
 
@@ -108,4 +108,24 @@ test('share-preview publica metadatos Open Graph para previews sociales',()=>{
   assert.match(edge,/og:url/);
   assert.match(edge,/twitter:card/);
   assert.match(edge,/setTimeout\(function\(\)\{ location\.replace/);
+});
+
+
+test('Preparar Estado usa imagen y enlace directo al LOCAL o producto',()=>{
+  assert.match(html,/Preparar Estado/);
+  assert.match(html,/id="shareStatusText"/);
+  assert.match(html,/id="shareOpenWhatsappBtn"/);
+  assert.match(admin,/function shareStatusText/);
+  const start=admin.indexOf('function shareStatusText');
+  const end=admin.indexOf('async function copyShareText',start);
+  const block=admin.slice(start,end);
+  assert.match(block,/payload\.targetUrl\|\|payload\.url/);
+  assert.match(block,/PIDE AQUÍ/);
+});
+
+test('Preparar Estado no obliga a compartir por chat',()=>{
+  assert.match(html,/Estado listo para publicar/);
+  assert.match(html,/Abrir WhatsApp → Novedades\/Estado → Mi estado/);
+  assert.match(admin,/function openWhatsappForStatus/);
+  assert.match(admin,/whatsapp:\/\//);
 });
