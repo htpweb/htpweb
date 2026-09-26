@@ -43,13 +43,13 @@ test('Compartir desde navegador ofrece WhatsApp Facebook y TikTok',()=>{
   assert.match(html,/id="shareWhatsappWebBtn"/);
   assert.match(html,/id="shareFacebookWebBtn"/);
   assert.match(html,/id="shareTiktokWebBtn"/);
-  assert.match(admin,/web\.whatsapp\.com\/send\?text=/);
+  assert.match(admin,/https:\/\/web\.whatsapp\.com\//);
   assert.match(admin,/facebook\.com\/sharer\/sharer\.php/);
   assert.match(admin,/tiktok\.com\/upload/);
 });
 
 test('WhatsApp Web prepara la imagen visual',()=>{
-  assert.match(admin,/copyShareImageToClipboard/);
+  assert.match(admin,/copyPreparedImageToClipboard/);
   assert.match(admin,/ClipboardItem/);
   assert.match(admin,/downloadShareImage\(kind\)/);
   assert.match(admin,/PIDE AQUÍ/);
