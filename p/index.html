@@ -20,7 +20,8 @@
   </main>
   <script>
     (function(){
-      var code=(location.hash||"").replace(/^#/,"").trim().toUpperCase();
+      var params=new URLSearchParams(location.search);
+      var code=(params.get("s")||(location.hash||"").replace(/^#/,"")).trim().toUpperCase();
       if(!/^[A-F0-9]{6}$/.test(code)){
         document.querySelector(".muted").textContent="Enlace no válido.";
         return;
