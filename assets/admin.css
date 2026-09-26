@@ -406,3 +406,18 @@ body.share-modal-open{overflow:hidden}
 .share-status-text{width:100%;resize:none;font-family:inherit;background:#f8fafc}
 .share-secondary-options{margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px}
 .share-secondary-options summary{cursor:pointer;font-weight:800;color:#475569}
+
+
+/* Compartir — Galería original del LOCAL */
+.share-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.share-gallery-card{border:1px solid #dbe2eb;border-radius:14px;overflow:hidden;background:#fff}
+.share-gallery-image{height:320px;background:#eef2f7;display:flex;align-items:center;justify-content:center}
+.share-gallery-image img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+.share-gallery-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px}
+.share-gallery-order-link{font-weight:900;color:#e53935;text-decoration:none;padding:8px 4px}
+.share-gallery-order-link:hover{text-decoration:underline}
+@media(max-width:700px){
+  .share-gallery-grid{grid-template-columns:1fr}
+  .share-gallery-image{height:auto;min-height:260px}
+  .share-gallery-image img{height:auto;max-height:70vh}
+}
