@@ -1991,7 +1991,6 @@ async function selectShareLocal(localId) {
   renderShareLocals();
   renderSelectedShareLocal();
   await loadShareProducts();
-  await renderShareArtworkPreview("local");
 }
 
 function renderShareProducts() {
@@ -2046,7 +2045,6 @@ function selectShareProduct(productId) {
   select.value = productId;
   state.shareSelectedArtworkKind = "product";
   renderShareProducts();
-  renderShareArtworkPreview("product");
 }
 
 async function loadShareModule() {
@@ -2385,20 +2383,12 @@ async function drawShareArtwork(canvas,kind) {
 }
 
 async function renderShareArtworkPreview(kind) {
-  const previewCard = $("shareArtworkPreviewCard");
   const canvas = $("shareArtworkPreview");
   const payload = sharePayload(kind);
-  if (!previewCard || !canvas || !payload) {
-    previewCard?.classList.add("hidden");
-    return;
-  }
-  previewCard.classList.remove("hidden");
-  $("shareArtworkOrderLink").href = payload.url;
-  try {
-    await drawShareArtwork(canvas,kind);
-  } catch {
-    previewCard.classList.add("hidden");
-  }
+  if (!canvas || !payload) return false;
+  if ($("shareArtworkOrderLink")) $("shareArtworkOrderLink").href = payload.url;
+  await drawShareArtwork(canvas,kind);
+  return true;
 }
 
 function shareCanvasBlob(canvas) {
@@ -2488,11 +2478,59 @@ async function createSharePngBlob(kind) {
   });
 }
 
-async function copyShareImageToClipboard(kind) {
+function sharePreparationKey(kind) {
+  const delivery=currentShareDelivery();
+  const local=currentShareLocal();
+  const product=currentShareProduct();
+  return [kind,delivery?.id||"",local?.id||"",kind==="product"?(product?.id||""):""].join(":");
+}
+
+function setShareModalBusy(busy) {
+  [
+    "shareNativeDeviceBtn","shareWhatsappWebBtn","shareFacebookWebBtn",
+    "shareTiktokWebBtn","shareDownloadImageBtn","shareCopyTextBtn"
+  ].forEach(id=>{
+    const button=$(id);
+    if(button)button.disabled=Boolean(busy);
+  });
+}
+
+function setShareBrowserHint(text) {
+  if($("shareBrowserHint"))$("shareBrowserHint").textContent=text||"";
+}
+
+function closeShareOptions() {
+  $("shareArtworkPreviewCard")?.classList.add("hidden");
+  document.body.classList.remove("share-modal-open");
+}
+
+async function prepareShareAssets(kind) {
+  const key=sharePreparationKey(kind);
+  if(state.sharePrepared?.key===key&&state.sharePrepared.file&&state.sharePrepared.pngBlob){
+    return state.sharePrepared;
+  }
+
+  const payload=sharePayload(kind);
+  if(!payload)throw new Error("Selecciona qué deseas compartir.");
+
+  const [file,pngBlob]=await Promise.all([
+    createShareImageFile(kind),
+    createSharePngBlob(kind)
+  ]);
+
+  state.sharePrepared={key,kind,payload,file,pngBlob};
+  return state.sharePrepared;
+}
+
+async function copyPreparedImageToClipboard(kind) {
   if(!navigator.clipboard?.write || typeof ClipboardItem==="undefined")return false;
   try{
-    const blob=await createSharePngBlob(kind);
-    await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+    const prepared=await prepareShareAssets(kind);
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "image/png":prepared.pngBlob
+      })
+    ]);
     return true;
   }catch{
     return false;
@@ -2500,24 +2538,35 @@ async function copyShareImageToClipboard(kind) {
 }
 
 async function downloadShareImage(kind) {
-  const file=await createShareImageFile(kind);
-  downloadShareFile(file);
-  return file;
-}
-
-function setShareBrowserHint(text) {
-  if($("shareBrowserHint"))$("shareBrowserHint").textContent=text||"";
+  const prepared=await prepareShareAssets(kind);
+  downloadShareFile(prepared.file);
+  return prepared.file;
 }
 
 async function openShareOptions(kind) {
   const payload=sharePayload(kind);
   if(!payload)return;
+
   state.shareSelectedArtworkKind=kind;
-  await renderShareArtworkPreview(kind);
-  const panel=$("shareBrowserPanel");
-  panel?.classList.remove("hidden");
-  setShareBrowserHint("Elige una opción. En móvil puedes usar Apps del dispositivo; en escritorio puedes usar WhatsApp Web, Facebook o preparar la imagen para otras redes.");
-  panel?.scrollIntoView({behavior:"smooth",block:"center"});
+  const modal=$("shareArtworkPreviewCard");
+  modal?.classList.remove("hidden");
+  document.body.classList.add("share-modal-open");
+  setShareModalBusy(true);
+
+  if($("shareModalSubtitle")){
+    $("shareModalSubtitle").textContent=(kind==="product"?"Producto: ":"LOCAL: ")+payload.headline;
+  }
+  setShareBrowserHint("Preparando la imagen…");
+
+  try{
+    await renderShareArtworkPreview(kind);
+    await prepareShareAssets(kind);
+    setShareBrowserHint("Imagen lista. Elige dónde compartirla.");
+  }catch(e){
+    setShareBrowserHint(e.message||"No se pudo preparar la imagen.");
+  }finally{
+    setShareModalBusy(false);
+  }
 }
 
 async function browserShare(kind,platform) {
@@ -2531,31 +2580,35 @@ async function browserShare(kind,platform) {
   }
 
   try{
+    await prepareShareAssets(kind);
+
     if(platform==="whatsapp"){
-      const copiedImage=await copyShareImageToClipboard(kind);
+      const copiedImage=await copyPreparedImageToClipboard(kind);
       if(!copiedImage)await downloadShareImage(kind);
-      const target="https://web.whatsapp.com/send?text="+encodeURIComponent(payload.text);
+      const target="https://web.whatsapp.com/";
       if(popup)popup.location.href=target; else window.open(target,"_blank");
       setShareBrowserHint(copiedImage
-        ? "WhatsApp Web abierto. La imagen quedó copiada: pégala con Ctrl+V. El texto PIDE AQUÍ se abrió con el enlace."
-        : "WhatsApp Web abierto. La imagen se descargó para que la adjuntes y el texto PIDE AQUÍ se abrió con el enlace.");
+        ? "WhatsApp Web abierto. La IMAGEN quedó copiada: pégala con Ctrl+V en el chat o Estado. No se está compartiendo solo un enlace."
+        : "WhatsApp Web abierto. Tu navegador no permitió copiar la imagen; se descargó para que la adjuntes.");
       return;
     }
 
     if(platform==="facebook"){
-      await downloadShareImage(kind);
-      const target="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(payload.url);
+      const copiedImage=await copyPreparedImageToClipboard(kind);
+      if(!copiedImage)await downloadShareImage(kind);
+      const target="https://www.facebook.com/";
       if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint("Facebook abierto con el enlace. La imagen promocional se descargó para que puedas añadirla a la publicación si lo deseas.");
+      setShareBrowserHint(copiedImage
+        ? "Facebook abierto. La IMAGEN quedó copiada; pégala en una nueva publicación. El enlace PIDE AQUÍ está disponible en este panel."
+        : "Facebook abierto. La imagen se descargó para que la agregues a la publicación.");
       return;
     }
 
     if(platform==="tiktok"){
       await downloadShareImage(kind);
-      await copyShareText(kind);
       const target="https://www.tiktok.com/upload";
       if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint("TikTok abierto. La imagen promocional se descargó y el texto PIDE AQUÍ quedó copiado.");
+      setShareBrowserHint("TikTok abierto. La IMAGEN promocional se descargó para subirla; usa PIDE AQUÍ como texto/enlace cuando TikTok lo permita.");
       return;
     }
 
@@ -2572,7 +2625,7 @@ async function browserShare(kind,platform) {
     }
   }catch(e){
     if(popup&&!popup.closed)popup.close();
-    message(e.message||"No se pudo preparar el contenido para compartir.","error");
+    message(e.message||"No se pudo preparar la imagen para compartir.","error");
   }
 }
 
@@ -2582,34 +2635,21 @@ async function nativeShare(kind) {
 
   try {
     state.shareSelectedArtworkKind = kind;
-    await renderShareArtworkPreview(kind);
-    const file = await createShareImageFile(kind);
-    const fileShare = { files:[file] };
-    const canShareFile = Boolean(navigator.share && (!navigator.canShare || navigator.canShare(fileShare)));
+    const prepared=await prepareShareAssets(kind);
+    const fileShare={files:[prepared.file]};
+    const canShareFile=Boolean(navigator.share && (!navigator.canShare || navigator.canShare(fileShare)));
 
-    if (canShareFile) {
+    if(canShareFile){
       await navigator.share({
         title: payload.title,
         text: payload.text,
-        url: payload.url,
-        files: [file]
+        files:[prepared.file]
       });
       return;
     }
 
-    if (navigator.share) {
-      await navigator.share({
-        title: payload.title,
-        text: payload.text,
-        url: payload.url
-      });
-      message("Tu navegador no permitió adjuntar la imagen; se compartió el acceso PIDE AQUÍ.");
-      return;
-    }
-
-    await copyShareLink(kind);
-    downloadShareFile(file);
-    message("Imagen preparada y enlace PIDE AQUÍ copiado. En computadora puedes adjuntar la imagen en la aplicación que prefieras.");
+    await downloadShareImage(kind);
+    setShareBrowserHint("Este navegador no permite enviar archivos de imagen al menú Compartir. La imagen se descargó; usa WhatsApp Web, Facebook o TikTok desde este mismo cuadro.");
   } catch (e) {
     if (e?.name === "AbortError") return;
     message(e.message || "No se pudo preparar la imagen para compartir.","error");
@@ -9472,6 +9512,11 @@ function bindEvents() {
   if ($("shareTiktokWebBtn")) $("shareTiktokWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","tiktok");
   if ($("shareDownloadImageBtn")) $("shareDownloadImageBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","download");
   if ($("shareCopyTextBtn")) $("shareCopyTextBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","copy");
+  if ($("shareModalCloseBtn")) $("shareModalCloseBtn").onclick = closeShareOptions;
+  document.querySelectorAll("[data-share-modal-close]").forEach(el=>el.onclick=closeShareOptions);
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"&&!$("shareArtworkPreviewCard")?.classList.contains("hidden"))closeShareOptions();
+  });
   if ($("profileLocal")) $("profileLocal").onchange = loadLocalProfileRecord;
   $("saveLocalProfileBtn").onclick = saveLocalProfile;
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
