@@ -398,10 +398,18 @@ $("resendConfirmationBtn").onclick = async () => {
     showMessage("Correo de confirmación reenviado. Revisa tu bandeja de entrada y la carpeta de spam.", "success");
   } catch (e) {
     const raw = String(e?.message || "");
-    if (/rate limit|too many requests|seconds/i.test(raw)) {
+    const code = String(e?.code || "");
+
+    if (code === "over_email_send_rate_limit" || /email rate limit exceeded/i.test(raw)) {
+      showMessage("HTPWEB no pudo enviar otro correo porque el servicio de correo alcanzó su límite temporal. Espera hasta una hora y vuelve a intentarlo. Si todavía tienes el primer correo en Elementos eliminados/Papelera, puedes recuperarlo y usar ese enlace.");
+      return;
+    }
+
+    if (/for security purposes|after [0-9]+ seconds|request this after|too many requests/i.test(raw)) {
       showMessage("Espera aproximadamente un minuto antes de solicitar otro correo de confirmación.");
       return;
     }
+
     showMessage(raw || "No se pudo reenviar el correo de confirmación.");
   } finally {
     button.disabled = false;
