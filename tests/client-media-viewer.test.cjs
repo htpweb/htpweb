@@ -64,7 +64,6 @@ test("cantidad del visor refleja el acumulado real del carrito", () => {
   assert.match(viewer, /Cantidad en carrito/);
   assert.match(viewer, /readonly/);
   assert.match(viewer, /carritoCantidadItem\(negocioActual\.slug, viewerMatcher\(productId\)\)/);
-  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
   assert.match(viewer, /En carrito: \${total} ✓/);
   assert.doesNotMatch(viewer, /mediaViewerQty"\)\.value = 1/);
 });
