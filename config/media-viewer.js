@@ -204,12 +204,10 @@
     const productId = $v("mediaViewerAdd")?.dataset?.productId || "";
     if (!productId || typeof addProduct !== "function") return;
 
-    const qtyInput = document.getElementById("qty-" + productId);
     const variantInput = document.getElementById("variant-" + productId);
 
-    // Cada pulsación suma una unidad del producto/variante actual.
-    // El campo del visor muestra el acumulado real que ya está en el carrito.
-    if (qtyInput) qtyInput.value = 1;
+    // Cada pulsación suma exactamente una unidad del producto/variante actual.
+    // La tarjeta y el visor muestran el mismo acumulado real del carrito.
     if (variantInput && !$v("mediaViewerVariant").classList.contains("hidden")) {
       variantInput.value = $v("mediaViewerVariant").value;
       if (typeof syncVariantPrice === "function") syncVariantPrice(productId);
