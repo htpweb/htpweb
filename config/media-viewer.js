@@ -47,7 +47,11 @@
               <select id="mediaViewerVariant"></select>
               <label for="mediaViewerQty">Cantidad en carrito</label>
               <div class="media-viewer-actions">
-                <input id="mediaViewerQty" type="number" min="0" value="0" inputmode="numeric" aria-label="Cantidad en carrito" readonly>
+                <div class="quantity-stepper media-viewer-stepper" aria-label="Cantidad en carrito">
+                  <button id="mediaViewerMinus" type="button" class="qty-step-btn" aria-label="Disminuir cantidad">−</button>
+                  <input id="mediaViewerQty" type="number" min="0" value="0" inputmode="numeric" aria-label="Cantidad en carrito" readonly>
+                  <button id="mediaViewerPlus" type="button" class="qty-step-btn" aria-label="Aumentar cantidad">+</button>
+                </div>
                 <button id="mediaViewerAdd" class="btn btn-primary" type="button">Agregar al carrito</button>
               </div>
             </div>
@@ -65,6 +69,8 @@
         }
       };
       $v("mediaViewerVariant").onchange = syncVariantPrice;
+      $v("mediaViewerMinus").onclick = () => adjustViewerQuantity(-1);
+      $v("mediaViewerPlus").onclick = () => adjustViewerQuantity(1);
       $v("mediaViewerAdd").onclick = addFromViewer;
       $v("mediaViewerPrev").onclick = () => stepGallery(-1);
       $v("mediaViewerNext").onclick = () => stepGallery(1);
@@ -158,6 +164,8 @@
 
     const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
     $v("mediaViewerAdd").disabled = Boolean(closed);
+    $v("mediaViewerMinus").disabled = Boolean(closed);
+    $v("mediaViewerPlus").disabled = Boolean(closed);
     $v("mediaViewerAdd").textContent = closed ? "Local cerrado" : "Agregar al carrito";
   }
 
@@ -200,21 +208,47 @@
     syncViewerCartQuantity();
   }
 
-  function addFromViewer() {
+  function selectedViewerVariantId() {
+    const variantSelect = $v("mediaViewerVariant");
+    return variantSelect && !variantSelect.classList.contains("hidden")
+      ? (variantSelect.value || null)
+      : null;
+  }
+
+  function adjustViewerQuantity(delta) {
     const productId = $v("mediaViewerAdd")?.dataset?.productId || "";
-    if (!productId || typeof addProduct !== "function") return;
+    if (!productId || typeof window.htpwebChangeProductQuantity !== "function") return;
 
-    const variantInput = document.getElementById("variant-" + productId);
+    const total = window.htpwebChangeProductQuantity(
+      productId,
+      Number(delta) > 0 ? 1 : -1,
+      selectedViewerVariantId()
+    );
+    syncViewerCartQuantity(productId);
 
-    // Cada pulsación suma exactamente una unidad del producto/variante actual.
-    // La tarjeta y el visor muestran el mismo acumulado real del carrito.
-    if (variantInput && !$v("mediaViewerVariant").classList.contains("hidden")) {
-      variantInput.value = $v("mediaViewerVariant").value;
-      if (typeof syncVariantPrice === "function") syncVariantPrice(productId);
+    const cardVariant = document.getElementById("variant-" + productId);
+    if (cardVariant && selectedViewerVariantId()) {
+      cardVariant.value = selectedViewerVariantId();
+      if (typeof window.syncVariantPrice === "function") window.syncVariantPrice(productId);
     }
 
-    addProduct(productId);
-    const total = syncViewerCartQuantity(productId);
+    return total;
+  }
+
+  function addFromViewer() {
+    const productId = $v("mediaViewerAdd")?.dataset?.productId || "";
+    if (!productId || typeof window.htpwebAddProductUnit !== "function") return;
+
+    const variantId = selectedViewerVariantId();
+    const total = window.htpwebAddProductUnit(productId, variantId);
+
+    const cardVariant = document.getElementById("variant-" + productId);
+    if (cardVariant && variantId) {
+      cardVariant.value = variantId;
+      if (typeof window.syncVariantPrice === "function") window.syncVariantPrice(productId);
+    }
+
+    syncViewerCartQuantity(productId);
 
     const addButton = $v("mediaViewerAdd");
     if (addButton && !addButton.disabled) {

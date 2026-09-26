@@ -226,11 +226,27 @@ function render() {
             </select>
           ` : ""}
 
-          <div class="row">
-            <input id="qty-${product.id}" type="number" min="0" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" style="max-width:90px" aria-label="Cantidad en carrito" readonly>
+          <div class="row product-buy-row">
+            <div class="quantity-stepper" aria-label="Cantidad en carrito">
+              <button
+                type="button"
+                class="qty-step-btn"
+                aria-label="Disminuir cantidad"
+                onclick="event.stopPropagation(); changeProductQuantity('${product.id}', -1)"
+                ${availability && availability.is_open !== true ? "disabled" : ""}
+              >−</button>
+              <input id="qty-${product.id}" type="number" min="0" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" aria-label="Cantidad en carrito" readonly>
+              <button
+                type="button"
+                class="qty-step-btn"
+                aria-label="Aumentar cantidad"
+                onclick="event.stopPropagation(); changeProductQuantity('${product.id}', 1)"
+                ${availability && availability.is_open !== true ? "disabled" : ""}
+              >+</button>
+            </div>
             <button
               class="btn btn-primary"
-              onclick="addProduct('${product.id}')"
+              onclick="event.stopPropagation(); addProduct('${product.id}')"
               ${availability && availability.is_open !== true ? "disabled" : ""}
             >
               ${availability && availability.is_open !== true ? "Local cerrado" : "Agregar"}
@@ -281,21 +297,30 @@ function syncVariantPrice(productId) {
   syncProductCartQuantity(productId);
 }
 
-function addProduct(productId) {
+function resolveProductVariant(productId, explicitVariantId = undefined) {
+  const variantId = explicitVariantId !== undefined
+    ? (explicitVariantId || null)
+    : (document.getElementById("variant-" + productId)?.value || null);
+
+  return variantId
+    ? variants.find(v => v.id === variantId && v.product_id === productId) || null
+    : null;
+}
+
+function addProductUnit(productId, explicitVariantId = undefined) {
   const product = products.find(p => p.id === productId);
-  if (!product) return;
+  if (!product) return 0;
 
   if (availability && availability.is_open !== true) {
     const info = availabilityMessage();
     $("error").textContent = info?.text || "Este local no está disponible para pedidos en este momento.";
     $("error").classList.remove("hidden");
-    return;
+    return cartQuantityForProduct(productId, explicitVariantId ?? null);
   }
 
   $("error").classList.add("hidden");
 
-  const select = document.getElementById("variant-" + productId);
-  const variant = select ? variants.find(v => v.id === select.value) : null;
+  const variant = resolveProductVariant(productId, explicitVariantId);
 
   carritoAgregar(negocioActual.slug, {
     local_id: localActual.id,
@@ -310,7 +335,43 @@ function addProduct(productId) {
 
   updateCartCount();
   syncProductCartQuantity(productId);
+
+  return carritoCantidadItem(
+    negocioActual.slug,
+    productCartMatcher(productId, variant?.id || null)
+  );
 }
+
+function changeProductQuantity(productId, delta, explicitVariantId = undefined) {
+  const variant = resolveProductVariant(productId, explicitVariantId);
+  const matcher = productCartMatcher(productId, variant?.id || null);
+  const current = carritoCantidadItem(negocioActual.slug, matcher);
+
+  if (Number(delta) > 0) {
+    return addProductUnit(productId, variant?.id || null);
+  }
+
+  if (current <= 0) {
+    syncProductCartQuantity(productId);
+    return 0;
+  }
+
+  const next = Math.max(0, current - 1);
+  if (next === 0) carritoEliminar(negocioActual.slug, matcher);
+  else carritoCambiarCantidad(negocioActual.slug, matcher, next);
+
+  updateCartCount();
+  syncProductCartQuantity(productId);
+  return next;
+}
+
+function addProduct(productId) {
+  return addProductUnit(productId);
+}
+
+window.htpwebAddProductUnit = addProductUnit;
+window.htpwebChangeProductQuantity = changeProductQuantity;
+window.htpwebProductCartMatcher = productCartMatcher;
 
 function updateCartCount() {
   if (!negocioActual) return;
