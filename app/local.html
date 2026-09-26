@@ -227,7 +227,7 @@ function render() {
           ` : ""}
 
           <div class="row">
-            <input id="qty-${product.id}" type="number" min="1" value="1" style="max-width:90px">
+            <input id="qty-${product.id}" type="number" min="0" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" style="max-width:90px" aria-label="Cantidad en carrito" readonly>
             <button
               class="btn btn-primary"
               onclick="addProduct('${product.id}')"
@@ -242,11 +242,43 @@ function render() {
   }).join("") : '<div class="empty">Este local todavía no tiene productos disponibles.</div>';
 }
 
+function productCartMatcher(productId, explicitVariantId = undefined) {
+  const select = document.getElementById("variant-" + productId);
+  const variantId = explicitVariantId !== undefined
+    ? (explicitVariantId || null)
+    : (select?.value || null);
+
+  return {
+    local_id: localActual?.id || "",
+    product_id: productId,
+    variant_id: variantId
+  };
+}
+
+function cartQuantityForProduct(productId, variantId = null) {
+  if (!negocioActual?.slug || !localActual?.id || typeof carritoCantidadItem !== "function") return 0;
+  return carritoCantidadItem(negocioActual.slug, productCartMatcher(productId, variantId));
+}
+
+function syncProductCartQuantity(productId) {
+  const input = $("qty-" + productId);
+  if (!input) return 0;
+  const total = cartQuantityForProduct(productId);
+  input.value = total;
+  return total;
+}
+
+function syncAllProductCartQuantities() {
+  products.forEach(product => syncProductCartQuantity(product.id));
+}
+
 function syncVariantPrice(productId) {
   const select = document.getElementById("variant-" + productId);
-  if (!select) return;
-  const option = select.selectedOptions[0];
-  $("price-" + productId).textContent = "$ " + Number(option.dataset.price || 0).toFixed(2);
+  if (select) {
+    const option = select.selectedOptions[0];
+    $("price-" + productId).textContent = "$ " + Number(option.dataset.price || 0).toFixed(2);
+  }
+  syncProductCartQuantity(productId);
 }
 
 function addProduct(productId) {
@@ -262,7 +294,6 @@ function addProduct(productId) {
 
   $("error").classList.add("hidden");
 
-  const qty = Math.max(1, Number.parseInt($("qty-" + productId).value, 10) || 1);
   const select = document.getElementById("variant-" + productId);
   const variant = select ? variants.find(v => v.id === select.value) : null;
 
@@ -275,10 +306,10 @@ function addProduct(productId) {
       product_name: product.name,
       variant_name: variant?.name || null
     }
-  }, qty);
+  }, 1);
 
   updateCartCount();
-  $("qty-" + productId).value = 1;
+  syncProductCartQuantity(productId);
 }
 
 function updateCartCount() {
@@ -286,7 +317,10 @@ function updateCartCount() {
   $("cartCount").textContent = carritoCantidad(negocioActual.slug);
 }
 
-window.addEventListener("htpweb:cart", updateCartCount);
+window.addEventListener("htpweb:cart", () => {
+  updateCartCount();
+  syncAllProductCartQuantities();
+});
 init();
 </script>
 <script src="../config/media-viewer.js"></script>
