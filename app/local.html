@@ -100,9 +100,10 @@ async function init() {
 
     const productRes = await supabaseClient
       .from("products")
-      .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
+      .select("id,local_id,category_id,name,description,price,image_url,display_order,active,catalog_visible")
       .eq("local_id", localId)
       .eq("active", true)
+      .eq("catalog_visible", true)
       .order("display_order")
       .order("name");
 

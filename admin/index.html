@@ -29,6 +29,7 @@
       <button data-section="mydelivery">Mi Delivery</button>
       <button data-section="myplan">Mi Plan</button>
       <button data-section="share">Compartir</button>
+      <button data-section="promotions">Promociones</button>
       <button data-section="mylocal">Mi Local</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="drivers">Repartidores</button>
@@ -1494,6 +1495,34 @@
       </div>
     </section>
 
+    <section id="section-promotions" class="section">
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h2>Promociones de los LOCAL</h2>
+            <p class="muted">Consulta las promociones publicadas para hoy, mañana o los próximos días en los LOCAL de tu DELIVERY.</p>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <select id="deliveryPromotionsDelivery" style="max-width:260px"></select>
+            <select id="deliveryPromotionsDay" style="max-width:180px">
+              <option value="0">Hoy</option>
+              <option value="1">Mañana</option>
+              <option value="2">En 2 días</option>
+              <option value="3">En 3 días</option>
+              <option value="4">En 4 días</option>
+              <option value="5">En 5 días</option>
+              <option value="6">En 6 días</option>
+              <option value="7">En 7 días</option>
+            </select>
+          </div>
+        </div>
+        <div id="deliveryPromotionsSummary" class="workspace-note" style="margin-top:14px">Selecciona un día.</div>
+      </div>
+      <div class="card">
+        <div id="deliveryPromotionsList" class="stack"><div class="muted">Cargando promociones...</div></div>
+      </div>
+    </section>
+
     <section id="section-advertising" class="section">
       <div class="card">
         <div class="row between">
@@ -1698,5 +1727,6 @@
 <script src="./local-categories-master.js"></script>
 <script src="./zones-master.js"></script>
 <script src="./product-tools.js"></script>
+<script src="./delivery-promotions.js"></script>
 </body>
 </html>

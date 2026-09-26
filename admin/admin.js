@@ -44,8 +44,8 @@ const state = {
 
 const roleSections = {
   MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
-  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
-  DELIVERY_OPERATOR: ["overview","orders","drivers"],
+  DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
+  DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
   LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
 };
@@ -245,7 +245,7 @@ function organizeDeliveryAdminNavigation() {
     {label:"Operación",sections:["orders","drivers"]},
     {label:"Mi DELIVERY",sections:["mydelivery","fees","coverage","security"]},
     {label:"Clientes",sections:["network","share","requests"]},
-    {label:"Imagen y promoción",sections:["storage","advertising"]},
+    {label:"Imagen y promoción",sections:["promotions","storage","advertising"]},
     {label:"Gestión",sections:["myplan","analytics"]}
   ];
 
@@ -303,6 +303,7 @@ function showSection(name) {
   if (name === "mydelivery") loadDeliveryProfile();
   if (name === "myplan") loadMyPlan();
   if (name === "share") loadShareModule();
+  if (name === "promotions" && window.loadDeliveryPromotionsPanel) window.loadDeliveryPromotionsPanel();
   if (name === "mylocal") loadLocalProfile();
   if (name === "orders") loadOrders();
   if (name === "drivers") loadDriverWorkspace();

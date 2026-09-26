@@ -36,7 +36,8 @@ function bindMasterLocals(){
  <div class="workspace-tabs" role="tablist" aria-label="Ficha del local"><button data-local-tab="info">Información y ubicación</button>
  <button data-local-tab="schedules">Horario</button><button data-local-tab="images">Imágenes</button><button data-local-tab="catalog">Productos y variantes</button></div>
  <div id="localInfoPane"><div class="form-grid">
- <div><label for="masterLocalBusinessCategory">Categoría *</label><select id="masterLocalBusinessCategory"></select></div>
+ <div><label for="masterLocalBusinessCategory">Categoría principal *</label><select id="masterLocalBusinessCategory"></select></div>
+ <div><label for="masterLocalBusinessCategory2">Categoría secundaria</label><select id="masterLocalBusinessCategory2"></select><small class="muted">Opcional. Máximo 2 categorías por LOCAL.</small></div>
  <div><label for="masterLocalProvince">Provincia *</label><select id="masterLocalProvince"></select></div>
  <div><label for="masterLocalCity">Cantón *</label><select id="masterLocalCity"></select></div>
  <div><label for="masterLocalZone">Zona *</label><select id="masterLocalZone"></select></div></div>
@@ -95,7 +96,12 @@ function fillMasterLocalForm(local){
  const provinces=[...new Set(state.cities.filter(c=>c.active).map(c=>c.province||""))].sort();
  $("masterLocalProvince").innerHTML=localOptions(provinces.map(p=>({id:p})),p=>p.id,local?.province||"");
  fillLocalCities(local?.city_id||"");fillLocalZones(local?.zone_id||"");
- $("masterLocalBusinessCategory").innerHTML=localOptions(masterLocalsState.businessCategories.filter(x=>x.active||x.id===local?.business_category_id),x=>x.name,local?.business_category_id||"");
+ const localCategoryIds=Array.isArray(local?.business_category_ids)&&local.business_category_ids.length
+   ? local.business_category_ids
+   : (local?.business_category_id?[local.business_category_id]:[]);
+ const availableCategories=masterLocalsState.businessCategories.filter(x=>x.active||localCategoryIds.includes(x.id));
+ $("masterLocalBusinessCategory").innerHTML=localOptions(availableCategories,x=>x.name,localCategoryIds[0]||"");
+ $("masterLocalBusinessCategory2").innerHTML=localOptions(availableCategories,x=>x.name,localCategoryIds[1]||"");
  $("masterLocalActive").checked=!!local?.active;$("masterLocalToggleBtn").disabled=!local;$("masterLocalDeleteBtn").disabled=!local;
  $("masterLocalToggleBtn").textContent=local?.active?"Inactivar":"Activar";
  masterLocalsState.source=local?.location_source||"MANUAL";masterLocalsState.googlePlace=null;if($("googlePlaceDetailsBtn"))$("googlePlaceDetailsBtn").disabled=true;masterLocalsState.dirty=false;
@@ -145,7 +151,7 @@ function renderMasterLocalList(){
  items.map(l=>'<tr>'+
    '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'"></td>'+
    '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
-   '<td>'+esc(l.business_category_name||"Sin categoría")+'</td><td>'+esc(l.name)+'</td>'+
+   '<td>'+esc(Array.isArray(l.business_category_names)&&l.business_category_names.length?l.business_category_names.join(" · "):(l.business_category_name||"Sin categoría"))+'</td><td>'+esc(l.name)+'</td>'+
    '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+
  '</tbody></table></div>';
 
@@ -467,16 +473,21 @@ async function saveMasterLocal(){
    const lat=nullableNumber("masterLocalLatitude"),lng=nullableNumber("masterLocalLongitude");
    if(!$("masterLocalName").value.trim())throw new Error("Escribe el nombre del local.");
    if(!$("masterLocalCity").value)throw new Error("Selecciona provincia y cantón.");
-   if(!$("masterLocalBusinessCategory").value)throw new Error("Selecciona la categoría del LOCAL.");
+   const primaryCategoryId=$("masterLocalBusinessCategory").value;
+   const secondaryCategoryId=$("masterLocalBusinessCategory2").value;
+   if(!primaryCategoryId)throw new Error("Selecciona la categoría principal del LOCAL.");
+   if(secondaryCategoryId&&secondaryCategoryId===primaryCategoryId)throw new Error("La categoría secundaria debe ser diferente de la principal.");
+   const categoryIds=[primaryCategoryId,secondaryCategoryId].filter(Boolean);
    if(!$("masterLocalZone").value)throw new Error("Selecciona una zona.");
    if($("masterLocalActive").checked&&(lat===null||lng===null))throw new Error("Para activar el LOCAL confirma su ubicación.");
    const id=await rpc("master_save_local_v3",{
-     p_local_id:$("masterLocalId").value||null,p_city_id:$("masterLocalCity").value,p_zone_id:$("masterLocalZone").value,p_business_category_id:$("masterLocalBusinessCategory").value,
+     p_local_id:$("masterLocalId").value||null,p_city_id:$("masterLocalCity").value,p_zone_id:$("masterLocalZone").value,p_business_category_id:primaryCategoryId,
      p_name:$("masterLocalName").value.trim(),p_slug:$("masterLocalSlug").value.trim(),
      p_description:$("masterLocalDescription").value.trim(),p_address:$("masterLocalAddress").value.trim(),p_phone:$("masterLocalPhone").value.trim(),p_whatsapp:$("masterLocalWhatsapp").value.trim(),
      p_latitude:lat,p_longitude:lng,p_google_place_id:$("masterLocalPlaceId").value||null,
      p_google_maps_url:lat===null?null:"https://www.openstreetmap.org/?mlat="+encodeURIComponent(lat)+"&mlon="+encodeURIComponent(lng)+"#map=18/"+encodeURIComponent(lat)+"/"+encodeURIComponent(lng),p_location_source:masterLocalsState.source,p_active:$("masterLocalActive").checked
    });
+   await rpc("master_set_local_business_categories",{p_local_id:id,p_category_ids:categoryIds});
    if(masterLocalsState.googleScheduleDraft&&masterLocalsState.googleScheduleDraftLocalId===null)masterLocalsState.googleScheduleDraftLocalId=id;
    masterLocalsState.dirty=false;$("masterLocalId").value=id;await loadScopes();await loadMasterLocals();
    fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===id));showLocalEditor(true);message("Local guardado. Ya puedes configurar horario, imágenes y productos.");

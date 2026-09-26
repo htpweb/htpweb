@@ -68,7 +68,7 @@ async function loadMasterLocalBusinessCategories(){
     $("section-categoriesmaster").innerHTML=`
       <div class="card">
         <h2>Categorías de LOCAL — MASTER</h2>
-        <p class="muted">Clasifica el tipo de establecimiento: Restaurante, Farmacia, Supermercado, Ferretería, etc. Estas categorías son independientes de las categorías de productos.</p>
+        <p class="muted">Estas son las categorías maestras que verá el CLIENTE. Cada LOCAL puede tener una categoría principal y una secundaria, máximo 2. Son independientes de las categorías internas de productos.</p>
       </div>
       <div class="card">
         <h3>Crear o editar categoría</h3>

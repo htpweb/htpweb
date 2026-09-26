@@ -31,6 +31,26 @@
     <input id="search" class="search" placeholder="Buscar local o producto...">
   </section>
 
+  <section class="card" id="deliveryPromotionsCard">
+    <div class="row between" style="gap:12px;flex-wrap:wrap">
+      <div>
+        <h2 style="margin-bottom:4px">Promociones del día</h2>
+        <p id="deliveryPromotionsDate" class="muted" style="margin:0">Cargando promociones...</p>
+      </div>
+      <select id="promotionDayOffset" style="max-width:190px">
+        <option value="0">Hoy</option>
+        <option value="1">Mañana</option>
+        <option value="2">En 2 días</option>
+        <option value="3">En 3 días</option>
+        <option value="4">En 4 días</option>
+        <option value="5">En 5 días</option>
+        <option value="6">En 6 días</option>
+        <option value="7">En 7 días</option>
+      </select>
+    </div>
+    <div id="deliveryPromotionsList" class="promotions-grid" style="margin-top:14px"></div>
+  </section>
+
   <section class="card">
     <h2>Categorías</h2>
     <div id="categories" class="chips"></div>
@@ -53,7 +73,9 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 let negocioActual = null;
 let locals = [];
 let categories = [];
+let localCategoryAssignments = [];
 let products = [];
+let deliveryPromotions = [];
 let availabilityByLocal = new Map();
 let categoryId = "";
 
@@ -75,7 +97,7 @@ async function init() {
       ? urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) })
       : urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) });
 
-    await loadCatalog();
+    await Promise.all([loadCatalog(), loadDeliveryPromotions()]);
     renderCategories();
     renderLocals();
   } catch (error) {
@@ -98,11 +120,12 @@ async function loadCatalog() {
   if (!ids.length) {
     locals = [];
     categories = [];
+    localCategoryAssignments = [];
     products = [];
     return;
   }
 
-  const [localsRes, catsRes, productsRes] = await Promise.all([
+  const [localsRes, catsRes, assignmentsRes, productsRes] = await Promise.all([
     supabaseClient
       .from("locals")
       .select("id,name,description,banner_url,logo_url,address,active")
@@ -111,28 +134,33 @@ async function loadCatalog() {
       .order("name"),
 
     supabaseClient
-      .from("categories")
-      .select("id,local_id,name,description,image_url,display_order,active")
-      .in("local_id", ids)
-      .eq("active", true)
-      .order("display_order")
-      .order("name"),
+      .from("local_business_categories")
+      .select("id,name,description,active")
+      .eq("active", true),
+
+    supabaseClient
+      .from("local_business_category_assignments")
+      .select("local_id,category_id,position")
+      .in("local_id", ids),
 
     supabaseClient
       .from("products")
-      .select("id,local_id,category_id,name,description,price,image_url,display_order,active")
+      .select("id,local_id,category_id,name,description,price,image_url,display_order,active,catalog_visible")
       .in("local_id", ids)
       .eq("active", true)
+      .eq("catalog_visible", true)
       .order("display_order")
       .order("name")
   ]);
 
   if (localsRes.error) throw localsRes.error;
   if (catsRes.error) throw catsRes.error;
+  if (assignmentsRes.error) throw assignmentsRes.error;
   if (productsRes.error) throw productsRes.error;
 
   locals = localsRes.data || [];
   categories = catsRes.data || [];
+  localCategoryAssignments = assignmentsRes.data || [];
   products = productsRes.data || [];
 
   try {
@@ -152,15 +180,77 @@ async function loadCatalog() {
   }
 }
 
-function renderCategories() {
-  const unique = new Map();
-  categories.forEach(c => {
-    if (!unique.has(c.id)) unique.set(c.id, c);
+async function loadDeliveryPromotions() {
+  const offset = Math.max(0, Math.min(30, Number.parseInt($("promotionDayOffset")?.value || "0", 10) || 0));
+  const { data, error } = await supabaseClient.rpc("public_delivery_promotions", {
+    p_delivery_id: negocioActual.id,
+    p_day_offset: offset
   });
+  if (error) throw error;
+
+  deliveryPromotions = Array.isArray(data?.promotions) ? data.promotions : [];
+  const targetDate = data?.target_date
+    ? new Date(String(data.target_date) + "T12:00:00").toLocaleDateString("es-EC", {
+        weekday: "long", day: "numeric", month: "long"
+      })
+    : "día seleccionado";
+
+  $("deliveryPromotionsDate").textContent =
+    (offset === 0 ? "Hoy · " : offset === 1 ? "Mañana · " : "") + targetDate;
+
+  $("deliveryPromotionsList").innerHTML = deliveryPromotions.length
+    ? deliveryPromotions.map(promotion => {
+        const items = Array.isArray(promotion.items) ? promotion.items : [];
+        const itemHtml = items.length
+          ? '<div class="promotion-items">' + items.map(item => {
+              const price = item.promo_price !== null && item.promo_price !== undefined
+                ? " · $" + Number(item.promo_price).toFixed(2)
+                : "";
+              return '<div><strong>' + esc(item.quantity || 1) + '×</strong> ' +
+                esc((item.product_name || "Producto") + price) + '</div>';
+            }).join("") + '</div>'
+          : "";
+        const total = promotion.promotion_price !== null && promotion.promotion_price !== undefined
+          ? '<div class="promotion-total">$' + Number(promotion.promotion_price).toFixed(2) + '</div>'
+          : "";
+        const image = promotion.image_url
+          ? '<img src="' + esc(promotion.image_url) + '" alt="' + esc(promotion.title) + '">'
+          : "";
+        return '<article class="promotion-card">' + image +
+          '<div class="promotion-card-copy">' +
+            '<span class="promotion-badge">PROMOCIÓN</span>' +
+            '<strong>' + esc(promotion.title) + '</strong>' +
+            '<div class="muted">' + esc(promotion.local_name || "") + '</div>' +
+            total + itemHtml +
+            (promotion.body ? '<p>' + esc(promotion.body) + '</p>' : '') +
+            '<button class="btn btn-dark" style="width:100%;margin-top:10px" ' +
+              'onclick="location.href=urlDelivery(\'local.html\',{local:\'' + esc(promotion.local_id) + '\'})">Ver LOCAL</button>' +
+          '</div></article>';
+      }).join("")
+    : '<div class="empty">No hay promociones publicadas para este día.</div>';
+}
+
+function renderCategories() {
+  const categoryOrder = [
+    "Desayunos y Cafeterías",
+    "Comida rápida",
+    "Parrilladas y asados",
+    "Pizzerías",
+    "Mariscos y ceviche",
+    "Almuerzos y comida típica",
+    "Postres y heladería",
+    "Bebidas alcohólicas",
+    "Bebidas no alcohólicas",
+    "Restaurantes"
+  ];
+  const order = new Map(categoryOrder.map((name, index) => [name, index]));
+  const visible = categories
+    .filter(c => order.has(c.name))
+    .sort((a, b) => (order.get(a.name) ?? 999) - (order.get(b.name) ?? 999));
 
   $("categories").innerHTML =
     `<button class="chip ${!categoryId ? "active" : ""}" onclick="selectCategory('')">Todos</button>` +
-    [...unique.values()].map(c =>
+    visible.map(c =>
       `<button class="chip ${categoryId === c.id ? "active" : ""}" onclick="selectCategory('${c.id}')">${esc(c.name)}</button>`
     ).join("");
 }
@@ -207,7 +297,9 @@ function renderLocals() {
 
   const filtered = locals.filter(local => {
     const ps = products.filter(p => p.local_id === local.id);
-    const categoryMatch = !categoryId || ps.some(p => p.category_id === categoryId);
+    const categoryMatch = !categoryId || localCategoryAssignments.some(a =>
+      a.local_id === local.id && a.category_id === categoryId
+    );
     const textMatch = !q || [
       local.name,
       local.description,
@@ -220,7 +312,6 @@ function renderLocals() {
 
   $("locals").innerHTML = filtered.length ? filtered.map(local => {
     let ps = products.filter(p => p.local_id === local.id);
-    if (categoryId) ps = ps.filter(p => p.category_id === categoryId);
     if (q) ps = ps.filter(p =>
       (p.name + " " + (p.description || "")).toLowerCase().includes(q)
     );
@@ -257,6 +348,12 @@ function updateCartCount() {
 }
 
 $("search").addEventListener("input", renderLocals);
+$("promotionDayOffset").addEventListener("change", () => {
+  loadDeliveryPromotions().catch(error => {
+    console.error(error);
+    $("deliveryPromotionsList").innerHTML = '<div class="empty">No se pudieron cargar las promociones.</div>';
+  });
+});
 window.addEventListener("htpweb:cart", updateCartCount);
 init();
 </script>
