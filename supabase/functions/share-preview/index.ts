@@ -202,15 +202,18 @@ Deno.serve(async (req: Request) => {
 </body>
 </html>`;
 
-  if (req.method === "HEAD") {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=300, s-maxage=300",
-      },
-    });
+  const userAgent = (req.headers.get("user-agent") || "").toLowerCase();
+  const isPreviewCrawler = /whatsapp|facebookexternalhit|facebot|twitterbot|telegrambot|linkedinbot|slackbot|discordbot/.test(userAgent);
+
+  if (isPreviewCrawler) {
+    if (req.method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: { "Cache-Control": "public, max-age=300, s-maxage=300" },
+      });
+    }
+    return htmlResponse(page);
   }
 
-  return htmlResponse(page);
+  return Response.redirect(target.toString(), 302);
 });
