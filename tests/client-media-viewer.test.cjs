@@ -6,7 +6,7 @@ const localHtml = fs.readFileSync("app/local.html", "utf8");
 const viewer = fs.readFileSync("config/media-viewer.js", "utf8");
 const ads = fs.readFileSync("config/ads.js", "utf8");
 const css = fs.readFileSync("assets/app.css", "utf8");
-const migration = fs.readFileSync("supabase/migrations/20260926192500_public_local_gallery.sql", "utf8");
+const migration = fs.readFileSync("supabase/migrations/20260926192702_public_local_gallery_client_viewer.sql", "utf8");
 
 test("LOCAL carga el visor multimedia del cliente", () => {
   assert.match(localHtml, /config\/media-viewer\.js/);
