@@ -56,6 +56,20 @@ function carritoAgregar(deliverySlug, item, quantity = 1) {
   return carritoGuardar(deliverySlug, items);
 }
 
+function carritoCantidadItem(deliverySlug, matcher) {
+  const localId = String(matcher?.local_id || "");
+  const productId = String(matcher?.product_id || "");
+  const variantId = matcher?.variant_id ? String(matcher.variant_id) : null;
+
+  return carritoObtener(deliverySlug)
+    .filter(item =>
+      item.local_id === localId &&
+      item.product_id === productId &&
+      (item.variant_id || null) === variantId
+    )
+    .reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+}
+
 function carritoCambiarCantidad(deliverySlug, matcher, quantity) {
   const items = carritoObtener(deliverySlug);
   const next = items.map(item => {

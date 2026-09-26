@@ -17,7 +17,7 @@ test("LOCAL carga el visor multimedia del cliente", () => {
 
 test("visor conserva la lógica existente de carrito y variantes", () => {
   assert.match(viewer, /variantInput\.value = \$v\("mediaViewerVariant"\)\.value/);
-  assert.match(viewer, /qtyInput\.value = Math\.max/);
+  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
   assert.match(viewer, /typeof addProduct !== "function"/);
   assert.doesNotMatch(viewer, /carritoAgregar\(/);
 });
@@ -51,12 +51,27 @@ test("agregar desde el visor no lo cierra automáticamente", () => {
   const block = viewer.slice(start, end);
   assert.match(block, /addProduct\(productId\)/);
   assert.doesNotMatch(block, /close\(\)/);
-  assert.match(block, /Agregado ✓/);
-  assert.match(block, /mediaViewerQty/);
+  assert.match(block, /En carrito:/);
 });
 
 test("el visor se cierra de forma explícita con la X", () => {
   assert.match(viewer, /mediaViewerClose"\)\.onclick = close/);
   assert.doesNotMatch(viewer, /event\.key === "Escape"\) close\(\)/);
   assert.match(viewer, /el CLIENT decide cuándo salir usando la X/);
+});
+
+
+test("cantidad del visor refleja el acumulado real del carrito", () => {
+  assert.match(viewer, /Cantidad en carrito/);
+  assert.match(viewer, /readonly/);
+  assert.match(viewer, /carritoCantidadItem\(negocioActual\.slug, viewerMatcher\(productId\)\)/);
+  assert.match(viewer, /qtyInput\) qtyInput\.value = 1/);
+  assert.match(viewer, /En carrito: \${total} ✓/);
+  assert.doesNotMatch(viewer, /mediaViewerQty"\)\.value = 1/);
+});
+
+test("cambiar variante sincroniza su propia cantidad en carrito", () => {
+  assert.match(viewer, /function viewerMatcher\(productId\)/);
+  assert.match(viewer, /variant_id: variantId/);
+  assert.match(viewer, /function syncVariantPrice\(\)[\s\S]*syncViewerCartQuantity\(\)/);
 });
