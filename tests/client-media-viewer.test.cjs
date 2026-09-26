@@ -17,7 +17,8 @@ test("LOCAL carga el visor multimedia del cliente", () => {
 
 test("visor conserva la lógica existente de carrito y variantes", () => {
   assert.match(viewer, /variantInput\.value = \$v\("mediaViewerVariant"\)\.value/);
-  assert.match(viewer, /typeof addProduct !== "function"/);
+  assert.match(viewer, /typeof window\.htpwebAddProductUnit !== "function"/);
+  assert.match(viewer, /window\.htpwebAddProductUnit\(productId, variantId\)/);
   assert.doesNotMatch(viewer, /carritoAgregar\(/);
 });
 
@@ -48,7 +49,7 @@ test("agregar desde el visor no lo cierra automáticamente", () => {
   const start = viewer.indexOf("function addFromViewer");
   const end = viewer.indexOf("async function loadGallery");
   const block = viewer.slice(start, end);
-  assert.match(block, /addProduct\(productId\)/);
+  assert.match(block, /window\.htpwebAddProductUnit\(productId, variantId\)/);
   assert.doesNotMatch(block, /close\(\)/);
   assert.match(block, /En carrito:/);
 });
@@ -80,6 +81,21 @@ test("visor no reinicia la cantidad visible de la tarjeta", () => {
   const end = viewer.indexOf("async function loadGallery");
   const block = viewer.slice(start, end);
   assert.doesNotMatch(block, /qtyInput/);
-  assert.match(block, /addProduct\(productId\)/);
+  assert.match(block, /window\.htpwebAddProductUnit\(productId, variantId\)/);
   assert.match(block, /syncViewerCartQuantity\(productId\)/);
+});
+
+
+test("visor incluye controles explícitos para subir y bajar cantidad", () => {
+  assert.match(viewer, /id="mediaViewerMinus"/);
+  assert.match(viewer, /id="mediaViewerPlus"/);
+  assert.match(viewer, /adjustViewerQuantity\(-1\)/);
+  assert.match(viewer, /adjustViewerQuantity\(1\)/);
+});
+
+test("visor agrega la variante seleccionada de forma explícita", () => {
+  assert.match(viewer, /function selectedViewerVariantId\(\)/);
+  assert.match(viewer, /const variantId = selectedViewerVariantId\(\)/);
+  assert.match(viewer, /window\.htpwebAddProductUnit\(productId, variantId\)/);
+  assert.match(viewer, /window\.htpwebChangeProductQuantity\([\s\S]*selectedViewerVariantId\(\)/);
 });
