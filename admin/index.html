@@ -778,17 +778,18 @@
         <div class="row between">
           <div>
             <h2>Tarifas de entrega</h2>
-            <p class="muted">Configura cuánto cobra el DELIVERY por llevar un pedido al cliente.</p>
+            <p class="muted">Configura las modalidades de cobro incluidas en tu plan. Solo una modalidad queda activa para calcular cada envío.</p>
           </div>
           <select id="feeDelivery" style="max-width:340px"></select>
         </div>
+        <div id="feePlanOptions" class="overview-resource-grid" style="margin-top:14px"></div>
       </div>
 
       <div class="card">
         <h3>Configuración principal</h3>
         <div class="form-grid">
           <div>
-            <label>Modo de cobro</label>
+            <label>Modalidad activa</label>
             <select id="feeMode">
               <option value="FIXED">Tarifa fija</option>
               <option value="DISTANCE">Por distancia</option>
@@ -808,36 +809,40 @@
         </div>
 
         <div class="row" style="margin-top:14px">
-          <button class="btn-primary" id="saveFeeConfigBtn">Guardar tarifa</button>
+          <button class="btn-primary" id="saveFeeConfigBtn">Guardar configuración principal</button>
         </div>
 
         <p id="feeCapabilityNotice" class="muted" style="margin-top:10px">
-          Esta configuración pertenece al DELIVERY_ADMIN. MASTER decide si este DELIVERY puede usar
-          Tarifa fija, Por distancia o ambas. El cálculo final del envío siempre lo realiza el backend.
+          La modalidad activa es la que HTPWEB utilizará para calcular el envío. Las demás opciones incluidas en tu plan pueden quedar configuradas para activarlas después sin perder sus valores.
         </p>
       </div>
 
       <div class="card" id="distanceRatesCard">
-        <h3>Tarifa por kilómetro — Día / Noche</h3>
-        <p class="muted">
-          El DELIVERY configura un costo por km para el día y otro para la noche.
-          El cliente no selecciona la tarifa: el backend aplica automáticamente la correcta según la hora del pedido.
-        </p>
-
-        <div class="form-grid">
+        <div class="row between" style="gap:10px;flex-wrap:wrap">
           <div>
-            <label>Inicio tarifa diurna</label>
-            <input id="feeDayStart" type="time" value="06:00">
+            <h3 style="margin-bottom:6px">Tarifa por distancia</h3>
+            <p class="muted" style="margin:0">Define cuánto cobrar por cada kilómetro recorrido. Esta configuración puede quedar guardada aunque actualmente uses tarifa fija.</p>
           </div>
-          <div>
-            <label>Inicio tarifa nocturna</label>
-            <input id="feeNightStart" type="time" value="18:00">
-          </div>
+          <span id="feeDistanceStatus" class="badge">Incluida en el plan</span>
         </div>
 
-        <button class="btn-muted" id="saveFeeScheduleBtn" style="margin-top:14px">Guardar horario Día / Noche</button>
+        <div id="feeDayNightSchedule" style="margin-top:18px">
+          <h4>Horario Día / Noche</h4>
+          <p class="muted">HTPWEB aplica automáticamente la tarifa diurna o nocturna según la hora del pedido.</p>
+          <div class="form-grid">
+            <div>
+              <label>Inicio tarifa diurna</label>
+              <input id="feeDayStart" type="time" value="06:00">
+            </div>
+            <div>
+              <label>Inicio tarifa nocturna</label>
+              <input id="feeNightStart" type="time" value="18:00">
+            </div>
+          </div>
+          <button class="btn-muted" id="saveFeeScheduleBtn" style="margin-top:14px">Guardar horario Día / Noche</button>
+        </div>
 
-        <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb">
+        <hr id="feeDistanceDivider" style="margin:20px 0;border:0;border-top:1px solid #e5e7eb">
 
         <div class="form-grid">
           <div>
