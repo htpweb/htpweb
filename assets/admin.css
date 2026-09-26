@@ -397,3 +397,12 @@ body.share-modal-open{overflow:hidden}
   .share-modal .share-artwork-preview-wrap{position:static}
   .share-modal #shareArtworkPreview{width:min(100%,260px)}
 }
+
+
+/* Preparar Estado */
+.share-status-step{padding:14px 0;border-top:1px solid #e2e8f0}
+.share-status-step:first-of-type{border-top:0;padding-top:4px}
+.share-status-step>strong{display:block;font-size:16px;margin-bottom:4px}
+.share-status-text{width:100%;resize:none;font-family:inherit;background:#f8fafc}
+.share-secondary-options{margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px}
+.share-secondary-options summary{cursor:pointer;font-weight:800;color:#475569}
