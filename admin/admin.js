@@ -4988,6 +4988,253 @@ async function openProductStorage(productId = null) {
 }
 
 
+
+const BRANDING_GENERIC_WORDS = new Set(["cafeteria","restaurant","restaurante","y","de","del","la","el"]);
+
+function brandingNormalizeName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/^\s*\d+\s*[.\-_)]*\s*/, "")
+    .replace(/&/g, " y ")
+    .replace(/\bburguer\b/g, "burger")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function brandingCompactName(value) {
+  return brandingNormalizeName(value)
+    .split(" ")
+    .filter(token => token && !BRANDING_GENERIC_WORDS.has(token))
+    .join(" ");
+}
+
+function brandingEditDistance(a, b) {
+  const left = String(a || "");
+  const right = String(b || "");
+  const row = Array.from({ length: right.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= left.length; i++) {
+    let previous = row[0];
+    row[0] = i;
+    for (let j = 1; j <= right.length; j++) {
+      const current = row[j];
+      row[j] = Math.min(
+        row[j] + 1,
+        row[j - 1] + 1,
+        previous + (left[i - 1] === right[j - 1] ? 0 : 1)
+      );
+      previous = current;
+    }
+  }
+  return row[right.length];
+}
+
+function brandingSimilarity(a, b) {
+  const left = brandingCompactName(a) || brandingNormalizeName(a);
+  const right = brandingCompactName(b) || brandingNormalizeName(b);
+  const length = Math.max(left.length, right.length, 1);
+  return 1 - brandingEditDistance(left, right) / length;
+}
+
+function matchBrandingLocal(folderName) {
+  const normalized = brandingNormalizeName(folderName);
+  const compact = brandingCompactName(folderName);
+  const locals = Array.isArray(state.locals) ? state.locals : [];
+
+  const exact = locals.filter(local => brandingNormalizeName(local.name) === normalized);
+  if (exact.length === 1) return exact[0];
+
+  if (compact) {
+    const compactExact = locals.filter(local => brandingCompactName(local.name) === compact);
+    if (compactExact.length === 1) return compactExact[0];
+  }
+
+  const ranked = locals
+    .map(local => ({ local, score: brandingSimilarity(folderName, local.name) }))
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length || ranked[0].score < 0.82) return null;
+  if (ranked[1] && ranked[0].score - ranked[1].score < 0.08) return null;
+  return ranked[0].local;
+}
+
+function brandingKindFromFileName(name) {
+  const value = String(name || "").toLowerCase();
+  if (!/\.(jpe?g|png|webp)$/.test(value)) return null;
+  if (/^logo(?:[._\- ].*)?\.(jpe?g|png|webp)$/.test(value)) return "logo";
+  if (/^banner(?:[._\- ].*)?\.(jpe?g|png|webp)$/.test(value)) return "banner";
+  return null;
+}
+
+function brandingTypedFile(file) {
+  if (file?.type) return file;
+  const ext = String(file?.name || "").split(".").pop().toLowerCase();
+  const type = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+  return new File([file], file.name, { type, lastModified: file.lastModified || Date.now() });
+}
+
+function brandingFolderName(file) {
+  const path = String(file.webkitRelativePath || file.name || "").replace(/\\/g, "/");
+  const parts = path.split("/").filter(Boolean);
+  parts.pop();
+  if (!parts.length) return "";
+  return parts.length >= 2 ? parts[1] : parts[0];
+}
+
+function buildBrandingImportPlan(fileList) {
+  const groups = new Map();
+
+  for (const raw of [...(fileList || [])]) {
+    const kind = brandingKindFromFileName(raw.name);
+    if (!kind) continue;
+    const folder = brandingFolderName(raw);
+    if (!folder) continue;
+
+    if (!groups.has(folder)) groups.set(folder, {});
+    const group = groups.get(folder);
+    const current = group[kind];
+    if (!current || raw.size > current.size) group[kind] = raw;
+  }
+
+  const unmatched = [];
+  const byLocal = new Map();
+
+  for (const [folder, media] of groups) {
+    const local = matchBrandingLocal(folder);
+    if (!local) {
+      unmatched.push(folder);
+      continue;
+    }
+
+    if (!byLocal.has(local.id)) byLocal.set(local.id, { local, folder, logo: null, banner: null });
+    const item = byLocal.get(local.id);
+    if (media.logo && (!item.logo || media.logo.size > item.logo.size)) item.logo = media.logo;
+    if (media.banner && (!item.banner || media.banner.size > item.banner.size)) item.banner = media.banner;
+  }
+
+  return { items: [...byLocal.values()], unmatched };
+}
+
+function setBrandingFolderStatus(text) {
+  const box = $("brandingFolderStatus");
+  if (box) box.textContent = text;
+}
+
+async function importBrandingFolder(fileList) {
+  const input = $("brandingFolderInput");
+  const button = $("selectBrandingFolderBtn");
+
+  try {
+    if (state.role !== "MASTER") throw new Error("Operación exclusiva de MASTER.");
+
+    const plan = buildBrandingImportPlan(fileList);
+    const mediaCount = plan.items.reduce((sum, item) => sum + (item.logo ? 1 : 0) + (item.banner ? 1 : 0), 0);
+    if (!plan.items.length || !mediaCount) {
+      throw new Error("No se encontraron carpetas de LOCAL con archivos llamados logo o banner.");
+    }
+
+    const missingPair = plan.items.filter(item => !item.logo || !item.banner).length;
+    const unmatchedText = plan.unmatched.length
+      ? ` No se emparejaron: ${plan.unmatched.slice(0, 6).join(", ")}${plan.unmatched.length > 6 ? "…" : ""}.`
+      : "";
+    const confirmText =
+      `Se detectaron ${plan.items.length} LOCAL y ${mediaCount} imágenes. ` +
+      `${missingPair ? missingPair + " LOCAL tienen solo logo o solo banner. " : ""}` +
+      `${plan.unmatched.length ? plan.unmatched.length + " carpetas no coinciden con ningún LOCAL. " : ""}` +
+      "¿Cargar y reemplazar el branding encontrado?";
+    if (!confirm(confirmText)) return;
+
+    button.disabled = true;
+    const ids = plan.items.map(item => item.local.id);
+    const { data: records, error } = await supabaseClient
+      .from("locals")
+      .select("id,name,description,banner_url,logo_url,phone,whatsapp,website_url,instagram_url,facebook_url,tiktok_url,telegram_url")
+      .in("id", ids);
+    if (error) throw error;
+
+    const recordById = new Map((records || []).map(local => [local.id, local]));
+    let done = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const item of plan.items) {
+      const local = recordById.get(item.local.id);
+      if (!local) {
+        failed++;
+        errors.push(item.local.name + ": LOCAL no disponible");
+        continue;
+      }
+
+      setBrandingFolderStatus(`Cargando ${done + failed + 1}/${plan.items.length}: ${local.name}…`);
+
+      try {
+        let nextLogo = local.logo_url || null;
+        let nextBanner = local.banner_url || null;
+        const oldLogoPath = pathDesdePublicUrlHTPWEB(local.logo_url);
+        const oldBannerPath = pathDesdePublicUrlHTPWEB(local.banner_url);
+        let newLogoPath = null;
+        let newBannerPath = null;
+
+        if (item.logo) {
+          const uploaded = await subirImagenHTPWEB(mediaPathLocal(local.id, "logo"), brandingTypedFile(item.logo));
+          nextLogo = uploaded.url;
+          newLogoPath = uploaded.path;
+        }
+        if (item.banner) {
+          const uploaded = await subirImagenHTPWEB(mediaPathLocal(local.id, "banner"), brandingTypedFile(item.banner));
+          nextBanner = uploaded.url;
+          newBannerPath = uploaded.path;
+        }
+
+        await rpc("update_my_local_content", {
+          p_local_id: local.id,
+          p_description: local.description || null,
+          p_banner_url: nextBanner,
+          p_logo_url: nextLogo,
+          p_phone: local.phone || null,
+          p_whatsapp: local.whatsapp || null,
+          p_website_url: local.website_url || null,
+          p_instagram_url: local.instagram_url || null,
+          p_facebook_url: local.facebook_url || null,
+          p_tiktok_url: local.tiktok_url || null,
+          p_telegram_url: local.telegram_url || null
+        });
+
+        if (oldLogoPath && newLogoPath && oldLogoPath !== newLogoPath) {
+          await eliminarObjetoMediaHTPWEB(oldLogoPath).catch(() => {});
+        }
+        if (oldBannerPath && newBannerPath && oldBannerPath !== newBannerPath) {
+          await eliminarObjetoMediaHTPWEB(oldBannerPath).catch(() => {});
+        }
+
+        done++;
+      } catch (e) {
+        failed++;
+        errors.push(local.name + ": " + (e.message || e));
+      }
+    }
+
+    await loadScopes();
+    await loadStorage();
+
+    const errorText = errors.length
+      ? ` Errores: ${errors.slice(0, 4).join(" | ")}${errors.length > 4 ? "…" : ""}`
+      : "";
+    setBrandingFolderStatus(
+      `Branding terminado: ${done} LOCAL actualizados, ${failed} con error.${unmatchedText}${errorText}`
+    );
+    message(`Branding actualizado en ${done} LOCAL.${failed ? " Revisa los errores mostrados en Storage." : ""}`, failed ? "error" : "success");
+  } catch (e) {
+    setBrandingFolderStatus(e.message || "No se pudo cargar la carpeta Branding.");
+    message(e.message || "No se pudo cargar la carpeta Branding.", "error");
+  } finally {
+    if (input) input.value = "";
+    if (button) button.disabled = false;
+  }
+}
+
 async function loadStorage() {
   if (!["MASTER","DELIVERY_ADMIN","LOCAL_ADMIN"].includes(state.role)) return;
 
@@ -9031,6 +9278,12 @@ function bindEvents() {
   if ($("scheduleLocal")) $("scheduleLocal").onchange = loadSchedules;
   $("saveSchedulesBtn").onclick = saveSchedules;
   $("enableScheduleManagementBtn").onclick = enableScheduleManagement;
+
+  if ($("selectBrandingFolderBtn")) $("selectBrandingFolderBtn").onclick = () => {
+    if (state.role !== "MASTER") return message("Operación exclusiva de MASTER.", "error");
+    $("brandingFolderInput")?.click();
+  };
+  if ($("brandingFolderInput")) $("brandingFolderInput").onchange = event => importBrandingFolder(event.target.files);
 
   if ($("storageDelivery")) $("storageDelivery").onchange = refreshDeliveryMediaPreview;
   if ($("storageLocal")) $("storageLocal").onchange = async () => {
