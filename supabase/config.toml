@@ -57,3 +57,7 @@ content_path = "./supabase/templates/confirmation.html"
 
 [functions.share-resolve]
 verify_jwt = false
+
+
+[functions.desktop-gallery-upload]
+verify_jwt = false
