@@ -2999,10 +2999,51 @@ function feeDeliveryRecord() {
   return state.deliveries.find(delivery => delivery.id === id) || null;
 }
 
+function renderFeePlanOptions(){
+  const box=$("feePlanOptions");
+  if(!box)return;
+  const caps=state.feeCapabilities||{};
+  const active=$("feeMode")?.value||state.feeConfig?.mode||"";
+  const items=[
+    caps.fixed ? {
+      label:"Tarifa fija",
+      value:active==="FIXED"?"Activa":"Disponible",
+      detail:"Un mismo valor para cada entrega."
+    } : null,
+    caps.distance ? {
+      label:"Por distancia",
+      value:active==="DISTANCE"?"Activa":"Disponible",
+      detail:"Costo calculado según los kilómetros recorridos."
+    } : null,
+    caps.day_night ? {
+      label:"Día / Noche",
+      value:"Incluida",
+      detail:"Permite valores distintos según el horario del pedido."
+    } : null
+  ].filter(Boolean);
+
+  box.innerHTML=items.length
+    ? items.map(item=>overviewResourceCard({
+        label:item.label,
+        value:item.value,
+        detail:item.detail
+      })).join("")
+    : '<div class="message error">Tu plan no tiene modalidades de tarifa habilitadas.</div>';
+}
+
 function updateFeeModeUI() {
-  const distanceMode = $("feeMode")?.value === "DISTANCE";
-  $("fixedFeeField")?.classList.toggle("hidden", distanceMode);
-  $("distanceRatesCard")?.classList.toggle("hidden", !distanceMode);
+  const caps=state.feeCapabilities||{};
+  $("fixedFeeField")?.classList.toggle("hidden", !caps.fixed);
+  $("distanceRatesCard")?.classList.toggle("hidden", !caps.distance);
+  $("feeDayNightSchedule")?.classList.toggle("hidden", !(caps.distance&&caps.day_night));
+
+  if($("feeDistanceStatus")){
+    $("feeDistanceStatus").textContent=$("feeMode")?.value==="DISTANCE"
+      ?"Modalidad activa"
+      :"Incluida en el plan";
+  }
+
+  renderFeePlanOptions();
 }
 
 function feePeriodLabel(period) {
@@ -3013,7 +3054,9 @@ function renderFeeRates() {
   const container = $("feeRatesList");
   if (!container) return;
 
-  const rates = ["DAY","NIGHT"].map(period =>
+  const caps=state.feeCapabilities||{};
+  const periods=caps.day_night?["DAY","NIGHT"]:["DAY"];
+  const rates = periods.map(period =>
     state.feeRates.find(rate => rate.period === period) || {
       period,
       rate_per_km: null,
@@ -3052,8 +3095,15 @@ function renderFeeRates() {
 }
 
 function selectFeeRatePeriod(period) {
-  const normalized = period === "NIGHT" ? "NIGHT" : "DAY";
-  $("feeRatePeriod").value = normalized;
+  const caps=state.feeCapabilities||{};
+  const select=$("feeRatePeriod");
+  if(select){
+    select.innerHTML=caps.day_night
+      ? '<option value="DAY">Día</option><option value="NIGHT">Noche</option>'
+      : '<option value="DAY">Tarifa por km</option>';
+  }
+  const normalized = caps.day_night&&period === "NIGHT" ? "NIGHT" : "DAY";
+  if(select)select.value = normalized;
 
   const current = state.feeRates.find(rate => rate.period === normalized);
   $("feeRatePerKm").value = current?.rate_per_km ?? "";
@@ -3085,7 +3135,10 @@ async function loadFeeDelivery() {
   const delivery = feeDeliveryRecord();
 
   if (!delivery) {
+    state.feeCapabilities={fixed:false,distance:false,day_night:false};
+    state.feeConfig=null;
     state.feeRates = [];
+    renderFeePlanOptions();
     $("saveFeeConfigBtn").disabled = true;
     $("saveFeeScheduleBtn").disabled = true;
     $("saveFeeRateBtn").disabled = true;
@@ -3097,6 +3150,11 @@ async function loadFeeDelivery() {
     const capabilityStatus=await rpc("delivery_fee_capability_status",{
       p_delivery_id:delivery.id
     });
+    state.feeCapabilities={
+      fixed:Boolean(capabilityStatus?.fixed),
+      distance:Boolean(capabilityStatus?.distance),
+      day_night:Boolean(capabilityStatus?.day_night)
+    };
 
     const allowedModes=[];
     if(Boolean(capabilityStatus?.fixed))allowedModes.push("FIXED");
@@ -3113,8 +3171,10 @@ async function loadFeeDelivery() {
       $("saveFeeConfigBtn").disabled=true;
       $("saveFeeScheduleBtn").disabled=true;
       $("saveFeeRateBtn").disabled=true;
+      state.feeConfig=null;
       $("fixedFeeField")?.classList.add("hidden");
       $("distanceRatesCard")?.classList.add("hidden");
+      renderFeePlanOptions();
       if(capabilityNotice){
         capabilityNotice.textContent="MASTER no ha habilitado ninguna modalidad de tarifa para este DELIVERY.";
       }
@@ -3123,8 +3183,12 @@ async function loadFeeDelivery() {
     }
 
     if(capabilityNotice){
-      const labels=allowedModes.map(mode=>mode==="FIXED"?"Tarifa fija":"Por distancia");
-      capabilityNotice.textContent="HTPWEB habilitó: "+labels.join(" y ")+". El DELIVERY_ADMIN define los precios; el cálculo final lo realiza el backend.";
+      const labels=[];
+      if(state.feeCapabilities.fixed)labels.push("Tarifa fija");
+      if(state.feeCapabilities.distance)labels.push("Por distancia");
+      if(state.feeCapabilities.day_night)labels.push("Día/Noche");
+      capabilityNotice.textContent="Incluido en tu plan: "+labels.join(" · ")+
+        ". Puedes configurar todas estas opciones. La modalidad activa es la que se usa para calcular el envío.";
     }
 
     const [configRes, ratesRes] = await Promise.all([
@@ -3144,6 +3208,7 @@ async function loadFeeDelivery() {
     if (ratesRes.error) throw ratesRes.error;
 
     const config = configRes.data;
+    state.feeConfig=config||null;
     state.feeRates = ratesRes.data || [];
 
     const configuredMode=config?.mode;
@@ -3158,8 +3223,9 @@ async function loadFeeDelivery() {
     $("feeConfigActive").value = String(config?.active ?? true);
 
     $("saveFeeConfigBtn").disabled = false;
-    const distanceAllowed=allowedModes.includes("DISTANCE");
-    $("saveFeeScheduleBtn").disabled = !config || !distanceAllowed;
+    const distanceAllowed=state.feeCapabilities.distance;
+    const dayNightAllowed=distanceAllowed&&state.feeCapabilities.day_night;
+    $("saveFeeScheduleBtn").disabled = !config || !dayNightAllowed;
     $("saveFeeRateBtn").disabled = !config || !distanceAllowed;
 
     if(configuredMode && !allowedModes.includes(configuredMode) && capabilityNotice){
@@ -3188,7 +3254,7 @@ async function saveFeeConfig() {
 
     const mode = $("feeMode").value;
     const fixedRaw = $("fixedFee").value;
-    const fixedFee = mode === "FIXED" ? Number(fixedRaw) : 0;
+    const fixedFee = state.feeCapabilities?.fixed ? Number(fixedRaw) : Number(state.feeConfig?.fixed_fee||0);
 
     if (!Number.isFinite(fixedFee) || fixedFee < 0) {
       throw new Error("La tarifa fija debe ser un número igual o mayor que 0.");
@@ -3203,8 +3269,8 @@ async function saveFeeConfig() {
 
     message(
       mode === "FIXED"
-        ? "Tarifa fija del DELIVERY actualizada."
-        : "Tarifa por distancia activada. Configura el costo por km de Día y Noche."
+        ? "Tarifa fija activada y configuración guardada."
+        : "Tarifa por distancia activada y configuración guardada."
     );
 
     await loadFeeDelivery();
