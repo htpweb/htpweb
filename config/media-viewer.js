@@ -58,7 +58,10 @@
 
       $v("mediaViewerClose").onclick = close;
       $v("mediaViewer").onclick = event => {
-        if (event.target?.dataset?.closeMediaViewer === "1") close();
+        if (event.target?.dataset?.closeMediaViewer === "1") {
+          // El fondo no cierra el visor: el CLIENT decide cuándo salir usando la X.
+          event.preventDefault();
+        }
       };
       $v("mediaViewerVariant").onchange = syncVariantPrice;
       $v("mediaViewerAdd").onclick = addFromViewer;
@@ -181,7 +184,19 @@
     }
 
     addProduct(productId);
-    close();
+    $v("mediaViewerQty").value = 1;
+
+    const addButton = $v("mediaViewerAdd");
+    if (addButton && !addButton.disabled) {
+      const defaultText = "Agregar al carrito";
+      addButton.textContent = "Agregado ✓";
+      addButton.classList.add("is-added");
+      window.clearTimeout(addButton._htpwebFeedbackTimer);
+      addButton._htpwebFeedbackTimer = window.setTimeout(() => {
+        if (!addButton.disabled) addButton.textContent = defaultText;
+        addButton.classList.remove("is-added");
+      }, 900);
+    }
   }
 
   async function loadGallery() {
@@ -274,7 +289,6 @@
 
   document.addEventListener("keydown", event => {
     if ($v("mediaViewer")?.classList.contains("hidden")) return;
-    if (event.key === "Escape") close();
     if (galleryIndex >= 0 && event.key === "ArrowLeft") stepGallery(-1);
     if (galleryIndex >= 0 && event.key === "ArrowRight") stepGallery(1);
   });
