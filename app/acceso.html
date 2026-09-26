@@ -376,6 +376,13 @@ $("loginForm").onsubmit = async event => {
   }
 };
 
+function authEmailRedirectUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
 $("resendConfirmationBtn").onclick = async () => {
   const email = $("loginEmail").value.trim();
   if (!email) {
@@ -392,7 +399,10 @@ $("resendConfirmationBtn").onclick = async () => {
   try {
     const { error } = await supabaseClient.auth.resend({
       type: "signup",
-      email
+      email,
+      options: {
+        emailRedirectTo: authEmailRedirectUrl()
+      }
     });
     if (error) throw error;
     showMessage("Correo de confirmación reenviado. Revisa tu bandeja de entrada y la carpeta de spam.", "success");
@@ -429,6 +439,7 @@ $("registerForm").onsubmit = async event => {
       email,
       password: $("registerPassword").value,
       options: {
+        emailRedirectTo: authEmailRedirectUrl(),
         data: {
           full_name: name,
           phone
