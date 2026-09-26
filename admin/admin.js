@@ -2031,11 +2031,11 @@ async function copyShareLocalOrderLink() {
     }else{
       await navigator.clipboard.writeText(plain);
     }
-    message("PIDE AQUÍ copiado. Pégalo como texto de la foto.");
+    message("PIDE AQUÍ copiado. En Estado de WhatsApp, pégalo con la herramienta T / Texto sobre la foto, no en Añadir comentario.");
   }catch{
     try{
       await navigator.clipboard.writeText(plain);
-      message("PIDE AQUÍ copiado. Pégalo como texto de la foto.");
+      message("PIDE AQUÍ copiado. En Estado de WhatsApp, pégalo con la herramienta T / Texto sobre la foto, no en Añadir comentario.");
     }catch{
       message("No se pudo copiar el enlace.","error");
     }
