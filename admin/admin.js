@@ -2999,343 +2999,501 @@ function feeDeliveryRecord() {
   return state.deliveries.find(delivery => delivery.id === id) || null;
 }
 
-function renderFeePlanOptions(){
-  const box=$("feePlanOptions");
-  if(!box)return;
-  const caps=state.feeCapabilities||{};
-  const active=$("feeMode")?.value||state.feeConfig?.mode||"";
-  const items=[
-    caps.fixed ? {
-      label:"Tarifa fija",
-      value:active==="FIXED"?"Activa":"Disponible",
-      detail:"Un mismo valor para cada entrega."
-    } : null,
-    caps.distance ? {
-      label:"Por distancia",
-      value:active==="DISTANCE"?"Activa":"Disponible",
-      detail:"Costo calculado según los kilómetros recorridos."
-    } : null,
-    caps.day_night ? {
-      label:"Día / Noche",
-      value:"Incluida",
-      detail:"Permite valores distintos según el horario del pedido."
-    } : null
-  ].filter(Boolean);
-
-  box.innerHTML=items.length
-    ? items.map(item=>overviewResourceCard({
-        label:item.label,
-        value:item.value,
-        detail:item.detail
-      })).join("")
-    : '<div class="message error">Tu plan no tiene modalidades de tarifa habilitadas.</div>';
+function feeModeLabel(mode) {
+  return mode === "DISTANCE" ? "Por distancia" : mode === "ZONE" ? "Por zonas" : "Tarifa fija";
 }
 
-function updateFeeModeUI() {
+function feeCapabilityForMode(mode) {
   const caps=state.feeCapabilities||{};
-  $("fixedFeeField")?.classList.toggle("hidden", !caps.fixed);
-  $("distanceRatesCard")?.classList.toggle("hidden", !caps.distance);
-  $("feeDayNightSchedule")?.classList.toggle("hidden", !(caps.distance&&caps.day_night));
+  if(mode==="FIXED")return Boolean(caps.fixed);
+  if(mode==="DISTANCE")return Boolean(caps.distance);
+  if(mode==="ZONE")return Boolean(caps.zone);
+  return false;
+}
 
-  if($("feeDistanceStatus")){
-    $("feeDistanceStatus").textContent=$("feeMode")?.value==="DISTANCE"
-      ?"Modalidad activa"
-      :"Incluida en el plan";
+function feeMoney(value) {
+  const n=Number(value);
+  return Number.isFinite(n) ? "$"+n.toFixed(2) : "—";
+}
+
+function feeModeConfigured(mode) {
+  if(mode==="FIXED"){
+    return state.feeConfig
+      && Number.isFinite(Number(state.feeConfig.fixed_day_fee))
+      && Number.isFinite(Number(state.feeConfig.fixed_night_fee));
   }
-
-  renderFeePlanOptions();
-}
-
-function feePeriodLabel(period) {
-  return period === "NIGHT" ? "Noche" : "Día";
-}
-
-function renderFeeRates() {
-  const container = $("feeRatesList");
-  if (!container) return;
-
-  const caps=state.feeCapabilities||{};
-  const periods=caps.day_night?["DAY","NIGHT"]:["DAY"];
-  const rates = periods.map(period =>
-    state.feeRates.find(rate => rate.period === period) || {
-      period,
-      rate_per_km: null,
-      active: false
+  if(mode==="DISTANCE"){
+    return Array.isArray(state.feeDistanceBands)&&state.feeDistanceBands.length>0;
+  }
+  if(mode==="ZONE"){
+    const zoneMode=state.feeConfig?.zone_pricing_mode||"SIMPLE";
+    if(zoneMode==="DETAILED"){
+      const required=(state.feeZones||[]).length*(state.feeZones||[]).length;
+      return required>0&&(state.feeZoneRates||[]).length===required;
     }
-  );
-
-  container.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Periodo</th>
-            <th>Costo por km</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rates.map(rate => `
-            <tr>
-              <td>${feePeriodLabel(rate.period)}</td>
-              <td>${rate.rate_per_km === null ? "Sin configurar" : "$" + Number(rate.rate_per_km).toFixed(4) + " / km"}</td>
-              <td><span class="badge">${rate.rate_per_km === null ? "Pendiente" : (rate.active ? "Activa" : "Inactiva")}</span></td>
-              <td>
-                <button class="btn-muted" onclick="selectFeeRatePeriod('${rate.period}')">
-                  Configurar
-                </button>
-              </td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
+    const s=state.feeZoneSimple||{};
+    return ["same_zone_day_fee","same_zone_night_fee","other_zone_day_fee","other_zone_night_fee"]
+      .every(key=>Number.isFinite(Number(s[key])));
+  }
+  return false;
 }
 
-function selectFeeRatePeriod(period) {
-  const caps=state.feeCapabilities||{};
-  const select=$("feeRatePeriod");
-  if(select){
-    select.innerHTML=caps.day_night
-      ? '<option value="DAY">Día</option><option value="NIGHT">Noche</option>'
-      : '<option value="DAY">Tarifa por km</option>';
-  }
-  const normalized = caps.day_night&&period === "NIGHT" ? "NIGHT" : "DAY";
-  if(select)select.value = normalized;
+function feeModeStatus(mode) {
+  if(!feeCapabilityForMode(mode))return "No incluida en tu plan";
+  if(state.feeConfig?.active===true&&state.feeConfig?.mode===mode)return "ACTIVA";
+  return feeModeConfigured(mode)?"Configurada":"Pendiente";
+}
 
-  const current = state.feeRates.find(rate => rate.period === normalized);
-  $("feeRatePerKm").value = current?.rate_per_km ?? "";
-  $("feeRateActive").value = String(current?.active ?? true);
-  $("feeRatePerKm").focus();
+function renderFeeActiveNotice() {
+  const box=$("feeActiveModeNotice");
+  if(!box)return;
+  const config=state.feeConfig;
+  if(!config?.active){
+    box.innerHTML="<strong>Sin modalidad activa.</strong> Configura una opción y pulsa “Usar esta modalidad”.";
+    return;
+  }
+  const day=String(config.day_start_time||"06:00").slice(0,5);
+  const night=String(config.night_start_time||"18:00").slice(0,5);
+  box.innerHTML="<strong>Modalidad actualmente activa: "+esc(feeModeLabel(config.mode))+"</strong>"+
+    (state.feeCapabilities?.day_night
+      ?" · Día "+esc(day)+"–"+esc(night)+" · Noche "+esc(night)+"–"+esc(day)
+      :" · Una sola tarifa durante todo el día");
+}
+
+function renderFeeModeCards() {
+  const box=$("feeModeCards");
+  if(!box)return;
+  const modes=[
+    {mode:"FIXED",title:"Tarifa fija",detail:"Precio fijo por entrega."},
+    {mode:"DISTANCE",title:"Por distancia",detail:"Precios por rangos de kilómetros."},
+    {mode:"ZONE",title:"Por zonas",detail:"Simple o por combinación de zonas."}
+  ];
+
+  box.innerHTML=modes.map(item=>{
+    const included=feeCapabilityForMode(item.mode);
+    const active=state.feeConfig?.active===true&&state.feeConfig?.mode===item.mode;
+    const selected=state.feePanel===item.mode;
+    const buttonClass=active?"btn-primary":"btn-muted";
+    return '<button type="button" class="'+buttonClass+'" data-fee-mode-card="'+item.mode+'" '+
+      (included?"":"disabled")+
+      ' style="min-height:112px;text-align:left;padding:16px;white-space:normal;'+
+      (selected?'outline:2px solid currentColor;outline-offset:2px;':'')+
+      (!included?'opacity:.55;':'')+'">'+
+      '<strong style="display:block;font-size:1.05rem;margin-bottom:6px">'+esc(item.title)+'</strong>'+
+      '<span style="display:block;margin-bottom:6px">'+esc(feeModeStatus(item.mode))+'</span>'+
+      '<small>'+esc(included?item.detail:"Esta modalidad no está habilitada en tu plan.")+'</small>'+
+      '</button>';
+  }).join("");
+
+  box.querySelectorAll("[data-fee-mode-card]").forEach(button=>{
+    button.onclick=()=>selectFeeModePanel(button.dataset.feeModeCard);
+  });
+}
+
+function selectFeeModePanel(mode) {
+  if(!feeCapabilityForMode(mode))return;
+  state.feePanel=mode;
+  renderFeeWorkspace();
+}
+
+function renderFeePanelStatus(id,mode) {
+  const node=$(id);
+  if(!node)return;
+  node.textContent=feeModeStatus(mode);
+}
+
+function renderFeeFixedPanel() {
+  if($("feeFixedDay"))$("feeFixedDay").value=state.feeConfig?.fixed_day_fee ?? "";
+  if($("feeFixedNight")){
+    $("feeFixedNight").value=state.feeConfig?.fixed_night_fee ?? "";
+    $("feeFixedNight").disabled=!state.feeCapabilities?.day_night;
+  }
+  renderFeePanelStatus("feeFixedPanelStatus","FIXED");
+}
+
+function syncFeeDistanceBandsFromDom() {
+  const rows=[...document.querySelectorAll("[data-fee-band-row]")];
+  if(!rows.length)return state.feeDistanceBands||[];
+  state.feeDistanceBands=rows.map((row,index)=>{
+    const maxInput=row.querySelector("[data-fee-band-max]");
+    const dayInput=row.querySelector("[data-fee-band-day]");
+    const nightInput=row.querySelector("[data-fee-band-night]");
+    const current=state.feeDistanceBands?.[index]||{};
+    return {
+      ...current,
+      max_distance_km:maxInput?maxInput.value:null,
+      day_fee:dayInput?.value??current.day_fee??"",
+      night_fee:nightInput?.value??current.night_fee??""
+    };
+  });
+  return state.feeDistanceBands;
+}
+
+function renderFeeDistanceBands() {
+  const box=$("feeDistanceBandsList");
+  if(!box)return;
+  const bands=state.feeDistanceBands||[];
+  if(!bands.length){
+    box.innerHTML='<div class="workspace-note"><strong>Sin rangos configurados.</strong><div style="margin-top:6px">Pulsa <strong>+ Nuevo</strong> para crear el primer precio por distancia.</div></div>';
+    renderFeePanelStatus("feeDistancePanelStatus","DISTANCE");
+    return;
+  }
+
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Hasta</th><th>Día</th><th>Noche</th><th></th></tr></thead><tbody>'+
+    bands.map((band,index)=>{
+      const last=index===bands.length-1;
+      const unlimited=band.max_distance_km===null;
+      const maxCell=unlimited
+        ? '<span class="badge">Sin límite</span> <button type="button" class="btn-muted" data-fee-band-unlimit="'+index+'">Definir km</button>'
+        : '<div class="row" style="gap:6px;flex-wrap:nowrap"><input data-fee-band-max type="number" min="0.01" step="0.01" value="'+esc(band.max_distance_km??"")+'" placeholder="Ej. 2.00" style="min-width:110px"><span>km</span>'+
+          (last?'<button type="button" class="btn-muted" data-fee-band-unlimit="'+index+'">Sin límite</button>':'')+'</div>';
+      return '<tr data-fee-band-row="'+index+'">'+
+        '<td>'+maxCell+'</td>'+
+        '<td><input data-fee-band-day type="number" min="0" step="0.01" value="'+esc(band.day_fee??"")+'" placeholder="0.00"></td>'+
+        '<td><input data-fee-band-night type="number" min="0" step="0.01" value="'+esc(band.night_fee??"")+'" placeholder="0.00" '+(state.feeCapabilities?.day_night?"":"disabled")+'></td>'+
+        '<td><button type="button" class="btn-danger" data-fee-band-remove="'+index+'">Quitar</button></td>'+
+        '</tr>';
+    }).join("")+'</tbody></table></div>';
+
+  box.querySelectorAll("[data-fee-band-unlimit]").forEach(button=>{
+    button.onclick=()=>toggleFeeDistanceUnlimited(Number(button.dataset.feeBandUnlimit));
+  });
+  box.querySelectorAll("[data-fee-band-remove]").forEach(button=>{
+    button.onclick=()=>removeFeeDistanceBand(Number(button.dataset.feeBandRemove));
+  });
+  renderFeePanelStatus("feeDistancePanelStatus","DISTANCE");
+}
+
+function addFeeDistanceBand() {
+  syncFeeDistanceBandsFromDom();
+  const bands=state.feeDistanceBands||[];
+  const source=bands.length?bands[Math.max(0,bands.length-1)]:{};
+  const row={
+    max_distance_km:"",
+    day_fee:source.day_fee??"",
+    night_fee:source.night_fee??source.day_fee??""
+  };
+  if(bands.length&&bands[bands.length-1].max_distance_km===null){
+    bands.splice(bands.length-1,0,row);
+  }else{
+    bands.push(row);
+  }
+  state.feeDistanceBands=bands;
+  renderFeeDistanceBands();
+}
+
+function removeFeeDistanceBand(index) {
+  syncFeeDistanceBandsFromDom();
+  state.feeDistanceBands.splice(index,1);
+  renderFeeDistanceBands();
+}
+
+function toggleFeeDistanceUnlimited(index) {
+  syncFeeDistanceBandsFromDom();
+  const bands=state.feeDistanceBands||[];
+  if(index!==bands.length-1){
+    message("Solo el último rango puede quedar Sin límite.","error");
+    return;
+  }
+  bands[index].max_distance_km=bands[index].max_distance_km===null?"":null;
+  state.feeDistanceBands=bands;
+  renderFeeDistanceBands();
+}
+
+function collectFeeDistanceBands() {
+  const bands=syncFeeDistanceBandsFromDom();
+  if(!bands.length)throw new Error("Agrega al menos un rango de distancia.");
+  let previous=0;
+  return bands.map((band,index)=>{
+    const last=index===bands.length-1;
+    const unlimited=band.max_distance_km===null;
+    let max=null;
+    if(!unlimited){
+      max=Number(band.max_distance_km);
+      if(!Number.isFinite(max)||max<=previous)throw new Error("Cada valor de Hasta debe ser mayor que el rango anterior.");
+      if(last)throw new Error("El último rango debe quedar como Sin límite.");
+      previous=max;
+    }else if(!last){
+      throw new Error("Solo el último rango puede quedar como Sin límite.");
+    }
+
+    const day=Number(band.day_fee);
+    const night=state.feeCapabilities?.day_night?Number(band.night_fee):day;
+    if(!Number.isFinite(day)||day<0||!Number.isFinite(night)||night<0){
+      throw new Error("Completa los precios Día y Noche de todos los rangos.");
+    }
+    return {max_distance_km:max,day_fee:day,night_fee:night};
+  });
+}
+
+function feeZoneRateKey(origin,destination) {
+  return String(origin)+"|"+String(destination);
+}
+
+function renderFeeZoneDetailed() {
+  const box=$("feeZoneDetailedList");
+  if(!box)return;
+  const zones=state.feeZones||[];
+  if(!zones.length){
+    box.innerHTML='<div class="message error">No hay zonas activas para configurar una matriz de tarifas.</div>';
+    return;
+  }
+  const existing=new Map((state.feeZoneRates||[]).map(rate=>[
+    feeZoneRateKey(rate.origin_zone_id,rate.destination_zone_id),rate
+  ]));
+  const rows=[];
+  zones.forEach(origin=>zones.forEach(destination=>{
+    const rate=existing.get(feeZoneRateKey(origin.id,destination.id))||{};
+    rows.push('<tr data-fee-zone-rate data-origin-zone="'+esc(origin.id)+'" data-destination-zone="'+esc(destination.id)+'">'+
+      '<td><strong>'+esc(origin.code||origin.name)+'</strong><div class="muted">'+esc(origin.name||"")+'</div></td>'+
+      '<td><strong>'+esc(destination.code||destination.name)+'</strong><div class="muted">'+esc(destination.name||"")+'</div></td>'+
+      '<td><input data-zone-day type="number" min="0" step="0.01" value="'+esc(rate.day_fee??"")+'" placeholder="0.00"></td>'+
+      '<td><input data-zone-night type="number" min="0" step="0.01" value="'+esc(rate.night_fee??"")+'" placeholder="0.00" '+(state.feeCapabilities?.day_night?"":"disabled")+'></td>'+
+      '</tr>');
+  }));
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Zona origen</th><th>Zona destino</th><th>Día</th><th>Noche</th></tr></thead><tbody>'+
+    rows.join("")+'</tbody></table></div>';
+}
+
+function setFeeZoneView(view) {
+  state.feeZoneView=view==="DETAILED"?"DETAILED":"SIMPLE";
+  $("feeZoneSimplePanel")?.classList.toggle("hidden",state.feeZoneView!=="SIMPLE");
+  $("feeZoneDetailedPanel")?.classList.toggle("hidden",state.feeZoneView!=="DETAILED");
+  if($("feeZoneSimpleTab"))$("feeZoneSimpleTab").className=state.feeZoneView==="SIMPLE"?"btn-primary":"btn-muted";
+  if($("feeZoneDetailedTab"))$("feeZoneDetailedTab").className=state.feeZoneView==="DETAILED"?"btn-primary":"btn-muted";
+  if(state.feeZoneView==="DETAILED")renderFeeZoneDetailed();
+}
+
+function renderFeeZonePanel() {
+  const s=state.feeZoneSimple||{};
+  if($("feeZoneSameDay"))$("feeZoneSameDay").value=s.same_zone_day_fee??"";
+  if($("feeZoneSameNight")){
+    $("feeZoneSameNight").value=s.same_zone_night_fee??"";
+    $("feeZoneSameNight").disabled=!state.feeCapabilities?.day_night;
+  }
+  if($("feeZoneOtherDay"))$("feeZoneOtherDay").value=s.other_zone_day_fee??"";
+  if($("feeZoneOtherNight")){
+    $("feeZoneOtherNight").value=s.other_zone_night_fee??"";
+    $("feeZoneOtherNight").disabled=!state.feeCapabilities?.day_night;
+  }
+  renderFeePanelStatus("feeZonePanelStatus","ZONE");
+  setFeeZoneView(state.feeZoneView||state.feeConfig?.zone_pricing_mode||"SIMPLE");
+}
+
+function renderFeeWorkspace() {
+  renderFeeActiveNotice();
+  renderFeeModeCards();
+
+  const panel=state.feePanel||"FIXED";
+  $("feeFixedPanel")?.classList.toggle("hidden",panel!=="FIXED");
+  $("feeDistancePanel")?.classList.toggle("hidden",panel!=="DISTANCE");
+  $("feeZonePanel")?.classList.toggle("hidden",panel!=="ZONE");
+
+  if(panel==="FIXED")renderFeeFixedPanel();
+  if(panel==="DISTANCE")renderFeeDistanceBands();
+  if(panel==="ZONE")renderFeeZonePanel();
+
+  const caps=state.feeCapabilities||{};
+  $("feeScheduleCard")?.classList.toggle("hidden",!caps.day_night);
+  if($("feeDayNightPlanStatus"))$("feeDayNightPlanStatus").textContent=caps.day_night?"Incluida en el plan":"No incluida";
 }
 
 async function loadFees() {
-  if (state.role !== "DELIVERY_ADMIN") return;
-
-  const select = $("feeDelivery");
-  if (!select) return;
-
-  const previous = select.value;
-  const available = state.deliveries.filter(delivery => delivery.active !== false);
-
-  select.innerHTML = available.length
-    ? available.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const select=$("feeDelivery");
+  if(!select)return;
+  const previous=select.value;
+  const available=state.deliveries.filter(delivery=>delivery.active!==false);
+  select.innerHTML=available.length
+    ? available.map(delivery=>'<option value="'+esc(delivery.id)+'">'+esc(delivery.name)+'</option>').join("")
     : '<option value="">No hay DELIVERY disponible</option>';
-
-  if (previous && available.some(delivery => delivery.id === previous)) {
-    select.value = previous;
-  }
-
+  if(previous&&available.some(delivery=>delivery.id===previous))select.value=previous;
   await loadFeeDelivery();
 }
 
 async function loadFeeDelivery() {
-  const delivery = feeDeliveryRecord();
-
-  if (!delivery) {
-    state.feeCapabilities={fixed:false,distance:false,day_night:false};
+  const delivery=feeDeliveryRecord();
+  if(!delivery){
+    state.feeCapabilities={fixed:false,distance:false,zone:false,day_night:false};
     state.feeConfig=null;
-    state.feeRates = [];
-    renderFeePlanOptions();
-    $("saveFeeConfigBtn").disabled = true;
-    $("saveFeeScheduleBtn").disabled = true;
-    $("saveFeeRateBtn").disabled = true;
-    renderFeeRates();
+    state.feeDistanceBands=[];
+    state.feeZoneSimple=null;
+    state.feeZoneRates=[];
+    state.feeZones=[];
+    renderFeeWorkspace();
     return;
   }
 
-  try {
-    const capabilityStatus=await rpc("delivery_fee_capability_status",{
-      p_delivery_id:delivery.id
-    });
-    state.feeCapabilities={
-      fixed:Boolean(capabilityStatus?.fixed),
-      distance:Boolean(capabilityStatus?.distance),
-      day_night:Boolean(capabilityStatus?.day_night)
-    };
+  try{
+    const workspace=await rpc("delivery_fee_workspace",{p_delivery_id:delivery.id});
+    state.feeCapabilities=workspace?.capabilities||{fixed:false,distance:false,zone:false,day_night:false};
+    state.feeConfig=workspace?.config||null;
+    state.feeDistanceBands=(workspace?.distance_bands||[]).map(b=>({...b}));
+    state.feeZoneSimple=workspace?.zone_simple||null;
+    state.feeZoneRates=(workspace?.zone_rates||[]).map(r=>({...r}));
+    state.feeZones=(workspace?.zones||[]).map(z=>({...z}));
 
-    const allowedModes=[];
-    if(Boolean(capabilityStatus?.fixed))allowedModes.push("FIXED");
-    if(Boolean(capabilityStatus?.distance))allowedModes.push("DISTANCE");
-
-    const capabilityNotice=$("feeCapabilityNotice");
-    const modeSelect=$("feeMode");
-    modeSelect.innerHTML=allowedModes.map(mode=>
-      '<option value="'+mode+'">'+(mode==="FIXED"?"Tarifa fija":"Por distancia")+'</option>'
-    ).join("");
-
-    if(!allowedModes.length){
-      state.feeRates=[];
-      $("saveFeeConfigBtn").disabled=true;
-      $("saveFeeScheduleBtn").disabled=true;
-      $("saveFeeRateBtn").disabled=true;
-      state.feeConfig=null;
-      $("fixedFeeField")?.classList.add("hidden");
-      $("distanceRatesCard")?.classList.add("hidden");
-      renderFeePlanOptions();
-      if(capabilityNotice){
-        capabilityNotice.textContent="MASTER no ha habilitado ninguna modalidad de tarifa para este DELIVERY.";
-      }
-      renderFeeRates();
-      return;
+    const preferred=state.feePanel;
+    if(!preferred||!feeCapabilityForMode(preferred)){
+      const active=state.feeConfig?.mode;
+      state.feePanel=feeCapabilityForMode(active)
+        ? active
+        : ["FIXED","DISTANCE","ZONE"].find(feeCapabilityForMode)||"FIXED";
     }
+    state.feeZoneView=state.feeConfig?.zone_pricing_mode||state.feeZoneView||"SIMPLE";
 
-    if(capabilityNotice){
-      const labels=[];
-      if(state.feeCapabilities.fixed)labels.push("Tarifa fija");
-      if(state.feeCapabilities.distance)labels.push("Por distancia");
-      if(state.feeCapabilities.day_night)labels.push("Día/Noche");
-      capabilityNotice.textContent="Incluido en tu plan: "+labels.join(" · ")+
-        ". Puedes configurar todas estas opciones. La modalidad activa es la que se usa para calcular el envío.";
-    }
+    if($("feeDayStart"))$("feeDayStart").value=String(state.feeConfig?.day_start_time||"06:00").slice(0,5);
+    if($("feeNightStart"))$("feeNightStart").value=String(state.feeConfig?.night_start_time||"18:00").slice(0,5);
 
-    const [configRes, ratesRes] = await Promise.all([
-      supabaseClient
-        .from("delivery_fee_configs")
-        .select("id,delivery_id,mode,fixed_fee,day_start_time,night_start_time,active")
-        .eq("delivery_id", delivery.id)
-        .maybeSingle(),
-      supabaseClient
-        .from("delivery_fee_rates")
-        .select("id,delivery_id,period,rate_per_km,active")
-        .eq("delivery_id", delivery.id)
-        .order("period")
-    ]);
-
-    if (configRes.error) throw configRes.error;
-    if (ratesRes.error) throw ratesRes.error;
-
-    const config = configRes.data;
-    state.feeConfig=config||null;
-    state.feeRates = ratesRes.data || [];
-
-    const configuredMode=config?.mode;
-    const selectedMode=configuredMode&&allowedModes.includes(configuredMode)
-      ? configuredMode
-      : allowedModes[0];
-
-    $("feeMode").value = selectedMode;
-    $("fixedFee").value = config?.fixed_fee ?? "0";
-    $("feeDayStart").value = String(config?.day_start_time || "06:00").slice(0,5);
-    $("feeNightStart").value = String(config?.night_start_time || "18:00").slice(0,5);
-    $("feeConfigActive").value = String(config?.active ?? true);
-
-    $("saveFeeConfigBtn").disabled = false;
-    const distanceAllowed=state.feeCapabilities.distance;
-    const dayNightAllowed=distanceAllowed&&state.feeCapabilities.day_night;
-    $("saveFeeScheduleBtn").disabled = !config || !dayNightAllowed;
-    $("saveFeeRateBtn").disabled = !config || !distanceAllowed;
-
-    if(configuredMode && !allowedModes.includes(configuredMode) && capabilityNotice){
-      capabilityNotice.textContent += " La modalidad guardada anteriormente ("+
-        (configuredMode==="FIXED"?"Tarifa fija":"Por distancia")+
-        ") ya no está habilitada; selecciona una modalidad disponible y guarda la configuración.";
-    }
-
-    updateFeeModeUI();
-    renderFeeRates();
-    selectFeeRatePeriod($("feeRatePeriod").value || "DAY");
-  } catch (e) {
-    state.feeRates = [];
-    $("saveFeeConfigBtn").disabled = true;
-    $("saveFeeScheduleBtn").disabled = true;
-    $("saveFeeRateBtn").disabled = true;
-    renderFeeRates();
-    message(e.message || "No se pudieron cargar las tarifas del DELIVERY.", "error");
+    renderFeeWorkspace();
+  }catch(e){
+    message(e.message||"No se pudieron cargar las tarifas del DELIVERY.","error");
   }
 }
 
-async function saveFeeConfig() {
-  try {
-    const delivery = feeDeliveryRecord();
-    if (!delivery) throw new Error("Selecciona un DELIVERY.");
-
-    const mode = $("feeMode").value;
-    const fixedRaw = $("fixedFee").value;
-    const fixedFee = state.feeCapabilities?.fixed ? Number(fixedRaw) : Number(state.feeConfig?.fixed_fee||0);
-
-    if (!Number.isFinite(fixedFee) || fixedFee < 0) {
-      throw new Error("La tarifa fija debe ser un número igual o mayor que 0.");
-    }
-
-    await rpc("save_delivery_fee_config", {
-      p_delivery_id: delivery.id,
-      p_mode: mode,
-      p_fixed_fee: fixedFee,
-      p_active: $("feeConfigActive").value === "true"
-    });
-
-    message(
-      mode === "FIXED"
-        ? "Tarifa fija activada y configuración guardada."
-        : "Tarifa por distancia activada y configuración guardada."
-    );
-
-    await loadFeeDelivery();
-  } catch (e) {
-    message(e.message || "No se pudo guardar la tarifa.", "error");
-  }
+function feeReadNonNegative(id,label) {
+  const raw=$(id)?.value?.trim?.()??"";
+  if(raw==="")throw new Error("Completa "+label+".");
+  const n=Number(raw);
+  if(!Number.isFinite(n)||n<0)throw new Error(label+" debe ser un número igual o mayor que 0.");
+  return n;
 }
 
 async function saveFeeSchedule() {
-  try {
-    const delivery = feeDeliveryRecord();
-    if (!delivery) throw new Error("Selecciona un DELIVERY.");
-
-    const dayStart = $("feeDayStart").value;
-    const nightStart = $("feeNightStart").value;
-
-    if (!dayStart || !nightStart) {
-      throw new Error("Selecciona la hora de inicio del día y de la noche.");
-    }
-
-    if (dayStart >= nightStart) {
-      throw new Error("El inicio de la tarifa diurna debe ser anterior al inicio nocturno.");
-    }
-
-    await rpc("save_delivery_fee_schedule", {
-      p_delivery_id: delivery.id,
-      p_day_start_time: dayStart,
-      p_night_start_time: nightStart
+  try{
+    const delivery=feeDeliveryRecord();
+    if(!delivery)throw new Error("Selecciona un DELIVERY.");
+    const dayStart=$("feeDayStart").value;
+    const nightStart=$("feeNightStart").value;
+    if(!dayStart||!nightStart)throw new Error("Selecciona la hora de inicio del Día y de la Noche.");
+    if(dayStart>=nightStart)throw new Error("El inicio del Día debe ser anterior al inicio de la Noche.");
+    await rpc("save_delivery_fee_schedule",{
+      p_delivery_id:delivery.id,
+      p_day_start_time:dayStart,
+      p_night_start_time:nightStart
     });
-
-    message("Horario de tarifa Día / Noche actualizado.");
+    message("Horario Día / Noche actualizado.");
     await loadFeeDelivery();
-  } catch (e) {
-    message(e.message || "No se pudo guardar el horario de tarifas.", "error");
+  }catch(e){
+    message(e.message||"No se pudo guardar el horario de tarifas.","error");
   }
 }
 
-async function saveFeeRate() {
-  try {
-    const delivery = feeDeliveryRecord();
-    if (!delivery) throw new Error("Selecciona un DELIVERY.");
+async function saveFixedFees(options={}) {
+  const delivery=feeDeliveryRecord();
+  if(!delivery)throw new Error("Selecciona un DELIVERY.");
+  const day=feeReadNonNegative("feeFixedDay","el precio Día");
+  const night=state.feeCapabilities?.day_night
+    ? feeReadNonNegative("feeFixedNight","el precio Noche")
+    : day;
+  await rpc("save_delivery_fixed_fees",{
+    p_delivery_id:delivery.id,
+    p_day_fee:day,
+    p_night_fee:night
+  });
+  if(!options.quiet)message("Tarifa fija Día / Noche guardada.");
+  if(options.reload!==false)await loadFeeDelivery();
+}
 
-    const period = $("feeRatePeriod").value;
-    const raw = $("feeRatePerKm").value.trim();
+async function saveDistanceBands(options={}) {
+  const delivery=feeDeliveryRecord();
+  if(!delivery)throw new Error("Selecciona un DELIVERY.");
+  const bands=collectFeeDistanceBands();
+  await rpc("delivery_replace_distance_bands",{
+    p_delivery_id:delivery.id,
+    p_bands:bands
+  });
+  state.feeDistanceBands=bands.map((band,index)=>({...band,position:index+1}));
+  if(!options.quiet)message("Rangos por distancia guardados.");
+  if(options.reload!==false)await loadFeeDelivery();
+}
 
-    if (raw === "") {
-      throw new Error(`Escribe el costo por km para ${feePeriodLabel(period).toLowerCase()}.`);
+async function saveZoneSimple(options={}) {
+  const delivery=feeDeliveryRecord();
+  if(!delivery)throw new Error("Selecciona un DELIVERY.");
+  const sameDay=feeReadNonNegative("feeZoneSameDay","el precio Día de Misma zona");
+  const sameNight=state.feeCapabilities?.day_night
+    ? feeReadNonNegative("feeZoneSameNight","el precio Noche de Misma zona")
+    : sameDay;
+  const otherDay=feeReadNonNegative("feeZoneOtherDay","el precio Día de Otra zona");
+  const otherNight=state.feeCapabilities?.day_night
+    ? feeReadNonNegative("feeZoneOtherNight","el precio Noche de Otra zona")
+    : otherDay;
+
+  await rpc("save_delivery_zone_simple",{
+    p_delivery_id:delivery.id,
+    p_same_day:sameDay,
+    p_same_night:sameNight,
+    p_other_day:otherDay,
+    p_other_night:otherNight
+  });
+  state.feeConfig={...(state.feeConfig||{}),zone_pricing_mode:"SIMPLE"};
+  state.feeZoneSimple={
+    same_zone_day_fee:sameDay,
+    same_zone_night_fee:sameNight,
+    other_zone_day_fee:otherDay,
+    other_zone_night_fee:otherNight
+  };
+  state.feeZoneView="SIMPLE";
+  if(!options.quiet)message("Tarifa simple por zonas guardada.");
+  if(options.reload!==false)await loadFeeDelivery();
+}
+
+function collectZoneDetailedRates() {
+  const rows=[...document.querySelectorAll("[data-fee-zone-rate]")];
+  const zones=state.feeZones||[];
+  const required=zones.length*zones.length;
+  if(!required)throw new Error("No hay zonas activas para configurar.");
+  if(rows.length!==required)throw new Error("No se pudo construir toda la matriz de zonas.");
+  return rows.map(row=>{
+    const day=Number(row.querySelector("[data-zone-day]")?.value);
+    const night=state.feeCapabilities?.day_night
+      ? Number(row.querySelector("[data-zone-night]")?.value)
+      : day;
+    if(!Number.isFinite(day)||day<0||!Number.isFinite(night)||night<0){
+      throw new Error("Completa los precios Día y Noche de todas las combinaciones de zonas.");
     }
+    return {
+      origin_zone_id:row.dataset.originZone,
+      destination_zone_id:row.dataset.destinationZone,
+      day_fee:day,
+      night_fee:night
+    };
+  });
+}
 
-    const rate = Number(raw);
-    if (!Number.isFinite(rate) || rate < 0) {
-      throw new Error("El costo por km debe ser un número igual o mayor que 0.");
+async function saveZoneDetailed(options={}) {
+  const delivery=feeDeliveryRecord();
+  if(!delivery)throw new Error("Selecciona un DELIVERY.");
+  const rates=collectZoneDetailedRates();
+  await rpc("delivery_replace_zone_rates",{
+    p_delivery_id:delivery.id,
+    p_rates:rates
+  });
+  state.feeConfig={...(state.feeConfig||{}),zone_pricing_mode:"DETAILED"};
+  state.feeZoneRates=rates.map(rate=>({...rate}));
+  state.feeZoneView="DETAILED";
+  if(!options.quiet)message("Matriz detallada de zonas guardada.");
+  if(options.reload!==false)await loadFeeDelivery();
+}
+
+async function activateFeeMode(mode) {
+  try{
+    if(mode==="FIXED")await saveFixedFees({quiet:true,reload:false});
+    if(mode==="DISTANCE")await saveDistanceBands({quiet:true,reload:false});
+    if(mode==="ZONE"){
+      if((state.feeZoneView||"SIMPLE")==="DETAILED"){
+        await saveZoneDetailed({quiet:true,reload:false});
+      }else{
+        await saveZoneSimple({quiet:true,reload:false});
+      }
     }
-
-    await rpc("save_delivery_distance_rate", {
-      p_delivery_id: delivery.id,
-      p_period: period,
-      p_rate_per_km: rate,
-      p_active: $("feeRateActive").value === "true"
-    });
-
-    message(`Tarifa por km de ${feePeriodLabel(period)} actualizada.`);
+    const delivery=feeDeliveryRecord();
+    await rpc("delivery_activate_fee_mode",{p_delivery_id:delivery.id,p_mode:mode});
+    message(feeModeLabel(mode)+" es ahora la modalidad activa.");
     await loadFeeDelivery();
-  } catch (e) {
-    message(e.message || "No se pudo guardar la tarifa por km.", "error");
+  }catch(e){
+    message(e.message||"No se pudo activar la modalidad de tarifa.","error");
   }
 }
 
