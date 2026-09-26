@@ -3071,13 +3071,11 @@ function renderFeeModeCards() {
 
   box.innerHTML=modes.map(item=>{
     const included=feeCapabilityForMode(item.mode);
-    const active=state.feeConfig?.active===true&&state.feeConfig?.mode===item.mode;
     const selected=state.feePanel===item.mode;
-    const buttonClass=active?"btn-primary":"btn-muted";
-    return '<button type="button" class="'+buttonClass+'" data-fee-mode-card="'+item.mode+'" '+
+    return '<button type="button" class="selection-button '+(selected?'is-selected':'')+'" data-fee-mode-card="'+item.mode+'" '+
+      'aria-pressed="'+String(selected)+'" '+
       (included?"":"disabled")+
       ' style="min-height:112px;text-align:left;padding:16px;white-space:normal;'+
-      (selected?'outline:2px solid currentColor;outline-offset:2px;':'')+
       (!included?'opacity:.55;':'')+'">'+
       '<strong style="display:block;font-size:1.05rem;margin-bottom:6px">'+esc(item.title)+'</strong>'+
       '<span style="display:block;margin-bottom:6px">'+esc(feeModeStatus(item.mode))+'</span>'+
@@ -3129,6 +3127,28 @@ function syncFeeDistanceBandsFromDom() {
   return state.feeDistanceBands;
 }
 
+function formatFeeDistanceKm(value) {
+  const n=Number(value);
+  if(!Number.isFinite(n))return "";
+  return new Intl.NumberFormat("es-EC",{maximumFractionDigits:2}).format(n);
+}
+
+function feeUnlimitedDistanceLabel(bands,index) {
+  if(index<=0)return "Todas las distancias";
+  const previous=Number(bands?.[index-1]?.max_distance_km);
+  return Number.isFinite(previous)&&previous>0
+    ? "Más de "+formatFeeDistanceKm(previous)+" km"
+    : "Más del rango anterior";
+}
+
+function updateFeeDistanceUnlimitedLabels() {
+  const bands=syncFeeDistanceBandsFromDom();
+  document.querySelectorAll("[data-fee-band-unlimited-label]").forEach(node=>{
+    const index=Number(node.dataset.feeBandUnlimitedLabel);
+    node.textContent=feeUnlimitedDistanceLabel(bands,index);
+  });
+}
+
 function renderFeeDistanceBands() {
   const box=$("feeDistanceBandsList");
   if(!box)return;
@@ -3144,9 +3164,9 @@ function renderFeeDistanceBands() {
       const last=index===bands.length-1;
       const unlimited=band.max_distance_km===null;
       const maxCell=unlimited
-        ? '<span class="badge">Sin límite</span> <button type="button" class="btn-muted" data-fee-band-unlimit="'+index+'">Definir km</button>'
+        ? '<span class="badge" data-fee-band-unlimited-label="'+index+'">'+esc(feeUnlimitedDistanceLabel(bands,index))+'</span>'
         : '<div class="row" style="gap:6px;flex-wrap:nowrap"><input data-fee-band-max type="number" min="0.01" step="0.01" value="'+esc(band.max_distance_km??"")+'" placeholder="Ej. 2.00" style="min-width:110px"><span>km</span>'+
-          (last?'<button type="button" class="btn-muted" data-fee-band-unlimit="'+index+'">Sin límite</button>':'')+'</div>';
+          (last?'<button type="button" class="btn-muted" data-fee-band-unlimit="'+index+'">Usar como último rango</button>':'')+'</div>';
       return '<tr data-fee-band-row="'+index+'">'+
         '<td>'+maxCell+'</td>'+
         '<td><input data-fee-band-day type="number" min="0" step="0.01" value="'+esc(band.day_fee??"")+'" placeholder="0.00"></td>'+
@@ -3160,6 +3180,10 @@ function renderFeeDistanceBands() {
   });
   box.querySelectorAll("[data-fee-band-remove]").forEach(button=>{
     button.onclick=()=>removeFeeDistanceBand(Number(button.dataset.feeBandRemove));
+  });
+  box.querySelectorAll("[data-fee-band-max]").forEach(input=>{
+    input.addEventListener("input",updateFeeDistanceUnlimitedLabels);
+    input.addEventListener("change",updateFeeDistanceUnlimitedLabels);
   });
   renderFeePanelStatus("feeDistancePanelStatus","DISTANCE");
 }
@@ -3289,8 +3313,14 @@ function setFeeZoneView(view) {
   state.feeZoneView=next;
   $("feeZoneSimplePanel")?.classList.toggle("hidden",state.feeZoneView!=="SIMPLE");
   $("feeZoneDetailedPanel")?.classList.toggle("hidden",state.feeZoneView!=="DETAILED");
-  if($("feeZoneSimpleTab"))$("feeZoneSimpleTab").className=state.feeZoneView==="SIMPLE"?"btn-primary":"btn-muted";
-  if($("feeZoneDetailedTab"))$("feeZoneDetailedTab").className=state.feeZoneView==="DETAILED"?"btn-primary":"btn-muted";
+  if($("feeZoneSimpleTab")){
+    $("feeZoneSimpleTab").className="selection-button "+(state.feeZoneView==="SIMPLE"?"is-selected":"");
+    $("feeZoneSimpleTab").setAttribute("aria-pressed",String(state.feeZoneView==="SIMPLE"));
+  }
+  if($("feeZoneDetailedTab")){
+    $("feeZoneDetailedTab").className="selection-button "+(state.feeZoneView==="DETAILED"?"is-selected":"");
+    $("feeZoneDetailedTab").setAttribute("aria-pressed",String(state.feeZoneView==="DETAILED"));
+  }
   if(state.feeZoneView==="DETAILED")renderFeeZoneDetailed();
 }
 
@@ -9092,7 +9122,11 @@ function openMasterDeliveryWorkspaceTab(tab){
   ["base","access"].forEach(name=>{
     document.getElementById("deliveryWorkspacePane-"+name)?.classList.toggle("hidden",name!==tab);
   });
-  document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>b.classList.toggle("active",b.dataset.deliveryWorkspaceTab===tab));
+  document.querySelectorAll("[data-delivery-workspace-tab]").forEach(b=>{
+    const selected=b.dataset.deliveryWorkspaceTab===tab;
+    b.classList.toggle("active",selected);
+    b.setAttribute("aria-selected",String(selected));
+  });
 }
 
 async function syncMasterDeliveryWorkspace(){
