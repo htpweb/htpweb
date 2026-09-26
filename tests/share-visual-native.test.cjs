@@ -33,8 +33,9 @@ test('cada foto permite copiar PIDE AQUÍ del LOCAL',()=>{
   assert.match(html,/id="shareCopyLocalLinkBtn"/);
   assert.match(admin,/data-share-gallery-copy/);
   assert.match(admin,/function copyShareLocalOrderLink/);
-  assert.match(admin,/PIDE AQUÍ 👇/);
-  assert.match(admin,/buildSharedLocalUrl/);
+  assert.match(admin,/PIDE AQUÍ \| /);
+  assert.match(admin,/buildShortSharedLocalUrl/);
+  assert.match(admin,/\.\.\/p\/#/);
 });
 
 test('la portada del LOCAL prioriza su propia Galería',()=>{
@@ -45,4 +46,28 @@ test('Galería tiene diseño visual propio',()=>{
   assert.match(css,/\.share-gallery-grid/);
   assert.match(css,/\.share-gallery-card/);
   assert.match(css,/object-fit:contain/);
+});
+
+
+test('enlace corto elimina UUID y destaca el DELIVERY',()=>{
+  assert.match(admin,/function buildShortSharedLocalUrl/);
+  assert.match(admin,/local\?\.share_code/);
+  assert.match(admin,/PIDE AQUÍ \| /);
+  assert.match(admin,/delivery\.name/);
+  assert.match(admin,/\.\.\/p\/#/);
+});
+
+test('resolver corto abre el LOCAL real',()=>{
+  const page=fs.readFileSync('p/index.html','utf8');
+  const edge=fs.readFileSync('supabase/functions/share-resolve/index.ts','utf8');
+  assert.match(page,/location\.hash/);
+  assert.match(page,/share-resolve\?s=/);
+  assert.match(edge,/share_code/);
+  assert.match(edge,/Response\.redirect\(target\.toString\(\),302\)/);
+});
+
+test('preview de chat resalta PIDE AQUÍ y el DELIVERY',()=>{
+  const edge=fs.readFileSync('supabase/functions/share-preview/index.ts','utf8');
+  assert.match(edge,/const title = `PIDE AQUÍ \| \$\{delivery\.name\}`/);
+  assert.match(edge,/og:title/);
 });
