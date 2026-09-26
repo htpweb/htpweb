@@ -61,3 +61,12 @@ test('la carga usa un snapshot único del backend',()=>{
   assert.match(admin,/workspace\?\.zone_rates/);
   assert.match(admin,/workspace\?\.zones/);
 });
+
+
+test('activar Zona detallada conserva lo escrito antes de guardar',()=>{
+  const bind=admin.indexOf('activateZoneDetailedBtn');
+  const tail=admin.slice(bind,bind+240);
+  assert.match(tail,/activateFeeMode\("ZONE"\)/);
+  assert.doesNotMatch(tail,/setFeeZoneView/);
+  assert.match(admin,/function snapshotFeeZoneDetailedInputs/);
+});
