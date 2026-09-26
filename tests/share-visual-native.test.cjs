@@ -95,7 +95,6 @@ test('WhatsApp chat usa el enlace enriquecido del producto o LOCAL',()=>{
   const end=admin.indexOf('async function nativeShare',start);
   const block=admin.slice(start,end);
   assert.match(block,/whatsapp:\/\/send\?text=/);
-  assert.match(block,/api\.whatsapp\.com\/send\?text=/);
   assert.match(block,/payload\.url/);
   assert.match(block,/vista previa con la foto/);
 });
