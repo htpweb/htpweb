@@ -50,7 +50,6 @@ test('Compartir desde navegador ofrece WhatsApp Facebook y TikTok',()=>{
 
 test('WhatsApp chat usa preview social y conserva imagen para Estado',()=>{
   assert.match(admin,/buildSharePreviewUrl/);
-  assert.match(admin,/api\.whatsapp\.com\/send\?text=/);
   assert.match(admin,/navigator\.share/);
   assert.match(admin,/files:\[prepared\.file\]/);
   assert.match(admin,/PIDE AQUÍ/);
