@@ -9,6 +9,10 @@ body{margin:0;background:#f4f6f8;color:#202124}
 .nav button{width:100%;border:0;border-radius:10px;padding:11px 12px;text-align:left;background:#1f2937;color:#fff;cursor:pointer;font-weight:700}
 .nav button.active{background:#e53935}
 .nav button.hidden{display:none}
+.delivery-nav-group{display:grid;gap:8px}
+.delivery-nav-group-title{padding:10px 10px 2px;color:#94a3b8;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.delivery-nav-group+.delivery-nav-group{margin-top:6px}
+.delivery-nav-group button{width:100%}
 .sidebar-footer{margin-top:24px;display:grid;gap:8px}
 .sidebar-footer button,.sidebar-footer a{border:0;border-radius:10px;padding:10px;text-align:center;font-weight:700;text-decoration:none;cursor:pointer}
 .logout{background:#7f1d1d;color:#fff}
