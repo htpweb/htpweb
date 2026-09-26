@@ -1867,6 +1867,23 @@ function buildSharedProductUrl(productId = null) {
   return url.toString();
 }
 
+function buildSharePreviewUrl(kind, itemId = null) {
+  const delivery = currentShareDelivery();
+  const local = currentShareLocal();
+  const product = kind === "product"
+    ? (itemId ? state.shareProducts.find(item => item.id === itemId) : currentShareProduct())
+    : null;
+
+  if (!delivery?.slug || !local?.id) return "";
+  if (kind === "product" && !product?.id) return "";
+
+  const url = new URL("https://hwfloywzqlgqieonuswl.supabase.co/functions/v1/share-preview");
+  url.searchParams.set("d", delivery.slug);
+  url.searchParams.set("l", local.id);
+  if (product?.id) url.searchParams.set("p", product.id);
+  return url.toString();
+}
+
 function shareCategoryName(local) {
   if (!local?.business_category_id) return "Otros";
   return state.shareBusinessCategories?.find(cat => cat.id === local.business_category_id)?.name || "Otros";
@@ -2203,11 +2220,13 @@ function sharePayload(kind) {
   const product = currentShareProduct();
 
   if (kind === "local") {
-    const url = buildSharedLocalUrl();
-    return url && delivery && local ? {
+    const targetUrl = buildSharedLocalUrl();
+    const url = buildSharePreviewUrl("local");
+    return url && targetUrl && delivery && local ? {
       title: local.name + " | " + delivery.name,
       text: local.name + " en " + delivery.name + "\n\nPIDE AQUÍ 👇\n" + url,
       url,
+      targetUrl,
       imageUrl: shareLocalVisualUrl(local),
       logoUrl: delivery.logo_url || local.logo_url || "",
       deliveryName: delivery.name,
@@ -2217,11 +2236,13 @@ function sharePayload(kind) {
     } : null;
   }
 
-  const url = buildSharedProductUrl();
-  return url && delivery && local && product ? {
+  const targetUrl = buildSharedProductUrl();
+  const url = buildSharePreviewUrl("product");
+  return url && targetUrl && delivery && local && product ? {
     title: product.name + " | " + local.name,
     text: product.name + " · " + local.name + "\n\nPIDE AQUÍ 👇\n" + url,
     url,
+    targetUrl,
     imageUrl: product.image_url || shareLocalVisualUrl(local),
     logoUrl: delivery.logo_url || local.logo_url || "",
     deliveryName: delivery.name,
@@ -2386,7 +2407,7 @@ async function renderShareArtworkPreview(kind) {
   const canvas = $("shareArtworkPreview");
   const payload = sharePayload(kind);
   if (!canvas || !payload) return false;
-  if ($("shareArtworkOrderLink")) $("shareArtworkOrderLink").href = payload.url;
+  if ($("shareArtworkOrderLink")) $("shareArtworkOrderLink").href = payload.targetUrl || payload.url;
   await drawShareArtwork(canvas,kind);
   return true;
 }
@@ -2583,24 +2604,25 @@ async function browserShare(kind,platform) {
     await prepareShareAssets(kind);
 
     if(platform==="whatsapp"){
-      const copiedImage=await copyPreparedImageToClipboard(kind);
-      if(!copiedImage)await downloadShareImage(kind);
-      const target="https://web.whatsapp.com/";
-      if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint(copiedImage
-        ? "WhatsApp Web abierto. La IMAGEN quedó copiada: pégala con Ctrl+V en el chat o Estado. No se está compartiendo solo un enlace."
-        : "WhatsApp Web abierto. Tu navegador no permitió copiar la imagen; se descargó para que la adjuntes.");
+      await copyShareText(kind);
+      const chatText="PIDE AQUÍ 👇\n"+payload.url;
+      const appTarget="whatsapp://send?text="+encodeURIComponent(chatText);
+      const webTarget="https://api.whatsapp.com/send?text="+encodeURIComponent(chatText);
+
+      if(popup){
+        popup.location.href=webTarget;
+      }else{
+        window.location.href=appTarget;
+      }
+
+      setShareBrowserHint("Se abrió WhatsApp con el enlace enriquecido. Debe aparecer una vista previa con la foto del producto/LOCAL. Si WhatsApp Desktop no se abre, el texto quedó copiado para pegarlo con Ctrl+V.");
       return;
     }
 
     if(platform==="facebook"){
-      const copiedImage=await copyPreparedImageToClipboard(kind);
-      if(!copiedImage)await downloadShareImage(kind);
-      const target="https://www.facebook.com/";
+      const target="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(payload.url);
       if(popup)popup.location.href=target; else window.open(target,"_blank");
-      setShareBrowserHint(copiedImage
-        ? "Facebook abierto. La IMAGEN quedó copiada; pégala en una nueva publicación. El enlace PIDE AQUÍ está disponible en este panel."
-        : "Facebook abierto. La imagen se descargó para que la agregues a la publicación.");
+      setShareBrowserHint("Facebook abrió el enlace enriquecido. La publicación debe tomar la imagen y el texto del producto/LOCAL automáticamente.");
       return;
     }
 
