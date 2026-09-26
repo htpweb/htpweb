@@ -47,6 +47,9 @@ verify_jwt = true
 [functions.whatsapp-notify]
 verify_jwt = false
 
+[functions.share-preview]
+verify_jwt = false
+
 [auth.email.template.confirmation]
 subject = "HTPWEB | Confirma tu correo electronico"
 content_path = "./supabase/templates/confirmation.html"
