@@ -324,6 +324,19 @@
         <div class="share-artwork-preview-wrap">
           <canvas id="shareArtworkPreview" width="540" height="960" aria-label="Vista previa de la imagen para compartir"></canvas>
         </div>
+        <div id="shareBrowserPanel" class="share-browser-panel hidden">
+          <h4>Compartir desde navegador</h4>
+          <p class="muted">Elige dónde compartir. Cuando una red no permite adjuntar una imagen automáticamente desde el navegador, HTPWEB prepara la imagen y el texto para que los pegues o subas.</p>
+          <div class="share-browser-actions">
+            <button id="shareNativeDeviceBtn" class="btn-primary" type="button">Apps del dispositivo</button>
+            <button id="shareWhatsappWebBtn" class="btn-muted" type="button">WhatsApp Web</button>
+            <button id="shareFacebookWebBtn" class="btn-muted" type="button">Facebook</button>
+            <button id="shareTiktokWebBtn" class="btn-muted" type="button">TikTok</button>
+            <button id="shareDownloadImageBtn" class="btn-muted" type="button">Descargar imagen</button>
+            <button id="shareCopyTextBtn" class="btn-muted" type="button">Copiar PIDE AQUÍ</button>
+          </div>
+          <div id="shareBrowserHint" class="workspace-note" style="margin-top:10px"></div>
+        </div>
       </div>
     </section>
 
@@ -926,10 +939,10 @@
 
     <section id="section-coverage" class="section">
       <div class="card">
-        <div class="row between">
+        <div class="row between" style="gap:14px;flex-wrap:wrap">
           <div>
             <h2>Cobertura del DELIVERY</h2>
-            <p class="muted">Los locales disponibles se determinan por las zonas aprobadas para el DELIVERY.</p>
+            <p class="muted">Selecciona las zonas en las que operará tu DELIVERY y visualiza exactamente qué área cubre cada una.</p>
           </div>
           <select id="coverageDelivery" style="max-width:340px"></select>
         </div>
@@ -953,11 +966,26 @@
       </div>
 
       <div class="card">
-        <h3>Zonas disponibles para este DELIVERY</h3>
-        <p class="muted">
-          Solo se muestran zonas activas del mismo cantón. El plan determina cuántas pueden estar activas y el DELIVERY_ADMIN selecciona directamente cuáles utilizar.
-        </p>
-        <div id="coverageZonesList"></div>
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Zonas operativas</h3>
+            <p class="muted" style="margin:5px 0 0">Rojo = activa · Gris = disponible · Azul = seleccionada.</p>
+          </div>
+          <div class="row" style="gap:8px">
+            <button id="coverageShowAllBtn" class="btn-muted" type="button">Ver todas</button>
+            <button id="coverageOnlyActiveBtn" class="btn-muted" type="button" aria-pressed="false">Solo activas</button>
+          </div>
+        </div>
+        <div class="coverage-visual-grid" style="margin-top:14px">
+          <div>
+            <input id="coverageZoneSearch" type="search" placeholder="Buscar zona..." style="margin-bottom:10px">
+            <div id="coverageZonesList" class="coverage-zone-list"></div>
+          </div>
+          <div>
+            <div id="coverageMap" class="coverage-map"></div>
+            <div id="coverageMapDetail" class="workspace-note coverage-map-detail">Selecciona una zona en la lista o en el mapa.</div>
+          </div>
+        </div>
       </div>
 
       <div class="card master-only" style="display:none">
