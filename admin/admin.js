@@ -2466,10 +2466,17 @@ function downloadShareFile(file) {
   setTimeout(() => URL.revokeObjectURL(url),1000);
 }
 
+function shareStatusText(kind) {
+  const payload=sharePayload(kind);
+  if(!payload)return "";
+  const price=payload.price!==null&&payload.price!==undefined ? " · "+feeMoney(payload.price) : "";
+  return payload.headline+price+"\nPIDE AQUÍ 👇\n"+(payload.targetUrl||payload.url);
+}
+
 async function copyShareText(kind) {
   const payload=sharePayload(kind);
   if(!payload)return false;
-  const text=payload.text;
+  const text=shareStatusText(kind);
   try{
     await navigator.clipboard.writeText(text);
     return true;
@@ -2509,7 +2516,7 @@ function sharePreparationKey(kind) {
 function setShareModalBusy(busy) {
   [
     "shareNativeDeviceBtn","shareWhatsappWebBtn","shareFacebookWebBtn",
-    "shareTiktokWebBtn","shareDownloadImageBtn","shareCopyTextBtn"
+    "shareTiktokWebBtn","shareDownloadImageBtn","shareCopyTextBtn","shareOpenWhatsappBtn"
   ].forEach(id=>{
     const button=$(id);
     if(button)button.disabled=Boolean(busy);
@@ -2577,17 +2584,23 @@ async function openShareOptions(kind) {
   if($("shareModalSubtitle")){
     $("shareModalSubtitle").textContent=(kind==="product"?"Producto: ":"LOCAL: ")+payload.headline;
   }
-  setShareBrowserHint("Preparando la imagen…");
+  if($("shareStatusText"))$("shareStatusText").value=shareStatusText(kind);
+  setShareBrowserHint("Preparando la imagen del Estado…");
 
   try{
     await renderShareArtworkPreview(kind);
     await prepareShareAssets(kind);
-    setShareBrowserHint("Imagen lista. Elige dónde compartirla.");
+    setShareBrowserHint("Estado listo: guarda/compartir la imagen y copia PIDE AQUÍ como texto de la foto.");
   }catch(e){
     setShareBrowserHint(e.message||"No se pudo preparar la imagen.");
   }finally{
     setShareModalBusy(false);
   }
+}
+
+function openWhatsappForStatus() {
+  setShareBrowserHint("WhatsApp abierto. Ve a Novedades/Estado → Mi estado, selecciona la imagen preparada y pega el texto PIDE AQUÍ.");
+  window.location.href="whatsapp://";
 }
 
 async function browserShare(kind,platform) {
@@ -2604,11 +2617,11 @@ async function browserShare(kind,platform) {
     await prepareShareAssets(kind);
 
     if(platform==="whatsapp"){
-      await copyShareText(kind);
       const chatText="PIDE AQUÍ 👇\n"+payload.url;
+      try{ await navigator.clipboard.writeText(chatText); }catch{}
       const appTarget="whatsapp://send?text="+encodeURIComponent(chatText);
       window.location.href=appTarget;
-      setShareBrowserHint("Abriendo WhatsApp Desktop con el enlace enriquecido. Debe aparecer una vista previa con la foto del producto/LOCAL. El mismo texto quedó copiado por si necesitas pegarlo con Ctrl+V.");
+      setShareBrowserHint("Abriendo WhatsApp chat con el enlace enriquecido. Para Estado usa el flujo principal de arriba.");
       return;
     }
 
@@ -2635,7 +2648,7 @@ async function browserShare(kind,platform) {
 
     if(platform==="copy"){
       await copyShareText(kind);
-      setShareBrowserHint("Texto PIDE AQUÍ y enlace copiados.");
+      setShareBrowserHint("Texto PIDE AQUÍ copiado. Pégalo como comentario de la foto en tu Estado.");
       return;
     }
   }catch(e){
@@ -2657,7 +2670,6 @@ async function nativeShare(kind) {
     if(canShareFile){
       await navigator.share({
         title: payload.title,
-        text: payload.text,
         files:[prepared.file]
       });
       return;
@@ -9527,6 +9539,7 @@ function bindEvents() {
   if ($("shareTiktokWebBtn")) $("shareTiktokWebBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","tiktok");
   if ($("shareDownloadImageBtn")) $("shareDownloadImageBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","download");
   if ($("shareCopyTextBtn")) $("shareCopyTextBtn").onclick = () => browserShare(state.shareSelectedArtworkKind||"local","copy");
+  if ($("shareOpenWhatsappBtn")) $("shareOpenWhatsappBtn").onclick = openWhatsappForStatus;
   if ($("shareModalCloseBtn")) $("shareModalCloseBtn").onclick = closeShareOptions;
   document.querySelectorAll("[data-share-modal-close]").forEach(el=>el.onclick=closeShareOptions);
   document.addEventListener("keydown",event=>{
