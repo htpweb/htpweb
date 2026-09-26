@@ -8131,6 +8131,13 @@ function deliveryAuthorizationRoleLabel(role){
   return role==="DELIVERY_OPERATOR" ? "Operador" : "Administrador";
 }
 
+function deliveryAccountStatusLabel(item){
+  if(item?.account_exists!==true)return "Sin cuenta HTPWEB";
+  if(item?.account_disabled===true)return "Cuenta desactivada";
+  if(item?.account_confirmed===true)return "Cuenta confirmada";
+  return "Cuenta sin confirmar";
+}
+
 function renderMasterDeliveryAuthorizations(){
   const box=document.getElementById("deliveryWorkspaceAssignments");
   if(!box)return;
@@ -8141,11 +8148,27 @@ function renderMasterDeliveryAuthorizations(){
     return;
   }
 
+  const seenAccounts=new Set();
+
   box.innerHTML=items.map(item=>{
     const status=deliveryAuthorizationStatusLabel(item);
     const expires=item.expires_at?new Date(item.expires_at).toLocaleString():"—";
     const claimed=item.claimed_at?new Date(item.claimed_at).toLocaleString():"";
     const canRevoke=item.status==="PENDING"||(item.status==="CLAIMED"&&item.active_access);
+    const accountUserId=item.account_user_id||"";
+    const accountExists=item.account_exists===true&&!!accountUserId;
+    const accountDisabled=item.account_disabled===true;
+    const accountKey=accountExists?accountUserId:"";
+    const showAccountControls=accountExists&&!seenAccounts.has(accountKey);
+    if(showAccountControls)seenAccounts.add(accountKey);
+
+    const accountControls=showAccountControls
+      ? '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">'+
+        '<button class="btn-muted" type="button" data-dw-account-action="'+(accountDisabled?'enable':'disable')+'" data-dw-account-user="'+esc(accountUserId)+'" data-dw-account-authorization="'+esc(item.id)+'" data-dw-account-email="'+esc(item.email||"")+'">'+(accountDisabled?'Reactivar cuenta':'Desactivar cuenta')+'</button>'+
+        '<button class="btn-danger" type="button" data-dw-account-action="delete" data-dw-account-user="'+esc(accountUserId)+'" data-dw-account-authorization="'+esc(item.id)+'" data-dw-account-email="'+esc(item.email||"")+'">Eliminar cuenta</button>'+
+        '</div>'
+      : '';
+
     return '<div class="card" style="margin:10px 0;padding:14px">'+
       '<div class="row between"><div>'+
       '<strong>'+esc(item.representative_name||"Representante")+'</strong>'+
@@ -8160,12 +8183,25 @@ function renderMasterDeliveryAuthorizations(){
        item.status==="EXPIRED"?'La autorización venció sin ser utilizada.':
        item.status==="REVOKED"?'El acceso fue revocado.':'')+
       '</div>'+
+      '<div class="workspace-note" style="margin-top:10px"><strong>Cuenta HTPWEB:</strong> '+esc(deliveryAccountStatusLabel(item))+
+      (accountExists&&item.account_confirmed!==true?' · falta confirmar correo':'')+
+      '</div>'+
       (canRevoke?'<button class="btn-danger" type="button" data-dw-revoke="'+esc(item.id)+'" style="margin-top:10px">Revocar acceso</button>':'')+
+      accountControls+
       '</div>';
   }).join("");
 
   box.querySelectorAll("[data-dw-revoke]").forEach(btn=>{
     btn.onclick=()=>revokeMasterDeliveryAuthorization(btn.dataset.dwRevoke);
+  });
+
+  box.querySelectorAll("[data-dw-account-action]").forEach(btn=>{
+    btn.onclick=()=>manageMasterDeliveryAccount(
+      btn.dataset.dwAccountAction,
+      btn.dataset.dwAccountUser,
+      btn.dataset.dwAccountAuthorization,
+      btn.dataset.dwAccountEmail
+    );
   });
 }
 
@@ -8241,6 +8277,71 @@ async function revokeMasterDeliveryAuthorization(authorizationId){
     ]);
   }catch(e){
     message(e.message||"No se pudo revocar el acceso.","error");
+  }
+}
+
+async function invokeMasterDeliveryAccountAction(action,userId,authorizationId){
+  const deliveryId=masterDeliveryWorkspaceSelectedId();
+  if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+
+  const {data,error}=await supabaseClient.functions.invoke("master-user-account",{
+    body:{
+      action,
+      user_id:userId,
+      delivery_id:deliveryId,
+      authorization_id:authorizationId
+    }
+  });
+
+  if(error){
+    let detail=error.message||"No se pudo administrar la cuenta.";
+    try{
+      const payload=await error.context?.json?.();
+      if(payload?.error)detail=payload.error;
+    }catch{}
+    throw new Error(detail);
+  }
+
+  if(!data?.ok)throw new Error(data?.error||"No se pudo administrar la cuenta.");
+  return data;
+}
+
+async function manageMasterDeliveryAccount(action,userId,authorizationId,email){
+  if(!action||!userId||!authorizationId)return;
+
+  const label=email||"esta cuenta";
+  let question="";
+  if(action==="disable"){
+    question="¿Desactivar la cuenta "+label+"? No podrá iniciar sesión hasta que MASTER la reactive.";
+  }else if(action==="enable"){
+    question="¿Reactivar la cuenta "+label+"?";
+  }else if(action==="delete"){
+    question="¿ELIMINAR definitivamente la cuenta "+label+"? El correo quedará libre para registrarse de nuevo. Los historiales protegidos no se borrarán: si existen, HTPWEB bloqueará esta acción.";
+  }else{
+    return;
+  }
+
+  if(!confirm(question))return;
+
+  const buttons=[...document.querySelectorAll("[data-dw-account-user]")].filter(
+    btn=>btn.dataset.dwAccountUser===userId
+  );
+  buttons.forEach(btn=>btn.disabled=true);
+
+  try{
+    await invokeMasterDeliveryAccountAction(action,userId,authorizationId);
+    if(action==="delete")message("Cuenta eliminada. El correo ya puede registrarse nuevamente.");
+    else if(action==="disable")message("Cuenta desactivada.");
+    else message("Cuenta reactivada.");
+
+    await Promise.all([
+      loadMasterDeliveryAuthorizations(),
+      typeof loadUsersModule==="function"?loadUsersModule():Promise.resolve()
+    ]);
+  }catch(e){
+    message(e.message||"No se pudo administrar la cuenta.","error");
+  }finally{
+    buttons.forEach(btn=>btn.disabled=false);
   }
 }
 
