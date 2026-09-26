@@ -1851,7 +1851,7 @@ function buildShortSharedLocalUrl(localId = null) {
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
   if (!local?.share_code) return buildSharedLocalUrl(localId);
-  return new URL("../p/#"+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
+  return new URL("../p/?s="+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
 }
 
 function shareLocalCategory(local) {
@@ -2042,17 +2042,62 @@ async function copyShareLocalOrderLink() {
   }
 }
 
-function extensionFromMime(type) {
-  const map={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"};
-  return map[type]||"jpg";
+function shareSafeFilename(value) {
+  return String(value||"local")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-zA-Z0-9_-]+/g,"-")
+    .replace(/^-+|-+$/g,"")
+    .toLowerCase()||"local";
+}
+
+async function imageBlobToJpeg(blob) {
+  let source=null;
+  try{
+    if("createImageBitmap" in window){
+      source=await createImageBitmap(blob);
+    }else{
+      source=await new Promise((resolve,reject)=>{
+        const objectUrl=URL.createObjectURL(blob);
+        const image=new Image();
+        image.onload=()=>{URL.revokeObjectURL(objectUrl);resolve(image);};
+        image.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error("No se pudo convertir la foto."));};
+        image.src=objectUrl;
+      });
+    }
+
+    const width=source.width||source.naturalWidth;
+    const height=source.height||source.naturalHeight;
+    if(!width||!height)throw new Error("La foto no tiene dimensiones válidas.");
+
+    const canvas=document.createElement("canvas");
+    canvas.width=width;
+    canvas.height=height;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(0,0,width,height);
+    ctx.drawImage(source,0,0,width,height);
+
+    return await new Promise((resolve,reject)=>{
+      canvas.toBlob(
+        jpeg=>jpeg?resolve(jpeg):reject(new Error("No se pudo convertir la foto a JPG.")),
+        "image/jpeg",
+        .95
+      );
+    });
+  }finally{
+    if(source&&typeof source.close==="function")source.close();
+  }
 }
 
 async function galleryImageFile(image) {
   const response=await fetch(image.image_url,{mode:"cors",cache:"force-cache"});
   if(!response.ok)throw new Error("No se pudo preparar la foto.");
   const blob=await response.blob();
-  const ext=extensionFromMime(blob.type);
-  return new File([blob],"htpweb-galeria-"+image.id+"."+ext,{type:blob.type||"image/jpeg"});
+  const jpeg=await imageBlobToJpeg(blob);
+  const local=currentShareLocal();
+  const position=Math.max(0,state.shareGallery.findIndex(item=>item.id===image.id))+1;
+  const name=shareSafeFilename(local?.name)+"-"+String(position).padStart(2,"0")+".jpg";
+  return new File([jpeg],name,{type:"image/jpeg"});
 }
 
 function downloadOriginalFile(file) {
