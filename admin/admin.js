@@ -3255,8 +3255,38 @@ function renderFeeZoneDetailed() {
     rows.join("")+'</tbody></table></div>';
 }
 
+function snapshotFeeZoneSimpleInputs() {
+  const read=id=>{
+    const raw=$(id)?.value?.trim?.()??"";
+    return raw===""?null:raw;
+  };
+  state.feeZoneSimple={
+    ...(state.feeZoneSimple||{}),
+    same_zone_day_fee:read("feeZoneSameDay"),
+    same_zone_night_fee:read("feeZoneSameNight"),
+    other_zone_day_fee:read("feeZoneOtherDay"),
+    other_zone_night_fee:read("feeZoneOtherNight")
+  };
+}
+
+function snapshotFeeZoneDetailedInputs() {
+  const rows=[...document.querySelectorAll("[data-fee-zone-rate]")];
+  if(!rows.length)return;
+  state.feeZoneRates=rows.map(row=>({
+    origin_zone_id:row.dataset.originZone,
+    destination_zone_id:row.dataset.destinationZone,
+    day_fee:row.querySelector("[data-zone-day]")?.value??"",
+    night_fee:row.querySelector("[data-zone-night]")?.value??""
+  }));
+}
+
 function setFeeZoneView(view) {
-  state.feeZoneView=view==="DETAILED"?"DETAILED":"SIMPLE";
+  const next=view==="DETAILED"?"DETAILED":"SIMPLE";
+  const current=state.feeZoneView||"SIMPLE";
+  if(current==="DETAILED"&&next!=="DETAILED")snapshotFeeZoneDetailedInputs();
+  if(current==="SIMPLE"&&next!=="SIMPLE")snapshotFeeZoneSimpleInputs();
+
+  state.feeZoneView=next;
   $("feeZoneSimplePanel")?.classList.toggle("hidden",state.feeZoneView!=="SIMPLE");
   $("feeZoneDetailedPanel")?.classList.toggle("hidden",state.feeZoneView!=="DETAILED");
   if($("feeZoneSimpleTab"))$("feeZoneSimpleTab").className=state.feeZoneView==="SIMPLE"?"btn-primary":"btn-muted";
@@ -8767,9 +8797,9 @@ function bindEvents() {
   if ($("feeZoneSimpleTab")) $("feeZoneSimpleTab").onclick = () => setFeeZoneView("SIMPLE");
   if ($("feeZoneDetailedTab")) $("feeZoneDetailedTab").onclick = () => setFeeZoneView("DETAILED");
   if ($("saveZoneSimpleBtn")) $("saveZoneSimpleBtn").onclick = () => saveZoneSimple().catch(e=>message(e.message||"No se pudo guardar la tarifa por zonas.","error"));
-  if ($("activateZoneSimpleBtn")) $("activateZoneSimpleBtn").onclick = () => { setFeeZoneView("SIMPLE"); activateFeeMode("ZONE"); };
+  if ($("activateZoneSimpleBtn")) $("activateZoneSimpleBtn").onclick = () => activateFeeMode("ZONE");
   if ($("saveZoneDetailedBtn")) $("saveZoneDetailedBtn").onclick = () => saveZoneDetailed().catch(e=>message(e.message||"No se pudo guardar la matriz de zonas.","error"));
-  if ($("activateZoneDetailedBtn")) $("activateZoneDetailedBtn").onclick = () => { setFeeZoneView("DETAILED"); activateFeeMode("ZONE"); };
+  if ($("activateZoneDetailedBtn")) $("activateZoneDetailedBtn").onclick = () => activateFeeMode("ZONE");
   if ($("coverageDelivery")) $("coverageDelivery").onchange = loadCoverageContext;
   $("setDeliveryCityBtn").onclick = setCoverageDeliveryCity;
   $("saveZoneBtn").onclick = saveZone;
