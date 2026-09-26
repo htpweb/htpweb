@@ -1062,7 +1062,9 @@
       </div>
 
       <div class="card">
-        <h3>Nueva / editar área restringida</h3>
+        <h3 id="restrictedAreaEditorTitle">Nueva / editar área restringida</h3>
+        <div id="restrictedAreaLimitNotice" class="workspace-warning hidden"></div>
+        <div id="restrictedAreaEditorBody">
         <input id="restrictedAreaId" type="hidden">
         <div class="form-grid">
           <div><label>Zona activa</label><select id="restrictedAreaZone"></select></div>
@@ -1093,6 +1095,7 @@
         <div class="row" style="margin-top:14px">
           <button id="restrictedAreaSave" class="btn-primary" type="button">Guardar área</button>
           <button id="restrictedAreaNew" class="btn-muted" type="button">Nueva área</button>
+        </div>
         </div>
       </div>
 
