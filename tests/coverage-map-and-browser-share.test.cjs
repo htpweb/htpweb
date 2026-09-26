@@ -44,7 +44,7 @@ test('Compartir desde navegador ofrece WhatsApp Facebook y TikTok',()=>{
   assert.match(html,/id="shareFacebookWebBtn"/);
   assert.match(html,/id="shareTiktokWebBtn"/);
   assert.match(admin,/https:\/\/web\.whatsapp\.com\//);
-  assert.match(admin,/facebook\.com\/sharer\/sharer\.php/);
+  assert.match(admin,/https:\/\/www\.facebook\.com\//);
   assert.match(admin,/tiktok\.com\/upload/);
 });
 
