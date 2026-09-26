@@ -147,13 +147,11 @@ Deno.serve(async (req: Request) => {
     delivery.logo_url ||
     "https://htpweb.github.io/htpweb/assets/htpweb-logo.png";
 
-  const title = product
-    ? `${product.name}${money(product.price) ? " · " + money(product.price) : ""} | ${local.name}`
-    : `${local.name} | ${delivery.name}`;
+  const title = `PIDE AQUÍ | ${delivery.name}`;
 
   const description = product
-    ? `PIDE AQUÍ con ${delivery.name}. ${product.description || local.name}`
-    : `PIDE AQUÍ con ${delivery.name}. ${categoryName || local.description || "Consulta el menú disponible."}`;
+    ? `${product.name}${money(product.price) ? " · " + money(product.price) : ""} · ${local.name}`
+    : `${local.name}${categoryName ? " · " + categoryName : ""}`;
 
   const page = `<!doctype html>
 <html lang="es">
