@@ -378,3 +378,22 @@ pre.json{white-space:pre-wrap;word-break:break-word;background:#111827;color:#e5
 /* Compartir desde navegador */
 .share-browser-panel{margin-top:16px;padding:14px;border:1px solid #dbe2eb;border-radius:14px;background:#f8fafc}
 .share-browser-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+
+/* Compartir modal inmediato */
+body.share-modal-open{overflow:hidden}
+.share-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:22px}
+.share-modal.hidden{display:none}
+.share-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(2px)}
+.share-modal-dialog{position:relative;z-index:1;width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.share-modal-layout{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(320px,1.28fr);gap:18px;align-items:start;margin-top:16px}
+.share-modal .share-artwork-preview-wrap{margin-top:0;padding:10px;position:sticky;top:0}
+.share-modal #shareArtworkPreview{width:min(100%,300px)}
+.share-modal .share-browser-panel{margin-top:0;background:#fff}
+@media(max-width:760px){
+  .share-modal{padding:10px;align-items:flex-start}
+  .share-modal-dialog{width:100%;max-height:96vh;margin-top:8px}
+  .share-modal-layout{grid-template-columns:1fr}
+  .share-modal .share-artwork-preview-wrap{position:static}
+  .share-modal #shareArtworkPreview{width:min(100%,260px)}
+}
