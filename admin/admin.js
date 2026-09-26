@@ -1502,12 +1502,107 @@ function myPlanCapacityCard(label,item,detail){
   const hasUsage=used!==null&&used!==undefined;
   const hasMax=max!==null&&max!==undefined;
   const value=item?.usage_available===false
-    ? "Cupo "+(hasMax?max:"—")+" · Etapa 2"
+    ? (hasMax?"Límite contratado: "+max:"—")
     : (hasUsage?used:0)+" / "+(hasMax?max:"—");
   const percent=hasUsage&&Number(max)>0
     ? Math.max(0,Math.min(100,Math.round((Number(used)/Number(max))*100)))
     : null;
   return overviewResourceCard({label,value,percent,detail});
+}
+
+function myPlanFeaturePresentation(feature){
+  const code=String(feature?.code||"");
+  const family=String(feature?.family||"");
+
+  if(feature?.type!=="CAPABILITY"||feature?.value!==true)return null;
+
+  const base={
+    "analytics.view":["Datos y analítica","Analytics de la operación"],
+    "customers.manage":["Clientes y referidos","Gestión de clientes"],
+    "delivery_fees.manage":["Tarifas","Administrar tarifas"],
+    "delivery.info.manage":["Mi DELIVERY","Editar información del DELIVERY"],
+    "images.manage":["Mi DELIVERY","Logo e imágenes del DELIVERY"],
+    "locals.create":["Locales vinculados","Solicitar alta de nuevos LOCAL"],
+    "locals.link_existing":["Locales vinculados","Solicitar vincular un LOCAL existente"],
+    "locals.suggest":["Locales vinculados","Sugerir cambios de LOCAL"],
+    "orders.manage":["Pedidos y despacho","Administrar pedidos"],
+    "users.manage":["Equipo","Administrar usuarios del DELIVERY"],
+    "zones.manage":["Zonas y cobertura","Administrar zonas operativas"]
+  };
+
+  if(base[code])return {group:base[code][0],label:base[code][1]};
+
+  // Capacidades internas que no representan una acción directa del DELIVERY.
+  if(["products.manage","bulk_import.manage"].includes(code))return null;
+
+  const groupMap={
+    "Clientes y referidos":"Clientes y referidos",
+    "Tarifas":"Tarifas",
+    "Seguridad":"Seguridad",
+    "GPS":"GPS y rutas",
+    "Rutas":"GPS y rutas",
+    "Despacho":"Pedidos y despacho",
+    "Entrega":"Confirmación de entrega",
+    "Publicidad":"Publicidad",
+    "Datos":"Datos y analítica",
+    "Analítica":"Datos y analítica"
+  };
+
+  return {
+    group:groupMap[family]||family||"Otras funciones",
+    label:feature.label||code
+  };
+}
+
+function renderMyPlanFeatureGroups(features){
+  const grouped=new Map();
+  features
+    .map(myPlanFeaturePresentation)
+    .filter(Boolean)
+    .forEach(item=>{
+      if(!grouped.has(item.group))grouped.set(item.group,[]);
+      const list=grouped.get(item.group);
+      if(!list.includes(item.label))list.push(item.label);
+    });
+
+  if(!grouped.size){
+    return '<div class="muted">No hay funciones adicionales configuradas para este contrato.</div>';
+  }
+
+  const preferred=[
+    "Mi DELIVERY",
+    "Pedidos y despacho",
+    "Equipo",
+    "Zonas y cobertura",
+    "Tarifas",
+    "Clientes y referidos",
+    "GPS y rutas",
+    "Confirmación de entrega",
+    "Seguridad",
+    "Publicidad",
+    "Datos y analítica",
+    "Locales vinculados"
+  ];
+
+  const names=[...grouped.keys()].sort((a,b)=>{
+    const ai=preferred.indexOf(a);
+    const bi=preferred.indexOf(b);
+    if(ai<0&&bi<0)return a.localeCompare(b,"es");
+    if(ai<0)return 1;
+    if(bi<0)return -1;
+    return ai-bi;
+  });
+
+  return '<div class="overview-resource-grid">'+names.map(name=>
+    '<div class="workspace-note" style="margin:0">'+
+      '<strong>'+esc(name)+'</strong>'+
+      '<div style="margin-top:8px;display:grid;gap:6px">'+
+        grouped.get(name).map(label=>
+          '<div><span aria-hidden="true">✓</span> '+esc(label)+'</div>'
+        ).join("")+
+      '</div>'+
+    '</div>'
+  ).join("")+'</div>';
 }
 
 function renderMyPlan(){
@@ -1540,7 +1635,6 @@ function renderMyPlan(){
       :Number(current.price).toFixed(2)+" "+esc(current.currency||"USD");
     contract.innerHTML=
       '<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong>'+
-      ' · versión '+esc(current.plan_version||"—")+
       '<br><span>Estado: '+esc(deliveryServiceStateLabel(plan.state))+
       ' · Inicio: '+esc(formatServiceDate(current.starts_at))+
       ' · Vence: '+esc(formatServiceDate(current.ends_at))+
@@ -1564,19 +1658,8 @@ function renderMyPlan(){
     myPlanCapacityCard("Repartidores",usage.drivers,"Gestiona cuáles cuentas están activas desde Repartidores.")
   ].join("");
 
-  const included=(summary.features||[]).filter(f=>
-    f.type==="CAPABILITY" ? f.value===true : Number(f.value)>0
-  );
-  features.innerHTML=included.length
-    ? '<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Prestación</th><th>Valor</th><th>Etapa</th></tr></thead><tbody>'+
-      included.map(f=>{
-        const value=f.type==="CAPABILITY"
-          ?"Incluida"
-          :esc(f.value)+(f.unit?" "+esc(f.unit):"");
-        return '<tr><td>'+esc(f.family||"Otros")+'</td><td><strong>'+esc(f.label||f.code)+'</strong></td><td>'+value+'</td><td>Etapa '+esc(f.stage||1)+'</td></tr>';
-      }).join("")+
-      '</tbody></table></div>'
-    : '<div class="muted">No hay prestaciones comerciales congeladas para este contrato.</div>';
+  const included=(summary.features||[]).filter(f=>f.type==="CAPABILITY"&&f.value===true);
+  features.innerHTML=renderMyPlanFeatureGroups(included);
 }
 
 async function loadMyPlan(){
