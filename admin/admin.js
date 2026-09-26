@@ -219,6 +219,43 @@ async function init() {
   }
 }
 
+function organizeDeliveryAdminNavigation() {
+  if(state.role!=="DELIVERY_ADMIN")return;
+  const nav=$("nav");
+  if(!nav)return;
+
+  nav.querySelectorAll(".delivery-nav-group").forEach(group=>group.remove());
+
+  const layout=[
+    {label:"Principal",sections:["overview"]},
+    {label:"Operación",sections:["orders","drivers"]},
+    {label:"Mi DELIVERY",sections:["mydelivery","fees","coverage","security"]},
+    {label:"Clientes",sections:["network","share","requests"]},
+    {label:"Imagen y promoción",sections:["storage","advertising"]},
+    {label:"Gestión",sections:["myplan","analytics"]}
+  ];
+
+  layout.forEach(group=>{
+    const buttons=group.sections
+      .map(section=>nav.querySelector('button[data-section="'+section+'"]'))
+      .filter(button=>button&&!button.classList.contains("hidden"));
+
+    if(!buttons.length)return;
+
+    const host=document.createElement("div");
+    host.className="delivery-nav-group";
+    host.dataset.navGroup=group.label;
+
+    const title=document.createElement("div");
+    title.className="delivery-nav-group-title";
+    title.textContent=group.label;
+    host.appendChild(title);
+
+    buttons.forEach(button=>host.appendChild(button));
+    nav.appendChild(host);
+  });
+}
+
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
   const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
@@ -235,6 +272,7 @@ function configureNavigation() {
     el.classList.toggle("hidden", state.role !== "MASTER");
   });
 
+  organizeDeliveryAdminNavigation();
   showSection(roleSections[state.role][0]);
 }
 
@@ -1652,10 +1690,10 @@ function renderMyPlan(){
   selection.textContent=summary.selection_ready?"Selección lista":"Reconfiguración pendiente";
   const usage=summary.usage||{};
   capacity.innerHTML=[
-    myPlanCapacityCard("Zonas activas",usage.zones,"Elige cuáles operar desde Cobertura."),
-    myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Tú defines los polígonos desde Seguridad."),
-    myPlanCapacityCard("Operadores",usage.operators,"Operadores DELIVERY_OPERATOR activos dentro del cupo contratado."),
-    myPlanCapacityCard("Repartidores",usage.drivers,"Gestiona cuáles cuentas están activas desde Repartidores.")
+    myPlanCapacityCard("Zonas activas",usage.zones,"Uso actual frente al máximo contratado."),
+    myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Uso actual frente al máximo contratado."),
+    myPlanCapacityCard("Operadores",usage.operators,"Cuentas DELIVERY_OPERATOR activas frente al cupo contratado."),
+    myPlanCapacityCard("Repartidores",usage.drivers,"Repartidores activos frente al cupo contratado.")
   ].join("");
 
   const included=(summary.features||[]).filter(f=>f.type==="CAPABILITY"&&f.value===true);
@@ -1694,12 +1732,6 @@ async function loadMyPlanSummary(){
   }
 }
 
-function openMyPlanResource(section,selectId){
-  const deliveryId=$("myPlanDelivery")?.value||null;
-  const select=$(selectId);
-  if(deliveryId&&select&&[...select.options].some(o=>o.value===deliveryId))select.value=deliveryId;
-  showSection(section);
-}
 
 async function loadDeliveryProfile() {
   if (state.role !== "DELIVERY_ADMIN") return;
@@ -8718,11 +8750,6 @@ function bindEvents() {
   if ($("driverGpsStart")) $("driverGpsStart").onclick = startDriverGpsSharing;
   if ($("driverGpsStop")) $("driverGpsStop").onclick = () => stopDriverGpsSharing(false);
   if ($("myPlanDelivery")) $("myPlanDelivery").onchange = loadMyPlanSummary;
-  if ($("myPlanGoCoverage")) $("myPlanGoCoverage").onclick = () => openMyPlanResource("coverage","coverageDelivery");
-  if ($("myPlanGoSecurity")) $("myPlanGoSecurity").onclick = () => openMyPlanResource("security","securityDelivery");
-  if ($("myPlanGoFees")) $("myPlanGoFees").onclick = () => openMyPlanResource("fees","feeDelivery");
-  if ($("myPlanGoDrivers")) $("myPlanGoDrivers").onclick = () => openMyPlanResource("drivers","driversDelivery");
-  if ($("myPlanGoNetwork")) $("myPlanGoNetwork").onclick = () => openMyPlanResource("network","networkDelivery");
   if ($("securityDelivery")) $("securityDelivery").onchange = loadRestrictedAreas;
   if ($("restrictedAreaZone")) $("restrictedAreaZone").onchange = renderRestrictedAreaMap;
   if ($("restrictedAreaMode")) $("restrictedAreaMode").onchange = renderRestrictedAreaRules;
