@@ -537,6 +537,12 @@ body.media-viewer-open{overflow:hidden}
 .promotion-buy-controls .quantity-stepper{
   width:116px;
 }
+.promotion-option-actions{
+  display:grid;
+  grid-template-columns:116px auto;
+  gap:8px;
+  align-items:stretch;
+}
 .promotion-combo-action{
   display:grid;
   grid-template-columns:minmax(116px,140px) minmax(0,1fr);
@@ -556,6 +562,12 @@ body.media-viewer-open{overflow:hidden}
     grid-template-columns:1fr;
   }
   .promotion-buy-controls .quantity-stepper{
+    width:100%;
+  }
+  .promotion-option-actions{
+    grid-template-columns:1fr;
+  }
+  .promotion-option-actions .btn{
     width:100%;
   }
   .promotion-combo-action{
