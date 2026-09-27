@@ -550,7 +550,6 @@
       <div class="visual-menu-product-group" data-menu-product-group="${escapeHtml(product.id)}">
         <div class="visual-menu-product-group-heading">
           <strong>${escapeHtml(product.name)}</strong>
-          ${product.description ? `<span class="muted">${escapeHtml(product.description)}</span>` : ""}
         </div>
 
         <div class="visual-menu-variant-rows">
@@ -595,7 +594,6 @@
       >
         <div class="visual-menu-simple-copy">
           <strong>${escapeHtml(product.name)}</strong>
-          ${product.description ? `<span class="muted">${escapeHtml(product.description)}</span>` : ""}
         </div>
         <span
           class="visual-menu-simple-price"
