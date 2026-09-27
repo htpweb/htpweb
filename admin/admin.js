@@ -1212,6 +1212,7 @@ async function loadDeliveryAdminOverview(todayIso){
     .slice(0,5);
 
   const drivers=overviewUsageAggregate(snapshots,"drivers");
+  const emergencyDrivers=overviewUsageAggregate(snapshots,"emergency_drivers");
   const zones=overviewUsageAggregate(snapshots,"zones");
   const operators=overviewUsageAggregate(snapshots,"operators");
   const zoneExcess=zones.max===null?0:Math.max(0,zones.used-zones.max);
@@ -1244,9 +1245,14 @@ async function loadDeliveryAdminOverview(todayIso){
     },
     {
       label:"Repartidores activos",
-      value:drivers.used,
-      detail:drivers.max===null?"Límite no disponible":"de "+drivers.max+" permitidos por plan",
-      tone:drivers.max!==null&&drivers.used>=drivers.max?"attention":"neutral"
+      value:drivers.used+emergencyDrivers.used,
+      detail:
+        "Regulares "+drivers.used+"/"+(drivers.max===null?"—":drivers.max)+
+        " · Emergencia "+emergencyDrivers.used+"/"+(emergencyDrivers.max===null?"—":emergencyDrivers.max),
+      tone:
+        (drivers.max!==null&&drivers.used>=drivers.max)
+        ||(emergencyDrivers.max!==null&&emergencyDrivers.used>=emergencyDrivers.max)
+          ?"attention":"neutral"
     }
   ];
 
@@ -1291,10 +1297,16 @@ async function loadDeliveryAdminOverview(todayIso){
 
   renderOverviewHealth([
     {
-      label:"Repartidores activos",
+      label:"Repartidores regulares",
       value:drivers.used,
       total:drivers.max,
-      detail:"Repartidores habilitados frente al máximo del plan."
+      detail:"Personal regular habilitado frente al máximo del plan."
+    },
+    {
+      label:"Emergencias",
+      value:emergencyDrivers.used,
+      total:emergencyDrivers.max,
+      detail:"Cupos temporales de 24 horas para continuidad operativa."
     },
     {
       label:"Zonas operativas",
@@ -1711,7 +1723,8 @@ function renderMyPlan(){
     myPlanCapacityCard("Zonas activas",usage.zones,"Uso actual frente al máximo contratado."),
     myPlanCapacityCard("Áreas restringidas",usage.restricted_areas,"Uso actual frente al máximo contratado."),
     myPlanCapacityCard("Operadores",usage.operators,"Cuentas DELIVERY_OPERATOR activas frente al cupo contratado."),
-    myPlanCapacityCard("Repartidores",usage.drivers,"Repartidores activos frente al cupo contratado.")
+    myPlanCapacityCard("Repartidores regulares",usage.drivers,"Repartidores regulares activos frente al cupo contratado."),
+    myPlanCapacityCard("Repartidores de emergencia",usage.emergency_drivers,"Cupos temporales de emergencia. Cada alta dura 24 horas; si vence con una entrega activa, termina esa entrega y luego se desactiva.")
   ].join("");
 
   const included=(summary.features||[]).filter(f=>f.type==="CAPABILITY"&&f.value===true);
@@ -7774,10 +7787,10 @@ function quickDriverTrackingUrl(token){
 
 function quickDriverWhatsappText(driver,trackingUrl){
   return [
-    "*HTPWEB · Acceso de repartidor*",
+    "*HTPWEB · Repartidor de emergencia*",
     "Repartidor: "+(driver?.full_name||"Repartidor"),
     "",
-    "Abre este enlace desde tu celular para compartir ubicación durante tus entregas:",
+    "Abre este enlace desde tu celular para compartir ubicación durante tu turno de emergencia:",
     trackingUrl,
     "",
     "No compartas este enlace con otras personas."
@@ -7802,12 +7815,15 @@ function renderQuickDriverResult(){
   if(!box)return;
   const item=driverWorkspaceState.quickDriver;
   if(!item){
-    box.innerHTML='<div class="muted">Escribe el WhatsApp y crea el repartidor. No necesita correo para comenzar.</div>';
+    box.innerHTML='<div class="muted">Escribe el WhatsApp y crea un repartidor de emergencia. No necesita correo para comenzar.</div>';
     return;
   }
-  box.innerHTML='<div class="workspace-note"><strong>'+esc(item.driver?.full_name||"Repartidor creado")+'</strong>'+
-    '<div>'+esc(item.driver?.phone||"")+' · activo en este DELIVERY</div>'+
-    '<div class="muted" style="margin-top:4px">Enlace GPS generado. Vence automáticamente y puede regenerarse.</div>'+
+  const emergencyUntil=item.driver?.emergency_expires_at
+    ? new Date(item.driver.emergency_expires_at).toLocaleString()
+    : "—";
+  box.innerHTML='<div class="workspace-note"><strong>'+esc(item.driver?.full_name||"Repartidor de emergencia creado")+'</strong>'+
+    '<div>'+esc(item.driver?.phone||"")+' · EMERGENCIA activa</div>'+
+    '<div class="muted" style="margin-top:4px">Cupo operativo hasta '+esc(emergencyUntil)+'. El enlace GPS puede regenerarse cuando sea necesario.</div>'+
     '<button id="quickDriverSendCurrent" class="btn-muted" type="button" style="margin-top:8px">Enviar acceso por WhatsApp</button></div>';
   if($("quickDriverSendCurrent"))$("quickDriverSendCurrent").onclick=()=>{
     try{
@@ -7834,8 +7850,8 @@ async function createQuickDriver(){
   const popup=window.open("","_blank");
   if(popup){
     try{
-      popup.document.title="HTPWEB · Creando repartidor";
-      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">HTPWEB está creando el repartidor y preparando WhatsApp…</p>';
+      popup.document.title="HTPWEB · Creando emergencia";
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">HTPWEB está activando el cupo de emergencia y preparando WhatsApp…</p>';
     }catch{}
   }
 
@@ -7851,7 +7867,7 @@ async function createQuickDriver(){
     if($("quickDriverPhone"))$("quickDriverPhone").value="";
     await loadDriverWorkspace();
     if($("section-myplan")?.classList.contains("active"))await loadMyPlanSummary();
-    message("Repartidor rápido creado y activado.");
+    message("Repartidor de emergencia creado y activado por 24 horas.");
 
     if(popup&&data.driver?.phone){
       popup.location.href=htpWhatsappAssistedUrl(
@@ -7865,7 +7881,7 @@ async function createQuickDriver(){
     if(popup&&!popup.closed)popup.close();
     driverWorkspaceState.quickDriver=null;
     renderQuickDriverResult();
-    message(e.message||"No se pudo crear el repartidor rápido.","error");
+    message(e.message||"No se pudo crear el repartidor de emergencia.","error");
   }finally{
     if(button)button.disabled=false;
   }
@@ -7921,16 +7937,28 @@ function renderDriversList(){
   const box=$("driversList");if(!box)return;
   const snap=driverWorkspaceState.drivers||{};
   const items=Array.isArray(snap.drivers)?snap.drivers:[];
+  const summary=
+    '<div class="workspace-note" style="margin-bottom:10px"><strong>Capacidad del plan:</strong> '+
+    'Regulares '+esc(snap.regular_used??snap.used??0)+' / '+esc(snap.regular_limit??snap.limit??"—")+
+    ' · Emergencia '+esc(snap.emergency_used??0)+' / '+esc(snap.emergency_limit??"—")+
+    ' · Emergencia dura '+esc(snap.emergency_duration_hours??24)+' h</div>';
   if(!items.length){
-    box.innerHTML='<div class="muted">No hay repartidores activos.</div>';
+    box.innerHTML=summary+'<div class="muted">No hay repartidores activos.</div>';
     return;
   }
   const canManage=state.role==="DELIVERY_ADMIN";
-  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Repartidor</th><th>Pedidos activos</th><th>Acciones</th></tr></thead><tbody>'+
-    items.map(d=>'<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
-      '</div></td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
-      '</td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn-muted" type="button" data-driver-gps="'+esc(d.user_id)+'" data-driver-name="'+esc(d.full_name||"Repartidor")+'">Ver GPS</button>'+
-      (canManage?'<button class="btn-muted" type="button" data-driver-quick-link="'+esc(d.user_id)+'">Enviar acceso GPS</button><button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>').join("")+
+  box.innerHTML=summary+'<div class="table-wrap"><table><thead><tr><th>Repartidor</th><th>Tipo</th><th>Pedidos activos</th><th>Acciones</th></tr></thead><tbody>'+
+    items.map(d=>{
+      const emergency=d.driver_mode==="EMERGENCY";
+      const expires=emergency&&d.emergency_expires_at?new Date(d.emergency_expires_at).toLocaleString():"";
+      const mode=emergency
+        ? '<span class="badge">EMERGENCIA</span>'+(d.emergency_grace?'<div class="workspace-warning" style="margin-top:5px">Vencido · termina entrega actual</div>':'<div class="muted">Hasta '+esc(expires)+'</div>')
+        : '<span class="badge">REGULAR</span>';
+      return '<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
+        '</div></td><td>'+mode+'</td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
+        '</td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn-muted" type="button" data-driver-gps="'+esc(d.user_id)+'" data-driver-name="'+esc(d.full_name||"Repartidor")+'">Ver GPS</button>'+
+        (canManage?'<button class="btn-muted" type="button" data-driver-quick-link="'+esc(d.user_id)+'">Enviar acceso GPS</button><button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>';
+    }).join("")+
     '</tbody></table></div>';
   box.querySelectorAll("[data-driver-gps]").forEach(b=>b.onclick=()=>selectDriverGps(b.dataset.driverGps,b.dataset.driverName));
   box.querySelectorAll("[data-driver-quick-link]").forEach(b=>b.onclick=()=>regenerateQuickDriverAccess(b.dataset.driverQuickLink));
