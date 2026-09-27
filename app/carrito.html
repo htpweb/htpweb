@@ -778,6 +778,9 @@ async function confirmOrder() {
           local_id: item.local_id,
           promotion_id: item.promotion_id,
           promotion_item_id: item.promotion_item_id || null,
+          promotion_selection: Array.isArray(item.snapshot?.promotion_selection)
+            ? item.snapshot.promotion_selection
+            : null,
           quantity: item.quantity
         };
       }
