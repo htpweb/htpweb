@@ -496,3 +496,69 @@ body.media-viewer-open{overflow:hidden}
     grid-template-columns:1fr;
   }
 }
+
+
+/* CLIENT — compra directa de promociones */
+.promotion-mode-label{
+  margin-top:5px;
+  font-size:.78rem;
+  font-weight:800;
+  color:#6b7280;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.promotion-options{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.promotion-option{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fafafa;
+}
+.promotion-option-copy{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.promotion-option-copy strong{
+  font-size:.92rem;
+  margin:0;
+}
+.promotion-option-copy span{
+  font-weight:800;
+}
+.promotion-buy-controls .quantity-stepper{
+  width:116px;
+}
+.promotion-combo-action{
+  display:grid;
+  grid-template-columns:minmax(116px,140px) minmax(0,1fr);
+  gap:10px;
+  align-items:stretch;
+  margin-top:14px;
+}
+.promotion-target{
+  outline:3px solid #e53935;
+  outline-offset:3px;
+}
+.promo-cart-item{
+  background:#fffdf7;
+}
+@media(max-width:520px){
+  .promotion-option{
+    grid-template-columns:1fr;
+  }
+  .promotion-buy-controls .quantity-stepper{
+    width:100%;
+  }
+  .promotion-combo-action{
+    grid-template-columns:1fr;
+  }
+}
