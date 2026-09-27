@@ -250,8 +250,10 @@
     const isOptions = promotion.promotion_type === "OPTIONS";
     const disabled = promotionDisabled(promotion);
     const statusText = promotionAvailabilityText(promotion);
-    const image = promotion.image_url
-      ? '<img src="' + escPromo(promotion.image_url) + '" alt="' + escPromo(promotion.title) + '">'
+    const fallbackImage = items.find(item => item?.product_image_url)?.product_image_url || null;
+    const promotionImage = promotion.image_url || fallbackImage;
+    const image = promotionImage
+      ? '<img src="' + escPromo(promotionImage) + '" alt="' + escPromo(promotion.title) + '">'
       : "";
 
     let priceHtml = "";
