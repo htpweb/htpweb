@@ -2954,23 +2954,43 @@ async function orderControlUnassignDriver(orderId){
   }catch(e){message(e.message||"No se pudo quitar el repartidor.","error");}
 }
 
-function orderControlNotifyDriver(orderId){
+async function orderControlNotifyDriver(orderId){
+  const popup=window.open("","_blank");
+  if(popup){
+    try{
+      popup.document.title="HTPWEB · Preparando repartidor";
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Preparando WhatsApp y acceso GPS…</p>';
+    }catch{}
+  }
   try{
     const order=(state.orders||[]).find(o=>o.id===orderId);
     const assigned=order?.assignment;
     if(!order||!assigned)throw new Error("El pedido no tiene repartidor asignado.");
     const driver=orderControlDriverList(order).find(d=>d.user_id===assigned.driver_user_id)||{
+      user_id:assigned.driver_user_id,
       full_name:assigned.driver_name,
       phone:assigned.driver_phone
     };
     if(!driver.phone)throw new Error("El repartidor no tiene teléfono registrado.");
-    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
-    htpWhatsappOpenAssisted(driver.phone,buildDriverWhatsappText({
+
+    const access=await quickDriverInvoke("link",{driver_user_id:assigned.driver_user_id});
+    const trackingUrl=quickDriverTrackingUrl(access.tracking_token);
+    const text=buildDriverWhatsappText({
       order_id:order.id,
       delivery_address:order.delivery_address
-    },driver));
-    message("WhatsApp abierto con la asignación lista para enviar.");
-  }catch(e){message(e.message||"No se pudo preparar el aviso al repartidor.","error");}
+    },driver,trackingUrl);
+
+    if(popup){
+      popup.location.href=htpWhatsappAssistedUrl(driver.phone,text);
+    }else{
+      message("El navegador bloqueó la ventana. Habilita ventanas emergentes e inténtalo nuevamente.","error");
+      return;
+    }
+    message("WhatsApp abierto con la entrega y el acceso GPS listos para enviar.");
+  }catch(e){
+    if(popup&&!popup.closed)popup.close();
+    message(e.message||"No se pudo preparar el aviso al repartidor.","error");
+  }
 }
 
 function orderControlWhatsappCustomer(orderId){
@@ -8766,19 +8786,27 @@ async function deactivateDriver(userId){
   }catch(e){message(e.message||"No se pudo desactivar el repartidor.","error");}
 }
 
-function buildDriverWhatsappText(order,driver){
-  const panelUrl=location.origin+location.pathname;
+function buildDriverWhatsappText(order,driver,trackingUrl){
   return [
-    "*HTPWEB · Nueva entrega #"+whatsappOrderRef(order?.order_id)+"*",
+    "*HTPWEB · Nueva entrega #"+whatsappOrderRef(order?.order_id||order?.id)+"*",
     "Repartidor: "+(driver?.full_name||"Repartidor"),
     "Destino: "+(order?.delivery_address||"Ver detalle en HTPWEB"),
     "",
-    "Abre HTPWEB para revisar la recogida, ruta y entrega:",
-    panelUrl
+    "Abre este enlace desde tu celular para ver la entrega y compartir ubicación durante la ruta:",
+    trackingUrl||"Acceso GPS no disponible",
+    "",
+    "Mantén la pantalla abierta mientras realizas la entrega."
   ].join("\n");
 }
 
-function notifyAssignedDriverWhatsapp(orderId){
+async function notifyAssignedDriverWhatsapp(orderId){
+  const popup=window.open("","_blank");
+  if(popup){
+    try{
+      popup.document.title="HTPWEB · Preparando repartidor";
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Preparando WhatsApp y acceso GPS…</p>';
+    }catch{}
+  }
   try{
     const orders=Array.isArray(driverWorkspaceState.dispatch?.orders)?driverWorkspaceState.dispatch.orders:[];
     const order=orders.find(item=>item.order_id===orderId);
@@ -8787,10 +8815,20 @@ function notifyAssignedDriverWhatsapp(orderId){
     const drivers=Array.isArray(driverWorkspaceState.drivers?.drivers)?driverWorkspaceState.drivers.drivers:[];
     const driver=drivers.find(item=>item.user_id===assigned.driver_user_id);
     if(!driver?.phone)throw new Error("El repartidor no tiene teléfono registrado.");
-    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
-    htpWhatsappOpenAssisted(driver.phone,buildDriverWhatsappText(order,driver));
-    message("WhatsApp abierto con la asignación lista para enviar.");
+
+    const access=await quickDriverInvoke("link",{driver_user_id:assigned.driver_user_id});
+    const trackingUrl=quickDriverTrackingUrl(access.tracking_token);
+    const text=buildDriverWhatsappText(order,driver,trackingUrl);
+
+    if(popup){
+      popup.location.href=htpWhatsappAssistedUrl(driver.phone,text);
+    }else{
+      message("El navegador bloqueó la ventana. Habilita ventanas emergentes e inténtalo nuevamente.","error");
+      return;
+    }
+    message("WhatsApp abierto con la asignación y el acceso GPS listos para enviar.");
   }catch(e){
+    if(popup&&!popup.closed)popup.close();
     message(e.message||"No se pudo preparar el aviso al repartidor.","error");
   }
 }
