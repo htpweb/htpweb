@@ -2263,7 +2263,7 @@ async function loadOrders() {
 
   let query = supabaseClient
     .from("orders")
-    .select("id,delivery_id,status,total,customer_name,customer_phone,delivery_address,notes,created_at,order_items(local_id,product_name,variant_name,quantity,subtotal),order_locals(id,local_id,status,subtotal,delivery_fee,locals(id,name,whatsapp))")
+    .select("id,delivery_id,status,total,customer_name,customer_phone,delivery_address,notes,created_at,order_items(local_id,product_name,variant_name,quantity,subtotal,promotion_id,promotion_title),order_locals(id,local_id,status,subtotal,delivery_fee,locals(id,name,whatsapp))")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -2379,7 +2379,8 @@ function buildLocalOrderWhatsappText(order,localGroup){
   const items=(order?.order_items||[]).filter(item=>item.local_id===localGroup.local_id);
   const itemLines=items.map(item=>{
     const variant=item.variant_name?" ("+item.variant_name+")":"";
-    return "• "+item.quantity+" x "+item.product_name+variant;
+    const promo=item.promotion_title?" [PROMO: "+item.promotion_title+"]":"";
+    return "• "+item.quantity+" x "+item.product_name+variant+promo;
   });
   const deliveryName=state.deliveries.find(d=>d.id===order.delivery_id)?.name||"HTPWEB";
   return [
