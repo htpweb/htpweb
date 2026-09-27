@@ -196,7 +196,14 @@
               '<div class="promotion-option-copy"><strong>' +
                 escPromo(item.quantity || 1) + '× ' + escPromo(label) +
               '</strong><span>$' + escPromo(price) + '</span></div>' +
-              quantityControl(promotion.id, item.id) +
+              '<div class="promotion-option-actions">' +
+                quantityControl(promotion.id, item.id) +
+                '<button class="btn btn-primary" type="button" ' +
+                  (localIsClosed() ? 'disabled ' : '') +
+                  'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' + escPromo(promotion.id) + '\',\'' + escPromo(item.id) + '\')">' +
+                  (localIsClosed() ? 'Local cerrado' : 'Agregar') +
+                '</button>' +
+              '</div>' +
             '</div>';
           }).join("") + '</div>'
         : '<div class="muted">Esta promoción todavía no tiene opciones disponibles.</div>';
