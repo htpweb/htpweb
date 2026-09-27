@@ -16,6 +16,7 @@
   let publicPromotions = [];
   let tabManaged = false;
   const mixSelections = new Map();
+  let promotionViewerCard = null;
 
   function currentLocalId() {
     const params = new URLSearchParams(location.search);
@@ -478,6 +479,77 @@
     }
   }
 
+  function ensurePromotionViewer() {
+    let viewer = document.getElementById("promotionViewer");
+    if (viewer) return viewer;
+
+    viewer = document.createElement("div");
+    viewer.id = "promotionViewer";
+    viewer.className = "promotion-viewer hidden";
+    viewer.setAttribute("role", "dialog");
+    viewer.setAttribute("aria-modal", "true");
+    viewer.setAttribute("aria-label", "Promoción ampliada");
+    viewer.innerHTML =
+      '<div class="promotion-viewer-backdrop" data-promotion-viewer-backdrop="1"></div>' +
+      '<div class="promotion-viewer-panel">' +
+        '<button id="promotionViewerClose" class="media-viewer-close" type="button" aria-label="Cerrar">×</button>' +
+        '<div class="promotion-viewer-image-wrap">' +
+          '<img id="promotionViewerImage" class="promotion-viewer-image" alt="">' +
+        '</div>' +
+        '<div id="promotionViewerContent" class="promotion-viewer-content"></div>' +
+      '</div>';
+
+    document.body.appendChild(viewer);
+
+    document.getElementById("promotionViewerClose").onclick = closePromotionViewer;
+    viewer.onclick = event => {
+      if (event.target?.dataset?.promotionViewerBackdrop === "1") {
+        event.preventDefault();
+      }
+    };
+
+    return viewer;
+  }
+
+  function openPromotionViewer(promotionId) {
+    const promotion = findPromotion(promotionId);
+    const card = document.getElementById("promotion-" + promotionId);
+    if (!promotion || !card) return;
+
+    closePromotionViewer();
+
+    const viewer = ensurePromotionViewer();
+    const content = document.getElementById("promotionViewerContent");
+    const viewerImage = document.getElementById("promotionViewerImage");
+    const sourceImage = card.querySelector(".promotion-card-image");
+    const copy = card.querySelector(".promotion-card-copy");
+
+    if (!content || !viewerImage || !sourceImage || !copy) return;
+
+    promotionViewerCard = card;
+    viewerImage.src = sourceImage.currentSrc || sourceImage.src;
+    viewerImage.alt = sourceImage.alt || promotion.title || "Promoción";
+    content.replaceChildren(copy);
+
+    viewer.classList.remove("hidden");
+    document.body.classList.add("promotion-viewer-open");
+    syncPromotionCounts();
+  }
+
+  function closePromotionViewer() {
+    const viewer = document.getElementById("promotionViewer");
+    const content = document.getElementById("promotionViewerContent");
+
+    if (promotionViewerCard && content) {
+      const copy = content.querySelector(".promotion-card-copy");
+      if (copy) promotionViewerCard.appendChild(copy);
+    }
+
+    promotionViewerCard = null;
+    viewer?.classList.add("hidden");
+    document.body.classList.remove("promotion-viewer-open");
+  }
+
   function renderPromotionCard(promotion) {
     const items = Array.isArray(promotion.items) ? promotion.items : [];
     const isOptions = promotion.promotion_type === "OPTIONS";
@@ -486,7 +558,11 @@
     const fallbackImage = items.find(item => item?.product_image_url)?.product_image_url || null;
     const promotionImage = promotion.image_url || fallbackImage;
     const image = promotionImage
-      ? '<img src="' + escPromo(promotionImage) + '" alt="' + escPromo(promotion.title) + '">'
+      ? '<button class="promotion-image-button" type="button" aria-label="Ampliar promoción y comprar" ' +
+          'onclick="HTPWEBPromotions.openViewer(\'' + escPromo(promotion.id) + '\')">' +
+          '<img class="promotion-card-image" src="' + escPromo(promotionImage) + '" alt="' + escPromo(promotion.title) + '">' +
+          '<span class="promotion-zoom-hint">🔍 Ver promoción y comprar</span>' +
+        '</button>'
       : "";
 
     let priceHtml = "";
@@ -692,6 +768,8 @@
     change: changePromotionQuantity,
     changeMix,
     addMix: addMixedPromotion,
+    openViewer: openPromotionViewer,
+    closeViewer: closePromotionViewer,
     refresh: renderPublicPromotions,
     renderTab,
     setTabManaged,
