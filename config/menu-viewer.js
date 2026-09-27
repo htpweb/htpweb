@@ -692,7 +692,7 @@
       const priceEl = $m(controlId(scope, "price", productId, variantId));
       const qtyEl = $m(controlId(scope, "qty", productId, variantId));
 
-      if (priceEl) priceEl.textContent = "$ " + price.toFixed(2);
+      if (priceEl) priceEl.textContent = "— $" + price.toFixed(2);
       if (qtyEl) qtyEl.value = quantity;
     });
   }
