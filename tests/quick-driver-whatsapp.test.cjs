@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const migration=fs.readFileSync('supabase/migrations/20260927214500_quick_driver_whatsapp_tracking.sql','utf8');
+const emergencyMigration=fs.readFileSync('supabase/migrations/20260927225000_emergency_driver_plan_capacity.sql','utf8');
 const registerFn=fs.readFileSync('supabase/functions/quick-driver/index.ts','utf8');
 const trackFn=fs.readFileSync('supabase/functions/quick-driver-track/index.ts','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
@@ -18,12 +19,14 @@ test('alta rápida usa token privado y no expone tabla a anon/authenticated',()=
   assert.match(migration,/expires_at timestamptz/);
 });
 
-test('registro rápido exige DELIVERY_ADMIN y respeta drivers.active.max',()=>{
+test('registro rápido exige DELIVERY_ADMIN y consume cupo de emergencia, no cupo regular',()=>{
   assert.match(migration,/delivery_quick_driver_authorize/);
   assert.match(migration,/current_role_code\(\)<>'DELIVERY_ADMIN'/);
   assert.match(migration,/has_permission\('users\.manage'\)/);
-  assert.match(migration,/delivery_limit_value\(p_delivery_id,'drivers\.active\.max'\)/);
-  assert.match(migration,/alcanzó el máximo de repartidores activos/);
+  assert.match(emergencyMigration,/delivery_limit_value\(p_delivery_id,'drivers\.emergency\.max'\)/);
+  assert.match(emergencyMigration,/driver_mode='EMERGENCY'/);
+  assert.match(emergencyMigration,/interval '24 hours'/);
+  assert.doesNotMatch(emergencyMigration,/v_limit:=public\.delivery_limit_value\(p_delivery_id,'drivers\.active\.max'\)/);
 });
 
 test('Edge de alta requiere JWT y crea usuario técnico solo desde WhatsApp',()=>{
@@ -57,7 +60,7 @@ test('GPS rápido solo opera con entrega activa y gps.live',()=>{
 
 test('panel DELIVERY permite crear solo con WhatsApp y regenerar acceso GPS',()=>{
   assert.match(html,/id="quickDriverPhone"/);
-  assert.match(html,/Crear repartidor y abrir WhatsApp/);
+  assert.match(html,/Crear emergencia y abrir WhatsApp/);
   assert.match(admin,/functions\.invoke\("quick-driver"/);
   assert.match(admin,/quickDriverInvoke\("create"/);
   assert.match(admin,/quickDriverInvoke\("link"/);
