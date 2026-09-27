@@ -78,3 +78,14 @@ test("buscador encuentra productos y variantes en todas las hojas",()=>{
   assert.match(menu,/selectSearchResult/);
   assert.match(menu,/scrollIntoView/);
 });
+
+
+test("variantes del menú se muestran como líneas comprables directas",()=>{
+  assert.match(menu,/renderPurchasableRow/);
+  assert.match(menu,/visual-menu-variant-chip/);
+  assert.match(menu,/data-menu-variant/);
+  assert.match(menu,/htpwebAddProductUnit\(productId, chosenVariantId\)/);
+  assert.match(menu,/htpwebChangeProductQuantity[\s\S]*chosenVariantId/);
+  assert.match(menu,/htpwebSetProductQuantity[\s\S]*chosenVariantId/);
+  assert.doesNotMatch(menu,/class="visual-menu-product"[\s\S]*<select[\s\S]*variantChanged/);
+});
