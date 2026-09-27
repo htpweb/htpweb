@@ -41,6 +41,15 @@ test('calcular-distancia queda versionada y exige JWT en Supabase',()=>{
   assert.match(distance,/distance_km/);
 });
 
+test('calcular-distancia puede devolver geometría vial GeoJSON sin cambiar el cálculo autoritativo',()=>{
+  assert.match(shared,/ORS_DIRECTIONS_DRIVING_GEOJSON_URL/);
+  assert.match(distance,/include_geometry/);
+  assert.match(distance,/ORS_DIRECTIONS_DRIVING_GEOJSON_URL/);
+  assert.match(distance,/features\?\.\[0\]/);
+  assert.match(distance,/geometry/);
+  assert.match(distance,/duration_minutes/);
+});
+
 test('checkout conserva cálculo autoritativo de distancia con ORS',()=>{
   assert.match(checkout,/calculateRouteDistance/);
   assert.match(checkout,/body\.locals\.distance_km/);
