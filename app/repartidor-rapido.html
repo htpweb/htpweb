@@ -104,9 +104,17 @@
 
     function renderContext(){
       if(!context)return;
+      const emergency=context.driver_mode==="EMERGENCY";
+      const emergencyUntil=emergency&&context.emergency_expires_at
+        ? new Date(context.emergency_expires_at).toLocaleString()
+        : null;
       driverInfo.innerHTML="<strong>"+escapeHtml(context.driver_name||"Repartidor")+"</strong>"+
         "<div class='muted'>"+escapeHtml(context.delivery_name||"HTPWEB")+
-        (context.phone?" · "+escapeHtml(context.phone):"")+"</div>";
+        (context.phone?" · "+escapeHtml(context.phone):"")+"</div>"+
+        (emergency
+          ? "<div style='margin-top:8px'><span class='pill'>EMERGENCIA</span></div>"+
+            "<div class='muted' style='margin-top:5px'>Cupo temporal hasta "+escapeHtml(emergencyUntil||"—")+"</div>"
+          : "<div style='margin-top:8px'><span class='pill'>REGULAR</span></div>");
 
       const orders=Array.isArray(context.orders)?context.orders:[];
       ordersEl.innerHTML=orders.length?orders.map(o=>
@@ -118,7 +126,9 @@
       ).join(""):"<div class='muted'>No tienes entregas READY o EN_ROUTE asignadas.</div>";
 
       startBtn.disabled=!context.can_share;
-      if(!context.gps_live){
+      if(context.emergency_grace){
+        setStatus("El cupo de emergencia ya venció, pero puedes terminar la entrega que ya estaba activa. No recibirás pedidos nuevos.","warn");
+      }else if(!context.gps_live){
         setStatus("Este DELIVERY no tiene GPS en vivo habilitado en su plan.","warn");
       }else if(context.can_share){
         setStatus("Acceso válido. Puedes compartir tu ubicación.","ok");
