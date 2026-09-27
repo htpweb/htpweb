@@ -515,13 +515,23 @@
       </div>
 
       <div class="card" id="driverAdminTools">
-        <h3>Activar repartidor</h3>
-        <p class="muted">El repartidor debe tener primero una cuenta HTPWEB. Búscalo por correo o teléfono exacto.</p>
+        <h3>Registro rápido por WhatsApp</h3>
+        <p class="muted">Solo necesitas el número de WhatsApp. HTPWEB crea el repartidor, lo activa dentro del cupo del plan y genera un enlace seguro para compartir GPS durante las entregas.</p>
         <div class="row" style="gap:10px;flex-wrap:wrap">
-          <input id="driverLookupIdentifier" placeholder="correo@ejemplo.com o 0991234567" style="flex:1;min-width:240px">
-          <button id="driverLookupBtn" class="btn-muted" type="button">Buscar cuenta</button>
+          <input id="quickDriverPhone" inputmode="tel" placeholder="0989351622" style="flex:1;min-width:240px">
+          <button id="quickDriverCreateBtn" class="btn-primary" type="button">Crear repartidor y abrir WhatsApp</button>
         </div>
-        <div id="driverLookupResult" style="margin-top:12px"></div>
+        <div id="quickDriverResult" style="margin-top:12px"></div>
+
+        <details style="margin-top:16px">
+          <summary><strong>Activar una cuenta HTPWEB existente</strong></summary>
+          <p class="muted">Opcional: úsalo si el repartidor ya creó previamente una cuenta HTPWEB.</p>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <input id="driverLookupIdentifier" placeholder="correo@ejemplo.com o 0991234567" style="flex:1;min-width:240px">
+            <button id="driverLookupBtn" class="btn-muted" type="button">Buscar cuenta</button>
+          </div>
+          <div id="driverLookupResult" style="margin-top:12px"></div>
+        </details>
       </div>
 
       <div class="card">
@@ -1804,7 +1814,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20260927-2200"></script>
+<script src="./admin.js?v=20260927-2225"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
