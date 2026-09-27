@@ -307,6 +307,141 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   }
 }
 /* ============================================================
+   SELECCIONES DE VARIANTES EN PROMOCIONES COMBINABLES
+   ============================================================ */
+async function validatePromotionSelections(items) {
+  const notes = [];
+
+  for (const item of items) {
+    const selection = item?.promotion_selection;
+    if (selection === undefined || selection === null) continue;
+
+    if (!Array.isArray(selection) || selection.length === 0) {
+      throw new HttpError(400, "La selección de la promoción no es válida");
+    }
+
+    if (!isValidUuid(item?.promotion_id)) {
+      throw new HttpError(400, "La selección promocional no tiene una promoción válida");
+    }
+
+    if (item?.promotion_item_id) {
+      throw new HttpError(400, "La selección combinable no admite promotion_item_id");
+    }
+
+    const { data: promotion, error: promotionError } = await supabaseAdmin
+      .from("local_promotions")
+      .select("id,title,promotion_type,active")
+      .eq("id", item.promotion_id)
+      .maybeSingle();
+
+    if (promotionError || !promotion) {
+      throw new HttpError(400, "La promoción seleccionada ya no existe");
+    }
+
+    if (promotion.promotion_type !== "COMBO" || promotion.active !== true) {
+      throw new HttpError(400, "La promoción no admite selección combinable");
+    }
+
+    const { data: components, error: componentError } = await supabaseAdmin
+      .from("local_promotion_items")
+      .select("id,product_id,variant_id,quantity")
+      .eq("promotion_id", item.promotion_id);
+
+    if (componentError || !Array.isArray(components)) {
+      throw new HttpError(500, "No se pudo validar la configuración de la promoción");
+    }
+
+    if (
+      components.length !== 1 ||
+      components[0].variant_id !== null ||
+      Number(components[0].quantity || 0) <= 1
+    ) {
+      throw new HttpError(400, "La promoción no tiene una configuración combinable válida");
+    }
+
+    const component = components[0];
+    const required = Number(component.quantity);
+    const normalizedSelection = [];
+    const variantIds = [];
+    let totalSelected = 0;
+
+    for (const row of selection) {
+      if (!isValidUuid(row?.variant_id)) {
+        throw new HttpError(400, "Existe una variante inválida en la promoción");
+      }
+
+      const quantity = Number(row?.quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0 || quantity > required) {
+        throw new HttpError(400, "La cantidad seleccionada en la promoción no es válida");
+      }
+
+      if (variantIds.includes(row.variant_id)) {
+        throw new HttpError(400, "La promoción contiene variantes repetidas");
+      }
+
+      variantIds.push(row.variant_id);
+      totalSelected += quantity;
+    }
+
+    if (totalSelected !== required) {
+      throw new HttpError(
+        400,
+        "Debes seleccionar exactamente " + required + " unidades para la promoción"
+      );
+    }
+
+    const { data: variants, error: variantsError } = await supabaseAdmin
+      .from("product_variants")
+      .select("id,product_id,name,active")
+      .in("id", variantIds);
+
+    if (
+      variantsError ||
+      !Array.isArray(variants) ||
+      variants.length !== variantIds.length
+    ) {
+      throw new HttpError(400, "No se pudieron validar las variantes de la promoción");
+    }
+
+    const variantMap = new Map(variants.map(variant => [variant.id, variant]));
+
+    for (const row of selection) {
+      const variant = variantMap.get(row.variant_id);
+
+      if (
+        !variant ||
+        variant.active !== true ||
+        variant.product_id !== component.product_id
+      ) {
+        throw new HttpError(400, "Una variante seleccionada ya no está disponible");
+      }
+
+      normalizedSelection.push({
+        product_id: component.product_id,
+        variant_id: variant.id,
+        variant_name: variant.name,
+        quantity: Number(row.quantity)
+      });
+    }
+
+    item.promotion_selection = normalizedSelection;
+
+    const composition = normalizedSelection
+      .map(row => row.quantity + "× " + row.variant_name)
+      .join(", ");
+
+    const bundles = Number(item?.quantity || 1);
+    notes.push(
+      "PROMO " + promotion.title + ": " +
+      composition +
+      (bundles > 1 ? " · " + bundles + " combos" : "")
+    );
+  }
+
+  return notes;
+}
+
+/* ============================================================
    EDGE FUNCTION
    ============================================================ */ Deno.serve(async (req)=>{
   /* ========================================================
@@ -506,6 +641,8 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         throw new HttpError(400, "Existe un item asociado a un local que no forma parte del pedido");
       }
     }
+    const promotionSelectionNotes = await validatePromotionSelections(body.items);
+
     /* ======================================================
          15. VALIDAR DISPONIBILIDAD REAL DE LOS LOCALES
 
@@ -560,7 +697,9 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       p_document_type: optionalText(body.document_type),
       p_document_number: optionalText(body.document_number),
       p_invoice_email: optionalText(body.invoice_email),
-      p_notes: optionalText(body.notes),
+      p_notes: [optionalText(body.notes), ...promotionSelectionNotes]
+        .filter(Boolean)
+        .join("\n") || null,
       p_locals: localsWithDistance,
       p_items: body.items.map((item)=>{
         const hasPromotion = item?.promotion_id !== undefined &&
@@ -572,6 +711,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
             local_id: item.local_id,
             promotion_id: item.promotion_id,
             promotion_item_id: item.promotion_item_id ?? null,
+            promotion_selection: item.promotion_selection ?? null,
             quantity: Number(item.quantity)
           };
         }
