@@ -249,7 +249,9 @@ async function renderDetail() {
       <h3>${esc(local.locals?.name || 'LOCAL')}</h3>
       <p>${esc(statusText(local.status))}</p>
       ${(order.order_items || []).filter(item => item.local_id === local.local_id).map(item => `
-        <div class="cart-item"><div><strong>${esc(item.product_name)}</strong>
+        <div class="cart-item"><div>
+        ${item.promotion_title ? `<span class="promotion-badge">PROMOCIÓN</span><div class="muted">${esc(item.promotion_title)}</div>` : ''}
+        <strong>${esc(item.product_name)}</strong>
         ${item.variant_name ? `<div class="muted">${esc(item.variant_name)}</div>` : ''}
         <div>${esc(item.quantity)} × ${money(item.unit_price)}</div></div><strong>${money(item.subtotal)}</strong></div>`).join('')}
     </div>`).join('');
