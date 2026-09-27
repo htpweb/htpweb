@@ -2258,9 +2258,102 @@ function openLocalSchedules() {
   }
 }
 
-async function loadOrders() {
-  if (!roleSections[state.role]?.includes("orders")) return;
+const orderControlState={
+  selectedId:null,
+  drivers:new Map(),
+  snapshots:new Map(),
+  map:null,
+  layers:null,
+  timer:null,
+  loading:false,
+  lastSync:null
+};
 
+const orderControlActiveStatuses=new Set(["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"]);
+
+function orderStatusLabel(status){
+  const labels={
+    PENDING:"Pendiente",
+    CONFIRMED:"Confirmado",
+    PREPARING:"Preparando",
+    READY:"Listo",
+    EN_ROUTE:"En camino",
+    DELIVERED:"Entregado",
+    CANCELLED:"Cancelado"
+  };
+  return labels[status]||status||"—";
+}
+
+function orderTransitionLabel(status){
+  return orderStatusLabel(status);
+}
+
+function orderControlRef(orderId){
+  return String(orderId||"").replace(/-/g,"").slice(0,8).toUpperCase();
+}
+
+function orderControlMoney(value){
+  return "$"+Number(value||0).toFixed(2);
+}
+
+function orderControlTime(value){
+  if(!value)return "—";
+  const d=new Date(value);
+  return Number.isNaN(d.valueOf())?"—":d.toLocaleString();
+}
+
+function orderControlAge(value){
+  if(!value)return "—";
+  const ms=Math.max(0,Date.now()-new Date(value).getTime());
+  if(!Number.isFinite(ms))return "—";
+  const min=Math.floor(ms/60000);
+  if(min<1)return "ahora";
+  if(min<60)return "hace "+min+" min";
+  const h=Math.floor(min/60);
+  if(h<24)return "hace "+h+" h "+(min%60)+" min";
+  return "hace "+Math.floor(h/24)+" d";
+}
+
+function orderControlCurrentSince(order){
+  const field={
+    PENDING:"created_at",
+    CONFIRMED:"confirmed_at",
+    PREPARING:"preparing_at",
+    READY:"ready_at",
+    EN_ROUTE:"en_route_at",
+    DELIVERED:"delivered_at",
+    CANCELLED:"cancelled_at"
+  }[order?.status]||"created_at";
+  return order?.[field]||order?.created_at||null;
+}
+
+function orderControlNormalize(order){
+  const locals=(Array.isArray(order?.locals)?order.locals:[]).map(item=>({
+    ...item,
+    locals:item.local||item.locals||{}
+  }));
+  const items=Array.isArray(order?.items)?order.items:[];
+  return {
+    ...order,
+    order_locals:locals,
+    order_items:items
+  };
+}
+
+function orderControlToggleLegacy(legacy){
+  const kpis=$("orderControlKpis");
+  const detail=$("orderControlDetail");
+  const mapCard=$("orderControlMap")?.closest(".order-control-map-card");
+  const toolbar=$("orderControlFilter")?.closest(".order-control-toolbar");
+  if(kpis)kpis.classList.toggle("hidden",legacy);
+  if(detail)detail.classList.toggle("hidden",legacy);
+  if(mapCard)mapCard.classList.toggle("hidden",legacy);
+  if(toolbar)toolbar.classList.toggle("hidden",legacy);
+  const layout=document.querySelector("#section-orders .order-control-layout");
+  if(layout)layout.style.gridTemplateColumns=legacy?"1fr":"";
+}
+
+async function loadOrdersLegacy(){
   let query = supabaseClient
     .from("orders")
     .select("id,delivery_id,status,total,customer_name,customer_phone,delivery_address,notes,created_at,order_items(local_id,product_name,variant_name,quantity,subtotal,promotion_id,promotion_title),order_locals(id,local_id,status,subtotal,delivery_fee,locals(id,name,whatsapp))")
@@ -2268,11 +2361,6 @@ async function loadOrders() {
     .limit(100);
 
   const scope = $("orderScope")?.value || "";
-
-  if (scope && state.role !== "LOCAL_ADMIN") {
-    query = query.eq("delivery_id", scope);
-  }
-
   const { data, error } = await query;
   if (error) {
     $("ordersList").innerHTML = `<div class="message error">${esc(error.message)}</div>`;
@@ -2280,15 +2368,500 @@ async function loadOrders() {
   }
 
   state.orders = data || [];
-
   let rows = state.orders;
-  if (scope && state.role === "LOCAL_ADMIN") {
+  if (scope) {
     rows = rows.filter(order =>
       (order.order_locals || []).some(ol => ol.local_id === scope)
     );
   }
-
   $("ordersList").innerHTML = rows.length ? rows.map(renderOrder).join("") : '<div class="muted">No hay pedidos visibles.</div>';
+}
+
+function orderControlDeliveryIds(){
+  const scope=$("orderScope")?.value||"";
+  if(scope&&state.role!=="LOCAL_ADMIN")return [scope];
+  return (state.deliveries||[]).filter(d=>d.active!==false).map(d=>d.id);
+}
+
+function orderControlFilteredOrders(){
+  const filter=$("orderControlFilter")?.value||"ACTIVE";
+  const search=($("orderControlSearch")?.value||"").trim().toLowerCase();
+  return (state.orders||[]).filter(order=>{
+    if(filter==="ACTIVE"&&!orderControlActiveStatuses.has(order.status))return false;
+    if(filter!=="ALL"&&filter!=="ACTIVE"&&order.status!==filter)return false;
+    if(!search)return true;
+    const localNames=(order.order_locals||[]).map(x=>x.locals?.name||"").join(" ");
+    const itemNames=(order.order_items||[]).map(x=>x.product_name||"").join(" ");
+    const haystack=[
+      order.id,orderControlRef(order.id),order.customer_name,order.customer_phone,
+      order.delivery_address,order.address_reference,localNames,itemNames
+    ].join(" ").toLowerCase();
+    return haystack.includes(search);
+  });
+}
+
+function renderOrderControlKpis(){
+  const box=$("orderControlKpis");if(!box)return;
+  const orders=state.orders||[];
+  const active=orders.filter(o=>orderControlActiveStatuses.has(o.status));
+  const count=status=>orders.filter(o=>o.status===status).length;
+  const unassigned=orders.filter(o=>o.status==="READY"&&!o.assignment).length;
+  const activeValue=active.reduce((sum,o)=>sum+Number(o.total||0),0);
+  box.innerHTML=[
+    {label:"Activos",value:active.length,detail:orderControlMoney(activeValue)+" en operación",cls:""},
+    {label:"Pendientes",value:count("PENDING"),detail:"Esperando aceptación",cls:"order-control-kpi-attention"},
+    {label:"Preparando",value:count("PREPARING"),detail:"Locales trabajando",cls:""},
+    {label:"Listos",value:count("READY"),detail:"Listos para despacho",cls:"order-control-kpi-ready"},
+    {label:"En camino",value:count("EN_ROUTE"),detail:"Con repartidor",cls:"order-control-kpi-route"},
+    {label:"Sin repartidor",value:unassigned,detail:"Pedidos READY por asignar",cls:unassigned?"order-control-kpi-attention":"order-control-kpi-value"}
+  ].map(k=>`<div class="order-control-kpi ${k.cls}"><span>${esc(k.label)}</span><strong>${esc(k.value)}</strong><small>${esc(k.detail)}</small></div>`).join("");
+}
+
+function renderOrderControlQueue(){
+  const box=$("ordersList");if(!box)return;
+  const rows=orderControlFilteredOrders();
+  const meta=$("orderControlQueueMeta");
+  if(meta)meta.textContent=rows.length+" pedido"+(rows.length===1?"":"s")+" en la vista";
+  box.innerHTML=rows.length?rows.map(order=>{
+    const selected=order.id===orderControlState.selectedId;
+    const locals=(order.order_locals||[]).map(x=>x.locals?.name||"LOCAL").join(", ");
+    const assignment=order.assignment;
+    const flags=[
+      order.status==="READY"&&!assignment?'<span class="badge">Sin repartidor</span>':"",
+      assignment?'<span class="badge">'+esc(assignment.driver_name||"Repartidor")+'</span>':""
+    ].join("");
+    return `<button class="order-control-order-row ${selected?"selected":""}" type="button" data-order-control-id="${esc(order.id)}">
+      <div class="order-control-order-head">
+        <div>
+          <div class="order-control-order-ref">#${esc(orderControlRef(order.id))}</div>
+          <div class="muted">${esc(orderControlAge(order.created_at))}</div>
+        </div>
+        <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
+      </div>
+      <div class="order-control-order-meta">
+        <span><strong>${esc(order.customer_name||"Cliente")}</strong> · ${esc(order.customer_phone||"")}</span>
+        <span>${esc(locals||"Sin locales")}</span>
+        <span>${esc(order.delivery_address||"Sin dirección")}</span>
+        <span><strong>${esc(orderControlMoney(order.total))}</strong> · estado ${esc(orderControlAge(orderControlCurrentSince(order)))}</span>
+      </div>
+      <div class="order-control-order-flags">${flags}</div>
+    </button>`;
+  }).join(""):'<div class="muted">No hay pedidos que coincidan con este filtro.</div>';
+
+  box.querySelectorAll("[data-order-control-id]").forEach(btn=>btn.onclick=()=>{
+    selectOrderControl(btn.dataset.orderControlId);
+  });
+}
+
+function orderControlDriverList(order){
+  const snapshot=orderControlState.drivers.get(order?.delivery_id)||{};
+  return Array.isArray(snapshot?.drivers)?snapshot.drivers:[];
+}
+
+function orderControlGpsAge(location){
+  if(!location?.captured_at)return null;
+  const ms=Date.now()-new Date(location.captured_at).getTime();
+  return Number.isFinite(ms)?Math.max(0,ms):null;
+}
+
+function renderOrderControlDetail(){
+  const box=$("orderControlDetail");if(!box)return;
+  const order=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
+  if(!order){
+    box.innerHTML='<div class="muted">Selecciona un pedido para abrir la consola operativa.</div>';
+    return;
+  }
+
+  const canOperate=["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role);
+  const globalButtons=canOperate?(globalTransitions[order.status]||[]).map(next=>
+    `<button class="${next==="CANCELLED"?"btn-danger":"btn-primary"}" type="button" onclick="changeGlobalOrder('${order.id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
+  ).join(""):"";
+
+  const customerWhatsapp=order.customer_phone
+    ? `<button class="btn-muted" type="button" onclick="orderControlWhatsappCustomer('${order.id}')">WhatsApp cliente</button>`
+    :"";
+  const mapButton=Number.isFinite(Number(order.latitude))&&Number.isFinite(Number(order.longitude))
+    ? `<button class="btn-muted" type="button" onclick="orderControlFocusMap('${order.id}')">Ver destino en mapa</button>`
+    :"";
+
+  const localBlocks=(order.order_locals||[]).map(ol=>{
+    const local=ol.locals||{};
+    const items=(order.order_items||[]).filter(item=>item.local_id===ol.local_id);
+    const buttons=canOperate?(localTransitions[ol.status]||[]).map(next=>
+      `<button class="${next==="CANCELLED"?"btn-danger":"btn-muted"}" type="button" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
+    ).join(""):"";
+    const wa=canOperate&&local.whatsapp
+      ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">WhatsApp LOCAL</button>`
+      :"";
+    return `<div class="order-control-local">
+      <div class="row between" style="gap:8px">
+        <div>
+          <strong>${esc(local.name||ol.local_id)}</strong>
+          <div class="muted">${esc(local.address||"")}</div>
+        </div>
+        <span class="badge status-${esc(ol.status)}">${esc(orderStatusLabel(ol.status))}</span>
+      </div>
+      <ul class="order-control-items">
+        ${items.length?items.map(item=>`<li><span>${esc(item.quantity)} × ${esc(item.product_name||"Producto")}${item.variant_name?" · "+esc(item.variant_name):""}${item.promotion_title?" · PROMO "+esc(item.promotion_title):""}</span><strong>${esc(orderControlMoney(item.subtotal))}</strong></li>`).join(""):'<li><span class="muted">Sin productos visibles</span></li>'}
+      </ul>
+      <div class="muted" style="margin-top:8px">Subtotal ${esc(orderControlMoney(ol.subtotal))} · Delivery ${esc(orderControlMoney(ol.delivery_fee))}${ol.delivery_distance_km!==null&&ol.delivery_distance_km!==undefined?" · "+esc(Number(ol.delivery_distance_km).toFixed(2))+" km":""}</div>
+      ${buttons||wa?`<div class="order-control-actions">${buttons}${wa}</div>`:""}
+    </div>`;
+  }).join("");
+
+  const drivers=orderControlDriverList(order);
+  const assignment=order.assignment;
+  let driverPanel="";
+  if(assignment){
+    const driver=drivers.find(d=>d.user_id===assignment.driver_user_id)||{
+      user_id:assignment.driver_user_id,
+      full_name:assignment.driver_name,
+      phone:assignment.driver_phone
+    };
+    const gps=assignment.location;
+    const age=orderControlGpsAge(gps);
+    const stale=age!==null&&age>5*60*1000;
+    driverPanel=`<div class="order-control-driver">
+      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")}</div></div>
+      <div class="muted">Asignado: ${esc(orderControlTime(assignment.assigned_at))}</div>
+      <div class="${stale?"order-control-stale":"muted"}">GPS: ${gps?esc(orderControlAge(gps.captured_at)):"sin ubicación recibida"}${gps?.accuracy_m?" · precisión "+esc(Math.round(Number(gps.accuracy_m)))+" m":""}</div>
+      <div class="order-control-actions">
+        ${driver.phone||assignment.driver_phone?`<button class="btn-muted" type="button" onclick="orderControlNotifyDriver('${order.id}')">WhatsApp repartidor</button>`:""}
+        ${order.status!=="EN_ROUTE"?`<button class="btn-muted" type="button" onclick="orderControlUnassignDriver('${order.id}')">Quitar asignación</button>`:""}
+      </div>
+    </div>`;
+  }else if(order.status==="READY"){
+    const options=drivers.length?drivers.map(d=>
+      `<option value="${esc(d.user_id)}">${esc(d.full_name||"Repartidor")} · ${esc(d.active_orders||0)} activo(s)</option>`
+    ).join(""):'<option value="">No hay repartidores activos</option>';
+    driverPanel=`<div class="order-control-driver">
+      <div class="order-control-alert"><strong>Despacho pendiente.</strong> El pedido está listo pero todavía no tiene repartidor.</div>
+      <select id="orderControlDriverSelect">${options}</select>
+      <div class="order-control-actions">
+        <button class="btn-primary" type="button" onclick="orderControlAssignDriver('${order.id}')" ${drivers.length?"":"disabled"}>Asignar repartidor</button>
+        <button class="btn-muted" type="button" onclick="showSection('drivers')">Abrir Repartidores</button>
+      </div>
+    </div>`;
+  }else{
+    driverPanel='<div class="muted">La asignación de repartidor estará disponible cuando el pedido llegue a <strong>Listo</strong>.</div>';
+  }
+
+  const alerts=[];
+  const localStatuses=(order.order_locals||[]).map(x=>x.status);
+  if(order.status==="READY"&&!assignment)alerts.push("Pedido listo sin repartidor asignado.");
+  if(order.status==="EN_ROUTE"&&!assignment)alerts.push("Pedido en camino sin asignación activa registrada.");
+  if(assignment&&!assignment.location)alerts.push("Repartidor asignado sin ubicación GPS disponible.");
+  const gpsAge=orderControlGpsAge(assignment?.location);
+  if(gpsAge!==null&&gpsAge>5*60*1000)alerts.push("La última ubicación del repartidor tiene más de 5 minutos.");
+  if(["CONFIRMED","PREPARING"].includes(order.status)&&localStatuses.some(s=>s==="PENDING"))alerts.push("Hay LOCAL todavía pendiente de confirmar.");
+  const alertHtml=alerts.length?`<div class="order-control-alert"><strong>Atención operativa</strong><br>${alerts.map(esc).join("<br>")}</div>`:
+    '<div class="order-control-ok"><strong>Sin alertas operativas críticas para este pedido.</strong></div>';
+
+  const history=Array.isArray(order.history)?order.history:[];
+  const timeline=history.length?history.map(h=>`<div class="order-control-timeline-row">
+    <div><strong>${esc(orderControlTime(h.created_at))}</strong></div>
+    <div><span class="badge status-${esc(h.new_status)}">${esc(orderStatusLabel(h.new_status))}</span> ${h.local_id?"· LOCAL": "· Pedido general"}<div class="muted">${esc(h.actor_role||"Sistema")}${h.note?" · "+esc(h.note):""}</div></div>
+  </div>`).join(""):'<div class="muted">Sin historial disponible.</div>';
+
+  box.innerHTML=`
+    <div class="row between" style="gap:12px;flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0">Pedido #${esc(orderControlRef(order.id))}</h2>
+        <div class="muted">${esc(orderControlTime(order.created_at))} · ${esc(orderControlAge(order.created_at))}</div>
+      </div>
+      <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
+    </div>
+
+    ${alertHtml}
+
+    <div class="order-control-summary-grid">
+      <div><span>Cliente</span><strong>${esc(order.customer_name||"—")}</strong></div>
+      <div><span>Teléfono</span><strong>${esc(order.customer_phone||"—")}</strong></div>
+      <div><span>Estado actual</span><strong>${esc(orderStatusLabel(order.status))} · ${esc(orderControlAge(orderControlCurrentSince(order)))}</strong></div>
+      <div><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
+    </div>
+
+    <div class="order-control-actions">
+      ${globalButtons}
+      ${customerWhatsapp}
+      ${mapButton}
+    </div>
+
+    <div class="order-control-detail-grid" style="margin-top:16px">
+      <div>
+        <div class="order-control-panel">
+          <h3>Recogidas, productos y locales</h3>
+          <div><strong>Entrega:</strong> ${esc(order.delivery_address||"—")}</div>
+          ${order.address_reference?`<div class="muted">Referencia: ${esc(order.address_reference)}</div>`:""}
+          ${order.notes?`<div class="workspace-note" style="margin-top:8px"><strong>Observaciones:</strong> ${esc(order.notes)}</div>`:""}
+          ${localBlocks||'<div class="muted">Sin locales asociados.</div>'}
+        </div>
+      </div>
+      <div>
+        <div class="order-control-panel">
+          <h3>Repartidor y despacho</h3>
+          ${driverPanel}
+        </div>
+        <div class="order-control-panel" style="margin-top:16px">
+          <h3>Costos</h3>
+          <div class="summary-line"><span>Productos</span><strong>${esc(orderControlMoney(order.subtotal))}</strong></div>
+          <div class="summary-line"><span>Delivery</span><strong>${esc(orderControlMoney(order.delivery_fee))}</strong></div>
+          <div class="summary-line"><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="order-control-panel" style="margin-top:16px">
+      <h3>Historial operativo</h3>
+      <div class="order-control-timeline">${timeline}</div>
+    </div>
+  `;
+}
+
+function ensureOrderControlMap(){
+  const host=$("orderControlMap");
+  if(!host||typeof L==="undefined")return null;
+  if(orderControlState.map)return orderControlState.map;
+  orderControlState.map=L.map(host,{zoomControl:true}).setView([0.95,-79.65],13);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    attribution:"© OpenStreetMap"
+  }).addTo(orderControlState.map);
+  orderControlState.layers=L.layerGroup().addTo(orderControlState.map);
+  return orderControlState.map;
+}
+
+function orderControlValidPoint(lat,lng){
+  const a=Number(lat),b=Number(lng);
+  return Number.isFinite(a)&&Number.isFinite(b)&&a>=-90&&a<=90&&b>=-180&&b<=180;
+}
+
+function renderOrderControlMap(){
+  const map=ensureOrderControlMap();if(!map)return;
+  orderControlState.layers.clearLayers();
+  const bounds=[];
+  const active=(state.orders||[]).filter(o=>orderControlActiveStatuses.has(o.status));
+
+  active.forEach(order=>{
+    if(order.id===orderControlState.selectedId)return;
+    if(!orderControlValidPoint(order.latitude,order.longitude))return;
+    const lat=Number(order.latitude),lng=Number(order.longitude);
+    const marker=L.circleMarker([lat,lng],{
+      radius:6,color:"#64748b",weight:2,fillColor:"#cbd5e1",fillOpacity:.8
+    }).addTo(orderControlState.layers);
+    marker.bindPopup(`<div class="order-control-map-popup"><strong>Pedido #${esc(orderControlRef(order.id))}</strong>${esc(order.customer_name||"Cliente")}<br>${esc(orderStatusLabel(order.status))}</div>`);
+    marker.on("click",()=>selectOrderControl(order.id));
+    bounds.push([lat,lng]);
+  });
+
+  const order=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
+  if(order){
+    const routePoints=[];
+    if(order.assignment?.location&&orderControlValidPoint(order.assignment.location.latitude,order.assignment.location.longitude)){
+      const lat=Number(order.assignment.location.latitude),lng=Number(order.assignment.location.longitude);
+      L.circleMarker([lat,lng],{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.9})
+        .bindPopup(`<div class="order-control-map-popup"><strong>Repartidor</strong>${esc(order.assignment.driver_name||"Repartidor")}<br>GPS ${esc(orderControlAge(order.assignment.location.captured_at))}</div>`)
+        .addTo(orderControlState.layers);
+      routePoints.push([lat,lng]);
+      bounds.push([lat,lng]);
+    }
+
+    (order.order_locals||[]).forEach(ol=>{
+      const l=ol.locals||{};
+      if(!orderControlValidPoint(l.latitude,l.longitude))return;
+      const lat=Number(l.latitude),lng=Number(l.longitude);
+      L.circleMarker([lat,lng],{radius:9,color:"#9a3412",weight:3,fillColor:"#f97316",fillOpacity:.9})
+        .bindPopup(`<div class="order-control-map-popup"><strong>${esc(l.name||"LOCAL")}</strong>${esc(orderStatusLabel(ol.status))}<br>${esc(l.address||"")}</div>`)
+        .addTo(orderControlState.layers);
+      routePoints.push([lat,lng]);
+      bounds.push([lat,lng]);
+    });
+
+    if(orderControlValidPoint(order.latitude,order.longitude)){
+      const lat=Number(order.latitude),lng=Number(order.longitude);
+      L.circleMarker([lat,lng],{radius:11,color:"#1d4ed8",weight:3,fillColor:"#3b82f6",fillOpacity:.95})
+        .bindPopup(`<div class="order-control-map-popup"><strong>Cliente · #${esc(orderControlRef(order.id))}</strong>${esc(order.customer_name||"Cliente")}<br>${esc(order.delivery_address||"")}</div>`)
+        .addTo(orderControlState.layers);
+      routePoints.push([lat,lng]);
+      bounds.push([lat,lng]);
+    }
+
+    if(routePoints.length>=2){
+      L.polyline(routePoints,{color:"#334155",weight:3,opacity:.6,dashArray:"7 7"})
+        .addTo(orderControlState.layers);
+    }
+  }
+
+  setTimeout(()=>{
+    map.invalidateSize();
+    if(bounds.length){
+      try{map.fitBounds(bounds,{padding:[35,35],maxZoom:16});}catch{}
+    }
+  },60);
+}
+
+function selectOrderControl(orderId){
+  orderControlState.selectedId=orderId;
+  renderOrderControlQueue();
+  renderOrderControlDetail();
+  renderOrderControlMap();
+}
+
+function orderControlFocusMap(orderId){
+  if(orderId)selectOrderControl(orderId);
+  $("orderControlMap")?.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+async function orderControlAssignDriver(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    const driverId=$("orderControlDriverSelect")?.value;
+    if(!order||!driverId)throw new Error("Selecciona un repartidor.");
+    await rpc("delivery_assign_order_driver",{
+      p_delivery_id:order.delivery_id,
+      p_order_id:order.id,
+      p_driver_user_id:driverId,
+      p_note:null
+    });
+    message("Repartidor asignado al pedido.");
+    await loadOrders();
+  }catch(e){message(e.message||"No se pudo asignar el repartidor.","error");}
+}
+
+async function orderControlUnassignDriver(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    if(!order)throw new Error("Pedido no disponible.");
+    await rpc("delivery_unassign_order_driver",{
+      p_delivery_id:order.delivery_id,
+      p_order_id:order.id,
+      p_note:null
+    });
+    message("Repartidor retirado del pedido.");
+    await loadOrders();
+  }catch(e){message(e.message||"No se pudo quitar el repartidor.","error");}
+}
+
+function orderControlNotifyDriver(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    const assigned=order?.assignment;
+    if(!order||!assigned)throw new Error("El pedido no tiene repartidor asignado.");
+    const driver=orderControlDriverList(order).find(d=>d.user_id===assigned.driver_user_id)||{
+      full_name:assigned.driver_name,
+      phone:assigned.driver_phone
+    };
+    if(!driver.phone)throw new Error("El repartidor no tiene teléfono registrado.");
+    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
+    htpWhatsappOpenAssisted(driver.phone,buildDriverWhatsappText({
+      order_id:order.id,
+      delivery_address:order.delivery_address
+    },driver));
+    message("WhatsApp abierto con la asignación lista para enviar.");
+  }catch(e){message(e.message||"No se pudo preparar el aviso al repartidor.","error");}
+}
+
+function orderControlWhatsappCustomer(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    if(!order?.customer_phone)throw new Error("El cliente no tiene teléfono registrado.");
+    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
+    const delivery=state.deliveries.find(d=>d.id===order.delivery_id)?.name||"HTPWEB";
+    const text=[
+      "*HTPWEB · Pedido #"+orderControlRef(order.id)+"*",
+      "Hola "+(order.customer_name||"")+",",
+      "tu pedido con "+delivery+" está "+orderStatusLabel(order.status).toLowerCase()+".",
+      "Total: "+orderControlMoney(order.total)
+    ].join("\n");
+    htpWhatsappOpenAssisted(order.customer_phone,text);
+  }catch(e){message(e.message||"No se pudo abrir WhatsApp del cliente.","error");}
+}
+
+function renderOrderControl(){
+  renderOrderControlKpis();
+  renderOrderControlQueue();
+  renderOrderControlDetail();
+  renderOrderControlMap();
+  const updated=$("orderControlUpdated");
+  if(updated)updated.textContent=orderControlState.lastSync
+    ?"Actualizado "+orderControlAge(orderControlState.lastSync)
+    :"Sincronizando…";
+}
+
+function stopOrderControlAutoRefresh(){
+  if(orderControlState.timer){
+    clearInterval(orderControlState.timer);
+    orderControlState.timer=null;
+  }
+}
+
+function startOrderControlAutoRefresh(){
+  stopOrderControlAutoRefresh();
+  if(!$("orderControlAutoRefresh")?.checked)return;
+  if(!$("section-orders")?.classList.contains("active"))return;
+  orderControlState.timer=setInterval(()=>{
+    if(!$("orderControlAutoRefresh")?.checked)return;
+    if(!$("section-orders")?.classList.contains("active"))return;
+    loadOrders({silent:true});
+  },15000);
+}
+
+async function loadOrderControlCenter({silent=false}={}){
+  if(orderControlState.loading)return;
+  orderControlState.loading=true;
+  if(!silent&&$("ordersList"))$("ordersList").innerHTML='<div class="muted">Sincronizando centro de control…</div>';
+  try{
+    const ids=orderControlDeliveryIds();
+    if(!ids.length){
+      state.orders=[];
+      orderControlState.drivers.clear();
+      orderControlState.lastSync=new Date().toISOString();
+      renderOrderControl();
+      return;
+    }
+
+    const bundles=await Promise.all(ids.map(async deliveryId=>{
+      const [snapshot,drivers]=await Promise.all([
+        rpc("delivery_order_control_snapshot",{p_delivery_id:deliveryId,p_limit:100}),
+        rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]}))
+      ]);
+      return {deliveryId,snapshot,drivers};
+    }));
+
+    const all=[];
+    orderControlState.snapshots.clear();
+    orderControlState.drivers.clear();
+    bundles.forEach(bundle=>{
+      orderControlState.snapshots.set(bundle.deliveryId,bundle.snapshot||{});
+      orderControlState.drivers.set(bundle.deliveryId,bundle.drivers||{drivers:[]});
+      (bundle.snapshot?.orders||[]).forEach(order=>all.push(orderControlNormalize(order)));
+    });
+    all.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    state.orders=all;
+    orderControlState.lastSync=new Date().toISOString();
+
+    const selectedStillExists=all.some(o=>o.id===orderControlState.selectedId);
+    if(!selectedStillExists){
+      orderControlState.selectedId=all.find(o=>orderControlActiveStatuses.has(o.status))?.id||all[0]?.id||null;
+    }
+
+    renderOrderControl();
+    startOrderControlAutoRefresh();
+  }catch(e){
+    if(!silent)message(e.message||"No se pudo cargar el centro de control.","error");
+    if($("ordersList"))$("ordersList").innerHTML=`<div class="message error">${esc(e.message||"No se pudo cargar el centro de control.")}</div>`;
+  }finally{
+    orderControlState.loading=false;
+  }
+}
+
+async function loadOrders(options={}) {
+  if (!roleSections[state.role]?.includes("orders")) return;
+  if(state.role==="LOCAL_ADMIN"){
+    orderControlToggleLegacy(true);
+    return loadOrdersLegacy();
+  }
+  orderControlToggleLegacy(false);
+  return loadOrderControlCenter(options);
 }
 
 function renderOrder(order) {
