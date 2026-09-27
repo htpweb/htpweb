@@ -47,6 +47,16 @@ test('mapa del centro usa rutas viales ORS y no une puntos con línea recta',()=
   assert.doesNotMatch(admin,/dashArray:"7 7"/);
 });
 
+test('mapa recibe GPS por Realtime, anima el marcador y conserva estela del pedido actual',()=>{
+  assert.match(admin,/channel\(topic,\{config:\{private:true\}\}\)/);
+  assert.match(admin,/event:"location"/);
+  assert.match(admin,/orderControlAnimateMarker/);
+  assert.match(admin,/driverTrails/);
+  assert.match(admin,/Recorrido reciente del repartidor/);
+  assert.match(admin,/delivery_driver_gps_snapshot/);
+  assert.match(admin,/captured>=assignedAt/);
+});
+
 test('detalle integra estados, WhatsApp y asignación de repartidor',()=>{
   assert.match(admin,/changeGlobalOrder/);
   assert.match(admin,/changeLocalOrder/);
