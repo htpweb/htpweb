@@ -324,7 +324,7 @@
     if (
       typeof localId === "undefined" ||
       !localId ||
-      !window.supabaseClient ||
+      typeof supabaseClient === "undefined" ||
       typeof localActual === "undefined" ||
       !localActual?.id ||
       localActual.id !== localId ||
