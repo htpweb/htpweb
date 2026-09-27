@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>HTPWEB · Repartidor</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#111827}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .brand{font-size:26px;font-weight:900;margin:6px 0}
+    .muted{color:#64748b}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 3px 16px #0000000d}
+    .status{padding:12px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe}
+    .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+    .warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+    button{width:100%;border:0;border-radius:12px;padding:14px 16px;font-size:16px;font-weight:800;cursor:pointer;margin-top:10px}
+    .primary{background:#111827;color:#fff}
+    .secondary{background:#e5e7eb;color:#111827}
+    .danger{background:#dc2626;color:#fff}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    #map{height:300px;border-radius:14px;overflow:hidden;margin-top:12px}
+    .orders{display:grid;gap:8px;margin-top:10px}
+    .order{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e0e7ff;font-size:12px;font-weight:800}
+    .gpsline{font-variant-numeric:tabular-nums}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand">HTPWEB · Repartidor</div>
+    <div class="muted">Acceso rápido por WhatsApp</div>
+
+    <section class="card">
+      <div id="status" class="status">Validando acceso…</div>
+      <div id="driverInfo" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin-top:0">Ubicación en vivo</h3>
+      <p class="muted">Comparte ubicación solo durante tus entregas. Mantén esta pantalla abierta mientras estás en ruta.</p>
+      <button id="startBtn" class="primary" disabled>Compartir ubicación</button>
+      <button id="stopBtn" class="secondary" disabled>Detener ubicación</button>
+      <div id="gpsStatus" class="muted gpsline" style="margin-top:12px">GPS detenido.</div>
+      <div id="map"></div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin-top:0">Entregas asignadas</h3>
+      <div id="orders" class="orders"><div class="muted">Consultando…</div></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/supabase.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const statusEl=document.getElementById("status");
+    const driverInfo=document.getElementById("driverInfo");
+    const ordersEl=document.getElementById("orders");
+    const startBtn=document.getElementById("startBtn");
+    const stopBtn=document.getElementById("stopBtn");
+    const gpsStatus=document.getElementById("gpsStatus");
+
+    let trackingToken=sessionStorage.getItem("htpweb.quickDriverToken")||"";
+    let context=null;
+    let watchId=null;
+    let lastSentAt=0;
+    let map=null;
+    let myMarker=null;
+    let destinationLayer=null;
+
+    function takeTokenFromHash(){
+      const raw=location.hash.replace(/^#/,"");
+      const params=new URLSearchParams(raw);
+      const token=params.get("token");
+      if(token){
+        trackingToken=token;
+        sessionStorage.setItem("htpweb.quickDriverToken",token);
+        history.replaceState(null,"",location.pathname+location.search);
+      }
+    }
+
+    function setStatus(text,type=""){
+      statusEl.textContent=text;
+      statusEl.className="status"+(type?" "+type:"");
+    }
+
+    function orderLabel(status){
+      return ({READY:"Listo para recoger",EN_ROUTE:"En camino"})[status]||status||"—";
+    }
+
+    function ensureMap(){
+      if(map)return map;
+      map=L.map("map",{zoomControl:true}).setView([0.95,-79.65],13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        attribution:"© OpenStreetMap"
+      }).addTo(map);
+      destinationLayer=L.layerGroup().addTo(map);
+      return map;
+    }
+
+    function renderContext(){
+      if(!context)return;
+      driverInfo.innerHTML="<strong>"+escapeHtml(context.driver_name||"Repartidor")+"</strong>"+
+        "<div class='muted'>"+escapeHtml(context.delivery_name||"HTPWEB")+
+        (context.phone?" · "+escapeHtml(context.phone):"")+"</div>";
+
+      const orders=Array.isArray(context.orders)?context.orders:[];
+      ordersEl.innerHTML=orders.length?orders.map(o=>
+        "<div class='order'><div><strong>Pedido #"+escapeHtml(String(o.order_id||"").replace(/-/g,"").slice(0,8).toUpperCase())+"</strong> "+
+        "<span class='pill'>"+escapeHtml(orderLabel(o.status))+"</span></div>"+
+        "<div style='margin-top:6px'>"+escapeHtml(o.delivery_address||"Sin dirección")+"</div>"+
+        (o.address_reference?"<div class='muted'>Ref.: "+escapeHtml(o.address_reference)+"</div>":"")+
+        "</div>"
+      ).join(""):"<div class='muted'>No tienes entregas READY o EN_ROUTE asignadas.</div>";
+
+      startBtn.disabled=!context.can_share;
+      if(!context.gps_live){
+        setStatus("Este DELIVERY no tiene GPS en vivo habilitado en su plan.","warn");
+      }else if(context.can_share){
+        setStatus("Acceso válido. Puedes compartir tu ubicación.","ok");
+      }else{
+        setStatus("Acceso válido. Esperando una entrega asignada para activar GPS.","warn");
+      }
+
+      const m=ensureMap();
+      destinationLayer.clearLayers();
+      const bounds=[];
+      orders.forEach(o=>{
+        const lat=Number(o.latitude),lng=Number(o.longitude);
+        if(Number.isFinite(lat)&&Number.isFinite(lng)){
+          L.circleMarker([lat,lng],{radius:9,color:"#1d4ed8",weight:3,fillColor:"#3b82f6",fillOpacity:.9})
+            .bindPopup("<strong>Entrega</strong><br>"+escapeHtml(o.delivery_address||"Destino"))
+            .addTo(destinationLayer);
+          bounds.push([lat,lng]);
+        }
+      });
+      if(bounds.length){
+        try{m.fitBounds(bounds,{padding:[35,35],maxZoom:16});}catch{}
+      }
+    }
+
+    function escapeHtml(value){
+      return String(value??"").replace(/[&<>"']/g,ch=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      })[ch]);
+    }
+
+    async function invokeTrack(body){
+      const {data,error}=await supabaseClient.functions.invoke("quick-driver-track",{
+        body:{token:trackingToken,...body}
+      });
+      if(error)throw new Error(data?.error||data?.message||error.message||"No se pudo comunicar con HTPWEB.");
+      if(!data?.ok)throw new Error(data?.error||"No se pudo comunicar con HTPWEB.");
+      return data;
+    }
+
+    async function refreshContext(){
+      if(!trackingToken){
+        setStatus("El enlace no contiene un acceso válido.","error");
+        startBtn.disabled=true;
+        return;
+      }
+      try{
+        const data=await invokeTrack({action:"context"});
+        context=data.context;
+        renderContext();
+      }catch(e){
+        context=null;
+        startBtn.disabled=true;
+        setStatus(e.message||"Acceso inválido o vencido.","error");
+      }
+    }
+
+    async function sendPosition(position){
+      const now=Date.now();
+      if(now-lastSentAt<7000)return;
+      lastSentAt=now;
+
+      const c=position.coords;
+      const lat=Number(c.latitude),lng=Number(c.longitude);
+      const m=ensureMap();
+      if(!myMarker){
+        myMarker=L.circleMarker([lat,lng],{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.95})
+          .bindPopup("<strong>Tu ubicación</strong>")
+          .addTo(m);
+      }else{
+        myMarker.setLatLng([lat,lng]);
+      }
+
+      gpsStatus.textContent="Enviando ubicación…";
+      try{
+        const data=await invokeTrack({
+          action:"location",
+          latitude:lat,
+          longitude:lng,
+          accuracy_m:Number.isFinite(Number(c.accuracy))?Number(c.accuracy):null,
+          heading_deg:Number.isFinite(Number(c.heading))?Number(c.heading):null,
+          speed_mps:Number.isFinite(Number(c.speed))?Number(c.speed):null,
+          captured_at:new Date(position.timestamp||Date.now()).toISOString()
+        });
+        const result=data.result||{};
+        gpsStatus.textContent="GPS activo · "+new Date().toLocaleTimeString()+
+          (Number.isFinite(Number(c.accuracy))?" · precisión "+Math.round(Number(c.accuracy))+" m":"")+
+          (result.status==="THROTTLED"?" · sincronizando":"");
+      }catch(e){
+        gpsStatus.textContent=e.message||"No se pudo enviar la ubicación.";
+      }
+    }
+
+    function startTracking(){
+      if(!context?.can_share){
+        setStatus("Todavía no tienes una entrega activa para compartir GPS.","warn");
+        return;
+      }
+      if(!navigator.geolocation){
+        setStatus("Este dispositivo no permite geolocalización.","error");
+        return;
+      }
+      if(watchId!==null)return;
+
+      watchId=navigator.geolocation.watchPosition(
+        pos=>void sendPosition(pos),
+        err=>{
+          const messages={1:"Permiso de ubicación denegado.",2:"No se pudo obtener la ubicación.",3:"La ubicación tardó demasiado."};
+          gpsStatus.textContent=messages[err.code]||"Error de GPS.";
+        },
+        {enableHighAccuracy:true,maximumAge:3000,timeout:15000}
+      );
+      startBtn.disabled=true;
+      stopBtn.disabled=false;
+      gpsStatus.textContent="GPS activo. Esperando posición…";
+    }
+
+    function stopTracking(){
+      if(watchId!==null){
+        navigator.geolocation.clearWatch(watchId);
+        watchId=null;
+      }
+      stopBtn.disabled=true;
+      startBtn.disabled=!context?.can_share;
+      gpsStatus.textContent="GPS detenido.";
+    }
+
+    takeTokenFromHash();
+    ensureMap();
+    startBtn.onclick=startTracking;
+    stopBtn.onclick=stopTracking;
+    window.addEventListener("beforeunload",stopTracking);
+    void refreshContext();
+    setInterval(()=>void refreshContext(),15000);
+  </script>
+</body>
+</html>
