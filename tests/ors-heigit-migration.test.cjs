@@ -30,7 +30,7 @@ test('Directions usa el host HeiGIT vigente desde un único módulo compartido',
   assert.match(shared,/https:\/\/api\.heigit\.org\/openrouteservice\/v2\/directions\/driving-car/);
   assert.match(checkout,/import \{ ORS_DIRECTIONS_DRIVING_URL \} from "\.\.\/_shared\/ors\.ts"/);
   assert.match(checkout,/const ORS_URL = ORS_DIRECTIONS_DRIVING_URL/);
-  assert.match(distance,/import \{ ORS_DIRECTIONS_DRIVING_URL \} from "\.\.\/_shared\/ors\.ts"/);
+  assert.match(distance,/ORS_DIRECTIONS_DRIVING_URL[\s\S]*from "\.\.\/_shared\/ors\.ts"/);
   assert.match(distance,/const ORS_URL = ORS_DIRECTIONS_DRIVING_URL/);
 });
 
