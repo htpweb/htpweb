@@ -15,6 +15,10 @@
     inline: "",
     viewer: ""
   };
+  const initializedCategoryPages = {
+    inline: new Set(),
+    viewer: new Set()
+  };
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, ch => ({
@@ -325,13 +329,11 @@
     const groups = groupedPageProducts(page);
     if (!groups.length) return;
 
-    const prefix = `${page?.id || pageIndex}:`;
-    const hasStateOnPage = [...expandedCategories[scope]]
-      .some(key => key.startsWith(prefix));
+    const pageKey = String(page?.id || pageIndex);
+    if (initializedCategoryPages[scope].has(pageKey)) return;
 
-    if (!hasStateOnPage) {
-      expandedCategories[scope].add(categoryStateKey(page, groups[0].id));
-    }
+    initializedCategoryPages[scope].add(pageKey);
+    expandedCategories[scope].add(categoryStateKey(page, groups[0].id));
   }
 
   function categoryIsOpen(page, categoryId, scope) {
