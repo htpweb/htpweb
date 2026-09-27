@@ -3,7 +3,18 @@
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[ch]));
 
+  const dayNames = {
+    0: "domingos",
+    1: "lunes",
+    2: "martes",
+    3: "miércoles",
+    4: "jueves",
+    5: "viernes",
+    6: "sábados"
+  };
+
   let publicPromotions = [];
+  let tabManaged = false;
 
   function currentLocalId() {
     const params = new URLSearchParams(location.search);
@@ -56,8 +67,74 @@
     return (promotion?.items || []).find(item => item.id === promotionItemId) || null;
   }
 
+  function promotionIsAvailableNow(promotion) {
+    if (!promotion) return false;
+    if (promotion.available_now === false) return false;
+    return true;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "";
+    try {
+      return new Date(value).toLocaleString("es-EC", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  function promotionAvailabilityText(promotion) {
+    if (!promotion) return "No disponible";
+
+    if (promotionIsAvailableNow(promotion)) {
+      if (localIsClosed()) {
+        const info = typeof availabilityMessage === "function"
+          ? availabilityMessage()
+          : null;
+        return info?.text || "Local cerrado";
+      }
+      return "Disponible ahora";
+    }
+
+    if (promotion.starts_at) {
+      const start = new Date(promotion.starts_at);
+      if (Number.isFinite(start.getTime()) && start.getTime() > Date.now()) {
+        return "Disponible desde " + formatDateTime(promotion.starts_at);
+      }
+    }
+
+    const days = Array.isArray(promotion.days_of_week)
+      ? promotion.days_of_week.map(Number).filter(day => dayNames[day])
+      : [];
+
+    if (days.length === 1) {
+      return "Disponible los " + dayNames[days[0]];
+    }
+
+    if (days.length > 1) {
+      const labels = days.map(day => dayNames[day]);
+      const last = labels.pop();
+      return "Disponible " + labels.join(", ") + (labels.length ? " y " : "") + last;
+    }
+
+    return "No disponible en este momento";
+  }
+
+  function promotionDisabled(promotion) {
+    return !promotionIsAvailableNow(promotion) || localIsClosed();
+  }
+
   function ensurePromotionCanBeAdded(promotion, promotionItemId = null) {
     if (!promotion) throw new Error("La promoción ya no está disponible.");
+
+    if (!promotionIsAvailableNow(promotion)) {
+      throw new Error(promotionAvailabilityText(promotion));
+    }
+
     if (localIsClosed()) {
       const info = typeof availabilityMessage === "function" ? availabilityMessage() : null;
       throw new Error(info?.text || "Este LOCAL no está disponible para pedidos en este momento.");
@@ -103,6 +180,7 @@
 
       if (typeof updateCartCount === "function") updateCartCount();
       syncPromotionCounts();
+
       const errorBox = document.getElementById("error");
       errorBox?.classList.add("hidden");
       return promotionQuantity(promotionId, option?.id || null);
@@ -129,6 +207,7 @@
       }
 
       if (current <= 0) return 0;
+
       const next = Math.max(0, current - 1);
       if (next === 0) carritoEliminar(negocioActual.slug, matcher);
       else carritoCambiarCantidad(negocioActual.slug, matcher, next);
@@ -146,10 +225,12 @@
     }
   }
 
-  function quantityControl(promotionId, promotionItemId = null) {
+  function quantityControl(promotion, promotionItemId = null) {
+    const promotionId = promotion.id;
     const itemArg = promotionItemId ? `'${escPromo(promotionItemId)}'` : "null";
     const key = promotionId + ":" + (promotionItemId || "");
-    const disabled = localIsClosed() ? "disabled" : "";
+    const disabled = promotionDisabled(promotion) ? "disabled" : "";
+
     return `
       <div class="promotion-buy-controls">
         <div class="quantity-stepper" aria-label="Cantidad de promociones en carrito">
@@ -167,6 +248,8 @@
   function renderPromotionCard(promotion) {
     const items = Array.isArray(promotion.items) ? promotion.items : [];
     const isOptions = promotion.promotion_type === "OPTIONS";
+    const disabled = promotionDisabled(promotion);
+    const statusText = promotionAvailabilityText(promotion);
     const image = promotion.image_url
       ? '<img src="' + escPromo(promotion.image_url) + '" alt="' + escPromo(promotion.title) + '">'
       : "";
@@ -179,6 +262,7 @@
       const optionPrices = items
         .map(item => Number(item.promo_price))
         .filter(Number.isFinite);
+
       if (optionPrices.length) {
         priceHtml = '<div class="promotion-total">Desde $' +
           Math.min(...optionPrices).toFixed(2) + '</div>';
@@ -192,16 +276,17 @@
             const price = item.promo_price !== null && item.promo_price !== undefined
               ? Number(item.promo_price).toFixed(2)
               : "—";
+
             return '<div class="promotion-option">' +
               '<div class="promotion-option-copy"><strong>' +
                 escPromo(item.quantity || 1) + '× ' + escPromo(label) +
               '</strong><span>$' + escPromo(price) + '</span></div>' +
               '<div class="promotion-option-actions">' +
-                quantityControl(promotion.id, item.id) +
+                quantityControl(promotion, item.id) +
                 '<button class="btn btn-primary" type="button" ' +
-                  (localIsClosed() ? 'disabled ' : '') +
+                  (disabled ? 'disabled ' : '') +
                   'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' + escPromo(promotion.id) + '\',\'' + escPromo(item.id) + '\')">' +
-                  (localIsClosed() ? 'Local cerrado' : 'Agregar') +
+                  (disabled ? 'No disponible' : 'Agregar') +
                 '</button>' +
               '</div>' +
             '</div>';
@@ -223,22 +308,30 @@
 
       actionHtml = items.length
         ? '<div class="promotion-combo-action">' +
-            quantityControl(promotion.id, null) +
+            quantityControl(promotion, null) +
             '<button class="btn btn-primary" type="button" ' +
-              (localIsClosed() ? 'disabled ' : '') +
+              (disabled ? 'disabled ' : '') +
               'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' + escPromo(promotion.id) + '\',null)">' +
-              (localIsClosed() ? 'Local cerrado' : 'Agregar promoción') +
+              (disabled ? 'No disponible' : 'Agregar promoción') +
             '</button>' +
           '</div>'
         : "";
     }
 
-    return '<div class="promotion-card" id="promotion-' + escPromo(promotion.id) + '">' +
+    return '<div class="promotion-card ' + (disabled ? 'promotion-unavailable' : 'promotion-available') +
+      '" id="promotion-' + escPromo(promotion.id) + '">' +
       image +
       '<div class="promotion-card-copy">' +
-        '<span class="promotion-badge">PROMOCIÓN</span>' +
+        '<div class="promotion-card-topline">' +
+          '<span class="promotion-badge">PROMOCIÓN</span>' +
+          '<span class="promotion-status ' + (disabled ? 'is-disabled' : 'is-available') + '">' +
+            escPromo(statusText) +
+          '</span>' +
+        '</div>' +
         '<strong>' + escPromo(promotion.title) + '</strong>' +
-        (isOptions ? '<div class="promotion-mode-label">Opciones alternativas</div>' : '<div class="promotion-mode-label">Combo / paquete</div>') +
+        (isOptions
+          ? '<div class="promotion-mode-label">Opciones alternativas</div>'
+          : '<div class="promotion-mode-label">Combo / paquete</div>') +
         priceHtml +
         itemsHtml +
         (promotion.body ? '<p>' + escPromo(promotion.body) + '</p>' : '') +
@@ -260,8 +353,10 @@
   function focusRequestedPromotion() {
     const promotionId = new URLSearchParams(location.search).get("promotion");
     if (!promotionId) return;
+
     const target = document.getElementById("promotion-" + promotionId);
     if (!target) return;
+
     target.classList.add("promotion-target");
     target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -272,49 +367,100 @@
     if (!card || !list) return;
 
     if (!publicPromotions.length) {
-      card.classList.add("hidden");
+      list.innerHTML = '<div class="empty">Este local no tiene promociones programadas.</div>';
+      if (!tabManaged) card.classList.add("hidden");
       return;
     }
 
     list.innerHTML = publicPromotions.map(renderPromotionCard).join("");
-    card.classList.remove("hidden");
+
+    if (!tabManaged) {
+      card.classList.remove("hidden");
+    }
+
     syncPromotionCounts();
     requestAnimationFrame(focusRequestedPromotion);
   }
 
-  async function loadPublicPromotions() {
+  async function loadPublicPromotions(forceCatalog = false) {
     const localId = currentLocalId();
     const card = document.getElementById("promotionsCard");
     const list = document.getElementById("promotionsListPublic");
     if (!localId || !card || !list || typeof supabaseClient === "undefined") return;
 
+    const useCatalog = Boolean(
+      forceCatalog ||
+      tabManaged ||
+      card.dataset.tabManaged === "true"
+    );
+
     try {
-      const { data, error } = await supabaseClient.rpc("public_active_local_promotions", {
+      const rpcName = useCatalog
+        ? "public_local_promotions_catalog"
+        : "public_active_local_promotions";
+
+      const { data, error } = await supabaseClient.rpc(rpcName, {
         p_local_id: localId
       });
       if (error) throw error;
 
       publicPromotions = Array.isArray(data) ? data : [];
+      tabManaged = useCatalog;
       renderPublicPromotions();
     } catch (error) {
       console.warn("Promociones no disponibles:", error?.message || error);
       publicPromotions = [];
-      card.classList.add("hidden");
+      renderPublicPromotions();
     }
+  }
+
+  function setTabManaged(enabled = true) {
+    tabManaged = Boolean(enabled);
+    const card = document.getElementById("promotionsCard");
+
+    if (card) {
+      card.dataset.tabManaged = tabManaged ? "true" : "false";
+      if (tabManaged) card.classList.add("hidden");
+    }
+
+    if (tabManaged) {
+      loadPublicPromotions(true);
+    } else {
+      loadPublicPromotions(false);
+    }
+  }
+
+  function renderTab() {
+    const card = document.getElementById("promotionsCard");
+    if (!card) return;
+
+    card.classList.remove("hidden");
+    renderPublicPromotions();
   }
 
   window.HTPWEBPromotions = {
     add: addPromotion,
     change: changePromotionQuantity,
-    refresh: renderPublicPromotions
+    refresh: renderPublicPromotions,
+    renderTab,
+    setTabManaged,
+    reloadCatalog: () => loadPublicPromotions(true),
+    availabilityText: promotionAvailabilityText
   };
 
   window.addEventListener("htpweb:cart", syncPromotionCounts);
   window.addEventListener("htpweb:local-ready", renderPublicPromotions);
+  window.addEventListener("htpweb:visual-menu-ready", () => setTabManaged(true));
+
+  function boot() {
+    const card = document.getElementById("promotionsCard");
+    tabManaged = card?.dataset?.tabManaged === "true";
+    loadPublicPromotions(tabManaged);
+  }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadPublicPromotions, { once: true });
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
   } else {
-    loadPublicPromotions();
+    boot();
   }
 })();
