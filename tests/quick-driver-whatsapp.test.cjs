@@ -10,6 +10,7 @@ const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 const mobile=fs.readFileSync('app/repartidor-rapido.html','utf8');
 const config=fs.readFileSync('supabase/config.toml','utf8');
+const quickAttach=(emergencyMigration.match(/create or replace function public\.quick_driver_attach[\s\S]*?create or replace function public\.quick_driver_rotate_token/)||[""])[0];
 
 test('alta rápida usa token privado y no expone tabla a anon/authenticated',()=>{
   assert.match(migration,/private\.quick_driver_tracking_tokens/);
@@ -23,10 +24,10 @@ test('registro rápido exige DELIVERY_ADMIN y consume cupo de emergencia, no cup
   assert.match(migration,/delivery_quick_driver_authorize/);
   assert.match(migration,/current_role_code\(\)<>'DELIVERY_ADMIN'/);
   assert.match(migration,/has_permission\('users\.manage'\)/);
-  assert.match(emergencyMigration,/delivery_limit_value\(p_delivery_id,'drivers\.emergency\.max'\)/);
-  assert.match(emergencyMigration,/driver_mode='EMERGENCY'/);
-  assert.match(emergencyMigration,/interval '24 hours'/);
-  assert.doesNotMatch(emergencyMigration,/v_limit:=public\.delivery_limit_value\(p_delivery_id,'drivers\.active\.max'\)/);
+  assert.match(quickAttach,/delivery_limit_value\(p_delivery_id,'drivers\.emergency\.max'\)/);
+  assert.match(quickAttach,/driver_mode='EMERGENCY'/);
+  assert.match(quickAttach,/interval '24 hours'/);
+  assert.doesNotMatch(quickAttach,/drivers\.active\.max/);
 });
 
 test('Edge de alta requiere JWT y crea usuario técnico solo desde WhatsApp',()=>{
