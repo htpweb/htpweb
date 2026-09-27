@@ -59,8 +59,8 @@ test('panel DELIVERY permite crear solo con WhatsApp y regenerar acceso GPS',()=
   assert.match(html,/id="quickDriverPhone"/);
   assert.match(html,/Crear repartidor y abrir WhatsApp/);
   assert.match(admin,/functions\.invoke\("quick-driver"/);
-  assert.match(admin,/action:"create"/);
-  assert.match(admin,/action:"link"/);
+  assert.match(admin,/quickDriverInvoke\("create"/);
+  assert.match(admin,/quickDriverInvoke\("link"/);
   assert.match(admin,/Enviar acceso GPS/);
   assert.match(admin,/repartidor-rapido\.html/);
 });
