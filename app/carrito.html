@@ -349,13 +349,20 @@ function renderCart() {
       if (item.promotion_id) {
         const { promotion, option } = promotionContext(item);
         const isOptions = promotion?.promotion_type === "OPTIONS";
-        const detail = isOptions
-          ? (option
-              ? `${option.quantity || 1}× ${option.product_name || "Producto"}${option.variant_name ? " · " + option.variant_name : ""}`
-              : "Opción promocional")
-          : (promotion?.items || []).map(row =>
-              `${row.quantity || 1}× ${row.product_name || "Producto"}${row.variant_name ? " · " + row.variant_name : ""}`
-            ).join(" · ");
+        const selectedVariants = Array.isArray(item.snapshot?.promotion_selection)
+          ? item.snapshot.promotion_selection.filter(row => Number(row?.quantity || 0) > 0)
+          : [];
+        const detail = selectedVariants.length
+          ? selectedVariants.map(row =>
+              `${Number(row.quantity || 0)}× ${row.variant_name || "Variante"}`
+            ).join(" · ")
+          : isOptions
+            ? (option
+                ? `${option.quantity || 1}× ${option.product_name || "Producto"}${option.variant_name ? " · " + option.variant_name : ""}`
+                : "Opción promocional")
+            : (promotion?.items || []).map(row =>
+                `${row.quantity || 1}× ${row.product_name || "Producto"}${row.variant_name ? " · " + row.variant_name : ""}`
+              ).join(" · ");
 
         return `
           <div class="cart-item promo-cart-item">
