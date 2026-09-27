@@ -9,7 +9,9 @@
 <script src="../config/negocio.js"></script>
 <script src="../config/auth.js"></script>
 <script src="../config/addresses.js"></script>
+<script src="../config/orders.js?v=20260927-1955"></script>
 <script src="../config/cart.js"></script>
+<script src="../config/whatsapp.js?v=20260927-1955"></script>
 <script src="../config/ads.js"></script>
 <link rel="stylesheet" href="../assets/app.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -129,6 +131,8 @@ let variantMap = new Map();
 let localMap = new Map();
 let promotionMap = new Map();
 let savedAddresses = [];
+let customerWhatsappSetting = { enabled: false };
+let lastCustomerWhatsappUrl = "";
 
 let map = null;
 let marker = null;
@@ -146,6 +150,15 @@ async function init() {
 
     const user = await obtenerUsuarioActual();
     if (user) {
+      try {
+        if (typeof htpWhatsappCustomerOrderSetting === "function") {
+          customerWhatsappSetting = await htpWhatsappCustomerOrderSetting(negocioActual.id);
+        }
+      } catch (whatsappError) {
+        console.warn("No se pudo consultar Pedido por WhatsApp.", whatsappError);
+        customerWhatsappSetting = { enabled: false };
+      }
+
       $("invoiceEmail").value = user.email || "";
       const { data } = await supabaseClient
         .from("customers")
@@ -728,8 +741,15 @@ $("requiresInvoice").onchange = () => {
 
 $("confirmBtn").onclick = confirmOrder;
 
+function openCustomerOrderWhatsapp() {
+  if (!lastCustomerWhatsappUrl) return;
+  const popup = window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer");
+  if (!popup) window.location.href = lastCustomerWhatsappUrl;
+}
+
 async function confirmOrder() {
   const button = $("confirmBtn");
+  let whatsappPopup = null;
 
   try {
     if (!items.length) throw new Error("El carrito está vacío.");
@@ -758,6 +778,17 @@ async function confirmOrder() {
 
     if (requiresInvoice && (!documentType || !documentNumber || !invoiceEmail)) {
       throw new Error("Completa los datos de facturación.");
+    }
+
+    if (customerWhatsappSetting?.enabled && customerWhatsappSetting?.whatsapp) {
+      whatsappPopup = window.open("", "_blank");
+      if (whatsappPopup) {
+        try {
+          whatsappPopup.document.title = "HTPWEB · Preparando WhatsApp";
+          whatsappPopup.document.body.innerHTML =
+            '<p style="font-family:Arial,sans-serif;padding:24px">HTPWEB está registrando tu pedido y preparando WhatsApp…</p>';
+        } catch (_) {}
+      }
     }
 
     button.disabled = true;
@@ -832,26 +863,89 @@ async function confirmOrder() {
       throw new Error(data?.error || "El servidor no devolvió un pedido válido.");
     }
 
+    let whatsappOpened = false;
+    let whatsappPrepared = false;
+    lastCustomerWhatsappUrl = "";
+
+    try {
+      if (typeof htpWhatsappCustomerOrderSetting === "function") {
+        customerWhatsappSetting = await htpWhatsappCustomerOrderSetting(negocioActual.id);
+      }
+
+      if (customerWhatsappSetting?.enabled && customerWhatsappSetting?.whatsapp) {
+        const canonicalOrder = await obtenerPedidoCliente(negocioActual.id, data.order.id);
+        if (!canonicalOrder) throw new Error("No se pudo leer el pedido registrado.");
+
+        const whatsappText = htpWhatsappBuildCustomerOrderText(
+          canonicalOrder,
+          customerWhatsappSetting.delivery_name || negocioActual.name
+        );
+
+        lastCustomerWhatsappUrl = htpWhatsappAssistedUrl(
+          customerWhatsappSetting.whatsapp,
+          whatsappText
+        );
+        whatsappPrepared = true;
+
+        if (whatsappPopup && !whatsappPopup.closed) {
+          whatsappPopup.location.href = lastCustomerWhatsappUrl;
+          whatsappOpened = true;
+        } else {
+          const opened = window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer");
+          whatsappOpened = Boolean(opened);
+        }
+      } else if (whatsappPopup && !whatsappPopup.closed) {
+        whatsappPopup.close();
+        whatsappPopup = null;
+      }
+    } catch (whatsappError) {
+      console.warn("El pedido se creó, pero no se pudo preparar WhatsApp.", whatsappError);
+      if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
+      whatsappPopup = null;
+      lastCustomerWhatsappUrl = "";
+    }
+
     carritoVaciar(negocioActual.slug);
     items = [];
     $("checkoutCard").classList.add("hidden");
     $("cartList").innerHTML = "";
     $("summary").innerHTML = "";
 
+    const whatsappNotice = whatsappPrepared
+      ? `
+        <div class="success" style="margin-top:12px">
+          <strong>📲 Pedido por WhatsApp</strong>
+          <p>${whatsappOpened
+            ? "WhatsApp se abrió con tu pedido listo para enviar al DELIVERY."
+            : "Tu pedido está listo para enviarse al DELIVERY por WhatsApp."}</p>
+        </div>
+        <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="openCustomerOrderWhatsapp()">
+          Enviar pedido por WhatsApp
+        </button>
+      `
+      : "";
+
     $("successCard").innerHTML = `
       <div class="success">
         <h2>✅ Pedido creado</h2>
         <p><strong>ID:</strong> ${esc(data.order.id)}</p>
-        <p><strong>Subtotal:</strong> $${Number(data.order.subtotal || 0).toFixed(2)}</p>
-        <p><strong>Delivery:</strong> $${Number(data.order.delivery_fee || 0).toFixed(2)}</p>
-        <p class="total"><strong>Total:</strong> $${Number(data.order.total || 0).toFixed(2)}</p>
+        <p><strong>Subtotal:</strong> ${Number(data.order.subtotal || 0).toFixed(2)}</p>
+        <p><strong>Delivery:</strong> ${Number(data.order.delivery_fee || 0).toFixed(2)}</p>
+        <p class="total"><strong>Total:</strong> ${Number(data.order.total || 0).toFixed(2)}</p>
       </div>
+      ${whatsappNotice}
       <a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>
       <button class="btn btn-dark" onclick="location.href=urlDelivery('index.html')">Volver a comprar</button>
     `;
     $("successCard").classList.remove("hidden");
-    showMessage("Pedido registrado correctamente.", "success");
+    showMessage(
+      whatsappPrepared
+        ? "Pedido registrado en HTPWEB y preparado para WhatsApp."
+        : "Pedido registrado correctamente.",
+      "success"
+    );
   } catch (e) {
+    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     console.error(e);
     showMessage(e.message || "No se pudo confirmar el pedido.");
   } finally {
