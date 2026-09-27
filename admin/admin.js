@@ -293,6 +293,7 @@ function configureNavigation() {
 
 function showSection(name) {
   if(name!=="orders"&&typeof stopOrderControlAutoRefresh==="function") stopOrderControlAutoRefresh();
+  if(name!=="orders"&&typeof stopOrderControlRealtime==="function") stopOrderControlRealtime();
   if (typeof restoreLocalPanels === "function") restoreLocalPanels();
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
@@ -2267,6 +2268,10 @@ const orderControlState={
   layers:null,
   routeCache:new Map(),
   routeGeneration:0,
+  trackingChannel:null,
+  trackingTopic:null,
+  driverTrails:new Map(),
+  driverMarkerPositions:new Map(),
   timer:null,
   loading:false,
   lastSync:null
@@ -2638,6 +2643,106 @@ function orderControlValidPoint(lat,lng){
   return Number.isFinite(a)&&Number.isFinite(b)&&a>=-90&&a<=90&&b>=-180&&b<=180;
 }
 
+function orderControlAnimateMarker(marker,from,to,duration=1200){
+  if(!marker||!Array.isArray(from)||!Array.isArray(to))return;
+  if(!orderControlValidPoint(from[0],from[1])||!orderControlValidPoint(to[0],to[1]))return;
+  const started=performance.now();
+  const step=now=>{
+    const t=Math.min(1,(now-started)/duration);
+    const eased=1-Math.pow(1-t,3);
+    marker.setLatLng([
+      from[0]+(to[0]-from[0])*eased,
+      from[1]+(to[1]-from[1])*eased
+    ]);
+    if(t<1)requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+async function orderControlLoadDriverTrail(order){
+  const assignment=order?.assignment;
+  if(!assignment?.driver_user_id)return;
+  const driverId=assignment.driver_user_id;
+  if(orderControlState.driverTrails.has(driverId))return;
+
+  try{
+    const snap=await rpc("delivery_driver_gps_snapshot",{
+      p_delivery_id:order.delivery_id,
+      p_driver_user_id:driverId,
+      p_limit:80
+    });
+    const history=Array.isArray(snap?.history)?snap.history:[];
+    const trail=history
+      .filter(p=>orderControlValidPoint(p?.latitude,p?.longitude))
+      .map(p=>[Number(p.latitude),Number(p.longitude)]);
+    if(snap?.current&&orderControlValidPoint(snap.current.latitude,snap.current.longitude)){
+      const current=[Number(snap.current.latitude),Number(snap.current.longitude)];
+      if(!trail.length||trail.at(-1)?.[0]!==current[0]||trail.at(-1)?.[1]!==current[1]){
+        trail.push(current);
+      }
+    }
+    orderControlState.driverTrails.set(driverId,trail.slice(-80));
+    if(order.id===orderControlState.selectedId)renderOrderControlMap();
+  }catch(e){
+    console.warn("No se pudo cargar historial GPS del centro de control.",e);
+    orderControlState.driverTrails.set(driverId,[]);
+  }
+}
+
+function stopOrderControlRealtime(){
+  const channel=orderControlState.trackingChannel;
+  orderControlState.trackingChannel=null;
+  orderControlState.trackingTopic=null;
+  if(channel){
+    try{void supabaseClient.removeChannel(channel);}catch{}
+  }
+}
+
+function startOrderControlRealtime(order){
+  const assignment=order?.assignment;
+  if(!order?.id||!assignment?.driver_user_id||!["READY","EN_ROUTE"].includes(order.status)){
+    stopOrderControlRealtime();
+    return;
+  }
+
+  const topic="order-tracking:"+order.id;
+  if(orderControlState.trackingChannel&&orderControlState.trackingTopic===topic)return;
+
+  stopOrderControlRealtime();
+  orderControlState.trackingTopic=topic;
+  orderControlState.trackingChannel=supabaseClient
+    .channel(topic,{config:{private:true}})
+    .on("broadcast",{event:"location"},({payload})=>{
+      const current=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
+      if(!current?.assignment||current.id!==order.id)return;
+      if(!orderControlValidPoint(payload?.latitude,payload?.longitude))return;
+
+      current.assignment.location={
+        latitude:Number(payload.latitude),
+        longitude:Number(payload.longitude),
+        accuracy_m:payload.accuracy_m??null,
+        heading_deg:payload.heading_deg??null,
+        speed_mps:payload.speed_mps??null,
+        captured_at:payload.captured_at||new Date().toISOString()
+      };
+
+      const driverId=current.assignment.driver_user_id;
+      const trail=orderControlState.driverTrails.get(driverId)||[];
+      const next=[Number(payload.latitude),Number(payload.longitude)];
+      const last=trail.at(-1);
+      if(!last||last[0]!==next[0]||last[1]!==next[1])trail.push(next);
+      orderControlState.driverTrails.set(driverId,trail.slice(-80));
+
+      renderOrderControlDetail();
+      renderOrderControlMap();
+    })
+    .on("broadcast",{event:"tracking_ended"},()=>{
+      void loadOrders({silent:true});
+    })
+    .subscribe();
+}
+
+
 function orderControlRouteKey(localGroup,order){
   const l=localGroup?.locals||{};
   return [
@@ -2747,10 +2852,22 @@ function renderOrderControlMap(){
     const generation=++orderControlState.routeGeneration;
 
     if(order.assignment?.location&&orderControlValidPoint(order.assignment.location.latitude,order.assignment.location.longitude)){
+      const driverId=order.assignment.driver_user_id;
       const lat=Number(order.assignment.location.latitude),lng=Number(order.assignment.location.longitude);
-      L.circleMarker([lat,lng],{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.9})
-        .bindPopup('<div class="order-control-map-popup"><strong>Repartidor</strong>'+esc(order.assignment.driver_name||"Repartidor")+'<br>GPS '+esc(orderControlAge(order.assignment.location.captured_at))+'</div>')
+      const previous=orderControlState.driverMarkerPositions.get(driverId)||[lat,lng];
+      const trail=orderControlState.driverTrails.get(driverId)||[];
+      if(trail.length>=2){
+        L.polyline(trail,{color:"#16a34a",weight:4,opacity:.55})
+          .bindTooltip("Recorrido reciente del repartidor")
+          .addTo(orderControlState.layers);
+      }
+      const marker=L.circleMarker(previous,{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.95})
+        .bindPopup('<div class="order-control-map-popup"><strong>Repartidor en vivo</strong>'+esc(order.assignment.driver_name||"Repartidor")+'<br>GPS '+esc(orderControlAge(order.assignment.location.captured_at))+'</div>')
         .addTo(orderControlState.layers);
+      if(previous[0]!==lat||previous[1]!==lng){
+        orderControlAnimateMarker(marker,previous,[lat,lng],1200);
+      }
+      orderControlState.driverMarkerPositions.set(driverId,[lat,lng]);
       bounds.push([lat,lng]);
     }
 
@@ -2788,9 +2905,12 @@ function renderOrderControlMap(){
 
 function selectOrderControl(orderId){
   orderControlState.selectedId=orderId;
+  const order=(state.orders||[]).find(o=>o.id===orderId);
   renderOrderControlQueue();
   renderOrderControlDetail();
   renderOrderControlMap();
+  startOrderControlRealtime(order);
+  void orderControlLoadDriverTrail(order);
 }
 
 function orderControlFocusMap(orderId){
@@ -2932,6 +3052,9 @@ async function loadOrderControlCenter({silent=false}={}){
     }
 
     renderOrderControl();
+    const selectedOrder=all.find(o=>o.id===orderControlState.selectedId);
+    startOrderControlRealtime(selectedOrder);
+    void orderControlLoadDriverTrail(selectedOrder);
     startOrderControlAutoRefresh();
   }catch(e){
     if(!silent)message(e.message||"No se pudo cargar el centro de control.","error");
