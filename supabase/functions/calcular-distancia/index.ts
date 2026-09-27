@@ -1,5 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { ORS_DIRECTIONS_DRIVING_URL } from "../_shared/ors.ts";
+import {
+  ORS_DIRECTIONS_DRIVING_URL,
+  ORS_DIRECTIONS_DRIVING_GEOJSON_URL,
+} from "../_shared/ors.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+    const includeGeometry = body?.include_geometry === true;
 
     const originLat = Number(body.origin_lat);
     const originLng = Number(body.origin_lng);
@@ -57,20 +61,23 @@ Deno.serve(async (req) => {
       throw new Error("Coordenadas fuera de rango");
     }
 
-    const orsResponse = await fetch(ORS_URL, {
+    const orsResponse = await fetch(
+      includeGeometry ? ORS_DIRECTIONS_DRIVING_GEOJSON_URL : ORS_URL,
+      {
       method: "POST",
       headers: {
         Authorization: orsApiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        coordinates: [
-          [originLng, originLat],
-          [destinationLng, destinationLat],
-        ],
-        instructions: false,
-      }),
-    });
+        body: JSON.stringify({
+          coordinates: [
+            [originLng, originLat],
+            [destinationLng, destinationLat],
+          ],
+          instructions: false,
+        }),
+      },
+    );
 
     const orsData = await orsResponse.json();
 
@@ -84,28 +91,46 @@ Deno.serve(async (req) => {
       );
     }
 
-    const route = orsData?.routes?.[0];
+    const route = includeGeometry
+      ? orsData?.features?.[0]
+      : orsData?.routes?.[0];
+    const summary = includeGeometry
+      ? route?.properties?.summary
+      : route?.summary;
 
-    if (!route?.summary?.distance) {
+    if (!summary?.distance) {
       throw new Error(
         "OpenRouteService no devolvió una ruta válida"
       );
     }
 
-    const distanceMeters = Number(
-      route.summary.distance
-    );
-
+    const distanceMeters = Number(summary.distance);
+    const durationSeconds = Number(summary.duration);
     const distanceKm = Number(
       (distanceMeters / 1000).toFixed(2)
     );
+
+    const geometry = includeGeometry && route?.geometry?.type === "LineString"
+      && Array.isArray(route?.geometry?.coordinates)
+      ? {
+          type: "LineString",
+          coordinates: route.geometry.coordinates,
+        }
+      : null;
 
     return new Response(
       JSON.stringify({
         ok: true,
         distance_km: distanceKm,
         distance_meters: Math.round(distanceMeters),
+        duration_seconds: Number.isFinite(durationSeconds)
+          ? Math.round(durationSeconds)
+          : null,
+        duration_minutes: Number.isFinite(durationSeconds)
+          ? Math.round(durationSeconds / 60)
+          : null,
         profile: "driving-car",
+        geometry,
       }),
       {
         status: 200,
