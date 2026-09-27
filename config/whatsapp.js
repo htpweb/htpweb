@@ -26,7 +26,7 @@ function htpWhatsappOpenAssisted(phone, text) {
 }
 
 async function htpWhatsappInvoke(body) {
-  if (!window.supabaseClient?.functions?.invoke) {
+  if (typeof supabaseClient === "undefined" || !supabaseClient?.functions?.invoke) {
     throw new Error("Supabase Functions no está disponible.");
   }
 
@@ -44,6 +44,92 @@ async function htpWhatsappInvoke(body) {
   }
 
   return data;
+}
+
+function htpWhatsappOrderRef(orderId) {
+  return String(orderId || "").replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+async function htpWhatsappCustomerOrderSetting(deliveryId) {
+  if (!deliveryId) return { enabled: false, reason: "DELIVERY_REQUIRED" };
+  if (typeof supabaseClient === "undefined" || !supabaseClient?.rpc) {
+    throw new Error("Supabase no está disponible.");
+  }
+
+  const { data, error } = await supabaseClient.rpc(
+    "public_delivery_customer_order_whatsapp",
+    { p_delivery_id: deliveryId }
+  );
+
+  if (error) throw error;
+  return data || { enabled: false };
+}
+
+function htpWhatsappBuildCustomerOrderText(order, deliveryName) {
+  if (!order?.id) throw new Error("Pedido inválido para WhatsApp.");
+
+  const groups = Array.isArray(order.order_locals) ? order.order_locals : [];
+  const items = Array.isArray(order.order_items) ? order.order_items : [];
+  const lines = [
+    "*HTPWEB · Pedido #" + htpWhatsappOrderRef(order.id) + "*",
+    "DELIVERY: " + (deliveryName || "HTPWEB"),
+    "",
+    "*Cliente:* " + (order.customer_name || "Cliente"),
+    "*Teléfono:* " + (order.customer_phone || "—"),
+    "*Entrega:* " + (order.delivery_address || "—")
+  ];
+
+  if (order.address_reference) {
+    lines.push("*Referencia:* " + order.address_reference);
+  }
+
+  const lat = Number(order.latitude);
+  const lng = Number(order.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    lines.push("*Ubicación:* https://www.google.com/maps?q=" + lat + "," + lng);
+  }
+
+  lines.push("", "*Pedido:*");
+
+  groups.forEach(group => {
+    const localId = group.local_id;
+    const localName = group.locals?.name || "LOCAL";
+    const groupItems = items.filter(item => item.local_id === localId);
+
+    lines.push("", "*" + localName + "*");
+    if (groupItems.length) {
+      groupItems.forEach(item => {
+        const variant = item.variant_name ? " (" + item.variant_name + ")" : "";
+        const promo = item.promotion_title ? " [PROMO: " + item.promotion_title + "]" : "";
+        lines.push(
+          "• " + Number(item.quantity || 0) + " x " +
+          (item.product_name || "Producto") + variant + promo +
+          " — $" + Number(item.subtotal || 0).toFixed(2)
+        );
+      });
+    } else {
+      lines.push("• Sin productos visibles");
+    }
+
+    lines.push(
+      "Subtotal: $" + Number(group.subtotal || 0).toFixed(2) +
+      " · Delivery: $" + Number(group.delivery_fee || 0).toFixed(2)
+    );
+  });
+
+  lines.push(
+    "",
+    "*Subtotal productos:* $" + Number(order.subtotal || 0).toFixed(2),
+    "*Delivery:* $" + Number(order.delivery_fee || 0).toFixed(2),
+    "*TOTAL:* $" + Number(order.total || 0).toFixed(2)
+  );
+
+  if (order.notes) {
+    lines.push("", "*Observaciones:* " + order.notes);
+  }
+
+  lines.push("", "Pedido registrado correctamente en HTPWEB.");
+  return lines.join("\n");
 }
 
 async function htpWhatsappProviderStatus(deliveryId) {
@@ -72,5 +158,8 @@ async function htpWhatsappSendAutomatic(payload) {
 window.htpWhatsappNormalizePhone = htpWhatsappNormalizePhone;
 window.htpWhatsappAssistedUrl = htpWhatsappAssistedUrl;
 window.htpWhatsappOpenAssisted = htpWhatsappOpenAssisted;
+window.htpWhatsappOrderRef = htpWhatsappOrderRef;
+window.htpWhatsappCustomerOrderSetting = htpWhatsappCustomerOrderSetting;
+window.htpWhatsappBuildCustomerOrderText = htpWhatsappBuildCustomerOrderText;
 window.htpWhatsappProviderStatus = htpWhatsappProviderStatus;
 window.htpWhatsappSendAutomatic = htpWhatsappSendAutomatic;
