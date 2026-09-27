@@ -2265,6 +2265,8 @@ const orderControlState={
   snapshots:new Map(),
   map:null,
   layers:null,
+  routeCache:new Map(),
+  routeGeneration:0,
   timer:null,
   loading:false,
   lastSync:null
@@ -2505,7 +2507,7 @@ function renderOrderControlDetail(){
       <ul class="order-control-items">
         ${items.length?items.map(item=>`<li><span>${esc(item.quantity)} × ${esc(item.product_name||"Producto")}${item.variant_name?" · "+esc(item.variant_name):""}${item.promotion_title?" · PROMO "+esc(item.promotion_title):""}</span><strong>${esc(orderControlMoney(item.subtotal))}</strong></li>`).join(""):'<li><span class="muted">Sin productos visibles</span></li>'}
       </ul>
-      <div class="muted" style="margin-top:8px">Subtotal ${esc(orderControlMoney(ol.subtotal))} · Delivery ${esc(orderControlMoney(ol.delivery_fee))}${ol.delivery_distance_km!==null&&ol.delivery_distance_km!==undefined?" · "+esc(Number(ol.delivery_distance_km).toFixed(2))+" km":""}</div>
+      <div class="muted" style="margin-top:8px">Subtotal ${esc(orderControlMoney(ol.subtotal))} · Delivery ${esc(orderControlMoney(ol.delivery_fee))}${ol.delivery_distance_km!==null&&ol.delivery_distance_km!==undefined?" · Ruta vial ORS "+esc(Number(ol.delivery_distance_km).toFixed(2))+" km":""}</div>
       ${buttons||wa?`<div class="order-control-actions">${buttons}${wa}</div>`:""}
     </div>`;
   }).join("");
@@ -2636,6 +2638,92 @@ function orderControlValidPoint(lat,lng){
   return Number.isFinite(a)&&Number.isFinite(b)&&a>=-90&&a<=90&&b>=-180&&b<=180;
 }
 
+function orderControlRouteKey(localGroup,order){
+  const l=localGroup?.locals||{};
+  return [
+    Number(l.latitude).toFixed(6),
+    Number(l.longitude).toFixed(6),
+    Number(order.latitude).toFixed(6),
+    Number(order.longitude).toFixed(6)
+  ].join(":");
+}
+
+async function orderControlFetchRoadRoute(localGroup,order){
+  const local=localGroup?.locals||{};
+  if(!orderControlValidPoint(local.latitude,local.longitude)
+     ||!orderControlValidPoint(order.latitude,order.longitude))return null;
+
+  const key=orderControlRouteKey(localGroup,order);
+  if(orderControlState.routeCache.has(key)){
+    return await orderControlState.routeCache.get(key);
+  }
+
+  const request=(async()=>{
+    const {data,error}=await supabaseClient.functions.invoke("calcular-distancia",{
+      body:{
+        origin_lat:Number(local.latitude),
+        origin_lng:Number(local.longitude),
+        destination_lat:Number(order.latitude),
+        destination_lng:Number(order.longitude),
+        include_geometry:true
+      }
+    });
+    if(error)throw error;
+    if(!data?.ok||data?.geometry?.type!=="LineString"||!Array.isArray(data?.geometry?.coordinates)){
+      throw new Error(data?.error||"ORS no devolvió geometría vial.");
+    }
+    return data;
+  })();
+
+  orderControlState.routeCache.set(key,request);
+  try{
+    const result=await request;
+    orderControlState.routeCache.set(key,Promise.resolve(result));
+    return result;
+  }catch(e){
+    orderControlState.routeCache.delete(key);
+    throw e;
+  }
+}
+
+async function orderControlRenderRoadRoutes(order,generation){
+  if(!order||!orderControlValidPoint(order.latitude,order.longitude))return;
+  const locals=(order.order_locals||[]).filter(ol=>{
+    const l=ol.locals||{};
+    return orderControlValidPoint(l.latitude,l.longitude);
+  });
+  if(!locals.length)return;
+
+  const results=await Promise.all(locals.map(async ol=>{
+    try{
+      return {ol,route:await orderControlFetchRoadRoute(ol,order)};
+    }catch(e){
+      console.warn("No se pudo trazar ruta vial ORS para",ol.locals?.name||ol.local_id,e);
+      return {ol,route:null};
+    }
+  }));
+
+  if(generation!==orderControlState.routeGeneration
+     ||order.id!==orderControlState.selectedId
+     ||!orderControlState.layers)return;
+
+  results.forEach(({ol,route})=>{
+    if(!route?.geometry?.coordinates)return;
+    const latLngs=route.geometry.coordinates
+      .map(point=>[Number(point?.[1]),Number(point?.[0])])
+      .filter(point=>orderControlValidPoint(point[0],point[1]));
+    if(latLngs.length<2)return;
+    const localName=ol.locals?.name||"LOCAL";
+    const stored=Number(ol.delivery_distance_km);
+    const calculated=Number(route.distance_km);
+    const km=Number.isFinite(stored)?stored:calculated;
+    const minutes=Number(route.duration_minutes);
+    const routeLabel=localName+" → cliente · "+(Number.isFinite(km)?km.toFixed(2)+" km":"ruta vial")+(Number.isFinite(minutes)?" · aprox. "+minutes+" min":"");
+    L.polyline(latLngs,{color:"#2563eb",weight:5,opacity:.8})
+      .bindTooltip(routeLabel)
+      .addTo(orderControlState.layers);
+  });
+}
 function renderOrderControlMap(){
   const map=ensureOrderControlMap();if(!map)return;
   orderControlState.layers.clearLayers();
@@ -2656,13 +2744,13 @@ function renderOrderControlMap(){
 
   const order=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
   if(order){
-    const routePoints=[];
+    const generation=++orderControlState.routeGeneration;
+
     if(order.assignment?.location&&orderControlValidPoint(order.assignment.location.latitude,order.assignment.location.longitude)){
       const lat=Number(order.assignment.location.latitude),lng=Number(order.assignment.location.longitude);
       L.circleMarker([lat,lng],{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.9})
-        .bindPopup(`<div class="order-control-map-popup"><strong>Repartidor</strong>${esc(order.assignment.driver_name||"Repartidor")}<br>GPS ${esc(orderControlAge(order.assignment.location.captured_at))}</div>`)
+        .bindPopup('<div class="order-control-map-popup"><strong>Repartidor</strong>'+esc(order.assignment.driver_name||"Repartidor")+'<br>GPS '+esc(orderControlAge(order.assignment.location.captured_at))+'</div>')
         .addTo(orderControlState.layers);
-      routePoints.push([lat,lng]);
       bounds.push([lat,lng]);
     }
 
@@ -2670,28 +2758,26 @@ function renderOrderControlMap(){
       const l=ol.locals||{};
       if(!orderControlValidPoint(l.latitude,l.longitude))return;
       const lat=Number(l.latitude),lng=Number(l.longitude);
+      const routeKm=Number(ol.delivery_distance_km);
+      const routeInfo=Number.isFinite(routeKm)?'<br>Ruta vial ORS: '+esc(routeKm.toFixed(2))+' km':'';
       L.circleMarker([lat,lng],{radius:9,color:"#9a3412",weight:3,fillColor:"#f97316",fillOpacity:.9})
-        .bindPopup(`<div class="order-control-map-popup"><strong>${esc(l.name||"LOCAL")}</strong>${esc(orderStatusLabel(ol.status))}<br>${esc(l.address||"")}</div>`)
+        .bindPopup('<div class="order-control-map-popup"><strong>'+esc(l.name||"LOCAL")+'</strong>'+esc(orderStatusLabel(ol.status))+'<br>'+esc(l.address||"")+routeInfo+'</div>')
         .addTo(orderControlState.layers);
-      routePoints.push([lat,lng]);
       bounds.push([lat,lng]);
     });
 
     if(orderControlValidPoint(order.latitude,order.longitude)){
       const lat=Number(order.latitude),lng=Number(order.longitude);
       L.circleMarker([lat,lng],{radius:11,color:"#1d4ed8",weight:3,fillColor:"#3b82f6",fillOpacity:.95})
-        .bindPopup(`<div class="order-control-map-popup"><strong>Cliente · #${esc(orderControlRef(order.id))}</strong>${esc(order.customer_name||"Cliente")}<br>${esc(order.delivery_address||"")}</div>`)
+        .bindPopup('<div class="order-control-map-popup"><strong>Cliente · #'+esc(orderControlRef(order.id))+'</strong>'+esc(order.customer_name||"Cliente")+'<br>'+esc(order.delivery_address||"")+'</div>')
         .addTo(orderControlState.layers);
-      routePoints.push([lat,lng]);
       bounds.push([lat,lng]);
     }
 
-    if(routePoints.length>=2){
-      L.polyline(routePoints,{color:"#334155",weight:3,opacity:.6,dashArray:"7 7"})
-        .addTo(orderControlState.layers);
-    }
+    void orderControlRenderRoadRoutes(order,generation);
+  }else{
+    orderControlState.routeGeneration++;
   }
-
   setTimeout(()=>{
     map.invalidateSize();
     if(bounds.length){
