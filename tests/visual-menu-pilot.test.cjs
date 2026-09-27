@@ -157,3 +157,14 @@ test("visor de promociones amplía imagen y mantiene compra al costado",()=>{
   assert.match(css,/\.promotion-viewer-image/);
   assert.match(css,/\.promotion-viewer-content/);
 });
+
+
+test("visor de promociones contiene el arte completo sin recorte",()=>{
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(css,/\.promotion-viewer-image\{/);
+  assert.match(css,/width:auto/);
+  assert.match(css,/height:auto/);
+  assert.match(css,/max-width:100%/);
+  assert.match(css,/object-fit:contain/);
+  assert.match(css,/object-position:center/);
+});
