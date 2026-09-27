@@ -685,9 +685,165 @@ body.media-viewer-open{overflow:hidden}
 .visual-menu-products{
   display:grid;
 }
+.visual-menu-products-title{
+  display:grid;
+  gap:2px;
+}
+.visual-menu-search-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:8px;
+}
+.visual-menu-search-icon{
+  position:absolute;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#64748b;
+  font-size:1rem;
+  pointer-events:none;
+}
+.visual-menu-search{
+  width:100%;
+  min-width:0;
+  border:1px solid #cbd5e1;
+  border-radius:11px;
+  padding:9px 34px 9px 32px;
+  background:#fff;
+  font-size:.9rem;
+  outline:none;
+}
+.visual-menu-search:focus{
+  border-color:#94a3b8;
+  box-shadow:0 0 0 3px rgba(148,163,184,.18);
+}
+.visual-menu-search-clear{
+  position:absolute;
+  right:5px;
+  top:50%;
+  transform:translateY(-50%);
+  width:28px;
+  height:28px;
+  padding:0;
+  border:0;
+  border-radius:8px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:1.1rem;
+  cursor:pointer;
+}
+.visual-menu-search-results{
+  display:grid;
+  gap:4px;
+  margin-top:7px;
+  max-height:250px;
+  overflow:auto;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  padding:5px;
+  background:#fff;
+  box-shadow:0 10px 25px rgba(15,23,42,.10);
+}
+.visual-menu-search-result{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border:0;
+  border-radius:8px;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.visual-menu-search-result:hover,
+.visual-menu-search-result:focus-visible{
+  background:#f8fafc;
+}
+.visual-menu-search-result-main{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.visual-menu-search-result-main strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#111827;
+  font-size:.9rem;
+}
+.visual-menu-search-result-main small{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#64748b;
+  font-size:.73rem;
+}
+.visual-menu-search-result-page{
+  flex:0 0 auto;
+  color:#475569;
+  font-size:.74rem;
+  font-weight:800;
+}
+.visual-menu-search-empty{
+  padding:10px;
+  color:#64748b;
+  font-size:.82rem;
+  text-align:center;
+}
 .visual-menu-category{
   min-width:0;
   border-bottom:1px solid #dbe3ed;
+}
+.visual-menu-category-toggle{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:0;
+  background:#f8fafc;
+  color:#111827;
+  text-align:left;
+  cursor:pointer;
+}
+.visual-menu-category-toggle:hover,
+.visual-menu-category-toggle:focus-visible{
+  background:#f1f5f9;
+}
+.visual-menu-category.is-open .visual-menu-category-toggle{
+  background:#eef2f7;
+}
+.visual-menu-category-copy{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.visual-menu-category-copy strong{
+  font-size:.96rem;
+  line-height:1.2;
+}
+.visual-menu-category-copy small{
+  color:#64748b;
+  font-size:.74rem;
+  font-weight:700;
+}
+.visual-menu-category-chevron{
+  flex:0 0 auto;
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:#fff;
+  color:#475569;
+  font-size:1.2rem;
+  font-weight:900;
+  box-shadow:0 1px 3px rgba(15,23,42,.12);
 }
 .visual-menu-category:last-child{
   border-bottom:0;
@@ -723,6 +879,13 @@ body.media-viewer-open{overflow:hidden}
 }
 .visual-menu-product:last-child{
   border-bottom:0;
+}
+.visual-menu-product.visual-menu-search-target{
+  animation:visualMenuTargetPulse 1.5s ease;
+}
+@keyframes visualMenuTargetPulse{
+  0%,100%{background:#fff}
+  35%,70%{background:#fff7d6}
 }
 .visual-menu-product-main strong{
   display:block;
@@ -846,11 +1009,6 @@ body.media-viewer-open{overflow:hidden}
 .visual-menu-viewer-products{
   padding-bottom:16px;
 }
-.visual-menu-viewer .visual-menu-category-title{
-  position:sticky;
-  top:79px;
-  z-index:2;
-}
 body.visual-menu-viewer-open{
   overflow:hidden;
 }
@@ -911,8 +1069,11 @@ body.visual-menu-viewer-open{
   .visual-menu-image{
     max-height:58vh;
   }
-  .visual-menu-category-title{
-    padding:10px;
+  .visual-menu-category-toggle{
+    padding:11px 10px;
+  }
+  .visual-menu-search-results{
+    max-height:210px;
   }
   .visual-menu-product{
     padding:11px 10px;
