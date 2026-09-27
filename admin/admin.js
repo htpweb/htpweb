@@ -7030,15 +7030,18 @@ function renderWhatsappSettingsControls(){
   const settings=driverWorkspaceState.whatsappSettings||{
     mode:"ASSISTED",
     local_orders:true,
-    driver_dispatch:true
+    driver_dispatch:true,
+    customer_orders:true,
+    customer_order_available:true
   };
   const provider=driverWorkspaceState.whatsappProvider||{configured:false};
   const select=$("whatsappModeSelect");
   const save=$("whatsappSettingsSave");
   const localOrders=$("whatsappLocalOrders");
   const driverDispatch=$("whatsappDriverDispatch");
+  const customerOrders=$("whatsappCustomerOrders");
   const help=$("whatsappSettingsHelp");
-  if(!select||!save||!localOrders||!driverDispatch||!help)return;
+  if(!select||!save||!localOrders||!driverDispatch||!customerOrders||!help)return;
 
   const canManage=state.role==="DELIVERY_ADMIN";
   const automaticOption=[...select.options].find(option=>option.value==="AUTOMATIC");
@@ -7047,19 +7050,27 @@ function renderWhatsappSettingsControls(){
   select.value=settings.mode||"ASSISTED";
   localOrders.checked=settings.local_orders!==false;
   driverDispatch.checked=settings.driver_dispatch!==false;
+  customerOrders.checked=settings.customer_orders!==false;
   select.disabled=!canManage;
   save.disabled=!canManage;
   localOrders.disabled=!canManage;
   driverDispatch.disabled=!canManage;
+  customerOrders.disabled=!canManage||settings.customer_order_available===false;
+
+  const customerHelp=settings.customer_order_available===false
+    ?" · Pedido del cliente por WhatsApp no está disponible en el plan actual."
+    :(settings.customer_orders!==false
+      ?" · Pedido del cliente por WhatsApp activo: después de registrar el pedido, se abre WhatsApp del cliente para enviarlo al DELIVERY."
+      :" · Pedido del cliente por WhatsApp desactivado.");
 
   if(provider.configured===true){
-    help.textContent=settings.mode==="AUTOMATIC"
+    help.textContent=(settings.mode==="AUTOMATIC"
       ?"Automático activo: HTPWEB usa la API oficial de Meta. Las asignaciones a repartidores se notifican desde backend."
-      :"Proveedor Meta listo. Puedes mantener Asistido o activar Automático.";
+      :"Proveedor Meta listo. Puedes mantener Asistido o activar Automático.")+customerHelp;
   }else{
-    help.textContent=settings.mode==="AUTOMATIC"
+    help.textContent=(settings.mode==="AUTOMATIC"
       ?"Automático está seleccionado, pero faltan credenciales o plantillas de Meta. Cambia a Asistido hasta completar la conexión."
-      :"Asistido activo. Automático quedará disponible cuando se configuren las credenciales y plantillas de Meta.";
+      :"Asistido activo. Automático quedará disponible cuando se configuren las credenciales y plantillas de Meta.")+customerHelp;
   }
 }
 
@@ -7073,7 +7084,8 @@ async function saveWhatsappSettings(){
       p_delivery_id:driverWorkspaceDeliveryId(),
       p_mode:mode,
       p_local_orders:$("whatsappLocalOrders")?.checked!==false,
-      p_driver_dispatch:$("whatsappDriverDispatch")?.checked!==false
+      p_driver_dispatch:$("whatsappDriverDispatch")?.checked!==false,
+      p_customer_orders:$("whatsappCustomerOrders")?.checked!==false
     });
     message("Configuración de WhatsApp actualizada.");
     renderWhatsappSettingsControls();
@@ -7753,7 +7765,7 @@ async function loadDriverWorkspace(){
     driverWorkspaceState.proofSettings=proofSettings||{};
     driverWorkspaceState.sos=sos||{};
     driverWorkspaceState.deviation=deviation||{};
-    driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:true,driver_dispatch:true};
+    driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:true,driver_dispatch:true,customer_orders:true,customer_order_available:true};
     driverWorkspaceState.whatsappProvider=whatsappProvider||{configured:false};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
