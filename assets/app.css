@@ -143,6 +143,49 @@ body.has-htpweb-ad{padding-bottom:104px}
   font-weight:700;
   background:#f3f4f6;
 }
+.promotion-card-topline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+.promotion-card-topline .promotion-badge{
+  margin-bottom:0;
+}
+.promotion-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  max-width:62%;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:.7rem;
+  font-weight:800;
+  line-height:1.15;
+  text-align:center;
+}
+.promotion-status.is-available{
+  background:#ecfdf3;
+  color:#137a3d;
+}
+.promotion-status.is-disabled{
+  background:#fff4e5;
+  color:#9a5b00;
+}
+.promotion-card.promotion-unavailable{
+  background:#fafafa;
+  border-color:#e5e7eb;
+}
+.promotion-card.promotion-unavailable img{
+  filter:saturate(.72);
+  opacity:.82;
+}
+.promotion-card.promotion-unavailable .btn[disabled],
+.promotion-card.promotion-unavailable .qty-step-btn[disabled]{
+  cursor:not-allowed;
+  opacity:.55;
+}
 
 
 /* HTPWEB Código 110 — detalle estructurado de promociones */
