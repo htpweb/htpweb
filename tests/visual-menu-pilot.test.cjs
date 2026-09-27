@@ -142,3 +142,18 @@ test("crear-pedido valida la mezcla promocional en servidor",()=>{
   assert.match(edge,/product_variants/);
   assert.match(edge,/PROMO /);
 });
+
+
+test("visor de promociones amplía imagen y mantiene compra al costado",()=>{
+  const promotions=fs.readFileSync("config/promotions.js","utf8");
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(promotions,/promotionViewer/);
+  assert.match(promotions,/openPromotionViewer/);
+  assert.match(promotions,/promotion-card-copy/);
+  assert.match(promotions,/promotion-card-image/);
+  assert.match(promotions,/Ver promoción y comprar/);
+  assert.match(css,/\.promotion-viewer-panel/);
+  assert.match(css,/grid-template-columns:minmax\(0,1\.35fr\) minmax\(360px,\.65fr\)/);
+  assert.match(css,/\.promotion-viewer-image/);
+  assert.match(css,/\.promotion-viewer-content/);
+});
