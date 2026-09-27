@@ -94,7 +94,7 @@ test('pedido al LOCAL no expone dirección ni teléfono del cliente en el mensaj
 });
 
 test('panel Pedidos carga productos y WhatsApp del LOCAL para cada subpedido',()=>{
-  assert.match(admin,/order_items\(local_id,product_name,variant_name,quantity,subtotal\)/);
+  assert.match(admin,/order_items\(local_id,product_name,variant_name,quantity,subtotal,promotion_id,promotion_title\)/);
   assert.match(admin,/locals\(id,name,whatsapp\)/);
   assert.match(admin,/sendLocalOrderWhatsapp/);
   assert.match(admin,/Enviar por WhatsApp/);
