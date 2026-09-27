@@ -38,6 +38,15 @@ test('centro usa snapshot seguro y refresca cada 15 segundos',()=>{
   assert.match(admin,/L\.circleMarker/);
 });
 
+test('mapa del centro usa rutas viales ORS y no une puntos con línea recta',()=>{
+  assert.match(admin,/functions\.invoke\("calcular-distancia"/);
+  assert.match(admin,/include_geometry:true/);
+  assert.match(admin,/orderControlRenderRoadRoutes/);
+  assert.match(admin,/route\.geometry\.coordinates/);
+  assert.match(admin,/Ruta vial ORS/);
+  assert.doesNotMatch(admin,/dashArray:"7 7"/);
+});
+
 test('detalle integra estados, WhatsApp y asignación de repartidor',()=>{
   assert.match(admin,/changeGlobalOrder/);
   assert.match(admin,/changeLocalOrder/);
