@@ -7,6 +7,14 @@
   let loaded = false;
   let currentView = "menu";
   const selectedVariants = new Map();
+  const expandedCategories = {
+    inline: new Set(),
+    viewer: new Set()
+  };
+  const searchTerms = {
+    inline: "",
+    viewer: ""
+  };
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, ch => ({
@@ -74,8 +82,30 @@
 
           <div class="visual-menu-products-column">
             <div class="visual-menu-products-header">
-              <strong>Productos de esta hoja</strong>
-              <span class="muted">Puedes agregar varios sin salir del menú.</span>
+              <div class="visual-menu-products-title">
+                <strong>Productos de esta hoja</strong>
+                <span class="muted">Abre una categoría o busca un producto.</span>
+              </div>
+              <div class="visual-menu-search-wrap">
+                <span class="visual-menu-search-icon" aria-hidden="true">⌕</span>
+                <input
+                  id="visualMenuSearch"
+                  class="visual-menu-search"
+                  type="search"
+                  placeholder="Buscar producto..."
+                  autocomplete="off"
+                  aria-label="Buscar producto en todo el menú"
+                  oninput="HTPWEBVisualMenu.search(this.value,'inline')"
+                >
+                <button
+                  id="visualMenuSearchClear"
+                  class="visual-menu-search-clear hidden"
+                  type="button"
+                  aria-label="Limpiar búsqueda"
+                  onclick="HTPWEBVisualMenu.clearSearch('inline')"
+                >×</button>
+              </div>
+              <div id="visualMenuSearchResults" class="visual-menu-search-results hidden"></div>
             </div>
             <div id="visualMenuProducts" class="visual-menu-products"></div>
           </div>
@@ -116,8 +146,30 @@
             </div>
 
             <div class="visual-menu-products-header visual-menu-viewer-products-header">
-              <strong>Productos de esta hoja</strong>
-              <span class="muted">Selecciona varios productos, variantes y cantidades.</span>
+              <div class="visual-menu-products-title">
+                <strong>Productos de esta hoja</strong>
+                <span class="muted">Abre una categoría o busca en todo el menú.</span>
+              </div>
+              <div class="visual-menu-search-wrap">
+                <span class="visual-menu-search-icon" aria-hidden="true">⌕</span>
+                <input
+                  id="visualMenuViewerSearch"
+                  class="visual-menu-search"
+                  type="search"
+                  placeholder="Buscar producto..."
+                  autocomplete="off"
+                  aria-label="Buscar producto en todo el menú"
+                  oninput="HTPWEBVisualMenu.search(this.value,'viewer')"
+                >
+                <button
+                  id="visualMenuViewerSearchClear"
+                  class="visual-menu-search-clear hidden"
+                  type="button"
+                  aria-label="Limpiar búsqueda"
+                  onclick="HTPWEBVisualMenu.clearSearch('viewer')"
+                >×</button>
+              </div>
+              <div id="visualMenuViewerSearchResults" class="visual-menu-search-results hidden"></div>
             </div>
             <div id="visualMenuViewerProducts" class="visual-menu-products visual-menu-viewer-products"></div>
           </div>
@@ -265,6 +317,198 @@
     );
   }
 
+  function categoryStateKey(page, categoryId) {
+    return `${page?.id || pageIndex}:${categoryId || "__other__"}`;
+  }
+
+  function ensureDefaultCategory(page, scope) {
+    const groups = groupedPageProducts(page);
+    if (!groups.length) return;
+
+    const prefix = `${page?.id || pageIndex}:`;
+    const hasStateOnPage = [...expandedCategories[scope]]
+      .some(key => key.startsWith(prefix));
+
+    if (!hasStateOnPage) {
+      expandedCategories[scope].add(categoryStateKey(page, groups[0].id));
+    }
+  }
+
+  function categoryIsOpen(page, categoryId, scope) {
+    ensureDefaultCategory(page, scope);
+    return expandedCategories[scope].has(categoryStateKey(page, categoryId));
+  }
+
+  function toggleCategory(pageId, categoryId, scope = "inline") {
+    const page = menuPages.find(item => item.id === pageId);
+    if (!page || !expandedCategories[scope]) return;
+
+    const key = categoryStateKey(page, categoryId);
+    const isOpen = expandedCategories[scope].has(key);
+    const singleOpen = window.matchMedia?.("(max-width: 760px)")?.matches === true;
+
+    if (singleOpen) {
+      const prefix = `${page.id}:`;
+      [...expandedCategories[scope]].forEach(item => {
+        if (item.startsWith(prefix)) expandedCategories[scope].delete(item);
+      });
+    }
+
+    if (!isOpen) expandedCategories[scope].add(key);
+    else expandedCategories[scope].delete(key);
+
+    if (scope === "viewer") renderViewerPage();
+    else renderInlinePage();
+    syncAllMenuQuantities();
+  }
+
+  function normalizeSearch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function searchUiIds(scope) {
+    return scope === "viewer"
+      ? {
+          input: "visualMenuViewerSearch",
+          clear: "visualMenuViewerSearchClear",
+          results: "visualMenuViewerSearchResults"
+        }
+      : {
+          input: "visualMenuSearch",
+          clear: "visualMenuSearchClear",
+          results: "visualMenuSearchResults"
+        };
+  }
+
+  function allMenuSearchResults(query) {
+    const term = normalizeSearch(query);
+    if (!term) return [];
+
+    const matches = [];
+
+    menuPages.forEach((page, candidatePageIndex) => {
+      pageProducts(page).forEach(product => {
+        const category = categoryMetaFor(page, product);
+        const variantNames = productVariants(product.id)
+          .map(item => item.name)
+          .join(" ");
+
+        const haystack = normalizeSearch([
+          product.name,
+          product.description,
+          category.name,
+          variantNames
+        ].filter(Boolean).join(" "));
+
+        if (!haystack.includes(term)) return;
+
+        matches.push({
+          pageIndex: candidatePageIndex,
+          page,
+          product,
+          category
+        });
+      });
+    });
+
+    return matches.slice(0, 30);
+  }
+
+  function renderSearchResults(scope) {
+    const ids = searchUiIds(scope);
+    const input = $m(ids.input);
+    const clear = $m(ids.clear);
+    const target = $m(ids.results);
+    if (!target) return;
+
+    const query = searchTerms[scope] || "";
+    const matches = allMenuSearchResults(query);
+
+    if (input && input.value !== query) input.value = query;
+    clear?.classList.toggle("hidden", !query);
+
+    if (!query) {
+      target.innerHTML = "";
+      target.classList.add("hidden");
+      return;
+    }
+
+    target.classList.remove("hidden");
+
+    if (!matches.length) {
+      target.innerHTML = '<div class="visual-menu-search-empty">No encontramos productos con ese nombre.</div>';
+      return;
+    }
+
+    target.innerHTML = matches.map(match => {
+      const variantsText = productVariants(match.product.id)
+        .map(item => item.name)
+        .slice(0, 3)
+        .join(" · ");
+
+      return `
+        <button
+          type="button"
+          class="visual-menu-search-result"
+          onclick="HTPWEBVisualMenu.selectSearchResult(${match.pageIndex},'${match.product.id}','${scope}')"
+        >
+          <span class="visual-menu-search-result-main">
+            <strong>${escapeHtml(match.product.name)}</strong>
+            <small>${escapeHtml(match.category.name)}${variantsText ? " · " + escapeHtml(variantsText) : ""}</small>
+          </span>
+          <span class="visual-menu-search-result-page">Hoja ${match.pageIndex + 1} ›</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function searchMenu(value, scope = "inline") {
+    if (!searchTerms[scope]) searchTerms[scope] = "";
+    searchTerms[scope] = String(value || "");
+    renderSearchResults(scope);
+  }
+
+  function clearSearch(scope = "inline") {
+    searchTerms[scope] = "";
+    renderSearchResults(scope);
+    $m(searchUiIds(scope).input)?.focus();
+  }
+
+  function selectSearchResult(targetPageIndex, productId, scope = "inline") {
+    const nextPage = menuPages[Number(targetPageIndex)];
+    const product = typeof products !== "undefined"
+      ? products.find(item => item.id === productId)
+      : null;
+    if (!nextPage || !product) return;
+
+    pageIndex = Number(targetPageIndex);
+    const category = categoryMetaFor(nextPage, product);
+    const key = categoryStateKey(nextPage, category.id);
+
+    if (window.matchMedia?.("(max-width: 760px)")?.matches === true) {
+      const prefix = `${nextPage.id}:`;
+      [...expandedCategories[scope]].forEach(item => {
+        if (item.startsWith(prefix)) expandedCategories[scope].delete(item);
+      });
+    }
+    expandedCategories[scope].add(key);
+
+    searchTerms[scope] = "";
+    renderPage();
+
+    requestAnimationFrame(() => {
+      const selector = `[data-menu-scope="${scope}"][data-menu-product="${CSS.escape(productId)}"]`;
+      const row = document.querySelector(selector);
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+      row?.classList.add("visual-menu-search-target");
+      window.setTimeout(() => row?.classList.remove("visual-menu-search-target"), 1600);
+    });
+  }
+
   function renderProductRow(product, scope) {
     const vs = productVariants(product.id);
     const variantId = selectedVariantId(product.id);
@@ -341,17 +585,32 @@
       return '<div class="empty">No hay productos asociados a esta hoja.</div>';
     }
 
-    return groups.map(group => `
-      <section class="visual-menu-category" data-menu-category="${escapeHtml(group.id)}">
-        <div class="visual-menu-category-title">
-          <h3>${escapeHtml(group.name)}</h3>
-          <span>${group.items.length} ${group.items.length === 1 ? "producto" : "productos"}</span>
-        </div>
-        <div class="visual-menu-category-products">
-          ${group.items.map(product => renderProductRow(product, scope)).join("")}
-        </div>
-      </section>
-    `).join("");
+    ensureDefaultCategory(page, scope);
+
+    return groups.map(group => {
+      const open = categoryIsOpen(page, group.id, scope);
+
+      return `
+        <section class="visual-menu-category ${open ? "is-open" : ""}" data-menu-category="${escapeHtml(group.id)}">
+          <button
+            type="button"
+            class="visual-menu-category-toggle"
+            aria-expanded="${open ? "true" : "false"}"
+            onclick="HTPWEBVisualMenu.toggleCategory('${page.id}','${escapeHtml(group.id)}','${scope}')"
+          >
+            <span class="visual-menu-category-copy">
+              <strong>${escapeHtml(group.name)}</strong>
+              <small>${group.items.length} ${group.items.length === 1 ? "producto" : "productos"}</small>
+            </span>
+            <span class="visual-menu-category-chevron" aria-hidden="true">${open ? "⌄" : "›"}</span>
+          </button>
+
+          <div class="visual-menu-category-products ${open ? "" : "hidden"}">
+            ${open ? group.items.map(product => renderProductRow(product, scope)).join("") : ""}
+          </div>
+        </section>
+      `;
+    }).join("");
   }
 
   function renderInlinePage() {
@@ -369,6 +628,7 @@
     $m("visualMenuNext").disabled = !multiple;
 
     $m("visualMenuProducts").innerHTML = renderCategoryGroups(page, "inline");
+    renderSearchResults("inline");
   }
 
   function renderViewerPage() {
@@ -389,6 +649,7 @@
     $m("visualMenuViewerPrev").classList.toggle("hidden", !multiple);
     $m("visualMenuViewerNext").classList.toggle("hidden", !multiple);
     $m("visualMenuViewerProducts").innerHTML = renderCategoryGroups(page, "viewer");
+    renderSearchResults("viewer");
   }
 
   function renderPage() {
@@ -554,6 +815,10 @@
     showView,
     openViewer,
     closeViewer,
+    toggleCategory,
+    search: searchMenu,
+    clearSearch,
+    selectSearchResult,
     refresh: renderPage
   };
 })();
