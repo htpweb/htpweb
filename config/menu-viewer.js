@@ -31,8 +31,9 @@
     return productsEl?.closest("section") || null;
   }
 
-  function controlId(scope, type, productId) {
-    return `${scope}-visual-menu-${type}-${productId}`;
+  function controlId(scope, type, productId, variantId = null) {
+    const variantKey = variantId ? "-" + variantId : "";
+    return `${scope}-visual-menu-${type}-${productId}${variantKey}`;
   }
 
   function viewerIsOpen() {
@@ -511,34 +512,31 @@
     });
   }
 
-  function renderProductRow(product, scope) {
-    const vs = productVariants(product.id);
-    const variantId = selectedVariantId(product.id);
-    const price = menuPrice(product, variantId);
+  function renderPurchasableRow(product, variant, scope) {
+    const variantId = variant?.id || null;
+    const price = Number(variant?.price ?? product.price ?? 0);
     const quantity = menuQuantity(product.id, variantId);
     const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
+    const variantLabel = variant?.name || null;
 
     return `
-      <div class="visual-menu-product" data-menu-product="${escapeHtml(product.id)}" data-menu-scope="${scope}">
+      <div
+        class="visual-menu-product ${variantLabel ? "visual-menu-product-variant" : ""}"
+        data-menu-product="${escapeHtml(product.id)}"
+        data-menu-variant="${escapeHtml(variantId || "")}"
+        data-menu-scope="${scope}"
+      >
         <div class="visual-menu-product-main">
-          <strong>${escapeHtml(product.name)}</strong>
-          ${product.description ? `<div class="muted visual-menu-product-description">${escapeHtml(product.description)}</div>` : ""}
+          <div class="visual-menu-product-name-line">
+            <strong>${escapeHtml(product.name)}</strong>
+            ${variantLabel ? `<span class="visual-menu-variant-chip">[${escapeHtml(variantLabel)}]</span>` : ""}
+            <span class="visual-menu-inline-price">— $${price.toFixed(2)}</span>
+          </div>
+          ${!variantLabel && product.description ? `<div class="muted visual-menu-product-description">${escapeHtml(product.description)}</div>` : ""}
         </div>
 
-        ${vs.length ? `
-          <label for="${controlId(scope, "variant", product.id)}">Variante</label>
-          <select
-            id="${controlId(scope, "variant", product.id)}"
-            onchange="HTPWEBVisualMenu.variantChanged('${product.id}','${scope}')"
-          >
-            ${vs.map(variant =>
-              `<option value="${variant.id}" data-price="${Number(variant.price)}" ${variant.id === variantId ? "selected" : ""}>${escapeHtml(variant.name)} — $${Number(variant.price).toFixed(2)}</option>`
-            ).join("")}
-          </select>
-        ` : ""}
-
-        <div class="visual-menu-product-bottom">
-          <div class="visual-menu-price" id="${controlId(scope, "price", product.id)}">$ ${price.toFixed(2)}</div>
+        <div class="visual-menu-product-bottom visual-menu-product-bottom-direct">
+          <div class="visual-menu-price" id="${controlId(scope, "price", product.id, variantId)}">$ ${price.toFixed(2)}</div>
 
           <div class="visual-menu-buy">
             <div class="quantity-stepper">
@@ -547,38 +545,52 @@
                 class="qty-step-btn"
                 aria-label="Disminuir cantidad"
                 ${closed ? "disabled" : ""}
-                onclick="HTPWEBVisualMenu.change('${product.id}',-1,'${scope}')"
+                onclick="HTPWEBVisualMenu.change('${product.id}',-1,'${scope}','${variantId || ""}')"
               >−</button>
               <input
-                id="${controlId(scope, "qty", product.id)}"
+                id="${controlId(scope, "qty", product.id, variantId)}"
                 type="number"
                 min="0"
                 step="1"
                 value="${quantity}"
                 aria-label="Cantidad en carrito"
                 ${closed ? "disabled" : ""}
-                oninput="HTPWEBVisualMenu.set('${product.id}',this.value,'${scope}')"
+                oninput="HTPWEBVisualMenu.set('${product.id}',this.value,'${scope}','${variantId || ""}')"
               >
               <button
                 type="button"
                 class="qty-step-btn"
                 aria-label="Aumentar cantidad"
                 ${closed ? "disabled" : ""}
-                onclick="HTPWEBVisualMenu.change('${product.id}',1,'${scope}')"
+                onclick="HTPWEBVisualMenu.change('${product.id}',1,'${scope}','${variantId || ""}')"
               >+</button>
             </div>
 
             <button
-              id="${controlId(scope, "add", product.id)}"
+              id="${controlId(scope, "add", product.id, variantId)}"
               type="button"
               class="btn btn-primary visual-menu-add"
               ${closed ? "disabled" : ""}
-              onclick="HTPWEBVisualMenu.add('${product.id}','${scope}')"
+              onclick="HTPWEBVisualMenu.add('${product.id}','${scope}','${variantId || ""}')"
             >${closed ? "Local cerrado" : "Agregar"}</button>
           </div>
         </div>
       </div>
     `;
+  }
+
+  function renderProductRow(product, scope) {
+    const vs = productVariants(product.id);
+
+    if (vs.length) {
+      return `
+        <div class="visual-menu-variant-list" data-menu-product-group="${escapeHtml(product.id)}">
+          ${vs.map(variant => renderPurchasableRow(product, variant, scope)).join("")}
+        </div>
+      `;
+    }
+
+    return renderPurchasableRow(product, null, scope);
   }
 
   function renderCategoryGroups(page, scope) {
@@ -666,25 +678,34 @@
     renderPage();
   }
 
-  function syncProductControls(productId) {
+  function syncVariantControls(productId, variantId = null) {
     const product = typeof products !== "undefined"
       ? products.find(item => item.id === productId)
       : null;
     if (!product) return;
 
-    const variantId = selectedVariantId(productId);
-    const price = menuPrice(product, variantId);
+    const variant = variantId
+      ? productVariants(productId).find(item => item.id === variantId) || null
+      : null;
+    const price = Number(variant?.price ?? product.price ?? 0);
     const quantity = menuQuantity(productId, variantId);
 
     scopes.forEach(scope => {
-      const select = $m(controlId(scope, "variant", productId));
-      const priceEl = $m(controlId(scope, "price", productId));
-      const qtyEl = $m(controlId(scope, "qty", productId));
+      const priceEl = $m(controlId(scope, "price", productId, variantId));
+      const qtyEl = $m(controlId(scope, "qty", productId, variantId));
 
-      if (select && variantId) select.value = variantId;
       if (priceEl) priceEl.textContent = "$ " + price.toFixed(2);
       if (qtyEl) qtyEl.value = quantity;
     });
+  }
+
+  function syncProductControls(productId) {
+    const vs = productVariants(productId);
+    if (vs.length) {
+      vs.forEach(variant => syncVariantControls(productId, variant.id));
+      return;
+    }
+    syncVariantControls(productId, null);
   }
 
   function syncAllMenuQuantities() {
@@ -693,15 +714,11 @@
   }
 
   function variantChanged(productId, scope) {
-    const select = $m(controlId(scope, "variant", productId));
-    if (select?.value) {
-      setSelectedVariant(productId, select.value);
-    }
     syncProductControls(productId);
   }
 
-  function feedback(productId, scope, total) {
-    const button = $m(controlId(scope, "add", productId));
+  function feedback(productId, scope, total, variantId = null) {
+    const button = $m(controlId(scope, "add", productId, variantId));
     if (!button || button.disabled) return;
 
     button.textContent = `En carrito: ${total} ✓`;
@@ -713,37 +730,42 @@
     }, 900);
   }
 
-  function add(productId, scope = "inline") {
-    if (typeof window.htpwebAddProductUnit !== "function") return 0;
-    const variantId = selectedVariantId(productId);
-    setSelectedVariant(productId, variantId);
+  function normalizeVariantArgument(variantId) {
+    return variantId ? String(variantId) : null;
+  }
 
-    const total = window.htpwebAddProductUnit(productId, variantId);
+  function add(productId, scope = "inline", variantId = null) {
+    if (typeof window.htpwebAddProductUnit !== "function") return 0;
+    const chosenVariantId = normalizeVariantArgument(variantId);
+
+    const total = window.htpwebAddProductUnit(productId, chosenVariantId);
     syncProductControls(productId);
-    feedback(productId, scope, total);
+    feedback(productId, scope, total, chosenVariantId);
     return total;
   }
 
-  function change(productId, delta, scope = "inline") {
+  function change(productId, delta, scope = "inline", variantId = null) {
     if (typeof window.htpwebChangeProductQuantity !== "function") return 0;
-    const variantId = selectedVariantId(productId);
-    setSelectedVariant(productId, variantId);
+    const chosenVariantId = normalizeVariantArgument(variantId);
 
     const total = window.htpwebChangeProductQuantity(
       productId,
       Number(delta),
-      variantId
+      chosenVariantId
     );
     syncProductControls(productId);
     return total;
   }
 
-  function setQuantity(productId, quantity, scope = "inline") {
+  function setQuantity(productId, quantity, scope = "inline", variantId = null) {
     if (typeof window.htpwebSetProductQuantity !== "function") return 0;
-    const variantId = selectedVariantId(productId);
-    setSelectedVariant(productId, variantId);
+    const chosenVariantId = normalizeVariantArgument(variantId);
 
-    const total = window.htpwebSetProductQuantity(productId, quantity, variantId);
+    const total = window.htpwebSetProductQuantity(
+      productId,
+      quantity,
+      chosenVariantId
+    );
     syncProductControls(productId);
     return total;
   }
