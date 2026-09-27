@@ -3,10 +3,13 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const migration=fs.readFileSync('supabase/migrations/20260925213358_whatsapp_order_dispatch.sql','utf8');
+const customerMigration=fs.readFileSync('supabase/migrations/20260927195000_customer_order_whatsapp_all_delivery_plans.sql','utf8');
 const edge=fs.readFileSync('supabase/functions/whatsapp-notify/index.ts','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 const helper=fs.readFileSync('config/whatsapp.js','utf8');
+const cart=fs.readFileSync('app/carrito.html','utf8');
+const orders=fs.readFileSync('config/orders.js','utf8');
 const config=fs.readFileSync('supabase/config.toml','utf8');
 
 test('configuración WhatsApp vive en private con RLS deny-all',()=>{
@@ -115,7 +118,52 @@ test('configuración WhatsApp aparece en Repartidores y despacho',()=>{
   assert.match(html,/config\/whatsapp\.js/);
 });
 
+test('Pedido WhatsApp del cliente está incluido en todos los planes DELIVERY',()=>{
+  assert.match(customerMigration,/add column if not exists customer_orders boolean not null default true/);
+  assert.match(customerMigration,/'whatsapp\.customer_order'/);
+  assert.match(customerMigration,/from public\.subscription_plans p[\s\S]*where p\.target_type='DELIVERY'/);
+  assert.match(customerMigration,/on conflict\(plan_id,entitlement_type,code\) do update/);
+  assert.match(customerMigration,/public_delivery_customer_order_whatsapp/);
+  assert.match(customerMigration,/grant execute on function public\.public_delivery_customer_order_whatsapp\(uuid\)[\s\S]*to authenticated,service_role/);
+});
+
+test('panel DELIVERY permite activar o desactivar Pedido del cliente por WhatsApp',()=>{
+  assert.match(html,/id="whatsappCustomerOrders"/);
+  assert.match(html,/Pedido del cliente al DELIVERY por WhatsApp/);
+  assert.match(admin,/customer_orders:true/);
+  assert.match(admin,/customer_order_available/);
+  assert.match(admin,/p_customer_orders:\$\("whatsappCustomerOrders"\)/);
+});
+
+test('checkout registra primero en HTPWEB y luego prepara WhatsApp',()=>{
+  const createIndex=cart.indexOf('supabaseClient.functions.invoke("crear-pedido"');
+  const validateIndex=cart.indexOf('if (!data?.ok || !data?.order?.id)');
+  const canonicalIndex=cart.indexOf('obtenerPedidoCliente(negocioActual.id, data.order.id)');
+  const whatsappIndex=cart.indexOf('htpWhatsappAssistedUrl(');
+  assert.ok(createIndex>=0);
+  assert.ok(validateIndex>createIndex);
+  assert.ok(canonicalIndex>validateIndex);
+  assert.ok(whatsappIndex>canonicalIndex);
+  assert.match(cart,/htpWhatsappCustomerOrderSetting/);
+  assert.match(cart,/window\.open\("", "_blank"\)/);
+  assert.match(cart,/Enviar pedido por WhatsApp/);
+});
+
+test('mensaje WhatsApp usa el pedido canónico con locales, ubicación y totales',()=>{
+  assert.match(orders,/customer_name,customer_phone,delivery_address,latitude,longitude,address_reference,notes/);
+  assert.match(helper,/order\.order_locals/);
+  assert.match(helper,/order\.order_items/);
+  assert.match(helper,/order\.customer_phone/);
+  assert.match(helper,/order\.delivery_address/);
+  assert.match(helper,/order\.address_reference/);
+  assert.match(helper,/https:\/\/www\.google\.com\/maps\?q=/);
+  assert.match(helper,/Subtotal productos/);
+  assert.match(helper,/\*TOTAL:\*/);
+  assert.match(helper,/Pedido registrado correctamente en HTPWEB/);
+});
+
 test('JavaScript del navegador sigue compilando',()=>{
   assert.doesNotThrow(()=>new Function(helper));
   assert.doesNotThrow(()=>new Function(admin));
+  assert.doesNotThrow(()=>new Function(orders));
 });
