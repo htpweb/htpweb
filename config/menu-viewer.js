@@ -530,14 +530,12 @@
           <div class="visual-menu-product-name-line">
             <strong>${escapeHtml(product.name)}</strong>
             ${variantLabel ? `<span class="visual-menu-variant-chip">[${escapeHtml(variantLabel)}]</span>` : ""}
-            <span class="visual-menu-inline-price">— $${price.toFixed(2)}</span>
+            <span class="visual-menu-inline-price" id="${controlId(scope, "price", product.id, variantId)}">— ${price.toFixed(2)}</span>
           </div>
           ${!variantLabel && product.description ? `<div class="muted visual-menu-product-description">${escapeHtml(product.description)}</div>` : ""}
         </div>
 
         <div class="visual-menu-product-bottom visual-menu-product-bottom-direct">
-          <div class="visual-menu-price" id="${controlId(scope, "price", product.id, variantId)}">$ ${price.toFixed(2)}</div>
-
           <div class="visual-menu-buy">
             <div class="quantity-stepper">
               <button
