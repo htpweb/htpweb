@@ -11,7 +11,7 @@ test("piloto de menú visual está habilitado en la página del LOCAL",()=>{
   assert.match(menu,/public_local_menu_pages/);
   assert.match(menu,/Productos de esta hoja/);
   assert.match(menu,/MENÚ/);
-  assert.match(menu,/PRODUCTOS/);
+  assert.match(menu,/PROMOCIONES/);
 });
 
 test("menú visual compra varios productos usando cantidades del carrito existente",()=>{
@@ -115,4 +115,30 @@ test("promociones programadas pueden mostrarse bloqueadas fuera de vigencia",()=
   assert.match(promotions,/Disponible los/);
   assert.match(promotions,/promotion-unavailable/);
   assert.match(promotions,/product_image_url/);
+});
+
+
+test("promoción combinable exige exactamente la cantidad configurada",()=>{
+  const promotions=fs.readFileSync("config/promotions.js","utf8");
+  assert.match(promotions,/promotionMixConfig/);
+  assert.match(promotions,/mixSelections/);
+  assert.match(promotions,/Elige tus/);
+  assert.match(promotions,/promotion-mix-row/);
+  assert.match(promotions,/selectedTotal !== mix\.required/);
+  assert.match(promotions,/promotion_selection/);
+});
+
+test("carrito conserva y envía la selección de variantes promocionales",()=>{
+  const cart=fs.readFileSync("app/carrito.html","utf8");
+  assert.match(cart,/snapshot\?\.promotion_selection/);
+  assert.match(cart,/promotion_selection:/);
+  assert.match(cart,/variant_name/);
+});
+
+test("crear-pedido valida la mezcla promocional en servidor",()=>{
+  const edge=fs.readFileSync("supabase/functions/crear-pedido/index.ts","utf8");
+  assert.match(edge,/validatePromotionSelections/);
+  assert.match(edge,/totalSelected !== required/);
+  assert.match(edge,/product_variants/);
+  assert.match(edge,/PROMO /);
 });
