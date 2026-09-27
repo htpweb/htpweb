@@ -124,6 +124,40 @@ body.has-htpweb-ad{padding-bottom:104px}
   object-fit:cover;
   display:block;
 }
+.promotion-image-button{
+  position:relative;
+  width:100%;
+  aspect-ratio:16/9;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  overflow:hidden;
+  background:#0f172a;
+  cursor:zoom-in;
+}
+.promotion-image-button .promotion-card-image{
+  width:100%;
+  height:100%;
+  aspect-ratio:auto;
+  object-fit:contain;
+}
+.promotion-zoom-hint{
+  position:absolute;
+  left:50%;
+  bottom:10px;
+  transform:translateX(-50%);
+  max-width:calc(100% - 20px);
+  padding:7px 11px;
+  border-radius:999px;
+  background:rgba(15,23,42,.86);
+  color:#fff;
+  font-size:.76rem;
+  font-weight:800;
+  white-space:nowrap;
+  box-shadow:0 4px 14px rgba(0,0,0,.25);
+  pointer-events:none;
+}
 .promotion-card-copy{
   padding:14px;
 }
@@ -272,6 +306,99 @@ body.has-htpweb-ad{padding-bottom:104px}
   }
 }
 
+
+/* PROMOCIONES — visor ampliado con compra al costado */
+.promotion-viewer{
+  position:fixed;
+  inset:0;
+  z-index:170;
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.promotion-viewer-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,.82);
+  backdrop-filter:blur(5px);
+}
+.promotion-viewer-panel{
+  position:relative;
+  z-index:1;
+  width:min(1180px,100%);
+  height:min(94vh,920px);
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(360px,.65fr);
+  overflow:hidden;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 24px 80px rgba(0,0,0,.4);
+}
+.promotion-viewer-image-wrap{
+  min-width:0;
+  min-height:420px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  background:#0f172a;
+}
+.promotion-viewer-image{
+  width:100%;
+  height:100%;
+  max-height:94vh;
+  object-fit:contain;
+  display:block;
+}
+.promotion-viewer-content{
+  min-width:0;
+  height:100%;
+  overflow:auto;
+  background:#fff;
+}
+.promotion-viewer-content .promotion-card-copy{
+  padding:24px 58px 28px 20px;
+}
+body.promotion-viewer-open{
+  overflow:hidden;
+}
+@media(max-width:900px){
+  .promotion-viewer{
+    padding:0;
+  }
+  .promotion-viewer-panel{
+    width:100%;
+    height:100vh;
+    max-height:100vh;
+    border-radius:0;
+    grid-template-columns:1fr;
+    grid-template-rows:minmax(0,54vh) minmax(0,46vh);
+  }
+  .promotion-viewer-image-wrap{
+    min-height:0;
+  }
+  .promotion-viewer-image{
+    max-height:54vh;
+  }
+  .promotion-viewer-content{
+    height:auto;
+  }
+  .promotion-viewer-content .promotion-card-copy{
+    padding:16px 58px 24px 16px;
+  }
+}
+@media(max-width:520px){
+  .promotion-viewer-panel{
+    grid-template-rows:minmax(0,48vh) minmax(0,52vh);
+  }
+  .promotion-viewer-image{
+    max-height:48vh;
+  }
+  .promotion-zoom-hint{
+    bottom:8px;
+    padding:6px 9px;
+    font-size:.7rem;
+  }
+}
 
 /* HTPWEB Código 110 — detalle estructurado de promociones */
 .promotion-total{
