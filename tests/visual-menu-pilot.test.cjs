@@ -90,3 +90,11 @@ test("variantes del menú se muestran como opciones con cantidad independiente",
   assert.doesNotMatch(menu,/visual-menu-add/);
   assert.doesNotMatch(menu,/>Agregar<\/button>/);
 });
+
+
+test("presentación final simple del menú no repite producto ni usa botón Agregar",()=>{
+  assert.match(menu,/visual-menu-product-group-heading/);
+  assert.match(menu,/visual-menu-variant-row/);
+  assert.doesNotMatch(menu,/visual-menu-add/);
+  assert.doesNotMatch(menu,/>Agregar<\/button>/);
+});
