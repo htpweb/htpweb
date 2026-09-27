@@ -186,6 +186,91 @@ body.has-htpweb-ad{padding-bottom:104px}
   cursor:not-allowed;
   opacity:.55;
 }
+.promotion-mix{
+  margin-top:10px;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  overflow:hidden;
+  background:#fff;
+}
+.promotion-mix-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:11px 12px;
+  background:#f8fafc;
+  border-bottom:1px solid #e5e7eb;
+}
+.promotion-mix-heading strong{
+  font-size:.95rem;
+}
+.promotion-mix-status{
+  flex:0 0 auto;
+  font-size:.74rem;
+  font-weight:800;
+  color:#64748b;
+}
+.promotion-mix-status.is-complete{
+  color:#137a3d;
+}
+.promotion-mix-rows{
+  display:grid;
+}
+.promotion-mix-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 118px;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-top:1px solid #eef2f7;
+  background:#fff;
+  transition:background .16s ease,box-shadow .16s ease;
+}
+.promotion-mix-row:first-child{
+  border-top:0;
+}
+.promotion-mix-row > strong{
+  font-size:.96rem;
+  font-weight:900;
+  letter-spacing:.015em;
+}
+.promotion-mix-row.has-quantity{
+  background:#fff3f1;
+  box-shadow:inset 4px 0 0 #ef3b36;
+}
+.promotion-mix-stepper{
+  width:118px;
+}
+.promotion-mix-action{
+  display:grid;
+  gap:7px;
+  margin-top:12px;
+}
+.promotion-mix-action .btn{
+  width:100%;
+}
+.promotion-mix-added{
+  min-height:1em;
+  color:#137a3d;
+  font-size:.78rem;
+  font-weight:800;
+  text-align:center;
+}
+@media(max-width:520px){
+  .promotion-mix-heading{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:3px;
+  }
+  .promotion-mix-row{
+    grid-template-columns:minmax(0,1fr) 112px;
+    padding:9px 10px;
+  }
+  .promotion-mix-stepper{
+    width:112px;
+  }
+}
 
 
 /* HTPWEB Código 110 — detalle estructurado de promociones */
