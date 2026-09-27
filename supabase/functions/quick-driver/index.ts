@@ -101,7 +101,7 @@ Deno.serve(async(req)=>{
         phone:phone.e164,
         phone_confirm:true,
         password:generatedPassword,
-        user_metadata:{full_name:"Repartidor "+suffix,phone:phone.e164,quick_driver:true},
+        user_metadata:{full_name:"Repartidor emergencia "+suffix,phone:phone.e164,quick_driver:true},
       });
       if(createError||!created?.user)throw createError||new Error("No se pudo crear el repartidor");
       driverUserId=created.user.id;
@@ -131,6 +131,6 @@ Deno.serve(async(req)=>{
         await admin.auth.admin.deleteUser(createdUserId);
       }catch{}
     }
-    return json({ok:false,error:error instanceof Error?error.message:"No se pudo crear el repartidor rápido"},400);
+    return json({ok:false,error:error instanceof Error?error.message:"No se pudo crear el repartidor de emergencia"},400);
   }
 });
