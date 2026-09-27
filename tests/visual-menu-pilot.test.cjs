@@ -98,3 +98,21 @@ test("presentación final simple del menú no repite producto ni usa botón Agre
   assert.doesNotMatch(menu,/visual-menu-add/);
   assert.doesNotMatch(menu,/>Agregar<\/button>/);
 });
+
+
+test("pestaña PRODUCTOS se reemplaza por PROMOCIONES en locales con menú visual",()=>{
+  assert.match(menu,/visualPromotionsTab/);
+  assert.match(menu,/>PROMOCIONES<\/button>/);
+  assert.doesNotMatch(menu,/visualProductsTab/);
+  assert.match(menu,/promotionsCard\.dataset\.tabManaged/);
+});
+
+test("promociones programadas pueden mostrarse bloqueadas fuera de vigencia",()=>{
+  const promotions=fs.readFileSync("config/promotions.js","utf8");
+  assert.match(promotions,/public_local_promotions_catalog/);
+  assert.match(promotions,/available_now/);
+  assert.match(promotions,/promotionDisabled/);
+  assert.match(promotions,/Disponible los/);
+  assert.match(promotions,/promotion-unavailable/);
+  assert.match(promotions,/product_image_url/);
+});
