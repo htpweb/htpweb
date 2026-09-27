@@ -288,7 +288,7 @@
   async function loadGallery() {
     ensureUi();
     try {
-      if (typeof localId === "undefined" || !localId || !window.supabaseClient) return;
+      if (typeof localId === "undefined" || !localId || typeof supabaseClient === "undefined") return;
       const { data, error } = await supabaseClient.rpc("public_list_local_gallery", { p_local_id: localId });
       if (error) throw error;
       gallery = Array.isArray(data) ? data.filter(item => item?.image_url) : [];
