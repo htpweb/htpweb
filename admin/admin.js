@@ -2672,8 +2672,14 @@ async function orderControlLoadDriverTrail(order){
       p_limit:80
     });
     const history=Array.isArray(snap?.history)?snap.history:[];
+    const assignedAt=assignment.assigned_at?new Date(assignment.assigned_at).getTime():null;
     const trail=history
-      .filter(p=>orderControlValidPoint(p?.latitude,p?.longitude))
+      .filter(p=>{
+        if(!orderControlValidPoint(p?.latitude,p?.longitude))return false;
+        if(!Number.isFinite(assignedAt))return true;
+        const captured=new Date(p?.captured_at||0).getTime();
+        return Number.isFinite(captured)&&captured>=assignedAt;
+      })
       .map(p=>[Number(p.latitude),Number(p.longitude)]);
     if(snap?.current&&orderControlValidPoint(snap.current.latitude,snap.current.longitude)){
       const current=[Number(snap.current.latitude),Number(snap.current.longitude)];
