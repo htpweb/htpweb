@@ -381,12 +381,77 @@
     </section>
 
     <section id="section-orders" class="section">
-      <div class="card">
-        <div class="row between">
-          <h2>Pedidos</h2>
-          <select id="orderScope" style="max-width:320px"></select>
+      <div class="card order-control-header">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h2 style="margin-bottom:4px">Centro de control de pedidos</h2>
+            <p class="muted" style="margin:0">Supervisa pedidos, locales, cliente, repartidor, GPS y comunicaciones desde una sola consola.</p>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="orderScope" style="min-width:230px;max-width:320px"></select>
+            <button id="orderControlRefresh" class="btn-muted" type="button">Actualizar ahora</button>
+          </div>
         </div>
-        <div id="ordersList"></div>
+
+        <div class="order-control-toolbar">
+          <div>
+            <label>Estado</label>
+            <select id="orderControlFilter">
+              <option value="ACTIVE">Operativos activos</option>
+              <option value="PENDING">Pendientes</option>
+              <option value="CONFIRMED">Confirmados</option>
+              <option value="PREPARING">Preparando</option>
+              <option value="READY">Listos</option>
+              <option value="EN_ROUTE">En camino</option>
+              <option value="DELIVERED">Entregados</option>
+              <option value="CANCELLED">Cancelados</option>
+              <option value="ALL">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label>Buscar</label>
+            <input id="orderControlSearch" type="search" placeholder="Pedido, cliente, teléfono, local o dirección">
+          </div>
+          <label class="workspace-note order-control-auto">
+            <input id="orderControlAutoRefresh" type="checkbox" checked>
+            Actualización automática cada 15 s
+          </label>
+          <small id="orderControlUpdated" class="muted">Sincronizando…</small>
+        </div>
+      </div>
+
+      <div id="orderControlKpis" class="order-control-kpis"></div>
+
+      <div class="order-control-layout">
+        <div class="card order-control-map-card">
+          <div class="row between" style="gap:10px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Mapa operativo</h3>
+              <p class="muted" style="margin:4px 0 0">Clientes activos y, para el pedido seleccionado, locales de recogida y repartidor.</p>
+            </div>
+            <div class="order-control-map-legend">
+              <span><i class="legend-dot legend-customer"></i> Cliente</span>
+              <span><i class="legend-dot legend-local"></i> LOCAL</span>
+              <span><i class="legend-dot legend-driver"></i> Repartidor</span>
+            </div>
+          </div>
+          <div id="orderControlMap" class="order-control-map"></div>
+          <small class="muted">Las líneas del mapa son referencias operativas entre puntos; la navegación vial del repartidor conserva su flujo de rutas HTPWEB.</small>
+        </div>
+
+        <div class="card order-control-queue-card">
+          <div class="row between">
+            <div>
+              <h3 style="margin:0">Cola operativa</h3>
+              <p id="orderControlQueueMeta" class="muted" style="margin:4px 0 0"></p>
+            </div>
+          </div>
+          <div id="ordersList" class="order-control-queue"></div>
+        </div>
+      </div>
+
+      <div id="orderControlDetail" class="card order-control-detail">
+        <div class="muted">Selecciona un pedido para abrir la consola operativa.</div>
       </div>
     </section>
 
@@ -1739,7 +1804,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20260927-1955"></script>
+<script src="./admin.js?v=20260927-2130"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
