@@ -35,3 +35,9 @@ test("piloto de base solo publica hoja para Parrilladas Cedeño",()=>{
   assert.match(migration,/local_menu_page_products/);
   assert.match(migration,/public_local_menu_pages/);
 });
+
+
+test("menú visual usa el cliente Supabase global real de HTPWEB",()=>{
+  assert.match(menu,/typeof supabaseClient === "undefined"/);
+  assert.doesNotMatch(menu,/!window\.supabaseClient/);
+});
