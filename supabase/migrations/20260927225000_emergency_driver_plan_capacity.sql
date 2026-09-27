@@ -49,6 +49,17 @@ where p.target_type='DELIVERY'
 on conflict(plan_id,entitlement_type,code) do update
 set value=excluded.value,updated_at=now();
 
+insert into public.plan_assignment_entitlements(
+  assignment_id,entitlement_type,code,value
+)
+select a.id,e.entitlement_type,e.code,e.value
+from public.plan_assignments a
+join public.plan_entitlements e on e.plan_id=a.plan_id
+where e.code='drivers.emergency.max'
+  and a.status in ('ACTIVE','TRIAL')
+on conflict(assignment_id,entitlement_type,code) do update
+set value=excluded.value;
+
 create or replace function public.delivery_cleanup_expired_emergency_drivers(p_delivery_id uuid)
 returns integer
 language plpgsql
