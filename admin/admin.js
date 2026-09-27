@@ -7337,7 +7337,7 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,whatsappSettings:null,whatsappProvider:null,candidate:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,whatsappSettings:null,whatsappProvider:null,candidate:null,quickDriver:null};
 const safetySosState={
   deliveryChannel:null,
   deliveryId:null,
@@ -7617,6 +7617,138 @@ async function startDriverGpsSharing(){
   }
 }
 
+function quickDriverTrackingUrl(token){
+  const url=new URL("../app/repartidor-rapido.html",location.href);
+  url.hash="token="+encodeURIComponent(String(token||""));
+  return url.toString();
+}
+
+function quickDriverWhatsappText(driver,trackingUrl){
+  return [
+    "*HTPWEB · Acceso de repartidor*",
+    "Repartidor: "+(driver?.full_name||"Repartidor"),
+    "",
+    "Abre este enlace desde tu celular para compartir ubicación durante tus entregas:",
+    trackingUrl,
+    "",
+    "No compartas este enlace con otras personas."
+  ].join("\n");
+}
+
+async function quickDriverInvoke(action,payload={}){
+  const {data,error}=await supabaseClient.functions.invoke("quick-driver",{
+    body:{
+      action,
+      delivery_id:driverWorkspaceDeliveryId(),
+      ...payload
+    }
+  });
+  if(error)throw new Error(data?.error||data?.message||error.message||"No se pudo procesar el repartidor rápido.");
+  if(!data?.ok)throw new Error(data?.error||"No se pudo procesar el repartidor rápido.");
+  return data;
+}
+
+function renderQuickDriverResult(){
+  const box=$("quickDriverResult");
+  if(!box)return;
+  const item=driverWorkspaceState.quickDriver;
+  if(!item){
+    box.innerHTML='<div class="muted">Escribe el WhatsApp y crea el repartidor. No necesita correo para comenzar.</div>';
+    return;
+  }
+  box.innerHTML='<div class="workspace-note"><strong>'+esc(item.driver?.full_name||"Repartidor creado")+'</strong>'+
+    '<div>'+esc(item.driver?.phone||"")+' · activo en este DELIVERY</div>'+
+    '<div class="muted" style="margin-top:4px">Enlace GPS generado. Vence automáticamente y puede regenerarse.</div>'+
+    '<button id="quickDriverSendCurrent" class="btn-muted" type="button" style="margin-top:8px">Enviar acceso por WhatsApp</button></div>';
+  if($("quickDriverSendCurrent"))$("quickDriverSendCurrent").onclick=()=>{
+    try{
+      const popup=window.open("","_blank");
+      if(popup){
+        popup.document.title="HTPWEB · Abriendo WhatsApp";
+        popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Abriendo WhatsApp…</p>';
+        popup.location.href=htpWhatsappAssistedUrl(
+          item.driver?.phone,
+          quickDriverWhatsappText(item.driver,item.tracking_url)
+        );
+      }else{
+        message("El navegador bloqueó la ventana. Habilita ventanas emergentes para abrir WhatsApp.","error");
+      }
+    }catch(e){message(e.message||"No se pudo abrir WhatsApp.","error");}
+  };
+}
+
+async function createQuickDriver(){
+  const phone=$("quickDriverPhone")?.value.trim();
+  if(!phone){message("Escribe el número de WhatsApp del repartidor.","error");return;}
+
+  const button=$("quickDriverCreateBtn");
+  const popup=window.open("","_blank");
+  if(popup){
+    try{
+      popup.document.title="HTPWEB · Creando repartidor";
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">HTPWEB está creando el repartidor y preparando WhatsApp…</p>';
+    }catch{}
+  }
+
+  if(button)button.disabled=true;
+  try{
+    const data=await quickDriverInvoke("create",{phone});
+    const trackingUrl=quickDriverTrackingUrl(data.tracking_token);
+    driverWorkspaceState.quickDriver={
+      driver:data.driver,
+      tracking_url:trackingUrl
+    };
+    renderQuickDriverResult();
+    if($("quickDriverPhone"))$("quickDriverPhone").value="";
+    await loadDriverWorkspace();
+    if($("section-myplan")?.classList.contains("active"))await loadMyPlanSummary();
+    message("Repartidor rápido creado y activado.");
+
+    if(popup&&data.driver?.phone){
+      popup.location.href=htpWhatsappAssistedUrl(
+        data.driver.phone,
+        quickDriverWhatsappText(data.driver,trackingUrl)
+      );
+    }else if(popup){
+      popup.close();
+    }
+  }catch(e){
+    if(popup&&!popup.closed)popup.close();
+    driverWorkspaceState.quickDriver=null;
+    renderQuickDriverResult();
+    message(e.message||"No se pudo crear el repartidor rápido.","error");
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+
+async function regenerateQuickDriverAccess(userId){
+  const popup=window.open("","_blank");
+  if(popup){
+    try{
+      popup.document.title="HTPWEB · Preparando acceso";
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Generando acceso GPS seguro…</p>';
+    }catch{}
+  }
+
+  try{
+    const data=await quickDriverInvoke("link",{driver_user_id:userId});
+    const trackingUrl=quickDriverTrackingUrl(data.tracking_token);
+    if(!data.driver?.phone)throw new Error("El repartidor no tiene WhatsApp registrado.");
+    if(popup){
+      popup.location.href=htpWhatsappAssistedUrl(
+        data.driver.phone,
+        quickDriverWhatsappText(data.driver,trackingUrl)
+      );
+    }else{
+      message("El navegador bloqueó la ventana. Habilita ventanas emergentes e inténtalo otra vez.","error");
+    }
+  }catch(e){
+    if(popup&&!popup.closed)popup.close();
+    message(e.message||"No se pudo generar el acceso GPS.","error");
+  }
+}
+
 function renderDriverCandidate(){
   const box=$("driverLookupResult");
   if(!box)return;
@@ -7649,9 +7781,10 @@ function renderDriversList(){
     items.map(d=>'<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
       '</div></td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
       '</td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn-muted" type="button" data-driver-gps="'+esc(d.user_id)+'" data-driver-name="'+esc(d.full_name||"Repartidor")+'">Ver GPS</button>'+
-      (canManage?'<button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>').join("")+
+      (canManage?'<button class="btn-muted" type="button" data-driver-quick-link="'+esc(d.user_id)+'">Enviar acceso GPS</button><button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>').join("")+
     '</tbody></table></div>';
   box.querySelectorAll("[data-driver-gps]").forEach(b=>b.onclick=()=>selectDriverGps(b.dataset.driverGps,b.dataset.driverName));
+  box.querySelectorAll("[data-driver-quick-link]").forEach(b=>b.onclick=()=>regenerateQuickDriverAccess(b.dataset.driverQuickLink));
   box.querySelectorAll("[data-driver-disable]").forEach(b=>b.onclick=()=>deactivateDriver(b.dataset.driverDisable));
 }
 
@@ -9815,7 +9948,7 @@ async function saveRestrictedArea(){
 }
 function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
-  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
+  if ($("quickDriverCreateBtn")) $("quickDriverCreateBtn").onclick = createQuickDriver;\n  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("whatsappSettingsSave")) $("whatsappSettingsSave").onclick = saveWhatsappSettings;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
