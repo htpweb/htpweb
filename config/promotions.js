@@ -15,6 +15,7 @@
 
   let publicPromotions = [];
   let tabManaged = false;
+  const mixSelections = new Map();
 
   function currentLocalId() {
     const params = new URLSearchParams(location.search);
@@ -68,9 +69,7 @@
   }
 
   function promotionIsAvailableNow(promotion) {
-    if (!promotion) return false;
-    if (promotion.available_now === false) return false;
-    return true;
+    return Boolean(promotion) && promotion.available_now !== false;
   }
 
   function formatDateTime(value) {
@@ -111,9 +110,7 @@
       ? promotion.days_of_week.map(Number).filter(day => dayNames[day])
       : [];
 
-    if (days.length === 1) {
-      return "Disponible los " + dayNames[days[0]];
-    }
+    if (days.length === 1) return "Disponible los " + dayNames[days[0]];
 
     if (days.length > 1) {
       const labels = days.map(day => dayNames[day]);
@@ -126,6 +123,59 @@
 
   function promotionDisabled(promotion) {
     return !promotionIsAvailableNow(promotion) || localIsClosed();
+  }
+
+  function promotionMixConfig(promotion) {
+    if (!promotion || promotion.promotion_type !== "COMBO") return null;
+
+    const items = Array.isArray(promotion.items) ? promotion.items : [];
+    if (items.length !== 1) return null;
+
+    const item = items[0];
+    const variants = Array.isArray(item.variants) ? item.variants : [];
+    const required = Number(item.quantity || 0);
+
+    if (item.variant_id || required <= 1 || !variants.length) return null;
+
+    return { item, variants, required };
+  }
+
+  function mixState(promotion) {
+    const config = promotionMixConfig(promotion);
+    if (!config) return null;
+
+    if (!mixSelections.has(promotion.id)) {
+      const initial = new Map();
+      config.variants.forEach(variant => initial.set(variant.id, 0));
+      mixSelections.set(promotion.id, initial);
+    }
+
+    return {
+      config,
+      quantities: mixSelections.get(promotion.id)
+    };
+  }
+
+  function mixTotal(promotion) {
+    const state = mixState(promotion);
+    if (!state) return 0;
+    return [...state.quantities.values()]
+      .reduce((sum, value) => sum + Number(value || 0), 0);
+  }
+
+  function promotionSelectionSnapshot(promotion) {
+    const state = mixState(promotion);
+    if (!state) return [];
+
+    return state.config.variants
+      .map(variant => ({
+        product_id: state.config.item.product_id,
+        product_name: state.config.item.product_name,
+        variant_id: variant.id,
+        variant_name: variant.name,
+        quantity: Number(state.quantities.get(variant.id) || 0)
+      }))
+      .filter(item => item.quantity > 0);
   }
 
   function ensurePromotionCanBeAdded(promotion, promotionItemId = null) {
@@ -225,24 +275,207 @@
     }
   }
 
+  function changeMix(promotionId, variantId, delta) {
+    const promotion = findPromotion(promotionId);
+    const state = mixState(promotion);
+
+    if (!promotion || !state || promotionDisabled(promotion)) return 0;
+
+    const variant = state.config.variants.find(item => item.id === variantId);
+    if (!variant) return mixTotal(promotion);
+
+    const current = Number(state.quantities.get(variantId) || 0);
+    const total = mixTotal(promotion);
+    let next = current + Number(delta || 0);
+
+    if (next < 0) next = 0;
+    if (Number(delta) > 0 && total >= state.config.required) next = current;
+
+    state.quantities.set(variantId, next);
+    syncMixUi(promotion);
+    return mixTotal(promotion);
+  }
+
+  function addMixedPromotion(promotionId) {
+    const promotion = findPromotion(promotionId);
+
+    try {
+      ensurePromotionCanBeAdded(promotion, null);
+
+      const state = mixState(promotion);
+      if (!state) throw new Error("Esta promoción no admite selección de variantes.");
+
+      const total = mixTotal(promotion);
+      if (total !== state.config.required) {
+        throw new Error(
+          "Selecciona exactamente " + state.config.required + " opciones para esta promoción."
+        );
+      }
+
+      const selection = promotionSelectionSnapshot(promotion);
+
+      carritoAgregar(negocioActual.slug, {
+        kind: "PROMOTION",
+        local_id: currentLocalId(),
+        promotion_id: promotion.id,
+        promotion_item_id: null,
+        snapshot: {
+          local_name: typeof localActual !== "undefined" ? localActual?.name || null : null,
+          promotion_title: promotion.title,
+          promotion_type: promotion.promotion_type,
+          promotion_image_url: promotion.image_url || null,
+          promotion_selection: selection,
+          promotion_selection_required: state.config.required
+        }
+      }, 1);
+
+      if (typeof updateCartCount === "function") updateCartCount();
+      syncPromotionCounts();
+
+      const errorBox = document.getElementById("error");
+      errorBox?.classList.add("hidden");
+      return promotionQuantity(promotion.id, null);
+    } catch (error) {
+      const errorBox = document.getElementById("error");
+      if (errorBox) {
+        errorBox.textContent = error.message || "No se pudo agregar la promoción.";
+        errorBox.classList.remove("hidden");
+      }
+      return promotionQuantity(promotionId, null);
+    }
+  }
+
   function quantityControl(promotion, promotionItemId = null) {
     const promotionId = promotion.id;
-    const itemArg = promotionItemId ? `'${escPromo(promotionItemId)}'` : "null";
+    const itemArg = promotionItemId ? "'" + escPromo(promotionItemId) + "'" : "null";
     const key = promotionId + ":" + (promotionItemId || "");
     const disabled = promotionDisabled(promotion) ? "disabled" : "";
 
-    return `
-      <div class="promotion-buy-controls">
-        <div class="quantity-stepper" aria-label="Cantidad de promociones en carrito">
-          <button type="button" class="qty-step-btn" ${disabled}
-            onclick="event.stopPropagation();HTPWEBPromotions.change('${escPromo(promotionId)}',${itemArg},-1)">−</button>
-          <input type="number" min="0" value="${promotionQuantity(promotionId, promotionItemId)}"
-            data-promotion-qty="${escPromo(key)}" aria-label="Cantidad en carrito" readonly>
-          <button type="button" class="qty-step-btn" ${disabled}
-            onclick="event.stopPropagation();HTPWEBPromotions.change('${escPromo(promotionId)}',${itemArg},1)">+</button>
-        </div>
-      </div>
-    `;
+    return '<div class="promotion-buy-controls">' +
+      '<div class="quantity-stepper" aria-label="Cantidad de promociones en carrito">' +
+        '<button type="button" class="qty-step-btn" ' + disabled +
+          ' onclick="event.stopPropagation();HTPWEBPromotions.change(\'' +
+          escPromo(promotionId) + '\',' + itemArg + ',-1)">−</button>' +
+        '<input type="number" min="0" value="' +
+          promotionQuantity(promotionId, promotionItemId) +
+          '" data-promotion-qty="' + escPromo(key) +
+          '" aria-label="Cantidad en carrito" readonly>' +
+        '<button type="button" class="qty-step-btn" ' + disabled +
+          ' onclick="event.stopPropagation();HTPWEBPromotions.change(\'' +
+          escPromo(promotionId) + '\',' + itemArg + ',1)">+</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderMixPromotion(promotion, mix, disabled) {
+    const state = mixState(promotion);
+    const selectedTotal = mixTotal(promotion);
+    const price = comboPrice(promotion);
+
+    const rows = mix.variants.map(variant => {
+      const quantity = Number(state.quantities.get(variant.id) || 0);
+      const rowClass = quantity > 0 ? "promotion-mix-row has-quantity" : "promotion-mix-row";
+      const dis = disabled ? "disabled" : "";
+
+      return '<div id="promotion-mix-row-' + escPromo(promotion.id) + '-' +
+        escPromo(variant.id) + '" class="' + rowClass + '">' +
+          '<strong>' + escPromo(variant.name).toUpperCase() + '</strong>' +
+          '<div class="quantity-stepper promotion-mix-stepper">' +
+            '<button type="button" class="qty-step-btn" ' + dis +
+              ' onclick="event.stopPropagation();HTPWEBPromotions.changeMix(\'' +
+              escPromo(promotion.id) + '\',\'' + escPromo(variant.id) + '\',-1)">−</button>' +
+            '<input id="promotion-mix-qty-' + escPromo(promotion.id) + '-' +
+              escPromo(variant.id) + '" type="number" min="0" value="' +
+              escPromo(quantity) + '" readonly aria-label="Cantidad ' +
+              escPromo(variant.name) + '">' +
+            '<button type="button" class="qty-step-btn" ' + dis +
+              ' onclick="event.stopPropagation();HTPWEBPromotions.changeMix(\'' +
+              escPromo(promotion.id) + '\',\'' + escPromo(variant.id) + '\',1)">+</button>' +
+          '</div>' +
+        '</div>';
+    }).join("");
+
+    const buttonDisabled = disabled || selectedTotal !== mix.required;
+    const buttonText = disabled
+      ? "No disponible"
+      : selectedTotal === mix.required
+        ? "Agregar promoción — $" + Number(price || 0).toFixed(2)
+        : "Selecciona " + (mix.required - selectedTotal) + " más";
+
+    return {
+      itemsHtml:
+        '<div class="promotion-mix">' +
+          '<div class="promotion-mix-heading">' +
+            '<strong>Elige tus ' + escPromo(mix.required) + ' picadas</strong>' +
+            '<span id="promotion-mix-status-' + escPromo(promotion.id) +
+              '" class="promotion-mix-status ' +
+              (selectedTotal === mix.required ? "is-complete" : "") + '">' +
+              escPromo(selectedTotal) + ' de ' + escPromo(mix.required) +
+              ' seleccionadas</span>' +
+          '</div>' +
+          '<div class="promotion-mix-rows">' + rows + '</div>' +
+        '</div>',
+      actionHtml:
+        '<div class="promotion-mix-action">' +
+          '<button id="promotion-mix-add-' + escPromo(promotion.id) +
+            '" class="btn btn-primary" type="button" ' +
+            (buttonDisabled ? "disabled " : "") +
+            'onclick="event.stopPropagation();HTPWEBPromotions.addMix(\'' +
+            escPromo(promotion.id) + '\')">' +
+            escPromo(buttonText) +
+          '</button>' +
+          '<span id="promotion-mix-added-' + escPromo(promotion.id) +
+            '" class="promotion-mix-added">' +
+            (promotionQuantity(promotion.id, null) > 0
+              ? 'En carrito: ' + escPromo(promotionQuantity(promotion.id, null))
+              : '') +
+          '</span>' +
+        '</div>'
+    };
+  }
+
+  function syncMixUi(promotion) {
+    const state = mixState(promotion);
+    if (!state) return;
+
+    const total = mixTotal(promotion);
+    const required = state.config.required;
+    const unavailable = promotionDisabled(promotion);
+
+    state.config.variants.forEach(variant => {
+      const qty = Number(state.quantities.get(variant.id) || 0);
+      const input = document.getElementById(
+        "promotion-mix-qty-" + promotion.id + "-" + variant.id
+      );
+      const row = document.getElementById(
+        "promotion-mix-row-" + promotion.id + "-" + variant.id
+      );
+
+      if (input) input.value = qty;
+      row?.classList.toggle("has-quantity", qty > 0);
+    });
+
+    const status = document.getElementById("promotion-mix-status-" + promotion.id);
+    if (status) {
+      status.textContent = total + " de " + required + " seleccionadas";
+      status.classList.toggle("is-complete", total === required);
+    }
+
+    const addButton = document.getElementById("promotion-mix-add-" + promotion.id);
+    if (addButton) {
+      addButton.disabled = unavailable || total !== required;
+      addButton.textContent = unavailable
+        ? "No disponible"
+        : total === required
+          ? "Agregar promoción — $" + comboPrice(promotion).toFixed(2)
+          : "Selecciona " + (required - total) + " más";
+    }
+
+    const added = document.getElementById("promotion-mix-added-" + promotion.id);
+    if (added) {
+      const quantity = promotionQuantity(promotion.id, null);
+      added.textContent = quantity > 0 ? "En carrito: " + quantity : "";
+    }
   }
 
   function renderPromotionCard(promotion) {
@@ -287,7 +520,8 @@
                 quantityControl(promotion, item.id) +
                 '<button class="btn btn-primary" type="button" ' +
                   (disabled ? 'disabled ' : '') +
-                  'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' + escPromo(promotion.id) + '\',\'' + escPromo(item.id) + '\')">' +
+                  'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' +
+                  escPromo(promotion.id) + '\',\'' + escPromo(item.id) + '\')">' +
                   (disabled ? 'No disponible' : 'Agregar') +
                 '</button>' +
               '</div>' +
@@ -296,37 +530,48 @@
         : '<div class="muted">Esta promoción todavía no tiene opciones disponibles.</div>';
     } else {
       const total = comboPrice(promotion);
+      const mix = promotionMixConfig(promotion);
+
       priceHtml = '<div class="promotion-total">Precio promocional: $' +
         Number(total || 0).toFixed(2) + '</div>';
 
-      itemsHtml = items.length
-        ? '<div class="promotion-items">' + items.map(item => {
-            const label = String(item.product_name || "Producto") +
-              (item.variant_name ? " · " + item.variant_name : "");
-            return '<div><strong>' + escPromo(item.quantity || 1) + '×</strong> ' +
-              escPromo(label) + '</div>';
-          }).join("") + '</div>'
-        : '<div class="muted">Este combo todavía no tiene productos disponibles.</div>';
+      if (mix) {
+        const renderedMix = renderMixPromotion(promotion, mix, disabled);
+        itemsHtml = renderedMix.itemsHtml;
+        actionHtml = renderedMix.actionHtml;
+      } else {
+        itemsHtml = items.length
+          ? '<div class="promotion-items">' + items.map(item => {
+              const label = String(item.product_name || "Producto") +
+                (item.variant_name ? " · " + item.variant_name : "");
+              return '<div><strong>' + escPromo(item.quantity || 1) + '×</strong> ' +
+                escPromo(label) + '</div>';
+            }).join("") + '</div>'
+          : '<div class="muted">Este combo todavía no tiene productos disponibles.</div>';
 
-      actionHtml = items.length
-        ? '<div class="promotion-combo-action">' +
-            quantityControl(promotion, null) +
-            '<button class="btn btn-primary" type="button" ' +
-              (disabled ? 'disabled ' : '') +
-              'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' + escPromo(promotion.id) + '\',null)">' +
-              (disabled ? 'No disponible' : 'Agregar promoción') +
-            '</button>' +
-          '</div>'
-        : "";
+        actionHtml = items.length
+          ? '<div class="promotion-combo-action">' +
+              quantityControl(promotion, null) +
+              '<button class="btn btn-primary" type="button" ' +
+                (disabled ? 'disabled ' : '') +
+                'onclick="event.stopPropagation();HTPWEBPromotions.add(\'' +
+                escPromo(promotion.id) + '\',null)">' +
+                (disabled ? 'No disponible' : 'Agregar promoción') +
+              '</button>' +
+            '</div>'
+          : "";
+      }
     }
 
-    return '<div class="promotion-card ' + (disabled ? 'promotion-unavailable' : 'promotion-available') +
+    return '<div class="promotion-card ' +
+      (disabled ? 'promotion-unavailable' : 'promotion-available') +
       '" id="promotion-' + escPromo(promotion.id) + '">' +
       image +
       '<div class="promotion-card-copy">' +
         '<div class="promotion-card-topline">' +
           '<span class="promotion-badge">PROMOCIÓN</span>' +
-          '<span class="promotion-status ' + (disabled ? 'is-disabled' : 'is-available') + '">' +
+          '<span class="promotion-status ' +
+            (disabled ? 'is-disabled' : 'is-available') + '">' +
             escPromo(statusText) +
           '</span>' +
         '</div>' +
@@ -350,6 +595,8 @@
       const promotionItemId = splitAt >= 0 ? key.slice(splitAt + 1) || null : null;
       input.value = promotionQuantity(promotionId, promotionItemId);
     });
+
+    publicPromotions.forEach(syncMixUi);
   }
 
   function focusRequestedPromotion() {
@@ -443,6 +690,8 @@
   window.HTPWEBPromotions = {
     add: addPromotion,
     change: changePromotionQuantity,
+    changeMix,
+    addMix: addMixedPromotion,
     refresh: renderPublicPromotions,
     renderTab,
     setTabManaged,
