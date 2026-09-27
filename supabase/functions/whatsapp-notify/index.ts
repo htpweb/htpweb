@@ -285,7 +285,7 @@ const authenticatedHandler = withSupabase(
         .from("orders")
         .select(
           "id,delivery_id,notes," +
-            "order_items(local_id,product_name,variant_name,quantity,subtotal)," +
+            "order_items(local_id,product_name,variant_name,quantity,subtotal,promotion_title)," +
             "order_locals(local_id,subtotal,locals(id,name,whatsapp))",
         )
         .eq("id", orderId)
@@ -327,7 +327,10 @@ const authenticatedHandler = withSupabase(
       const itemSummary = clip(
         items.map((item: any) => {
           const variant = item.variant_name ? " (" + item.variant_name + ")" : "";
-          return String(item.quantity) + " x " + item.product_name + variant;
+          const promotion = item.promotion_title
+            ? " [PROMO: " + item.promotion_title + "]"
+            : "";
+          return String(item.quantity) + " x " + item.product_name + variant + promotion;
         }).join("; "),
         900,
       );
