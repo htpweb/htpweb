@@ -512,83 +512,105 @@
     });
   }
 
-  function renderPurchasableRow(product, variant, scope) {
-    const variantId = variant?.id || null;
-    const price = Number(variant?.price ?? product.price ?? 0);
-    const quantity = menuQuantity(product.id, variantId);
+  function renderQuantityStepper(productId, variantId, scope, quantity, closed) {
+    return `
+      <div class="quantity-stepper visual-menu-compact-stepper">
+        <button
+          type="button"
+          class="qty-step-btn"
+          aria-label="Disminuir cantidad"
+          ${closed ? "disabled" : ""}
+          onclick="HTPWEBVisualMenu.change('${productId}',-1,'${scope}','${variantId || ""}')"
+        >−</button>
+        <input
+          id="${controlId(scope, "qty", productId, variantId)}"
+          type="number"
+          min="0"
+          step="1"
+          value="${quantity}"
+          aria-label="Cantidad en carrito"
+          ${closed ? "disabled" : ""}
+          oninput="HTPWEBVisualMenu.set('${productId}',this.value,'${scope}','${variantId || ""}')"
+        >
+        <button
+          type="button"
+          class="qty-step-btn"
+          aria-label="Aumentar cantidad"
+          ${closed ? "disabled" : ""}
+          onclick="HTPWEBVisualMenu.change('${productId}',1,'${scope}','${variantId || ""}')"
+        >+</button>
+      </div>
+    `;
+  }
+
+  function renderVariantProduct(product, variantsForProduct, scope) {
     const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
-    const variantLabel = variant?.name || null;
+
+    return `
+      <div class="visual-menu-product-group" data-menu-product-group="${escapeHtml(product.id)}">
+        <div class="visual-menu-product-group-heading">
+          <strong>${escapeHtml(product.name)}</strong>
+          ${product.description ? `<span class="muted">${escapeHtml(product.description)}</span>` : ""}
+        </div>
+
+        <div class="visual-menu-variant-rows">
+          ${variantsForProduct.map(variant => {
+            const quantity = menuQuantity(product.id, variant.id);
+            const price = Number(variant.price ?? product.price ?? 0);
+
+            return `
+              <div
+                class="visual-menu-variant-row ${quantity > 0 ? "has-quantity" : ""}"
+                data-menu-product="${escapeHtml(product.id)}"
+                data-menu-variant="${escapeHtml(variant.id)}"
+                data-menu-scope="${scope}"
+              >
+                <div class="visual-menu-variant-info">
+                  <strong class="visual-menu-variant-name">${escapeHtml(variant.name)}</strong>
+                  <span
+                    class="visual-menu-variant-price"
+                    id="${controlId(scope, "price", product.id, variant.id)}"
+                  >$${price.toFixed(2)}</span>
+                </div>
+                ${renderQuantityStepper(product.id, variant.id, scope, quantity, closed)}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSimpleProduct(product, scope) {
+    const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
+    const quantity = menuQuantity(product.id, null);
+    const price = Number(product.price || 0);
 
     return `
       <div
-        class="visual-menu-product ${variantLabel ? "visual-menu-product-variant" : ""}"
+        class="visual-menu-product-direct ${quantity > 0 ? "has-quantity" : ""}"
         data-menu-product="${escapeHtml(product.id)}"
-        data-menu-variant="${escapeHtml(variantId || "")}"
+        data-menu-variant=""
         data-menu-scope="${scope}"
       >
-        <div class="visual-menu-product-main">
-          <div class="visual-menu-product-name-line">
-            <strong>${escapeHtml(product.name)}</strong>
-            ${variantLabel ? `<span class="visual-menu-variant-chip">[${escapeHtml(variantLabel)}]</span>` : ""}
-            <span class="visual-menu-inline-price" id="${controlId(scope, "price", product.id, variantId)}">— ${price.toFixed(2)}</span>
-          </div>
-          ${!variantLabel && product.description ? `<div class="muted visual-menu-product-description">${escapeHtml(product.description)}</div>` : ""}
+        <div class="visual-menu-simple-copy">
+          <strong>${escapeHtml(product.name)}</strong>
+          ${product.description ? `<span class="muted">${escapeHtml(product.description)}</span>` : ""}
         </div>
-
-        <div class="visual-menu-product-bottom visual-menu-product-bottom-direct">
-          <div class="visual-menu-buy">
-            <div class="quantity-stepper">
-              <button
-                type="button"
-                class="qty-step-btn"
-                aria-label="Disminuir cantidad"
-                ${closed ? "disabled" : ""}
-                onclick="HTPWEBVisualMenu.change('${product.id}',-1,'${scope}','${variantId || ""}')"
-              >−</button>
-              <input
-                id="${controlId(scope, "qty", product.id, variantId)}"
-                type="number"
-                min="0"
-                step="1"
-                value="${quantity}"
-                aria-label="Cantidad en carrito"
-                ${closed ? "disabled" : ""}
-                oninput="HTPWEBVisualMenu.set('${product.id}',this.value,'${scope}','${variantId || ""}')"
-              >
-              <button
-                type="button"
-                class="qty-step-btn"
-                aria-label="Aumentar cantidad"
-                ${closed ? "disabled" : ""}
-                onclick="HTPWEBVisualMenu.change('${product.id}',1,'${scope}','${variantId || ""}')"
-              >+</button>
-            </div>
-
-            <button
-              id="${controlId(scope, "add", product.id, variantId)}"
-              type="button"
-              class="btn btn-primary visual-menu-add"
-              ${closed ? "disabled" : ""}
-              onclick="HTPWEBVisualMenu.add('${product.id}','${scope}','${variantId || ""}')"
-            >${closed ? "Local cerrado" : "Agregar"}</button>
-          </div>
-        </div>
+        <span
+          class="visual-menu-simple-price"
+          id="${controlId(scope, "price", product.id, null)}"
+        >$${price.toFixed(2)}</span>
+        ${renderQuantityStepper(product.id, null, scope, quantity, closed)}
       </div>
     `;
   }
 
   function renderProductRow(product, scope) {
     const vs = productVariants(product.id);
-
-    if (vs.length) {
-      return `
-        <div class="visual-menu-variant-list" data-menu-product-group="${escapeHtml(product.id)}">
-          ${vs.map(variant => renderPurchasableRow(product, variant, scope)).join("")}
-        </div>
-      `;
-    }
-
-    return renderPurchasableRow(product, null, scope);
+    return vs.length
+      ? renderVariantProduct(product, vs, scope)
+      : renderSimpleProduct(product, scope);
   }
 
   function renderCategoryGroups(page, scope) {
@@ -692,8 +714,12 @@
       const priceEl = $m(controlId(scope, "price", productId, variantId));
       const qtyEl = $m(controlId(scope, "qty", productId, variantId));
 
-      if (priceEl) priceEl.textContent = "— $" + price.toFixed(2);
-      if (qtyEl) qtyEl.value = quantity;
+      if (priceEl) priceEl.textContent = "$" + price.toFixed(2);
+      if (qtyEl) {
+        qtyEl.value = quantity;
+        const row = qtyEl.closest(".visual-menu-variant-row, .visual-menu-product-direct");
+        row?.classList.toggle("has-quantity", quantity > 0);
+      }
     });
   }
 
@@ -711,35 +737,8 @@
     pageProducts(menuPages[pageIndex]).forEach(product => syncProductControls(product.id));
   }
 
-  function variantChanged(productId, scope) {
-    syncProductControls(productId);
-  }
-
-  function feedback(productId, scope, total, variantId = null) {
-    const button = $m(controlId(scope, "add", productId, variantId));
-    if (!button || button.disabled) return;
-
-    button.textContent = `En carrito: ${total} ✓`;
-    button.classList.add("is-added");
-    window.clearTimeout(button._menuFeedback);
-    button._menuFeedback = window.setTimeout(() => {
-      if (!button.disabled) button.textContent = "Agregar";
-      button.classList.remove("is-added");
-    }, 900);
-  }
-
   function normalizeVariantArgument(variantId) {
     return variantId ? String(variantId) : null;
-  }
-
-  function add(productId, scope = "inline", variantId = null) {
-    if (typeof window.htpwebAddProductUnit !== "function") return 0;
-    const chosenVariantId = normalizeVariantArgument(variantId);
-
-    const total = window.htpwebAddProductUnit(productId, chosenVariantId);
-    syncProductControls(productId);
-    feedback(productId, scope, total, chosenVariantId);
-    return total;
   }
 
   function change(productId, delta, scope = "inline", variantId = null) {
@@ -829,10 +828,8 @@
   setTimeout(loadMenuPages, 1400);
 
   window.HTPWEBVisualMenu = {
-    add,
     change,
     set: setQuantity,
-    variantChanged,
     stepPage,
     showView,
     openViewer,
