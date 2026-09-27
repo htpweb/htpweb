@@ -10077,7 +10077,8 @@ async function saveRestrictedArea(){
 }
 function bindEvents() {
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
-  if ($("quickDriverCreateBtn")) $("quickDriverCreateBtn").onclick = createQuickDriver;\n  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
+  if ($("quickDriverCreateBtn")) $("quickDriverCreateBtn").onclick = createQuickDriver;
+  if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("whatsappSettingsSave")) $("whatsappSettingsSave").onclick = saveWhatsappSettings;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
