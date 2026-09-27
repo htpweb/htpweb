@@ -54,7 +54,7 @@ test("visor ampliado conserva compra al costado y navegación por hojas",()=>{
 
 test("productos del menú se agrupan por categorías internas",()=>{
   assert.match(menu,/groupedPageProducts/);
-  assert.match(menu,/visual-menu-category-title/);
+  assert.match(menu,/visual-menu-category-toggle/);
   assert.match(menu,/first_product_order/);
   const categoryMigration=fs.readFileSync("supabase/migrations/20260927025950_visual_menu_category_groups.sql","utf8");
   assert.match(categoryMigration,/'categories'/);
