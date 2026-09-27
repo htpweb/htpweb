@@ -14,7 +14,8 @@ test("CLIENTE tiene panel exclusivo de promociones por día",()=>{
   assert.match(client,/promotionDayOffset/);
   assert.match(client,/public_delivery_promotions/);
   assert.match(client,/Mañana/);
-  assert.match(client,/Ver LOCAL/);
+  assert.match(client,/Ver y comprar/);
+  assert.match(client,/promotion:/);
 });
 
 test("productos marcados solo promoción no aparecen en catálogos públicos",()=>{
@@ -44,4 +45,17 @@ test("panel DELIVERY muestra LOCAL, producto y precio promocional",()=>{
   assert.match(panel,/item\.product_name/);
   assert.match(panel,/item\.promo_price/);
   assert.match(panel,/promotion\.promotion_price/);
+});
+
+test("promociones activas se compran como promoción y no pierden su precio",()=>{
+  const cart=fs.readFileSync("config/cart.js","utf8");
+  const promotions=fs.readFileSync("config/promotions.js","utf8");
+  const checkout=fs.readFileSync("app/carrito.html","utf8");
+  const edge=fs.readFileSync("supabase/functions/crear-pedido/index.ts","utf8");
+  assert.match(cart,/promotion_id/);
+  assert.match(cart,/promotion_item_id/);
+  assert.match(promotions,/Agregar promoción/);
+  assert.match(promotions,/carritoAgregar/);
+  assert.match(checkout,/promotion_id: item\.promotion_id/);
+  assert.match(edge,/promotion_id: item\.promotion_id/);
 });
