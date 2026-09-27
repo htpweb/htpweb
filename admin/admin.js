@@ -292,6 +292,7 @@ function configureNavigation() {
 }
 
 function showSection(name) {
+  if(name!=="orders"&&typeof stopOrderControlAutoRefresh==="function") stopOrderControlAutoRefresh();
   if (typeof restoreLocalPanels === "function") restoreLocalPanels();
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
@@ -9778,6 +9779,13 @@ function bindEvents() {
 
   $("refreshBtn").onclick = refreshAll;
   if ($("orderScope")) $("orderScope").onchange = loadOrders;
+  if ($("orderControlRefresh")) $("orderControlRefresh").onclick = () => loadOrders();
+  if ($("orderControlFilter")) $("orderControlFilter").onchange = renderOrderControl;
+  if ($("orderControlSearch")) $("orderControlSearch").oninput = renderOrderControlQueue;
+  if ($("orderControlAutoRefresh")) $("orderControlAutoRefresh").onchange = () => {
+    if($("orderControlAutoRefresh").checked) startOrderControlAutoRefresh();
+    else stopOrderControlAutoRefresh();
+  };
   if ($("analyticsScope")) $("analyticsScope").onchange = loadAnalytics;
   const menuImportDelivery = $("menuImportDelivery");
   const menuExistingLocal = $("menuExistingLocal");
