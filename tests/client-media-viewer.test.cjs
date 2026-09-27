@@ -24,6 +24,8 @@ test("visor conserva la lógica existente de carrito y variantes", () => {
 
 test("CLIENT puede ver la galería pública del LOCAL", () => {
   assert.match(viewer, /rpc\("public_list_local_gallery"/);
+  assert.match(viewer, /typeof supabaseClient === "undefined"/);
+  assert.doesNotMatch(viewer, /!window\.supabaseClient/);
   assert.match(viewer, /local-gallery-public/);
   assert.match(viewer, /openGallery\(Number\(button\.dataset\.galleryIndex\)\)/);
   assert.match(migration, /create or replace function public\.public_list_local_gallery/);
