@@ -325,7 +325,12 @@
       typeof localId === "undefined" ||
       !localId ||
       !window.supabaseClient ||
-      typeof products === "undefined"
+      typeof localActual === "undefined" ||
+      !localActual?.id ||
+      localActual.id !== localId ||
+      typeof products === "undefined" ||
+      !Array.isArray(products) ||
+      products.length === 0
     ) return;
 
     try {
