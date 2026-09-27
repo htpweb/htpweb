@@ -60,3 +60,21 @@ test("productos del menú se agrupan por categorías internas",()=>{
   assert.match(categoryMigration,/'categories'/);
   assert.match(categoryMigration,/first_product_order/);
 });
+
+
+test("categorías del menú son desplegables y conservan estado",()=>{
+  assert.match(menu,/expandedCategories/);
+  assert.match(menu,/toggleCategory/);
+  assert.match(menu,/aria-expanded/);
+  assert.match(menu,/visual-menu-category-toggle/);
+  assert.match(menu,/initializedCategoryPages/);
+});
+
+test("buscador encuentra productos y variantes en todas las hojas",()=>{
+  assert.match(menu,/Buscar producto\.\.\./);
+  assert.match(menu,/allMenuSearchResults/);
+  assert.match(menu,/menuPages\.forEach/);
+  assert.match(menu,/productVariants\(product\.id\)/);
+  assert.match(menu,/selectSearchResult/);
+  assert.match(menu,/scrollIntoView/);
+});
