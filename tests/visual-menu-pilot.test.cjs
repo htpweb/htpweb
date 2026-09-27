@@ -14,12 +14,12 @@ test("piloto de menú visual está habilitado en la página del LOCAL",()=>{
   assert.match(menu,/PRODUCTOS/);
 });
 
-test("menú visual compra varios productos usando el carrito existente",()=>{
-  assert.match(menu,/htpwebAddProductUnit/);
+test("menú visual compra varios productos usando cantidades del carrito existente",()=>{
   assert.match(menu,/htpwebChangeProductQuantity/);
   assert.match(menu,/htpwebSetProductQuantity/);
   assert.match(menu,/htpwebProductCartMatcher/);
   assert.match(menu,/htpweb:cart/);
+  assert.doesNotMatch(menu,/>Agregar<\/button>/);
 });
 
 test("navegación soporta varias hojas aunque Cedeño tenga una sola fuente",()=>{
@@ -80,12 +80,13 @@ test("buscador encuentra productos y variantes en todas las hojas",()=>{
 });
 
 
-test("variantes del menú se muestran como líneas comprables directas",()=>{
-  assert.match(menu,/renderPurchasableRow/);
-  assert.match(menu,/visual-menu-variant-chip/);
+test("variantes del menú se muestran como opciones con cantidad independiente",()=>{
+  assert.match(menu,/renderVariantProduct/);
+  assert.match(menu,/visual-menu-variant-row/);
+  assert.match(menu,/visual-menu-variant-name/);
   assert.match(menu,/data-menu-variant/);
-  assert.match(menu,/htpwebAddProductUnit\(productId, chosenVariantId\)/);
   assert.match(menu,/htpwebChangeProductQuantity[\s\S]*chosenVariantId/);
   assert.match(menu,/htpwebSetProductQuantity[\s\S]*chosenVariantId/);
-  assert.doesNotMatch(menu,/class="visual-menu-product"[\s\S]*<select[\s\S]*variantChanged/);
+  assert.doesNotMatch(menu,/visual-menu-add/);
+  assert.doesNotMatch(menu,/>Agregar<\/button>/);
 });
