@@ -47,6 +47,12 @@ verify_jwt = true
 [functions.whatsapp-notify]
 verify_jwt = false
 
+[functions.quick-driver]
+verify_jwt = true
+
+[functions.quick-driver-track]
+verify_jwt = false
+
 [functions.share-preview]
 verify_jwt = false
 
