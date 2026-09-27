@@ -1,6 +1,6 @@
 // Código #76: consultas del CLIENT. RLS y la RPC conservan la autoridad final.
 const CLIENT_ORDER_PAGE_SIZE = 20;
-const CLIENT_ORDER_FIELDS = 'id,delivery_id,customer_id,status,created_at,subtotal,delivery_fee,total,delivery_address';
+const CLIENT_ORDER_FIELDS = 'id,delivery_id,customer_id,status,created_at,subtotal,delivery_fee,total,customer_name,customer_phone,delivery_address,latitude,longitude,address_reference,notes';
 
 async function contextoPedidosCliente() {
   const user = await obtenerUsuarioActual();
