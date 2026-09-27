@@ -41,3 +41,22 @@ test("menú visual usa el cliente Supabase global real de HTPWEB",()=>{
   assert.match(menu,/typeof supabaseClient === "undefined"/);
   assert.doesNotMatch(menu,/!window\.supabaseClient/);
 });
+
+
+test("visor ampliado conserva compra al costado y navegación por hojas",()=>{
+  assert.match(menu,/visualMenuViewer/);
+  assert.match(menu,/visualMenuViewerImage/);
+  assert.match(menu,/visualMenuViewerProducts/);
+  assert.match(menu,/visualMenuViewerPrev/);
+  assert.match(menu,/visualMenuViewerNext/);
+  assert.match(menu,/openViewer/);
+});
+
+test("productos del menú se agrupan por categorías internas",()=>{
+  assert.match(menu,/groupedPageProducts/);
+  assert.match(menu,/visual-menu-category-title/);
+  assert.match(menu,/first_product_order/);
+  const categoryMigration=fs.readFileSync("supabase/migrations/20260927025950_visual_menu_category_groups.sql","utf8");
+  assert.match(categoryMigration,/'categories'/);
+  assert.match(categoryMigration,/first_product_order/);
+});
