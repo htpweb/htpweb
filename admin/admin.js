@@ -2299,8 +2299,9 @@ function renderOrder(order) {
     : "";
 
   const locals = (order.order_locals || []).map(ol => {
-    const canManageLocal = state.role !== "LOCAL_ADMIN" || state.locals.some(l => l.id === ol.local_id);
-    const buttons = state.role === "LOCAL_ADMIN" && canManageLocal
+    const canManageLocal = ["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)
+      || (state.role === "LOCAL_ADMIN" && state.locals.some(l => l.id === ol.local_id));
+    const buttons = canManageLocal
       ? (localTransitions[ol.status] || []).map(next =>
           `<button class="${next === "CANCELLED" ? "btn-danger" : "btn"}" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${next}</button>`
         ).join("")
