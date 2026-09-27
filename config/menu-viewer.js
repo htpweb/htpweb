@@ -52,12 +52,14 @@
       tabs.className = "client-catalog-tabs hidden";
       tabs.innerHTML = `
         <button id="visualMenuTab" class="client-catalog-tab active" type="button">MENÚ</button>
-        <button id="visualProductsTab" class="client-catalog-tab" type="button">PRODUCTOS</button>
+        <button id="visualPromotionsTab" class="client-catalog-tab" type="button">PROMOCIONES</button>
       `;
-      productCard.insertAdjacentElement("beforebegin", tabs);
+
+      const promotionsCard = $m("promotionsCard");
+      (promotionsCard || productCard).insertAdjacentElement("beforebegin", tabs);
 
       $m("visualMenuTab").onclick = () => showView("menu");
-      $m("visualProductsTab").onclick = () => showView("products");
+      $m("visualPromotionsTab").onclick = () => showView("promotions");
     }
 
     if (!$m("visualMenuCard")) {
@@ -116,7 +118,7 @@
           </div>
         </div>
       `;
-      productCard.insertAdjacentElement("beforebegin", section);
+      $m("visualMenuTabs").insertAdjacentElement("afterend", section);
 
       $m("visualMenuPrev").onclick = () => stepPage(-1);
       $m("visualMenuNext").onclick = () => stepPage(1);
@@ -214,16 +216,24 @@
 
   function showView(view) {
     if (!menuPages.length) return;
-    currentView = view === "products" ? "products" : "menu";
+
+    currentView = view === "promotions" ? "promotions" : "menu";
     const menuCard = $m("visualMenuCard");
     const productCard = productsCard();
+    const promotionsCard = $m("promotionsCard");
 
     menuCard?.classList.toggle("hidden", currentView !== "menu");
-    productCard?.classList.toggle("hidden", currentView !== "products");
-    $m("visualMenuTab")?.classList.toggle("active", currentView === "menu");
-    $m("visualProductsTab")?.classList.toggle("active", currentView === "products");
+    productCard?.classList.add("hidden");
+    promotionsCard?.classList.toggle("hidden", currentView !== "promotions");
 
-    if (currentView === "menu") renderPage();
+    $m("visualMenuTab")?.classList.toggle("active", currentView === "menu");
+    $m("visualPromotionsTab")?.classList.toggle("active", currentView === "promotions");
+
+    if (currentView === "menu") {
+      renderPage();
+    } else {
+      window.HTPWEBPromotions?.renderTab?.();
+    }
   }
 
   function pageProducts(page) {
@@ -799,10 +809,25 @@
       });
 
       ensureUi();
+
+      const productCard = productsCard();
+      const promotionsCard = $m("promotionsCard");
+      if (productCard) productCard.classList.add("hidden");
+      if (promotionsCard) {
+        promotionsCard.dataset.tabManaged = "true";
+        promotionsCard.classList.add("hidden");
+      }
+
       $m("visualMenuTabs").classList.remove("hidden");
       pageIndex = 0;
-      currentView = "menu";
-      showView("menu");
+
+      window.dispatchEvent(new CustomEvent("htpweb:visual-menu-ready", {
+        detail: { local_id: localId }
+      }));
+
+      const requestedPromotion = new URLSearchParams(location.search).get("promotion");
+      currentView = requestedPromotion ? "promotions" : "menu";
+      showView(currentView);
     } catch (error) {
       console.warn("No se pudo cargar el menú visual del LOCAL:", error?.message || error);
     }
