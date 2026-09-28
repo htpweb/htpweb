@@ -59,22 +59,22 @@ test('GPS rápido solo opera con entrega activa y gps.live',()=>{
   assert.match(migration,/'order-tracking:'\|\|v_order\.id::text/);
 });
 
-test('panel DELIVERY permite crear solo con WhatsApp y regenerar acceso GPS',()=>{
+test('panel DELIVERY permite crear solo con WhatsApp y regenerar consola móvil',()=>{
   assert.match(html,/id="quickDriverPhone"/);
   assert.match(html,/Crear emergencia y abrir WhatsApp/);
   assert.match(admin,/functions\.invoke\("quick-driver"/);
   assert.match(admin,/quickDriverInvoke\("create"/);
   assert.match(admin,/quickDriverInvoke\("link"/);
-  assert.match(admin,/Enviar acceso GPS/);
+  assert.match(admin,/Enviar consola móvil/);
   assert.match(admin,/repartidor-rapido\.html/);
 });
 
 test('página móvil guarda el token en sessionStorage y comparte geolocalización voluntaria',()=>{
-  assert.match(mobile,/sessionStorage\.setItem\("htpweb\.quickDriverToken"/);
+  assert.match(mobile,/sessionStorage\.setItem\([\'"]htpweb\.quickDriverToken[\'"]/);
   assert.match(mobile,/history\.replaceState/);
   assert.match(mobile,/navigator\.geolocation\.watchPosition/);
   assert.match(mobile,/quick-driver-track/);
-  assert.match(mobile,/action:"location"/);
+  assert.match(mobile,/action:[\'"]location[\'"]/);
   assert.match(mobile,/enableHighAccuracy:true/);
   assert.match(mobile,/Compartir ubicación/);
 });
