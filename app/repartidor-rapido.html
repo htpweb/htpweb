@@ -8,48 +8,73 @@
   <style>
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#111827}
-    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .wrap{max-width:820px;margin:0 auto;padding:14px}
     .brand{font-size:26px;font-weight:900;margin:6px 0}
-    .muted{color:#64748b}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 3px 16px #0000000d}
-    .status{padding:12px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe}
+    .muted{color:#64748b}.small{font-size:12px}.hidden{display:none!important}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 3px 16px #0000000d}
+    .status{padding:11px;border-radius:11px;background:#eef2ff;border:1px solid #c7d2fe}
     .ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
     .warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
     .error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
-    button{width:100%;border:0;border-radius:12px;padding:14px 16px;font-size:16px;font-weight:800;cursor:pointer;margin-top:10px}
-    .primary{background:#111827;color:#fff}
-    .secondary{background:#e5e7eb;color:#111827}
-    .danger{background:#dc2626;color:#fff}
-    button:disabled{opacity:.55;cursor:not-allowed}
-    #map{height:300px;border-radius:14px;overflow:hidden;margin-top:12px}
+    button,.action-link{border:0;border-radius:11px;padding:11px 13px;font-size:14px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .primary{background:#111827;color:#fff}.secondary{background:#e5e7eb;color:#111827}.success{background:#166534;color:#fff}.danger{background:#dc2626;color:#fff}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions>*{flex:1;min-width:130px}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e0e7ff;font-size:11px;font-weight:900}
+    .pill.green{background:#dcfce7;color:#166534}.pill.orange{background:#ffedd5;color:#9a3412}.pill.gray{background:#e5e7eb;color:#374151}
+    .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .summary>div{border:1px solid #e5e7eb;border-radius:10px;padding:9px;background:#f8fafc}
+    .summary span{display:block;font-size:10px;color:#64748b;text-transform:uppercase;font-weight:800}.summary strong{display:block;margin-top:4px}
+    #map{height:340px;border-radius:14px;overflow:hidden;margin-top:12px;border:1px solid #e5e7eb}
     .orders{display:grid;gap:8px;margin-top:10px}
-    .order{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e0e7ff;font-size:12px;font-weight:800}
-    .gpsline{font-variant-numeric:tabular-nums}
+    .order-card{width:100%;text-align:left;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;cursor:pointer}
+    .order-card.selected{border:2px solid #111827;background:#f8fafc}
+    .row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}.wraprow{flex-wrap:wrap}
+    .section-title{font-size:17px;font-weight:900;margin:0 0 8px}
+    .pickup{border:1px solid #e5e7eb;border-radius:13px;padding:12px;margin-top:10px}
+    .pickup.done{border-color:#86efac;background:#f0fdf4}.pickup.arrived{border-color:#fdba74;background:#fff7ed}
+    .items{list-style:none;padding:0;margin:8px 0 0}.items li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px dashed #e5e7eb;font-size:13px}
+    .route-steps{display:grid;gap:6px;margin-top:9px}.route-step{padding:8px 10px;border-radius:9px;background:#f8fafc;border:1px solid #e5e7eb}
+    .invoice{border:1px dashed #94a3b8;border-radius:12px;padding:10px;margin-top:12px;background:#f8fafc}
+    input,select{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px;font-size:15px}
+    .proof-grid{display:grid;gap:10px}.proof-item{border:1px solid #e5e7eb;border-radius:10px;padding:10px}
+    canvas{width:100%;height:170px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;touch-action:none}
+    .sticky-actions{position:sticky;bottom:8px;z-index:20;background:#ffffffef;border:1px solid #dbe2eb;border-radius:14px;padding:10px;box-shadow:0 8px 24px #0002;margin-top:12px}
+    @media(max-width:600px){.summary{grid-template-columns:1fr 1fr}.wrap{padding:10px}#map{height:300px}.actions>*{min-width:120px}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="brand">HTPWEB · Repartidor</div>
-    <div class="muted">Acceso rápido por WhatsApp</div>
+    <div class="muted">Consola móvil de reparto</div>
 
     <section class="card">
       <div id="status" class="status">Validando acceso…</div>
-      <div id="driverInfo" style="margin-top:12px"></div>
+      <div id="driverInfo" style="margin-top:10px"></div>
     </section>
 
     <section class="card">
-      <h3 style="margin-top:0">Ubicación en vivo</h3>
-      <p class="muted">Comparte ubicación solo durante tus entregas. Mantén esta pantalla abierta mientras estás en ruta.</p>
-      <button id="startBtn" class="primary" disabled>Compartir ubicación</button>
-      <button id="stopBtn" class="secondary" disabled>Detener ubicación</button>
-      <div id="gpsStatus" class="muted gpsline" style="margin-top:12px">GPS detenido.</div>
+      <div class="row between wraprow">
+        <div>
+          <h3 class="section-title">GPS y ruta</h3>
+          <div id="gpsStatus" class="muted small">GPS detenido.</div>
+        </div>
+        <div class="actions" style="margin-top:0">
+          <button id="startBtn" class="primary" disabled>Compartir ubicación</button>
+          <button id="stopBtn" class="secondary" disabled>Detener GPS</button>
+        </div>
+      </div>
+      <div id="routeStatus" class="muted small" style="margin-top:8px">Selecciona una entrega para calcular su ruta.</div>
       <div id="map"></div>
     </section>
 
     <section class="card">
-      <h3 style="margin-top:0">Entregas asignadas</h3>
+      <h3 class="section-title">Entregas asignadas</h3>
       <div id="orders" class="orders"><div class="muted">Consultando…</div></div>
+    </section>
+
+    <section id="detailCard" class="card">
+      <div id="orderDetail"><div class="muted">Selecciona una entrega.</div></div>
     </section>
   </main>
 
@@ -57,211 +82,521 @@
   <script src="../config/supabase.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const statusEl=document.getElementById("status");
-    const driverInfo=document.getElementById("driverInfo");
-    const ordersEl=document.getElementById("orders");
-    const startBtn=document.getElementById("startBtn");
-    const stopBtn=document.getElementById("stopBtn");
-    const gpsStatus=document.getElementById("gpsStatus");
+    const statusEl=document.getElementById('status');
+    const driverInfo=document.getElementById('driverInfo');
+    const ordersEl=document.getElementById('orders');
+    const detailEl=document.getElementById('orderDetail');
+    const startBtn=document.getElementById('startBtn');
+    const stopBtn=document.getElementById('stopBtn');
+    const gpsStatus=document.getElementById('gpsStatus');
+    const routeStatus=document.getElementById('routeStatus');
 
-    let trackingToken=sessionStorage.getItem("htpweb.quickDriverToken")||"";
+    let trackingToken=sessionStorage.getItem('htpweb.quickDriverToken')||'';
     let context=null;
+    let selectedOrderId=null;
     let watchId=null;
     let lastSentAt=0;
     let map=null;
+    let staticLayer=null;
+    let routeLayer=null;
     let myMarker=null;
-    let destinationLayer=null;
+    let lastPosition=null;
+    let currentRoute=null;
+    let signatureCanvas=null;
 
     function takeTokenFromHash(){
-      const raw=location.hash.replace(/^#/,"");
+      const raw=location.hash.replace(/^#/,'');
       const params=new URLSearchParams(raw);
-      const token=params.get("token");
+      const token=params.get('token');
       if(token){
         trackingToken=token;
-        sessionStorage.setItem("htpweb.quickDriverToken",token);
-        history.replaceState(null,"",location.pathname+location.search);
+        sessionStorage.setItem('htpweb.quickDriverToken',token);
+        history.replaceState(null,'',location.pathname+location.search);
       }
     }
 
-    function setStatus(text,type=""){
-      statusEl.textContent=text;
-      statusEl.className="status"+(type?" "+type:"");
+    function esc(value){
+      return String(value??'').replace(/[&<>"']/g,function(ch){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch];
+      });
     }
-
-    function orderLabel(status){
-      return ({READY:"Listo para recoger",EN_ROUTE:"En camino"})[status]||status||"—";
+    function digits(value){return String(value||'').replace(/\D/g,'');}
+    function ref(id){return String(id||'').replace(/-/g,'').slice(0,8).toUpperCase();}
+    function money(v){return '$'+Number(v||0).toFixed(2);}
+    function statusLabel(v){return ({READY:'Listo para recoger',EN_ROUTE:'En camino',DELIVERED:'Entregado'})[v]||v||'—';}
+    function pickupLabel(v){return ({PENDING:'Pendiente',ARRIVED:'Llegué al local',PICKED_UP:'Recogido'})[v]||v||'Pendiente';}
+    function setStatus(text,type){
+      statusEl.textContent=text;
+      statusEl.className='status'+(type?' '+type:'');
+    }
+    function currentOrder(){
+      return (context?.orders||[]).find(function(o){return o.order_id===selectedOrderId;})||null;
     }
 
     function ensureMap(){
       if(map)return map;
-      map=L.map("map",{zoomControl:true}).setView([0.95,-79.65],13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-        attribution:"© OpenStreetMap"
-      }).addTo(map);
-      destinationLayer=L.layerGroup().addTo(map);
+      map=L.map('map',{zoomControl:true}).setView([0.95,-79.65],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+      staticLayer=L.layerGroup().addTo(map);
+      routeLayer=L.layerGroup().addTo(map);
       return map;
     }
 
-    function renderContext(){
+    function renderDriver(){
       if(!context)return;
-      const emergency=context.driver_mode==="EMERGENCY";
-      const emergencyUntil=emergency&&context.emergency_expires_at
-        ? new Date(context.emergency_expires_at).toLocaleString()
-        : null;
-      driverInfo.innerHTML="<strong>"+escapeHtml(context.driver_name||"Repartidor")+"</strong>"+
-        "<div class='muted'>"+escapeHtml(context.delivery_name||"HTPWEB")+
-        (context.phone?" · "+escapeHtml(context.phone):"")+"</div>"+
-        (emergency
-          ? "<div style='margin-top:8px'><span class='pill'>EMERGENCIA</span></div>"+
-            "<div class='muted' style='margin-top:5px'>Cupo temporal hasta "+escapeHtml(emergencyUntil||"—")+"</div>"
-          : "<div style='margin-top:8px'><span class='pill'>REGULAR</span></div>");
-
-      const orders=Array.isArray(context.orders)?context.orders:[];
-      ordersEl.innerHTML=orders.length?orders.map(o=>
-        "<div class='order'><div><strong>Pedido #"+escapeHtml(String(o.order_id||"").replace(/-/g,"").slice(0,8).toUpperCase())+"</strong> "+
-        "<span class='pill'>"+escapeHtml(orderLabel(o.status))+"</span></div>"+
-        "<div style='margin-top:6px'>"+escapeHtml(o.delivery_address||"Sin dirección")+"</div>"+
-        (o.address_reference?"<div class='muted'>Ref.: "+escapeHtml(o.address_reference)+"</div>":"")+
-        "</div>"
-      ).join(""):"<div class='muted'>No tienes entregas READY o EN_ROUTE asignadas.</div>";
-
-      startBtn.disabled=!context.can_share;
-      if(context.emergency_grace){
-        setStatus("El cupo de emergencia ya venció, pero puedes terminar la entrega que ya estaba activa. No recibirás pedidos nuevos.","warn");
-      }else if(!context.gps_live){
-        setStatus("Este DELIVERY no tiene GPS en vivo habilitado en su plan.","warn");
-      }else if(context.can_share){
-        setStatus("Acceso válido. Puedes compartir tu ubicación.","ok");
-      }else{
-        setStatus("Acceso válido. Esperando una entrega asignada para activar GPS.","warn");
-      }
-
-      const m=ensureMap();
-      destinationLayer.clearLayers();
-      const bounds=[];
-      orders.forEach(o=>{
-        const lat=Number(o.latitude),lng=Number(o.longitude);
-        if(Number.isFinite(lat)&&Number.isFinite(lng)){
-          L.circleMarker([lat,lng],{radius:9,color:"#1d4ed8",weight:3,fillColor:"#3b82f6",fillOpacity:.9})
-            .bindPopup("<strong>Entrega</strong><br>"+escapeHtml(o.delivery_address||"Destino"))
-            .addTo(destinationLayer);
-          bounds.push([lat,lng]);
-        }
-      });
-      if(bounds.length){
-        try{m.fitBounds(bounds,{padding:[35,35],maxZoom:16});}catch{}
-      }
+      const emergency=context.driver_mode==='EMERGENCY';
+      const until=emergency&&context.emergency_expires_at?new Date(context.emergency_expires_at).toLocaleString():'';
+      driverInfo.innerHTML=
+        '<div class="row between wraprow"><div><strong>'+esc(context.driver_name||'Repartidor')+'</strong>'+
+        '<div class="muted small">'+esc(context.delivery_name||'HTPWEB')+(context.phone?' · '+esc(context.phone):'')+'</div></div>'+
+        '<span class="pill '+(emergency?'orange':'green')+'">'+(emergency?'EMERGENCIA':'REGULAR')+'</span></div>'+
+        (emergency?'<div class="muted small" style="margin-top:6px">Cupo temporal hasta '+esc(until)+'</div>':'');
     }
 
-    function escapeHtml(value){
-      return String(value??"").replace(/[&<>"']/g,ch=>({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      })[ch]);
+    function renderOrders(){
+      const orders=Array.isArray(context?.orders)?context.orders:[];
+      if(!orders.length){
+        ordersEl.innerHTML='<div class="muted">No tienes entregas READY o EN_ROUTE asignadas.</div>';
+        selectedOrderId=null;
+        renderDetail();
+        return;
+      }
+      if(!selectedOrderId||!orders.some(function(o){return o.order_id===selectedOrderId;})){
+        selectedOrderId=orders[0].order_id;
+        currentRoute=null;
+      }
+      ordersEl.innerHTML=orders.map(function(o){
+        const pickups=(o.locals||[]).filter(function(l){return l.status!=='CANCELLED';});
+        const done=pickups.filter(function(l){return l.pickup_status==='PICKED_UP';}).length;
+        return '<button type="button" class="order-card '+(o.order_id===selectedOrderId?'selected':'')+'" data-order="'+esc(o.order_id)+'">'+
+          '<div class="row between"><strong>Pedido #'+esc(ref(o.order_id))+'</strong><span class="pill">'+esc(statusLabel(o.status))+'</span></div>'+
+          '<div class="muted small" style="margin-top:6px">'+esc(o.customer_name||'Cliente')+' · '+esc(o.delivery_address||'Sin dirección')+'</div>'+
+          '<div class="small" style="margin-top:6px">'+done+'/'+pickups.length+' recogidas · '+esc(money(o.total))+'</div>'+
+        '</button>';
+      }).join('');
+      ordersEl.querySelectorAll('[data-order]').forEach(function(btn){
+        btn.onclick=function(){
+          selectedOrderId=btn.dataset.order;
+          currentRoute=null;
+          renderOrders();
+          renderDetail();
+          renderMap();
+          document.getElementById('detailCard').scrollIntoView({behavior:'smooth',block:'start'});
+        };
+      });
+    }
+
+    function contactButtons(phone,label){
+      if(!phone)return '';
+      const d=digits(phone);
+      return '<div class="actions">'+
+        '<a class="action-link secondary" href="tel:'+esc(phone)+'">Llamar '+esc(label||'')+'</a>'+
+        '<a class="action-link success" target="_blank" rel="noopener" href="https://wa.me/'+esc(d)+'">WhatsApp '+esc(label||'')+'</a>'+
+      '</div>';
+    }
+
+    function renderPickup(local,order){
+      const state=local.pickup_status||'PENDING';
+      const cls=state==='PICKED_UP'?'done':(state==='ARRIVED'?'arrived':'');
+      const items=Array.isArray(local.items)?local.items:[];
+      let action='';
+      if(order.status==='READY'&&local.status!=='CANCELLED'){
+        if(state==='PENDING'){
+          action='<button class="secondary" type="button" data-stop-action="ARRIVED" data-local="'+esc(local.local_id)+'">Llegué al LOCAL</button>';
+        }else if(state==='ARRIVED'){
+          action=local.status==='READY'
+            ?'<button class="success" type="button" data-stop-action="PICKED_UP" data-local="'+esc(local.local_id)+'">Confirmar recogido</button>'
+            :'<button class="secondary" type="button" disabled>Esperando que LOCAL marque LISTO</button>';
+        }else{
+          action='<button class="success" type="button" disabled>✓ Recogido</button>';
+        }
+      }
+      return '<div class="pickup '+cls+'">'+
+        '<div class="row between wraprow"><div><strong>'+esc(local.name||'LOCAL')+'</strong>'+
+        '<div class="muted small">'+esc(local.address||'Sin dirección')+'</div></div>'+
+        '<span class="pill '+(state==='PICKED_UP'?'green':(state==='ARRIVED'?'orange':'gray'))+'">'+esc(pickupLabel(state))+'</span></div>'+
+        '<div class="small" style="margin-top:6px">Estado LOCAL: <strong>'+esc(local.status||'—')+'</strong>'+
+        (local.delivery_distance_km!=null?' · '+esc(Number(local.delivery_distance_km).toFixed(2))+' km al cliente':'')+'</div>'+
+        contactButtons(local.whatsapp||local.phone,'LOCAL')+
+        '<ul class="items">'+(items.length?items.map(function(i){
+          return '<li><span>'+esc(i.quantity)+' × '+esc(i.product_name||'Producto')+
+            (i.variant_name?' · '+esc(i.variant_name):'')+(i.promotion_title?' · PROMO '+esc(i.promotion_title):'')+
+            '</span><strong>'+esc(money(i.subtotal))+'</strong></li>';
+        }).join(''):'<li><span class="muted">Sin productos visibles</span></li>')+'</ul>'+
+        (action?'<div class="actions">'+action+'</div>':'')+
+      '</div>';
+    }
+
+    function renderProof(order){
+      const proof=order.proof||{enabled:false,ready:true};
+      if(order.status!=='EN_ROUTE')return '';
+      if(!proof.enabled)return '<div class="status ok" style="margin-top:10px">Este pedido no requiere prueba adicional de entrega.</div>';
+      let parts='<div class="card" style="box-shadow:none;margin:12px 0 0"><h3 class="section-title">Prueba de entrega</h3><div class="proof-grid">';
+      if(proof.require_pin){
+        parts+='<div class="proof-item"><strong>PIN de entrega</strong>'+
+          (proof.pin_verified?'<div class="status ok" style="margin-top:7px">✓ PIN verificado</div>':
+          '<div class="row" style="margin-top:7px"><input id="proofPin" inputmode="numeric" maxlength="6" placeholder="PIN de 6 dígitos"><button id="verifyPinBtn" class="secondary" type="button">Verificar</button></div>')+
+        '</div>';
+      }
+      if(proof.require_photo){
+        parts+='<div class="proof-item"><strong>Foto de entrega</strong>'+
+          (proof.photo_uploaded?'<div class="status ok" style="margin-top:7px">✓ Foto cargada</div>':
+          '<input id="proofPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" style="margin-top:7px"><button id="uploadPhotoBtn" class="secondary" type="button">Subir foto</button>')+
+        '</div>';
+      }
+      if(proof.require_signature){
+        parts+='<div class="proof-item"><strong>Firma del cliente</strong>'+
+          (proof.signature_uploaded?'<div class="status ok" style="margin-top:7px">✓ Firma registrada</div>':
+          '<canvas id="signatureCanvas" width="700" height="260" style="margin-top:7px"></canvas><div class="actions"><button id="clearSignatureBtn" class="secondary" type="button">Limpiar</button><button id="uploadSignatureBtn" class="secondary" type="button">Guardar firma</button></div>')+
+        '</div>';
+      }
+      parts+='</div><div class="muted small" style="margin-top:8px">'+(proof.ready?'Prueba completa. Puedes finalizar la entrega.':'Completa los requisitos antes de marcar Entregado.')+'</div></div>';
+      return parts;
+    }
+
+    function renderDetail(){
+      const order=currentOrder();
+      if(!order){
+        detailEl.innerHTML='<div class="muted">Selecciona una entrega.</div>';
+        renderMap();
+        return;
+      }
+      const locals=Array.isArray(order.locals)?order.locals:[];
+      const activeLocals=locals.filter(function(l){return l.status!=='CANCELLED';});
+      const picked=activeLocals.filter(function(l){return l.pickup_status==='PICKED_UP';}).length;
+      const invoice=order.requires_invoice?
+        '<details class="invoice"><summary><strong>Datos de facturación solicitados</strong></summary>'+
+          '<div style="margin-top:8px"><strong>Nombre:</strong> '+esc(order.customer_name||'—')+'</div>'+
+          '<div><strong>Documento:</strong> '+esc(order.document_type||'—')+' · '+esc(order.document_number||'—')+'</div>'+
+          '<div><strong>Correo:</strong> '+esc(order.invoice_email||'—')+'</div>'+
+        '</details>':'<div class="muted small" style="margin-top:10px">Factura: no solicitada.</div>';
+
+      let mainAction='';
+      if(order.status==='READY'){
+        mainAction='<button id="startDeliveryBtn" class="primary" type="button" '+(order.all_pickups_complete?'':'disabled')+'>Iniciar entrega al cliente</button>'+
+          (!order.all_pickups_complete?'<div class="muted small" style="margin-top:6px">Primero confirma todas las recogidas.</div>':'');
+      }else if(order.status==='EN_ROUTE'){
+        const ready=order.proof?.enabled?order.proof?.ready===true:true;
+        mainAction='<button id="completeDeliveryBtn" class="success" type="button" '+(ready?'':'disabled')+'>Marcar entregado</button>'+
+          (!ready?'<div class="muted small" style="margin-top:6px">Completa la prueba de entrega antes de finalizar.</div>':'');
+      }
+
+      detailEl.innerHTML=
+        '<div class="row between wraprow"><div><h2 style="margin:0">Pedido #'+esc(ref(order.order_id))+'</h2>'+
+        '<div class="muted small">Asignado '+esc(new Date(order.assigned_at).toLocaleString())+'</div></div>'+
+        '<span class="pill">'+esc(statusLabel(order.status))+'</span></div>'+
+        '<div class="summary"><div><span>Recogidas</span><strong>'+picked+'/'+activeLocals.length+'</strong></div>'+
+        '<div><span>Total</span><strong>'+esc(money(order.total))+'</strong></div>'+
+        '<div><span>Delivery</span><strong>'+esc(money(order.delivery_fee))+'</strong></div></div>'+
+        '<div class="card" style="box-shadow:none;margin:12px 0 0"><h3 class="section-title">Cliente y entrega final</h3>'+
+          '<div><strong>'+esc(order.customer_name||'Cliente')+'</strong></div>'+
+          '<div class="muted">'+esc(order.customer_phone||'Sin teléfono')+'</div>'+
+          '<div style="margin-top:7px"><strong>Entrega:</strong> '+esc(order.delivery_address||'Sin dirección')+'</div>'+
+          (order.address_reference?'<div class="muted small">Referencia: '+esc(order.address_reference)+'</div>':'')+
+          (order.notes?'<div class="status warn" style="margin-top:8px"><strong>Observaciones:</strong> '+esc(order.notes)+'</div>':'')+
+          contactButtons(order.customer_phone,'cliente')+
+          invoice+
+        '</div>'+
+        '<div class="card" style="box-shadow:none;margin:12px 0 0"><div class="row between wraprow"><div><h3 class="section-title">Ruta de trabajo</h3>'+
+          '<div class="muted small">Mi ubicación → recogidas pendientes → cliente.</div></div>'+
+          '<button id="routeBtn" class="secondary" type="button">Calcular ruta</button></div>'+
+          '<div id="routeSteps" class="route-steps">'+renderRouteSteps()+'</div>'+
+        '</div>'+
+        '<h3 class="section-title" style="margin-top:16px">Recogidas</h3>'+
+        (locals.length?locals.map(function(l){return renderPickup(l,order);}).join(''):'<div class="muted">Sin locales asociados.</div>')+
+        renderProof(order)+
+        '<div class="sticky-actions">'+mainAction+'</div>';
+
+      bindDetailEvents();
+    }
+
+    function renderRouteSteps(){
+      const order=currentOrder();
+      if(!order)return '<div class="muted small">Sin entrega seleccionada.</div>';
+      if(currentRoute&&currentRoute.order_id===order.order_id){
+        return '<div class="status ok"><strong>'+(currentRoute.optimized?'Ruta optimizada por carretera':'Ruta vial por carretera')+'</strong> · '+
+          esc(currentRoute.distance_km)+' km · aprox. '+esc(currentRoute.duration_minutes)+' min</div>'+
+          (currentRoute.stops||[]).map(function(s){
+            return '<div class="route-step"><strong>'+esc(s.sequence)+'. '+esc(s.type==='LOCAL'?'Recoger · '+s.name:'Entregar · '+s.name)+'</strong>'+
+              '<div class="muted small">'+esc(s.address||'')+'</div></div>';
+          }).join('');
+      }
+      const pending=(order.locals||[]).filter(function(l){return l.status!=='CANCELLED'&&l.pickup_status!=='PICKED_UP';});
+      return pending.map(function(l,i){
+        return '<div class="route-step">'+(i+1)+'. Recoger · '+esc(l.name||'LOCAL')+'</div>';
+      }).join('')+
+      '<div class="route-step">'+(pending.length+1)+'. Entregar · '+esc(order.customer_name||'Cliente')+'</div>';
+    }
+
+    function bindSignature(){
+      signatureCanvas=document.getElementById('signatureCanvas');
+      if(!signatureCanvas)return;
+      const ctx=signatureCanvas.getContext('2d');
+      if(!ctx)return;
+      ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';
+      let drawing=false;
+      function point(event){
+        const rect=signatureCanvas.getBoundingClientRect();
+        return {
+          x:(event.clientX-rect.left)*(signatureCanvas.width/rect.width),
+          y:(event.clientY-rect.top)*(signatureCanvas.height/rect.height)
+        };
+      }
+      signatureCanvas.onpointerdown=function(event){
+        drawing=true;signatureCanvas.dataset.dirty='1';
+        const p=point(event);ctx.beginPath();ctx.moveTo(p.x,p.y);
+        try{signatureCanvas.setPointerCapture(event.pointerId);}catch(e){}
+        event.preventDefault();
+      };
+      signatureCanvas.onpointermove=function(event){
+        if(!drawing)return;const p=point(event);ctx.lineTo(p.x,p.y);ctx.stroke();event.preventDefault();
+      };
+      signatureCanvas.onpointerup=signatureCanvas.onpointercancel=function(event){
+        drawing=false;try{signatureCanvas.releasePointerCapture(event.pointerId);}catch(e){}event.preventDefault();
+      };
+    }
+
+    function bindDetailEvents(){
+      document.querySelectorAll('[data-stop-action]').forEach(function(btn){
+        btn.onclick=function(){void updateStop(btn.dataset.local,btn.dataset.stopAction);};
+      });
+      const routeBtn=document.getElementById('routeBtn');
+      if(routeBtn)routeBtn.onclick=function(){void calculateRoute();};
+      const startDeliveryBtn=document.getElementById('startDeliveryBtn');
+      if(startDeliveryBtn)startDeliveryBtn.onclick=function(){void changeOrderStatus('EN_ROUTE');};
+      const completeDeliveryBtn=document.getElementById('completeDeliveryBtn');
+      if(completeDeliveryBtn)completeDeliveryBtn.onclick=function(){void changeOrderStatus('DELIVERED');};
+      const verifyPinBtn=document.getElementById('verifyPinBtn');
+      if(verifyPinBtn)verifyPinBtn.onclick=function(){void verifyPin();};
+      const uploadPhotoBtn=document.getElementById('uploadPhotoBtn');
+      if(uploadPhotoBtn)uploadPhotoBtn.onclick=function(){void uploadProof('PHOTO');};
+      const clearSignatureBtn=document.getElementById('clearSignatureBtn');
+      if(clearSignatureBtn)clearSignatureBtn.onclick=function(){
+        if(signatureCanvas){signatureCanvas.getContext('2d').clearRect(0,0,signatureCanvas.width,signatureCanvas.height);signatureCanvas.dataset.dirty='';}
+      };
+      const uploadSignatureBtn=document.getElementById('uploadSignatureBtn');
+      if(uploadSignatureBtn)uploadSignatureBtn.onclick=function(){void uploadSignature();};
+      bindSignature();
     }
 
     async function invokeTrack(body){
-      const {data,error}=await supabaseClient.functions.invoke("quick-driver-track",{
-        body:{token:trackingToken,...body}
-      });
-      if(error)throw new Error(data?.error||data?.message||error.message||"No se pudo comunicar con HTPWEB.");
-      if(!data?.ok)throw new Error(data?.error||"No se pudo comunicar con HTPWEB.");
-      return data;
+      const result=await supabaseClient.functions.invoke('quick-driver-track',{body:Object.assign({token:trackingToken},body)});
+      if(result.error)throw new Error(result.data?.error||result.data?.message||result.error.message||'No se pudo comunicar con HTPWEB.');
+      if(!result.data?.ok)throw new Error(result.data?.error||'No se pudo comunicar con HTPWEB.');
+      return result.data;
     }
 
-    async function refreshContext(){
+    async function refreshContext(quiet){
       if(!trackingToken){
-        setStatus("El enlace no contiene un acceso válido.","error");
+        setStatus('El enlace no contiene un acceso válido.','error');
         startBtn.disabled=true;
         return;
       }
       try{
-        const data=await invokeTrack({action:"context"});
+        const data=await invokeTrack({action:'context'});
         context=data.context;
-        renderContext();
+        if(!selectedOrderId&&context?.orders?.length)selectedOrderId=context.orders[0].order_id;
+        renderDriver();renderOrders();renderDetail();renderMap();
+        startBtn.disabled=!context?.can_share;
+        if(context?.emergency_grace){
+          setStatus('El cupo de emergencia venció, pero puedes terminar la entrega activa. No recibirás pedidos nuevos.','warn');
+        }else if(!context?.gps_live){
+          setStatus('Acceso válido. Este plan no tiene GPS en vivo habilitado.','warn');
+        }else if(context?.orders?.length){
+          setStatus('Acceso válido. Revisa recogidas, ruta y entrega desde esta consola.','ok');
+        }else{
+          setStatus('Acceso válido. Esperando una entrega asignada.','warn');
+        }
       }catch(e){
-        context=null;
-        startBtn.disabled=true;
-        setStatus(e.message||"Acceso inválido o vencido.","error");
+        context=null;startBtn.disabled=true;
+        if(!quiet)setStatus(e.message||'Acceso inválido o vencido.','error');
       }
     }
 
-    async function sendPosition(position){
-      const now=Date.now();
-      if(now-lastSentAt<7000)return;
-      lastSentAt=now;
+    async function updateStop(localId,action){
+      try{
+        const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
+        setStatus(action==='ARRIVED'?'Registrando llegada…':'Confirmando recogida…','');
+        const data=await invokeTrack({action:'stop',order_id:order.order_id,local_id:localId,stop_action:action});
+        context=data.context;currentRoute=null;
+        renderDriver();renderOrders();renderDetail();renderMap();
+        setStatus(action==='ARRIVED'?'Llegada al LOCAL registrada.':'Recogida confirmada.','ok');
+        if(lastPosition)void calculateRoute(true);
+      }catch(e){setStatus(e.message||'No se pudo actualizar la recogida.','error');}
+    }
 
-      const c=position.coords;
-      const lat=Number(c.latitude),lng=Number(c.longitude);
-      const m=ensureMap();
-      if(!myMarker){
-        myMarker=L.circleMarker([lat,lng],{radius:10,color:"#166534",weight:3,fillColor:"#22c55e",fillOpacity:.95})
-          .bindPopup("<strong>Tu ubicación</strong>")
-          .addTo(m);
-      }else{
-        myMarker.setLatLng([lat,lng]);
+    async function changeOrderStatus(next){
+      try{
+        const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
+        setStatus(next==='EN_ROUTE'?'Iniciando entrega…':'Finalizando entrega…','');
+        const data=await invokeTrack({action:'status',order_id:order.order_id,status:next});
+        context=data.context;currentRoute=null;
+        renderDriver();renderOrders();renderDetail();renderMap();
+        setStatus(next==='EN_ROUTE'?'Entrega al cliente iniciada.':'Pedido entregado correctamente.','ok');
+        if(next==='DELIVERED'&&!(context?.orders||[]).length)stopTracking();
+        else if(lastPosition)void calculateRoute(true);
+      }catch(e){setStatus(e.message||'No se pudo actualizar el pedido.','error');}
+    }
+
+    async function verifyPin(){
+      try{
+        const order=currentOrder();const pin=document.getElementById('proofPin')?.value.trim()||'';
+        const data=await invokeTrack({action:'pin',order_id:order.order_id,pin:pin});
+        if(!data.result?.verified)throw new Error('PIN incorrecto.');
+        await refreshContext(true);setStatus('PIN de entrega verificado.','ok');
+      }catch(e){setStatus(e.message||'No se pudo verificar el PIN.','error');}
+    }
+
+    async function uploadProof(kind,fileOverride){
+      try{
+        const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
+        let file=fileOverride;
+        if(!file&&kind==='PHOTO')file=document.getElementById('proofPhoto')?.files?.[0];
+        if(!(file instanceof File))throw new Error('Selecciona un archivo.');
+        const form=new FormData();
+        form.append('token',trackingToken);form.append('order_id',order.order_id);form.append('kind',kind);form.append('file',file,file.name||'evidencia');
+        setStatus('Subiendo evidencia…','');
+        const response=await fetch(SUPABASE_URL+'/functions/v1/quick-driver-proof-upload',{
+          method:'POST',headers:{apikey:SUPABASE_KEY},body:form
+        });
+        const payload=await response.json().catch(function(){return null;});
+        if(!response.ok||!payload?.ok)throw new Error(payload?.error||'No se pudo cargar la evidencia.');
+        await refreshContext(true);setStatus(kind==='PHOTO'?'Foto registrada.':'Firma registrada.','ok');
+      }catch(e){setStatus(e.message||'No se pudo cargar la evidencia.','error');}
+    }
+
+    async function uploadSignature(){
+      try{
+        if(!signatureCanvas||signatureCanvas.dataset.dirty!=='1')throw new Error('Solicita la firma del cliente.');
+        const blob=await new Promise(function(resolve){signatureCanvas.toBlob(resolve,'image/png');});
+        if(!blob)throw new Error('No se pudo preparar la firma.');
+        const file=new File([blob],'firma.png',{type:'image/png'});
+        await uploadProof('SIGNATURE',file);
+      }catch(e){setStatus(e.message||'No se pudo registrar la firma.','error');}
+    }
+
+    function currentPositionOnce(){
+      return new Promise(function(resolve,reject){
+        if(lastPosition){resolve(lastPosition);return;}
+        if(!navigator.geolocation){reject(new Error('Este dispositivo no ofrece geolocalización.'));return;}
+        navigator.geolocation.getCurrentPosition(function(pos){
+          resolve({latitude:Number(pos.coords.latitude),longitude:Number(pos.coords.longitude)});
+        },function(err){reject(new Error(err.message||'No se pudo obtener tu ubicación.'));},
+        {enableHighAccuracy:true,timeout:15000,maximumAge:5000});
+      });
+    }
+
+    async function calculateRoute(quiet){
+      try{
+        const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
+        if(!quiet)routeStatus.textContent='Calculando ruta por carretera…';
+        const pos=await currentPositionOnce();
+        const data=await invokeTrack({
+          action:'route',order_id:order.order_id,
+          origin_lat:pos.latitude,origin_lng:pos.longitude
+        });
+        currentRoute=data.route;
+        routeStatus.textContent=(currentRoute.optimized?'Ruta optimizada':'Ruta vial')+' · '+currentRoute.distance_km+' km · aprox. '+currentRoute.duration_minutes+' min';
+        renderDetail();renderMap();
+      }catch(e){
+        routeStatus.textContent=e.message||'No se pudo calcular la ruta.';
+        if(!quiet)setStatus(routeStatus.textContent,'error');
+      }
+    }
+
+    function renderMap(){
+      const m=ensureMap();staticLayer.clearLayers();routeLayer.clearLayers();
+      const order=currentOrder();const bounds=[];
+      if(!order){setTimeout(function(){m.invalidateSize();},30);return;}
+
+      const routeStops=currentRoute&&currentRoute.order_id===order.order_id?currentRoute.stops:[];
+      const sequenceByLocal=new Map();
+      routeStops.forEach(function(s){if(s.type==='LOCAL')sequenceByLocal.set(s.local_id,s.sequence);});
+
+      (order.locals||[]).forEach(function(l,index){
+        const lat=Number(l.latitude),lng=Number(l.longitude);
+        if(!Number.isFinite(lat)||!Number.isFinite(lng)||l.status==='CANCELLED')return;
+        const seq=sequenceByLocal.get(l.local_id)||index+1;
+        const done=l.pickup_status==='PICKED_UP';
+        L.circleMarker([lat,lng],{
+          radius:9,color:done?'#166534':'#9a3412',weight:3,
+          fillColor:done?'#22c55e':'#f97316',fillOpacity:.95
+        }).bindPopup('<strong>'+esc(seq)+'. '+esc(l.name||'LOCAL')+'</strong><br>'+esc(pickupLabel(l.pickup_status))).addTo(staticLayer);
+        bounds.push([lat,lng]);
+      });
+
+      const clat=Number(order.latitude),clng=Number(order.longitude);
+      if(Number.isFinite(clat)&&Number.isFinite(clng)){
+        L.circleMarker([clat,clng],{radius:10,color:'#1d4ed8',weight:3,fillColor:'#3b82f6',fillOpacity:.95})
+          .bindPopup('<strong>Entrega · '+esc(order.customer_name||'Cliente')+'</strong><br>'+esc(order.delivery_address||''))
+          .addTo(staticLayer);
+        bounds.push([clat,clng]);
       }
 
-      gpsStatus.textContent="Enviando ubicación…";
+      if(currentRoute&&currentRoute.order_id===order.order_id&&Array.isArray(currentRoute.geometry?.coordinates)){
+        const latlngs=currentRoute.geometry.coordinates.map(function(p){return [Number(p[1]),Number(p[0])];});
+        L.polyline(latlngs,{color:'#2563eb',weight:5,opacity:.82}).addTo(routeLayer);
+        latlngs.forEach(function(p){if(Number.isFinite(p[0])&&Number.isFinite(p[1]))bounds.push(p);});
+      }
+
+      if(lastPosition&&Number.isFinite(lastPosition.latitude)&&Number.isFinite(lastPosition.longitude)){
+        if(!myMarker){
+          myMarker=L.circleMarker([lastPosition.latitude,lastPosition.longitude],{
+            radius:10,color:'#166534',weight:3,fillColor:'#22c55e',fillOpacity:.95
+          }).bindPopup('<strong>Mi ubicación</strong>').addTo(m);
+        }else myMarker.setLatLng([lastPosition.latitude,lastPosition.longitude]);
+        bounds.push([lastPosition.latitude,lastPosition.longitude]);
+      }
+
+      setTimeout(function(){
+        m.invalidateSize();
+        if(bounds.length){try{m.fitBounds(bounds,{padding:[30,30],maxZoom:16});}catch(e){}}
+      },40);
+    }
+
+    async function sendPosition(position){
+      const now=Date.now();if(now-lastSentAt<7000)return;lastSentAt=now;
+      const c=position.coords;
+      lastPosition={latitude:Number(c.latitude),longitude:Number(c.longitude)};
+      renderMap();
+      gpsStatus.textContent='Enviando ubicación…';
       try{
         const data=await invokeTrack({
-          action:"location",
-          latitude:lat,
-          longitude:lng,
+          action:'location',latitude:lastPosition.latitude,longitude:lastPosition.longitude,
           accuracy_m:Number.isFinite(Number(c.accuracy))?Number(c.accuracy):null,
           heading_deg:Number.isFinite(Number(c.heading))?Number(c.heading):null,
           speed_mps:Number.isFinite(Number(c.speed))?Number(c.speed):null,
           captured_at:new Date(position.timestamp||Date.now()).toISOString()
         });
-        const result=data.result||{};
-        gpsStatus.textContent="GPS activo · "+new Date().toLocaleTimeString()+
-          (Number.isFinite(Number(c.accuracy))?" · precisión "+Math.round(Number(c.accuracy))+" m":"")+
-          (result.status==="THROTTLED"?" · sincronizando":"");
-      }catch(e){
-        gpsStatus.textContent=e.message||"No se pudo enviar la ubicación.";
-      }
+        gpsStatus.textContent='GPS activo · '+new Date().toLocaleTimeString()+
+          (Number.isFinite(Number(c.accuracy))?' · precisión '+Math.round(Number(c.accuracy))+' m':'')+
+          (data.result?.status==='THROTTLED'?' · sincronizando':'');
+      }catch(e){gpsStatus.textContent=e.message||'No se pudo enviar la ubicación.';}
     }
 
     function startTracking(){
-      if(!context?.can_share){
-        setStatus("Todavía no tienes una entrega activa para compartir GPS.","warn");
-        return;
-      }
-      if(!navigator.geolocation){
-        setStatus("Este dispositivo no permite geolocalización.","error");
-        return;
-      }
+      if(!context?.can_share){setStatus('No tienes una entrega activa para compartir GPS.','warn');return;}
+      if(!navigator.geolocation){setStatus('Este dispositivo no permite geolocalización.','error');return;}
       if(watchId!==null)return;
-
-      watchId=navigator.geolocation.watchPosition(
-        pos=>void sendPosition(pos),
-        err=>{
-          const messages={1:"Permiso de ubicación denegado.",2:"No se pudo obtener la ubicación.",3:"La ubicación tardó demasiado."};
-          gpsStatus.textContent=messages[err.code]||"Error de GPS.";
-        },
-        {enableHighAccuracy:true,maximumAge:3000,timeout:15000}
-      );
-      startBtn.disabled=true;
-      stopBtn.disabled=false;
-      gpsStatus.textContent="GPS activo. Esperando posición…";
+      watchId=navigator.geolocation.watchPosition(function(pos){void sendPosition(pos);},function(err){
+        const messages={1:'Permiso de ubicación denegado.',2:'No se pudo obtener la ubicación.',3:'La ubicación tardó demasiado.'};
+        gpsStatus.textContent=messages[err.code]||'Error de GPS.';
+      },{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+      startBtn.disabled=true;stopBtn.disabled=false;gpsStatus.textContent='GPS activo. Esperando posición…';
     }
 
     function stopTracking(){
-      if(watchId!==null){
-        navigator.geolocation.clearWatch(watchId);
-        watchId=null;
-      }
-      stopBtn.disabled=true;
-      startBtn.disabled=!context?.can_share;
-      gpsStatus.textContent="GPS detenido.";
+      if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+      stopBtn.disabled=true;startBtn.disabled=!context?.can_share;gpsStatus.textContent='GPS detenido.';
     }
 
     takeTokenFromHash();
     ensureMap();
     startBtn.onclick=startTracking;
     stopBtn.onclick=stopTracking;
-    window.addEventListener("beforeunload",stopTracking);
-    void refreshContext();
-    setInterval(()=>void refreshContext(),15000);
+    window.addEventListener('beforeunload',stopTracking);
+    void refreshContext(false);
+    setInterval(function(){void refreshContext(true);},15000);
   </script>
 </body>
 </html>
