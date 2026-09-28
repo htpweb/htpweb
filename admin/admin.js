@@ -2972,7 +2972,7 @@ async function orderControlNotifyDriver(orderId){
   if(popup){
     try{
       popup.document.title="HTPWEB · Preparando repartidor";
-      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Preparando WhatsApp y acceso GPS…</p>';
+      popup.document.body.innerHTML='<p style="font-family:Arial,sans-serif;padding:24px">Preparando WhatsApp y consola móvil…</p>';
     }catch{}
   }
   try{
@@ -7786,11 +7786,13 @@ function quickDriverTrackingUrl(token){
 }
 
 function quickDriverWhatsappText(driver,trackingUrl){
+  const emergency=driver?.driver_mode==="EMERGENCY";
   return [
-    "*HTPWEB · Repartidor de emergencia*",
+    "*HTPWEB · Consola de repartidor*",
     "Repartidor: "+(driver?.full_name||"Repartidor"),
+    "Tipo: "+(emergency?"EMERGENCIA":"REGULAR"),
     "",
-    "Abre este enlace desde tu celular para compartir ubicación durante tu turno de emergencia:",
+    "Abre este enlace desde tu celular. Ahí verás tus pedidos, cliente, productos, locales de recogida, teléfonos, ruta, facturación cuando corresponda y GPS:",
     trackingUrl,
     "",
     "No compartas este enlace con otras personas."
@@ -7957,7 +7959,7 @@ function renderDriversList(){
       return '<tr><td><strong>'+esc(d.full_name||"Repartidor")+'</strong><div class="muted">'+esc(d.phone||"")+
         '</div></td><td>'+mode+'</td><td>'+esc(d.active_orders||0)+' / '+esc(snap.concurrent_per_driver??"—")+
         '</td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn-muted" type="button" data-driver-gps="'+esc(d.user_id)+'" data-driver-name="'+esc(d.full_name||"Repartidor")+'">Ver GPS</button>'+
-        (canManage?'<button class="btn-muted" type="button" data-driver-quick-link="'+esc(d.user_id)+'">Enviar acceso GPS</button><button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>';
+        (canManage?'<button class="btn-muted" type="button" data-driver-quick-link="'+esc(d.user_id)+'">Enviar consola móvil</button><button class="btn-danger" type="button" data-driver-disable="'+esc(d.user_id)+'">Desactivar</button>':'')+'</div></td></tr>';
     }).join("")+
     '</tbody></table></div>';
   box.querySelectorAll("[data-driver-gps]").forEach(b=>b.onclick=()=>selectDriverGps(b.dataset.driverGps,b.dataset.driverName));
@@ -8820,8 +8822,8 @@ function buildDriverWhatsappText(order,driver,trackingUrl){
     "Repartidor: "+(driver?.full_name||"Repartidor"),
     "Destino: "+(order?.delivery_address||"Ver detalle en HTPWEB"),
     "",
-    "Abre este enlace desde tu celular para ver la entrega y compartir ubicación durante la ruta:",
-    trackingUrl||"Acceso GPS no disponible",
+    "Abre este enlace desde tu celular para ver qué recoger, en qué LOCAL, datos del cliente, teléfonos, ruta y compartir ubicación:",
+    trackingUrl||"Consola móvil no disponible",
     "",
     "Mantén la pantalla abierta mientras realizas la entrega."
   ].join("\n");
