@@ -67,3 +67,7 @@ verify_jwt = false
 
 [functions.desktop-gallery-upload]
 verify_jwt = false
+
+
+[functions.quick-driver-proof-upload]
+verify_jwt = false
