@@ -2514,6 +2514,15 @@ function renderOrderControlDetail(){
     const wa=canOperate&&local.whatsapp
       ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">WhatsApp LOCAL</button>`
       :"";
+    const pickupStatus=ol.pickup_status||"PENDING";
+    const pickupLabel={
+      PENDING:"Pendiente de recogida",
+      ARRIVED:"Repartidor llegó",
+      PICKED_UP:"Recogido"
+    }[pickupStatus]||pickupStatus;
+    const pickupInfo=assignment
+      ? `<div class="${pickupStatus==="PICKED_UP"?"order-control-ok":pickupStatus==="ARRIVED"?"order-control-alert":"workspace-note"}" style="margin:8px 0 0;padding:8px 10px"><strong>Repartidor:</strong> ${esc(pickupLabel)}${ol.arrived_at?" · llegó "+esc(orderControlTime(ol.arrived_at)):""}${ol.picked_up_at?" · recogió "+esc(orderControlTime(ol.picked_up_at)):""}</div>`
+      :"";
     return `<div class="order-control-local">
       <div class="row between" style="gap:8px">
         <div>
@@ -2522,6 +2531,7 @@ function renderOrderControlDetail(){
         </div>
         <span class="badge status-${esc(ol.status)}">${esc(orderStatusLabel(ol.status))}</span>
       </div>
+      ${pickupInfo}
       <ul class="order-control-items">
         ${items.length?items.map(item=>`<li><span>${esc(item.quantity)} × ${esc(item.product_name||"Producto")}${item.variant_name?" · "+esc(item.variant_name):""}${item.promotion_title?" · PROMO "+esc(item.promotion_title):""}</span><strong>${esc(orderControlMoney(item.subtotal))}</strong></li>`).join(""):'<li><span class="muted">Sin productos visibles</span></li>'}
       </ul>
@@ -2543,7 +2553,7 @@ function renderOrderControlDetail(){
     const age=orderControlGpsAge(gps);
     const stale=age!==null&&age>5*60*1000;
     driverPanel=`<div class="order-control-driver">
-      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")}</div></div>
+      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")} · ${esc(assignment.driver_mode||driver.driver_mode||"REGULAR")}</div></div>
       <div class="muted">Asignado: ${esc(orderControlTime(assignment.assigned_at))}</div>
       <div class="${stale?"order-control-stale":"muted"}">GPS: ${gps?esc(orderControlAge(gps.captured_at)):"sin ubicación recibida"}${gps?.accuracy_m?" · precisión "+esc(Math.round(Number(gps.accuracy_m)))+" m":""}</div>
       <div class="order-control-actions">
@@ -7781,6 +7791,7 @@ async function startDriverGpsSharing(){
 
 function quickDriverTrackingUrl(token){
   const url=new URL("../app/repartidor-rapido.html",location.href);
+  url.searchParams.set("v","20260928-1510");
   url.hash="token="+encodeURIComponent(String(token||""));
   return url.toString();
 }
