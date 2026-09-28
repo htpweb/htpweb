@@ -2520,7 +2520,7 @@ function renderOrderControlDetail(){
       ARRIVED:"Repartidor llegó",
       PICKED_UP:"Recogido"
     }[pickupStatus]||pickupStatus;
-    const pickupInfo=assignment
+    const pickupInfo=order.assignment
       ? `<div class="${pickupStatus==="PICKED_UP"?"order-control-ok":pickupStatus==="ARRIVED"?"order-control-alert":"workspace-note"}" style="margin:8px 0 0;padding:8px 10px"><strong>Repartidor:</strong> ${esc(pickupLabel)}${ol.arrived_at?" · llegó "+esc(orderControlTime(ol.arrived_at)):""}${ol.picked_up_at?" · recogió "+esc(orderControlTime(ol.picked_up_at)):""}</div>`
       :"";
     return `<div class="order-control-local">
