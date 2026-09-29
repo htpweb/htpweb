@@ -85,7 +85,7 @@ test('LOCAL_ADMIN conserva vista compatible',()=>{
 
 
 const prepMigration=fs.readFileSync('supabase/migrations/20260929042450_local_preparation_eta_workflow.sql','utf8');
-const planningMigration=fs.readFileSync('supabase/migrations/20260929045200_scheduled_driver_planning_by_local_eta.sql','utf8');
+const planningMigration=fs.readFileSync('supabase/migrations/20260929044734_scheduled_driver_planning_by_local_eta.sql','utf8');
 const localResponsePage=fs.readFileSync('app/local-pedido.html','utf8');
 
 test('flujo LOCAL usa enlace sin registro y guarda ETA de preparación',()=>{
@@ -95,6 +95,8 @@ test('flujo LOCAL usa enlace sin registro y guarda ETA de preparación',()=>{
   assert.match(localResponsePage,/¿En cuántos minutos estará listo\?/);
   assert.match(localResponsePage,/15 min/);
   assert.match(localResponsePage,/30 min/);
+  assert.match(localResponsePage,/Pedido listo para retirar/);
+  assert.match(localResponsePage,/local_order_response_mark_ready/);
   assert.match(admin,/Solicitar al LOCAL/);
   assert.match(admin,/delivery_local_preparation_snapshot/);
 });
