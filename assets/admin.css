@@ -564,7 +564,7 @@ body.admin-role-error .sidebar-footer{
 #section-orders .order-control-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
 #section-orders .order-control-section-heading h3{margin:0}
 #section-orders .order-control-section-heading p{margin:4px 0 0;font-size:12px}
-#section-orders .order-control-stepper{display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:8px 2px 2px}
+#section-orders .order-control-stepper{display:grid;grid-template-columns:repeat(7,1fr);gap:0;padding:8px 2px 2px}
 #section-orders .order-control-step{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
 #section-orders .order-control-step:not(:last-child)::after{content:"";position:absolute;top:17px;left:calc(50% + 22px);right:calc(-50% + 22px);height:2px;background:#e2e8f0;z-index:0}
 #section-orders .order-control-step.done:not(:last-child)::after{background:#94a3b8}
@@ -581,6 +581,13 @@ body.admin-role-error .sidebar-footer{
 #section-orders .order-control-destination span{display:block;margin-top:4px;color:#64748b;font-size:12px}
 #section-orders .order-control-local{border-color:#e5eaf1;background:#fcfdff}
 #section-orders .order-control-driver{min-height:120px}
+#section-orders .order-control-recommendation{border:1px solid #bfdbfe;background:#eff6ff;border-radius:13px;padding:12px;margin-bottom:10px}
+#section-orders .order-control-recommendation-head{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#1e40af;margin-bottom:9px}
+#section-orders .order-control-recommendation-head span{font-weight:900}
+#section-orders .order-control-plan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
+#section-orders .order-control-plan-grid>div{border:1px solid #e2e8f0;border-radius:10px;padding:9px 10px;background:#fff}
+#section-orders .order-control-plan-grid span{display:block;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em}
+#section-orders .order-control-plan-grid strong{display:block;margin-top:3px;font-size:12px}
 #section-orders .order-control-costs{display:grid;gap:2px}
 #section-orders .order-control-total-line{margin-top:4px;padding-top:9px;border-top:1px solid #e2e8f0;font-size:1.08rem}
 #section-orders .order-control-notes{margin-top:12px}
@@ -598,4 +605,5 @@ body.admin-role-error .sidebar-footer{
   #section-orders .order-control-stepper{grid-template-columns:repeat(3,1fr);row-gap:14px}
   #section-orders .order-control-step:nth-child(3)::after,#section-orders .order-control-step:nth-child(6)::after{display:none}
   #section-orders .order-control-step-copy strong{white-space:normal}
+  #section-orders .order-control-plan-grid{grid-template-columns:1fr}
 }
