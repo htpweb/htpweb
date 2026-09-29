@@ -89,6 +89,8 @@ input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font:i
       <div class="muted" style="margin-top:12px">Hora estimada de pedido listo</div>
       <div id="estimatedReady" class="ready-time">—</div>
       <div class="muted">HTPWEB ya informó este tiempo al operador del DELIVERY.</div>
+      <button id="readyBtn" class="primary" type="button" style="width:100%;margin-top:16px">Pedido listo para retirar</button>
+      <div id="readyFeedback" class="hidden" style="margin-top:12px"></div>
     </section>
   </div>
 </main>
@@ -114,11 +116,17 @@ function showInvalid(){
   $("content").classList.add("hidden");
   $("invalid").classList.remove("hidden");
 }
-function showConfirmed(minutes,readyAt){
+function showConfirmed(minutes,readyAt,localStatus){
   $("responseCard").classList.add("hidden");
   $("confirmedCard").classList.remove("hidden");
   $("confirmedMinutes").textContent="El pedido estará listo aproximadamente en "+minutes+" minutos.";
   $("estimatedReady").textContent=timeText(readyAt);
+  if(localStatus==="READY"){
+    $("readyBtn").disabled=true;
+    $("readyBtn").textContent="✓ Pedido listo informado";
+    $("readyFeedback").className="state ok";
+    $("readyFeedback").textContent="El DELIVERY ya recibió el aviso de que el pedido está listo.";
+  }
 }
 function render(data){
   $("loading").classList.add("hidden");
@@ -135,7 +143,7 @@ function render(data){
     $("notes").textContent=data.notes;
   }
   if(data.status==="CONFIRMED"){
-    showConfirmed(data.preparation_minutes,data.estimated_ready_at);
+    showConfirmed(data.preparation_minutes,data.estimated_ready_at,data.local_status);
   }else if(data.status==="EXPIRED"||data.expired){
     $("responseCard").innerHTML='<div class="state error">Este enlace venció. Solicita al DELIVERY que vuelva a enviar el pedido.</div>';
   }else if(data.status!=="SENT"){
@@ -174,7 +182,8 @@ async function confirmMinutes(minutes){
       p_minutes:value
     });
     if(error)throw error;
-    showConfirmed(data?.preparation_minutes||value,data?.estimated_ready_at);
+    context={...(context||{}),status:"CONFIRMED",local_status:"PREPARING",preparation_minutes:data?.preparation_minutes||value,estimated_ready_at:data?.estimated_ready_at};
+    showConfirmed(data?.preparation_minutes||value,data?.estimated_ready_at,"PREPARING");
   }catch(e){
     $("feedback").className="state error";
     $("feedback").textContent=e?.message||"No se pudo confirmar el tiempo.";
@@ -182,10 +191,34 @@ async function confirmMinutes(minutes){
     setBusy(false);
   }
 }
+async function markReady(){
+  if(busy)return;
+  setBusy(true);
+  $("readyFeedback").className="state info";
+  $("readyFeedback").textContent="Informando al DELIVERY…";
+  $("readyFeedback").classList.remove("hidden");
+  try{
+    const {data,error}=await supabaseClient.rpc("local_order_response_mark_ready",{p_token:token});
+    if(error)throw error;
+    $("readyBtn").disabled=true;
+    $("readyBtn").textContent="✓ Pedido listo informado";
+    $("readyFeedback").className="state ok";
+    $("readyFeedback").textContent="Listo. HTPWEB avisó al DELIVERY y puede activar al repartidor programado.";
+    if(context)context.local_status="READY";
+  }catch(e){
+    $("readyFeedback").className="state error";
+    $("readyFeedback").textContent=e?.message||"No se pudo informar que el pedido está listo.";
+  }finally{
+    setBusy(false);
+    if(context?.local_status==="READY")$("readyBtn").disabled=true;
+  }
+}
+
 document.querySelectorAll("[data-minutes]").forEach(btn=>{
   btn.addEventListener("click",()=>confirmMinutes(Number(btn.dataset.minutes)));
 });
 $("customBtn").addEventListener("click",()=>confirmMinutes(Number($("customMinutes").value)));
+$("readyBtn").addEventListener("click",markReady);
 load();
 </script>
 </body>
