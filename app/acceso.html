@@ -34,7 +34,21 @@
         <input id="loginPassword" type="password" autocomplete="current-password" required>
 
         <button class="btn btn-primary" style="width:100%" type="submit">Entrar</button>
+        <button id="forgotPasswordBtn" class="btn btn-muted" style="width:100%;margin-top:10px" type="button">Olvidé mi contraseña</button>
         <button id="resendConfirmationBtn" class="btn btn-muted" style="width:100%;margin-top:10px" type="button">Reenviar correo de confirmación</button>
+      </form>
+
+      <form id="recoveryForm" class="hidden">
+        <h2>Crear nueva contraseña</h2>
+        <p class="muted">Escribe una nueva contraseña para tu cuenta HTPWEB.</p>
+
+        <label>Nueva contraseña</label>
+        <input id="recoveryPassword" type="password" minlength="6" autocomplete="new-password" required>
+
+        <label>Confirmar nueva contraseña</label>
+        <input id="recoveryPasswordConfirm" type="password" minlength="6" autocomplete="new-password" required>
+
+        <button class="btn btn-primary" style="width:100%" type="submit">Guardar nueva contraseña</button>
       </form>
 
       <form id="registerForm" class="hidden">
@@ -184,6 +198,7 @@ function showMessage(text, type = "error") {
 function showLogin() {
   $("loginForm").classList.remove("hidden");
   $("registerForm").classList.add("hidden");
+  $("recoveryForm").classList.add("hidden");
   $("loginTab").className = "btn btn-dark";
   $("registerTab").className = "btn btn-muted";
 }
@@ -191,8 +206,18 @@ function showLogin() {
 function showRegister() {
   $("loginForm").classList.add("hidden");
   $("registerForm").classList.remove("hidden");
+  $("recoveryForm").classList.add("hidden");
   $("loginTab").className = "btn btn-muted";
   $("registerTab").className = "btn btn-dark";
+}
+
+function showRecoveryForm() {
+  $("loginForm").classList.add("hidden");
+  $("registerForm").classList.add("hidden");
+  $("recoveryForm").classList.remove("hidden");
+  $("loginTab").className = "btn btn-muted";
+  $("registerTab").className = "btn btn-muted";
+  $("recoveryPassword").focus();
 }
 
 async function init() {
@@ -426,6 +451,68 @@ $("resendConfirmationBtn").onclick = async () => {
     button.textContent = originalText;
   }
 };
+
+$("forgotPasswordBtn").onclick = async () => {
+  const email = $("loginEmail").value.trim();
+  if (!email) {
+    showMessage("Escribe primero el correo de tu cuenta HTPWEB.");
+    $("loginEmail").focus();
+    return;
+  }
+
+  const button = $("forgotPasswordBtn");
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Enviando…";
+
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: authEmailRedirectUrl()
+    });
+    if (error) throw error;
+    showMessage("Te enviamos un correo para cambiar tu contraseña. Revisa Recibidos y Spam.", "success");
+  } catch (e) {
+    const raw = String(e?.message || "");
+    if (/rate limit|after [0-9]+ seconds|too many requests/i.test(raw)) {
+      showMessage("Espera aproximadamente un minuto antes de solicitar otro correo de recuperación.");
+    } else {
+      showMessage(raw || "No se pudo enviar el correo de recuperación.");
+    }
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+};
+
+$("recoveryForm").onsubmit = async event => {
+  event.preventDefault();
+  const password = $("recoveryPassword").value;
+  const confirmPassword = $("recoveryPasswordConfirm").value;
+
+  if (password !== confirmPassword) {
+    showMessage("Las contraseñas no coinciden.");
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) throw error;
+    await supabaseClient.auth.signOut();
+    showMessage("Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.", "success");
+    $("recoveryPassword").value = "";
+    $("recoveryPasswordConfirm").value = "";
+    showLogin();
+  } catch (e) {
+    showMessage(e?.message || "No se pudo actualizar la contraseña.");
+  }
+};
+
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") {
+    showRecoveryForm();
+    showMessage("Enlace validado. Ahora crea tu nueva contraseña.", "success");
+  }
+});
 
 $("registerForm").onsubmit = async event => {
   event.preventDefault();
