@@ -81,7 +81,7 @@ test('modo asistido abre wa.me con texto precargado',()=>{
   assert.match(helper,/https:\/\/wa\.me\//);
   assert.match(helper,/encodeURIComponent/);
   assert.match(helper,/htpWhatsappOpenAssisted/);
-  assert.match(admin,/WhatsApp abierto con el pedido listo para enviar/);
+  assert.match(admin,/WhatsApp abierto con el pedido y el enlace de confirmación del LOCAL/);
   assert.match(admin,/WhatsApp abierto con la asignación y el acceso GPS listos para enviar/);
 });
 

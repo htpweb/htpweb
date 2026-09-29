@@ -83,6 +83,35 @@ test('LOCAL_ADMIN conserva vista compatible',()=>{
   assert.match(admin,/orderControlToggleLegacy\(true\)/);
 });
 
+
+const prepMigration=fs.readFileSync('supabase/migrations/20260929042450_local_preparation_eta_workflow.sql','utf8');
+const planningMigration=fs.readFileSync('supabase/migrations/20260929044734_scheduled_driver_planning_by_local_eta.sql','utf8');
+const localResponsePage=fs.readFileSync('app/local-pedido.html','utf8');
+
+test('flujo LOCAL usa enlace sin registro y guarda ETA de preparación',()=>{
+  assert.match(prepMigration,/delivery_prepare_local_order_request/);
+  assert.match(prepMigration,/local_order_response_confirm/);
+  assert.match(prepMigration,/estimated_ready_at/);
+  assert.match(localResponsePage,/¿En cuántos minutos estará listo\?/);
+  assert.match(localResponsePage,/15 min/);
+  assert.match(localResponsePage,/30 min/);
+  assert.match(localResponsePage,/Pedido listo para retirar/);
+  assert.match(localResponsePage,/local_order_response_mark_ready/);
+  assert.match(admin,/Solicitar al LOCAL/);
+  assert.match(admin,/delivery_local_preparation_snapshot/);
+});
+
+test('despacho permite programar repartidor antes de READY usando ETA',()=>{
+  assert.match(planningMigration,/order_driver_plans/);
+  assert.match(planningMigration,/driver_plan_suggestion_json/);
+  assert.match(planningMigration,/ideal_departure_at/);
+  assert.match(planningMigration,/activate_planned_order_driver/);
+  assert.match(admin,/delivery_driver_planning_snapshot/);
+  assert.match(admin,/Programar repartidor/);
+  assert.match(admin,/orderControlPlanDriver/);
+  assert.match(css,/\.order-control-recommendation/);
+});
+
 test('JavaScript administrativo compila',()=>{
   assert.doesNotThrow(()=>new Function(admin));
 });
