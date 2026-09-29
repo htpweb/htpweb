@@ -2499,6 +2499,7 @@ function orderControlGpsAge(location){
 function orderControlNextAction(order){
   if(!order)return null;
   const activeLocals=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
+  const hasDriverCommitment=Boolean(order.assignment||order.driver_plan?.status==="PLANNED");
   const unsent=activeLocals.filter(ol=>!ol.prep_requested_at);
   const waiting=activeLocals.filter(ol=>ol.prep_requested_at&&!ol.prep_response_at);
   const responded=activeLocals.filter(ol=>ol.prep_response_at);
@@ -2517,12 +2518,12 @@ function orderControlNextAction(order){
     return {step:4,total:7,title:"Programar repartidor",description:"Todos los LOCAL informaron su tiempo estimado. Revisa quién estará disponible cerca de la hora de recogida y programa el despacho.",kind:"dispatch_plan",button:"Ir a despacho"};
   }
 
-  if(order.status==="PREPARING"&&!order.assignment){
+  if(order.status==="PREPARING"&&!hasDriverCommitment){
     return {step:4,total:7,title:"Programar repartidor",description:"El pedido está en preparación. Usa la hora estimada del LOCAL para elegir el repartidor que llegará en el momento adecuado.",kind:"dispatch_plan",button:"Ir a despacho"};
   }
 
-  if(order.status==="PREPARING"&&order.assignment){
-    return {step:5,total:7,title:"Esperar pedido listo",description:"El repartidor ya está previsto para este pedido. Supervisa la preparación y evita enviarlo demasiado pronto.",kind:"waiting",button:"Ver LOCAL"};
+  if(order.status==="PREPARING"&&hasDriverCommitment){
+    return {step:5,total:7,title:"Repartidor programado",description:"El repartidor ya está reservado para este pedido. HTPWEB lo activará cuando el pedido quede listo para recoger.",kind:"dispatch_plan",button:"Ver programación"};
   }
 
   if(order.status==="READY"&&!order.assignment)return {step:5,total:7,title:"Asignar repartidor",description:"El pedido ya está listo. Selecciona o confirma el repartidor para comenzar la recogida.",kind:"dispatch",button:"Ir a asignación"};
@@ -2558,21 +2559,36 @@ function renderOrderControlNextAction(order,canOperate){
 }
 
 function renderOrderControlStepper(order){
-  const steps=[
-    {key:"PENDING",label:"Pendiente"},
-    {key:"CONFIRMED",label:"Confirmado"},
-    {key:"PREPARING",label:"Preparando"},
-    {key:"READY",label:"Listo"},
-    {key:"EN_ROUTE",label:"En camino"},
-    {key:"DELIVERED",label:"Entregado"}
-  ];
   if(order?.status==="CANCELLED")return '<div class="order-control-cancelled-flow"><strong>Pedido cancelado</strong><span>El flujo operativo terminó antes de la entrega.</span></div>';
-  const current=Math.max(0,steps.findIndex(step=>step.key===order?.status));
-  return `<div class="order-control-stepper">${steps.map((step,index)=>{
+
+  const activeLocals=(order?.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
+  const allRequested=activeLocals.length>0&&activeLocals.every(ol=>ol.prep_requested_at);
+  const allResponded=activeLocals.length>0&&activeLocals.every(ol=>ol.prep_response_at);
+  const hasDriver=Boolean(order?.assignment||order?.driver_plan?.status==="PLANNED");
+
+  let current=0;
+  if(order?.status!=="PENDING")current=1;
+  if(allRequested)current=2;
+  if(allResponded)current=3;
+  if(hasDriver)current=4;
+  if(order?.status==="EN_ROUTE")current=5;
+  if(order?.status==="DELIVERED")current=6;
+
+  const steps=[
+    "Recibido",
+    "Confirmado",
+    "LOCAL solicitado",
+    "Tiempo confirmado",
+    "Repartidor",
+    "En camino",
+    "Entregado"
+  ];
+
+  return `<div class="order-control-stepper">${steps.map((label,index)=>{
     const stateClass=index<current?"done":index===current?"active":"future";
     return `<div class="order-control-step ${stateClass}">
       <div class="order-control-step-node">${index<current?"✓":index+1}</div>
-      <div class="order-control-step-copy"><strong>${esc(step.label)}</strong>${index===current?'<span>Actual</span>':""}</div>
+      <div class="order-control-step-copy"><strong>${esc(label)}</strong>${index===current?'<span>Actual</span>':""}</div>
     </div>`;
   }).join("")}</div>`;
 }
@@ -2643,6 +2659,8 @@ function renderOrderControlDetail(){
 
   const drivers=orderControlDriverList(order);
   const assignment=order.assignment;
+  const driverPlan=order.driver_plan||null;
+  const driverSuggestion=order.driver_suggestion||null;
   let driverPanel="";
   if(assignment){
     const driver=drivers.find(d=>d.user_id===assignment.driver_user_id)||{
@@ -2662,6 +2680,50 @@ function renderOrderControlDetail(){
         ${order.status!=="EN_ROUTE"?`<button class="btn-muted" type="button" onclick="orderControlUnassignDriver('${order.id}')">Quitar asignación</button>`:""}
       </div>
     </div>`;
+  }else if(driverPlan?.status==="PLANNED"){
+    const plannedDriver=drivers.find(d=>d.user_id===driverPlan.driver_user_id)||{
+      full_name:driverPlan.driver_name,
+      phone:driverPlan.driver_phone
+    };
+    driverPanel=`<div class="order-control-driver">
+      <div class="order-control-ok"><strong>Repartidor programado</strong><br>${esc(plannedDriver.full_name||"Repartidor")} · recogida prevista ${esc(orderControlTime(driverPlan.planned_for))}</div>
+      <div class="order-control-plan-grid">
+        <div><span>Disponible / salida sugerida</span><strong>${esc(orderControlTime(driverPlan.ideal_departure_at))}</strong></div>
+        <div><span>Origen</span><strong>${esc(driverPlan.source||"MANUAL")}</strong></div>
+      </div>
+      ${driverPlan.activation_error?`<div class="order-control-alert"><strong>No se pudo activar automáticamente:</strong> ${esc(driverPlan.activation_error)}</div>`:""}
+      <div class="order-control-actions">
+        ${plannedDriver.phone?`<button class="btn-primary" type="button" onclick="orderControlNotifyPlannedDriver('${order.id}')">WhatsApp repartidor</button>`:""}
+        <button class="btn-muted" type="button" onclick="orderControlCancelDriverPlan('${order.id}')">Cambiar programación</button>
+      </div>
+      <div class="muted">Cuando el pedido pase a <strong>Listo</strong>, HTPWEB intentará convertir esta programación en asignación activa.</div>
+    </div>`;
+  }else if(["CONFIRMED","PREPARING"].includes(order.status)){
+    const options=drivers.length?drivers.map(d=>{
+      const selected=driverSuggestion?.driver_user_id===d.user_id?" selected":"";
+      return `<option value="${esc(d.user_id)}"${selected}>${esc(d.full_name||"Repartidor")} · ${esc(d.active_orders||0)} activo(s)</option>`;
+    }).join(""):'<option value="">No hay repartidores activos</option>';
+    const recommendation=driverSuggestion
+      ? `<div class="order-control-recommendation">
+          <div class="order-control-recommendation-head"><strong>🤖 Recomendación HTPWEB</strong><span>${esc(driverSuggestion.driver_name||"Repartidor")}</span></div>
+          <div class="order-control-plan-grid">
+            <div><span>Pedido listo aprox.</span><strong>${esc(orderControlTime(driverSuggestion.planned_for))}</strong></div>
+            <div><span>Libre estimado</span><strong>${esc(orderControlTime(driverSuggestion.available_at))}</strong></div>
+            <div><span>Salida sugerida</span><strong>${esc(orderControlTime(driverSuggestion.ideal_departure_at))}</strong></div>
+            <div><span>Viaje al LOCAL</span><strong>${esc(driverSuggestion.travel_minutes||"—")} min</strong></div>
+          </div>
+        </div>`
+      : '<div class="workspace-note">HTPWEB todavía no tiene una recomendación automática para este pedido.</div>';
+    driverPanel=`<div class="order-control-driver">
+      ${recommendation}
+      <label for="orderControlPlanDriverSelect"><strong>Repartidor a programar</strong></label>
+      <select id="orderControlPlanDriverSelect">${options}</select>
+      <div class="order-control-actions">
+        <button class="btn-primary" type="button" onclick="orderControlPlanDriver('${order.id}')" ${drivers.length?"":"disabled"}>Programar repartidor</button>
+        <button class="btn-muted" type="button" onclick="showSection('drivers')">Abrir Repartidores</button>
+      </div>
+      <div class="muted">Programar no significa enviarlo todavía: HTPWEB reserva al repartidor para la hora estimada del LOCAL.</div>
+    </div>`;
   }else if(order.status==="READY"){
     const options=drivers.length?drivers.map(d=>
       `<option value="${esc(d.user_id)}">${esc(d.full_name||"Repartidor")} · ${esc(d.active_orders||0)} activo(s)</option>`
@@ -2675,12 +2737,13 @@ function renderOrderControlDetail(){
       </div>
     </div>`;
   }else{
-    driverPanel='<div class="muted">La asignación de repartidor estará disponible cuando el pedido llegue a <strong>Listo</strong>.</div>';
+    driverPanel='<div class="muted">Sin acciones de despacho disponibles para este estado.</div>';
   }
 
   const alerts=[];
   const localStatuses=(order.order_locals||[]).map(x=>x.status);
   if(order.status==="READY"&&!assignment)alerts.push("Pedido listo sin repartidor asignado.");
+  if(["CONFIRMED","PREPARING"].includes(order.status)&&!assignment&&!driverPlan&&driverSuggestion)alerts.push("Hay una recomendación de repartidor pendiente de programar.");
   if(order.status==="EN_ROUTE"&&!assignment)alerts.push("Pedido en camino sin asignación activa registrada.");
   if(assignment&&!assignment.location)alerts.push("Repartidor asignado sin ubicación GPS disponible.");
   const gpsAge=orderControlGpsAge(assignment?.location);
@@ -3107,6 +3170,57 @@ function orderControlFocusMap(orderId){
   $("orderControlMap")?.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
+async function orderControlPlanDriver(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    const driverId=$("orderControlPlanDriverSelect")?.value||order?.driver_suggestion?.driver_user_id;
+    if(!order||!driverId)throw new Error("Selecciona un repartidor para programar.");
+    await rpc("delivery_plan_order_driver",{
+      p_delivery_id:order.delivery_id,
+      p_order_id:order.id,
+      p_driver_user_id:driverId,
+      p_note:null
+    });
+    message("Repartidor programado para la hora estimada del LOCAL.");
+    await loadOrders();
+  }catch(e){message(e.message||"No se pudo programar el repartidor.","error");}
+}
+
+async function orderControlCancelDriverPlan(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    if(!order)throw new Error("Pedido no disponible.");
+    await rpc("delivery_cancel_order_driver_plan",{
+      p_delivery_id:order.delivery_id,
+      p_order_id:order.id
+    });
+    message("Programación liberada. Puedes elegir otro repartidor.");
+    await loadOrders();
+  }catch(e){message(e.message||"No se pudo cambiar la programación.","error");}
+}
+
+function orderControlNotifyPlannedDriver(orderId){
+  try{
+    const order=(state.orders||[]).find(o=>o.id===orderId);
+    const plan=order?.driver_plan;
+    if(!order||!plan)throw new Error("No hay repartidor programado.");
+    if(!plan.driver_phone)throw new Error("El repartidor no tiene teléfono registrado.");
+    if(typeof htpWhatsappOpenAssisted!=="function")throw new Error("WhatsApp asistido no está disponible.");
+    const localNames=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED").map(ol=>ol.locals?.name||"LOCAL").join(", ");
+    const text=[
+      "*HTPWEB · Próxima entrega #"+orderControlRef(order.id)+"*",
+      "Tienes una recogida programada.",
+      "LOCAL: "+(localNames||"Ver HTPWEB"),
+      "Pedido listo aprox.: "+orderControlTime(plan.planned_for),
+      "Salida sugerida: "+orderControlTime(plan.ideal_departure_at),
+      "",
+      "HTPWEB te avisará cuando el pedido quede listo para iniciar la recogida."
+    ].join("\n");
+    htpWhatsappOpenAssisted(plan.driver_phone,text);
+    message("WhatsApp abierto con la programación del repartidor.");
+  }catch(e){message(e.message||"No se pudo avisar al repartidor.","error");}
+}
+
 async function orderControlAssignDriver(orderId){
   try{
     const order=(state.orders||[]).find(o=>o.id===orderId);
@@ -3236,13 +3350,14 @@ async function loadOrderControlCenter({silent=false}={}){
     }
 
     const bundles=await Promise.all(ids.map(async deliveryId=>{
-      const [snapshot,drivers,routes,preparation]=await Promise.all([
+      const [snapshot,drivers,routes,preparation,planning]=await Promise.all([
         rpc("delivery_order_control_snapshot",{p_delivery_id:deliveryId,p_limit:100}),
         rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]})),
         rpc("delivery_order_routes_snapshot",{p_delivery_id:deliveryId}).catch(()=>({routes:[]})),
-        rpc("delivery_local_preparation_snapshot",{p_delivery_id:deliveryId}).catch(()=>({locals:[]}))
+        rpc("delivery_local_preparation_snapshot",{p_delivery_id:deliveryId}).catch(()=>({locals:[]})),
+        rpc("delivery_driver_planning_snapshot",{p_delivery_id:deliveryId}).catch(()=>({orders:[]}))
       ]);
-      return {deliveryId,snapshot,drivers,routes,preparation};
+      return {deliveryId,snapshot,drivers,routes,preparation,planning};
     }));
 
     const all=[];
@@ -3253,10 +3368,15 @@ async function loadOrderControlCenter({silent=false}={}){
       orderControlState.drivers.set(bundle.deliveryId,bundle.drivers||{drivers:[]});
       const routeByOrder=new Map((bundle.routes?.routes||[]).map(route=>[route.order_id,route]));
       const preparationByKey=new Map((bundle.preparation?.locals||[]).map(row=>[`${row.order_id}:${row.local_id}`,row]));
+      const planningByOrder=new Map((bundle.planning?.orders||[]).map(row=>[row.order_id,row]));
       (bundle.snapshot?.orders||[]).forEach(order=>{
+        const planning=planningByOrder.get(order.id)||{};
         const normalized=orderControlNormalize({
           ...order,
-          active_route:routeByOrder.get(order.id)||null
+          active_route:routeByOrder.get(order.id)||null,
+          driver_plan:planning.plan||null,
+          driver_suggestion:planning.suggestion||null,
+          dispatch_mode:bundle.planning?.mode||null
         });
         normalized.order_locals=(normalized.order_locals||[]).map(ol=>({
           ...ol,
