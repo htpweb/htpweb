@@ -83,3 +83,20 @@ test('crear-pedido reintenta fallas transitorias de OpenRouteService',()=>{
   assert.match(edge,/response\.status === 408 \|\| response\.status === 429 \|\| response\.status >= 500/);
   assert.match(edge,/HTTP\/2 connection resets are transient/);
 });
+
+
+test('error de checkout no usa popup eliminado y se muestra junto al botón',()=>{
+  const start=cart.indexOf('async function confirmOrder()');
+  const end=cart.indexOf('\ninit();',start);
+  const block=cart.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.doesNotMatch(block,/whatsappPopup/);
+  assert.match(cart,/id="checkoutMessage"/);
+  assert.match(block,/showCheckoutMessage\(message\)/);
+  assert.match(block,/button\.textContent = "Confirmar pedido"/);
+});
+
+test('fuera de cobertura muestra mensaje claro en checkout',()=>{
+  assert.match(cart,/Esta ubicación está fuera de la cobertura de/);
+  assert.match(cart,/Cambia el punto de entrega en el mapa para continuar/);
+});

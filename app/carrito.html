@@ -118,6 +118,7 @@
     <button class="btn btn-primary" style="width:100%;margin-top:14px" id="confirmBtn">
       Confirmar pedido
     </button>
+    <div id="checkoutMessage" class="hidden" role="status" aria-live="polite" style="margin-top:10px"></div>
   </section>
 
   <section id="successCard" class="card hidden"></section>
@@ -201,6 +202,29 @@ async function init() {
 function showMessage(text, type = "error") {
   $("message").textContent = text;
   $("message").className = type === "success" ? "success" : "error";
+}
+
+function checkoutMessageText(raw) {
+  const text = String(raw || "").trim();
+  if (/fuera de las zonas operativas/i.test(text)) {
+    return `Esta ubicación está fuera de la cobertura de ${negocioActual?.name || "este DELIVERY"}. Cambia el punto de entrega en el mapa para continuar.`;
+  }
+  if (/zona.*restringida|ubicación.*restringida/i.test(text)) {
+    return "Esta ubicación está restringida para pedidos en este horario. Selecciona otro punto de entrega.";
+  }
+  return text || "No se pudo confirmar el pedido.";
+}
+
+function showCheckoutMessage(text, type = "error") {
+  const box = $("checkoutMessage");
+  if (!box) return;
+  if (!text) {
+    box.textContent = "";
+    box.className = "hidden";
+    return;
+  }
+  box.textContent = text;
+  box.className = type === "success" ? "success" : "error";
 }
 
 async function reloadCart() {
@@ -756,6 +780,7 @@ async function confirmOrder() {
   const button = $("confirmBtn");
 
   try {
+    showCheckoutMessage("");
     if (!items.length) throw new Error("El carrito está vacío.");
 
     const user = await obtenerUsuarioActual();
@@ -943,9 +968,11 @@ async function confirmOrder() {
       return;
     }
   } catch (e) {
-    if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     console.error(e);
-    showMessage(e.message || "No se pudo confirmar el pedido.");
+    const message = checkoutMessageText(e?.message || "No se pudo confirmar el pedido.");
+    showMessage(message);
+    showCheckoutMessage(message);
+    $("checkoutMessage")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } finally {
     button.disabled = false;
     button.textContent = "Confirmar pedido";
