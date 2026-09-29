@@ -2306,7 +2306,15 @@ function orderStatusLabel(status){
 }
 
 function orderTransitionLabel(status){
-  return orderStatusLabel(status);
+  const labels={
+    CONFIRMED:"Confirmar pedido",
+    PREPARING:"Marcar preparando",
+    READY:"Marcar listo",
+    EN_ROUTE:"Marcar en camino",
+    DELIVERED:"Marcar entregado",
+    CANCELLED:"Cancelar pedido"
+  };
+  return labels[status]||orderStatusLabel(status);
 }
 
 function orderControlRef(orderId){
@@ -2429,13 +2437,16 @@ function renderOrderControlKpis(){
   const unassigned=orders.filter(o=>o.status==="READY"&&!o.assignment).length;
   const activeValue=active.reduce((sum,o)=>sum+Number(o.total||0),0);
   box.innerHTML=[
-    {label:"Activos",value:active.length,detail:orderControlMoney(activeValue)+" en operación",cls:""},
-    {label:"Pendientes",value:count("PENDING"),detail:"Esperando aceptación",cls:"order-control-kpi-attention"},
-    {label:"Preparando",value:count("PREPARING"),detail:"Locales trabajando",cls:""},
-    {label:"Listos",value:count("READY"),detail:"Listos para despacho",cls:"order-control-kpi-ready"},
-    {label:"En camino",value:count("EN_ROUTE"),detail:"Con repartidor",cls:"order-control-kpi-route"},
-    {label:"Sin repartidor",value:unassigned,detail:"Pedidos READY por asignar",cls:unassigned?"order-control-kpi-attention":"order-control-kpi-value"}
-  ].map(k=>`<div class="order-control-kpi ${k.cls}"><span>${esc(k.label)}</span><strong>${esc(k.value)}</strong><small>${esc(k.detail)}</small></div>`).join("");
+    {label:"Activos",value:active.length,detail:orderControlMoney(activeValue)+" en operación",cls:"order-control-kpi-active",icon:"▣"},
+    {label:"Pendientes",value:count("PENDING"),detail:"Esperando aceptación",cls:"order-control-kpi-attention",icon:"◷"},
+    {label:"Preparando",value:count("PREPARING"),detail:"Locales trabajando",cls:"order-control-kpi-preparing",icon:"◉"},
+    {label:"Listos",value:count("READY"),detail:"Listos para despacho",cls:"order-control-kpi-ready",icon:"◇"},
+    {label:"En camino",value:count("EN_ROUTE"),detail:"Con repartidor",cls:"order-control-kpi-route",icon:"➜"},
+    {label:"Sin repartidor",value:unassigned,detail:"Pedidos READY por asignar",cls:unassigned?"order-control-kpi-unassigned order-control-kpi-attention":"order-control-kpi-unassigned",icon:"!"}
+  ].map(k=>`<div class="order-control-kpi ${k.cls}">
+    <div class="order-control-kpi-icon" aria-hidden="true">${esc(k.icon)}</div>
+    <div class="order-control-kpi-copy"><span>${esc(k.label)}</span><strong>${esc(k.value)}</strong><small>${esc(k.detail)}</small></div>
+  </div>`).join("");
 }
 
 function renderOrderControlQueue(){
@@ -2483,6 +2494,61 @@ function orderControlGpsAge(location){
   if(!location?.captured_at)return null;
   const ms=Date.now()-new Date(location.captured_at).getTime();
   return Number.isFinite(ms)?Math.max(0,ms):null;
+}
+
+function orderControlNextAction(order){
+  if(!order)return null;
+  if(order.status==="PENDING")return {step:1,total:6,title:"Confirmar pedido",description:"Revisa los detalles del pedido y confírmalo para notificar al LOCAL e iniciar el flujo operativo.",kind:"transition",nextStatus:"CONFIRMED",button:"Confirmar pedido"};
+  if(order.status==="CONFIRMED")return {step:2,total:6,title:"Iniciar preparación",description:"El pedido ya fue aceptado. Pásalo a preparación mientras los LOCAL trabajan en los productos.",kind:"transition",nextStatus:"PREPARING",button:"Marcar preparando"};
+  if(order.status==="PREPARING")return {step:3,total:6,title:"Dejar pedido listo",description:"Cuando la preparación termine, marca el pedido como listo para habilitar la asignación de repartidor.",kind:"transition",nextStatus:"READY",button:"Marcar listo"};
+  if(order.status==="READY"&&!order.assignment)return {step:4,total:6,title:"Asignar repartidor",description:"El pedido está listo. Selecciona un repartidor disponible para comenzar el despacho.",kind:"dispatch",button:"Ir a asignación"};
+  if(order.status==="READY"&&order.assignment)return {step:4,total:6,title:"Preparar salida",description:"El pedido ya tiene repartidor asignado. Puedes avisarle y dejar que inicie la ruta desde su consola.",kind:"driver",button:"WhatsApp repartidor"};
+  if(order.status==="EN_ROUTE")return {step:5,total:6,title:"Supervisar entrega",description:"El pedido está en camino. Sigue la ubicación del repartidor y el avance de las recogidas hasta la entrega.",kind:"map",button:"Ver seguimiento"};
+  if(order.status==="DELIVERED")return {step:6,total:6,title:"Pedido completado",description:"La entrega fue finalizada. El historial queda disponible para consulta y trazabilidad.",kind:"done"};
+  if(order.status==="CANCELLED")return {step:0,total:6,title:"Pedido cancelado",description:"Este pedido ya no forma parte de la operación activa.",kind:"cancelled"};
+  return null;
+}
+
+function renderOrderControlNextAction(order,canOperate){
+  const action=orderControlNextAction(order);
+  if(!action)return "";
+  let button="";
+  if(canOperate&&action.kind==="transition"){
+    button=`<button class="btn-primary order-control-next-button" type="button" onclick="changeGlobalOrder('${order.id}','${action.nextStatus}')">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
+  }else if(action.kind==="dispatch"){
+    button=`<button class="btn-primary order-control-next-button" type="button" onclick="document.getElementById('orderControlDispatchPanel')?.scrollIntoView({behavior:'smooth',block:'center'})">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
+  }else if(action.kind==="driver"&&order.assignment){
+    button=`<button class="btn-primary order-control-next-button" type="button" onclick="orderControlNotifyDriver('${order.id}')">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
+  }else if(action.kind==="map"){
+    button=`<button class="btn-primary order-control-next-button" type="button" onclick="orderControlFocusMap('${order.id}')">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
+  }
+  const tone=action.kind==="done"?"is-done":action.kind==="cancelled"?"is-cancelled":"";
+  return `<aside class="order-control-next-action ${tone}">
+    <div class="order-control-next-head"><strong>⚡ Siguiente acción</strong><span>${action.step?`Paso ${action.step} de ${action.total}`:"Flujo detenido"}</span></div>
+    <h3>${esc(action.title)}</h3>
+    <p>${esc(action.description)}</p>
+    ${button}
+  </aside>`;
+}
+
+function renderOrderControlStepper(order){
+  const steps=[
+    {key:"PENDING",label:"Pendiente"},
+    {key:"CONFIRMED",label:"Confirmado"},
+    {key:"PREPARING",label:"Preparando"},
+    {key:"READY",label:"Listo"},
+    {key:"EN_ROUTE",label:"En camino"},
+    {key:"DELIVERED",label:"Entregado"}
+  ];
+  if(order?.status==="CANCELLED")return '<div class="order-control-cancelled-flow"><strong>Pedido cancelado</strong><span>El flujo operativo terminó antes de la entrega.</span></div>';
+  const current=Math.max(0,steps.findIndex(step=>step.key===order?.status));
+  return `<div class="order-control-stepper">${steps.map((step,index)=>{
+    const stateClass=index<current?"done":index===current?"active":"future";
+    return `<div class="order-control-step ${stateClass}">
+      <div class="order-control-step-node">${index<current?"✓":index+1}</div>
+      <div class="order-control-step-copy"><strong>${esc(step.label)}</strong>${index===current?'<span>Actual</span>':""}</div>
+    </div>`;
+  }).join("")}</div>`;
 }
 
 function renderOrderControlDetail(){
@@ -2593,58 +2659,84 @@ function renderOrderControlDetail(){
     <div><strong>${esc(orderControlTime(h.created_at))}</strong></div>
     <div><span class="badge status-${esc(h.new_status)}">${esc(orderStatusLabel(h.new_status))}</span> ${h.local_id?"· LOCAL": "· Pedido general"}<div class="muted">${esc(h.actor_role||"Sistema")}${h.note?" · "+esc(h.note):""}</div></div>
   </div>`).join(""):'<div class="muted">Sin historial disponible.</div>';
+  const nextActionHtml=renderOrderControlNextAction(order,canOperate);
+  const stepperHtml=renderOrderControlStepper(order);
 
   box.innerHTML=`
-    <div class="row between" style="gap:12px;flex-wrap:wrap">
-      <div>
-        <h2 style="margin:0">Pedido #${esc(orderControlRef(order.id))}</h2>
-        <div class="muted">${esc(orderControlTime(order.created_at))} · ${esc(orderControlAge(order.created_at))}</div>
-      </div>
-      <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
-    </div>
-
-    ${alertHtml}
-
-    <div class="order-control-summary-grid">
-      <div><span>Cliente</span><strong>${esc(order.customer_name||"—")}</strong></div>
-      <div><span>Teléfono</span><strong>${esc(order.customer_phone||"—")}</strong></div>
-      <div><span>Estado actual</span><strong>${esc(orderStatusLabel(order.status))} · ${esc(orderControlAge(orderControlCurrentSince(order)))}</strong></div>
-      <div><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
-    </div>
-
-    <div class="order-control-actions">
-      ${globalButtons}
-      ${customerWhatsapp}
-      ${mapButton}
-    </div>
-
-    <div class="order-control-detail-grid" style="margin-top:16px">
-      <div>
-        <div class="order-control-panel">
-          <h3>Recogidas, productos y locales</h3>
-          <div><strong>Entrega:</strong> ${esc(order.delivery_address||"—")}</div>
-          ${order.address_reference?`<div class="muted">Referencia: ${esc(order.address_reference)}</div>`:""}
-          ${order.notes?`<div class="workspace-note" style="margin-top:8px"><strong>Observaciones:</strong> ${esc(order.notes)}</div>`:""}
-          ${localBlocks||'<div class="muted">Sin locales asociados.</div>'}
+    <div class="order-control-selected">
+      <div class="order-control-selected-head">
+        <div>
+          <div class="order-control-eyebrow">Pedido seleccionado</div>
+          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+            <h2 style="margin:0">Pedido #${esc(orderControlRef(order.id))}</h2>
+            <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
+          </div>
+          <div class="muted">${esc(orderControlTime(order.created_at))} · ${esc(orderControlAge(order.created_at))}</div>
         </div>
       </div>
-      <div>
-        <div class="order-control-panel">
-          <h3>Repartidor y despacho</h3>
-          ${driverPanel}
+
+      <div class="order-control-head-grid">
+        <div class="order-control-head-main">
+          <div class="order-control-summary-grid order-control-summary-grid-modern">
+            <div><span>Cliente</span><strong>${esc(order.customer_name||"—")}</strong></div>
+            <div><span>Teléfono</span><strong>${esc(order.customer_phone||"—")}</strong></div>
+            <div><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
+            <div><span>Tipo de entrega</span><strong>Delivery</strong></div>
+            <div><span>Estado actual</span><strong>${esc(orderStatusLabel(order.status))}</strong><small>${esc(orderControlAge(orderControlCurrentSince(order)))}</small></div>
+          </div>
+
+          <div class="order-control-actions order-control-primary-actions">
+            ${globalButtons}
+            ${customerWhatsapp}
+            ${mapButton}
+          </div>
+          ${alertHtml}
         </div>
-        <div class="order-control-panel" style="margin-top:16px">
-          <h3>Costos</h3>
+        ${nextActionHtml}
+      </div>
+    </div>
+
+    <div class="order-control-panel order-control-progress-panel">
+      <div class="order-control-section-heading">
+        <div>
+          <h3>Estado del pedido</h3>
+          <p class="muted">Avance operativo desde la recepción hasta la entrega.</p>
+        </div>
+      </div>
+      ${stepperHtml}
+    </div>
+
+    <div class="order-control-detail-grid order-control-detail-grid-modern">
+      <div class="order-control-panel">
+        <div class="order-control-section-heading">
+          <div><h3>Recogidas, productos y locales</h3><p class="muted">Qué debe preparar cada LOCAL y en qué punto está la recogida.</p></div>
+        </div>
+        <div class="order-control-destination"><strong>Entrega:</strong> ${esc(order.delivery_address||"—")}${order.address_reference?`<span>Referencia: ${esc(order.address_reference)}</span>`:""}</div>
+        ${localBlocks||'<div class="muted">Sin locales asociados.</div>'}
+      </div>
+
+      <div class="order-control-panel" id="orderControlDispatchPanel">
+        <div class="order-control-section-heading">
+          <div><h3>Repartidor y despacho</h3><p class="muted">Asignación, comunicación y estado del GPS para la entrega.</p></div>
+        </div>
+        ${driverPanel}
+      </div>
+    </div>
+
+    <div class="order-control-bottom-grid">
+      <div class="order-control-panel">
+        <div class="order-control-section-heading"><div><h3>Línea de tiempo</h3><p class="muted">Historial de cambios del pedido y de sus LOCAL.</p></div></div>
+        <div class="order-control-timeline">${timeline}</div>
+      </div>
+      <div class="order-control-panel">
+        <div class="order-control-section-heading"><div><h3>Costos y observaciones</h3><p class="muted">Resumen económico y notas operativas.</p></div></div>
+        <div class="order-control-costs">
           <div class="summary-line"><span>Productos</span><strong>${esc(orderControlMoney(order.subtotal))}</strong></div>
           <div class="summary-line"><span>Delivery</span><strong>${esc(orderControlMoney(order.delivery_fee))}</strong></div>
-          <div class="summary-line"><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
+          <div class="summary-line order-control-total-line"><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
         </div>
+        ${order.notes?`<div class="workspace-note order-control-notes"><strong>Observaciones</strong><div>${esc(order.notes)}</div></div>`:'<div class="muted order-control-notes-empty">Sin observaciones registradas.</div>'}
       </div>
-    </div>
-
-    <div class="order-control-panel" style="margin-top:16px">
-      <h3>Historial operativo</h3>
-      <div class="order-control-timeline">${timeline}</div>
     </div>
   `;
 }
