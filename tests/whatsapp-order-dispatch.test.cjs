@@ -135,17 +135,19 @@ test('panel DELIVERY permite activar o desactivar Pedido del cliente por WhatsAp
   assert.match(admin,/p_customer_orders:\$\("whatsappCustomerOrders"\)/);
 });
 
-test('checkout registra primero en HTPWEB y luego prepara WhatsApp',()=>{
+test('checkout registra primero en HTPWEB y luego prepara WhatsApp sin about:blank',()=>{
   const createIndex=cart.indexOf('supabaseClient.functions.invoke("crear-pedido"');
   const validateIndex=cart.indexOf('if (!data?.ok || !data?.order?.id)');
-  const canonicalIndex=cart.indexOf('obtenerPedidoCliente(negocioActual.id, data.order.id)');
+  const canonicalIndex=cart.indexOf('data.order_detail ||');
   const whatsappIndex=cart.indexOf('htpWhatsappAssistedUrl(');
+  const redirectIndex=cart.indexOf('window.location.href = lastCustomerWhatsappUrl');
   assert.ok(createIndex>=0);
   assert.ok(validateIndex>createIndex);
   assert.ok(canonicalIndex>validateIndex);
   assert.ok(whatsappIndex>canonicalIndex);
+  assert.ok(redirectIndex>whatsappIndex);
   assert.match(cart,/htpWhatsappCustomerOrderSetting/);
-  assert.match(cart,/window\.open\("", "_blank"\)/);
+  assert.doesNotMatch(cart,/window\.open\("", "_blank"\)/);
   assert.match(cart,/Enviar pedido por WhatsApp/);
 });
 
