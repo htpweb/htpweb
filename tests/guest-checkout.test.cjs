@@ -51,3 +51,9 @@ test('javascript inline del carrito compila',()=>{
   assert.ok(inline.length>0);
   assert.doesNotThrow(()=>new Function(inline));
 });
+
+
+test('checkout invitado puede leer la configuración pública de WhatsApp',()=>{
+  const migration=fs.readFileSync('supabase/migrations/20260929005735_guest_checkout_public_whatsapp_setting.sql','utf8');
+  assert.match(migration,/grant execute on function public\.public_delivery_customer_order_whatsapp\(uuid\) to anon/);
+});
