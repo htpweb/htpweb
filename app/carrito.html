@@ -39,6 +39,11 @@
   <section id="checkoutCard" class="card hidden">
     <h2>Datos de entrega</h2>
 
+    <div id="guestCheckoutNote" class="note hidden" style="margin-bottom:14px">
+      Puedes comprar sin crear una cuenta. El registro es opcional y sirve para guardar direcciones y gestionar futuras compras.
+      <button class="btn btn-muted" id="guestAccountBtn" type="button" style="margin-top:8px">Iniciar sesión / Crear cuenta (opcional)</button>
+    </div>
+
     <label>Nombre</label>
     <input id="name" autocomplete="name">
 
@@ -68,7 +73,7 @@
     <label>Referencia</label>
     <input id="reference" placeholder="Casa, edificio, punto de referencia">
 
-    <div class="save-address-panel">
+    <div class="save-address-panel" id="saveAddressPanel">
       <h3>Guardar esta dirección</h3>
       <div class="form-grid">
         <div>
@@ -148,17 +153,23 @@ async function init() {
 
     await reloadCart();
 
-    const user = await obtenerUsuarioActual();
-    if (user) {
-      try {
-        if (typeof htpWhatsappCustomerOrderSetting === "function") {
-          customerWhatsappSetting = await htpWhatsappCustomerOrderSetting(negocioActual.id);
-        }
-      } catch (whatsappError) {
-        console.warn("No se pudo consultar Pedido por WhatsApp.", whatsappError);
-        customerWhatsappSetting = { enabled: false };
+    try {
+      if (typeof htpWhatsappCustomerOrderSetting === "function") {
+        customerWhatsappSetting = await htpWhatsappCustomerOrderSetting(negocioActual.id);
       }
+    } catch (whatsappError) {
+      console.warn("No se pudo consultar Pedido por WhatsApp.", whatsappError);
+      customerWhatsappSetting = { enabled: false };
+    }
 
+    const user = await obtenerUsuarioActual();
+    $("guestCheckoutNote")?.classList.toggle("hidden", Boolean(user));
+    $("saveAddressPanel")?.classList.toggle("hidden", !user);
+    if ($("guestAccountBtn")) {
+      $("guestAccountBtn").onclick = () => irAAcceso(rutaActualRelativa());
+    }
+
+    if (user) {
       $("invoiceEmail").value = user.email || "";
       const { data } = await supabaseClient
         .from("customers")
@@ -487,12 +498,6 @@ function emptyCart() {
 async function openCheckout() {
   if (!items.length) return;
 
-  const user = await obtenerUsuarioActual();
-  if (!user) {
-    irAAcceso(rutaActualRelativa());
-    return;
-  }
-
   $("checkoutCard").classList.remove("hidden");
   if (!map) {
     initMap();
@@ -755,10 +760,6 @@ async function confirmOrder() {
     if (!items.length) throw new Error("El carrito está vacío.");
 
     const user = await obtenerUsuarioActual();
-    if (!user) {
-      irAAcceso(rutaActualRelativa());
-      return;
-    }
 
     const name = $("name").value.trim();
     const phone = $("phone").value.trim();
@@ -794,11 +795,13 @@ async function confirmOrder() {
     button.disabled = true;
     button.textContent = "Confirmando pedido...";
 
-    await asegurarCustomerActual({
-      name,
-      phone,
-      email: user.email || invoiceEmail || ""
-    });
+    if (user) {
+      await asegurarCustomerActual({
+        name,
+        phone,
+        email: user.email || invoiceEmail || ""
+      });
+    }
 
     const locals = [...new Set(items.map(item => item.local_id))]
       .map(local_id => ({ local_id }));
@@ -827,6 +830,9 @@ async function confirmOrder() {
     const { data, error } = await supabaseClient.functions.invoke("crear-pedido", {
       body: {
         delivery_id: negocioActual.id,
+        customer_name: name,
+        customer_phone: phone,
+        customer_email: user?.email || invoiceEmail || null,
         delivery_address: address,
         latitude,
         longitude,
@@ -873,8 +879,9 @@ async function confirmOrder() {
       }
 
       if (customerWhatsappSetting?.enabled && customerWhatsappSetting?.whatsapp) {
-        const canonicalOrder = await obtenerPedidoCliente(negocioActual.id, data.order.id);
-        if (!canonicalOrder) throw new Error("No se pudo leer el pedido registrado.");
+        const canonicalOrder = data.order_detail ||
+          (user ? await obtenerPedidoCliente(negocioActual.id, data.order.id) : null);
+        if (!canonicalOrder) throw new Error("No se pudo preparar el detalle del pedido para WhatsApp.");
 
         const whatsappText = htpWhatsappBuildCustomerOrderText(
           canonicalOrder,
@@ -925,6 +932,11 @@ async function confirmOrder() {
       `
       : "";
 
+    const accountAction = user
+      ? `<a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>`
+      : `<button class="btn btn-muted" type="button" onclick="irAAcceso(urlDelivery('index.html'))">Crear cuenta / Iniciar sesión (opcional)</button>
+         <small class="note" style="display:block;margin:8px 0">Tu compra ya fue registrada. Crear una cuenta no es necesario para completar este pedido.</small>`;
+
     $("successCard").innerHTML = `
       <div class="success">
         <h2>✅ Pedido creado</h2>
@@ -934,7 +946,7 @@ async function confirmOrder() {
         <p class="total"><strong>Total:</strong> ${Number(data.order.total || 0).toFixed(2)}</p>
       </div>
       ${whatsappNotice}
-      <a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>
+      ${accountAction}
       <button class="btn btn-dark" onclick="location.href=urlDelivery('index.html')">Volver a comprar</button>
     `;
     $("successCard").classList.remove("hidden");

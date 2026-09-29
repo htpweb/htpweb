@@ -65,25 +65,19 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   return trimmed ? trimmed : null;
 }
 /* ============================================================
-   AUTENTICACIÓN
+   AUTENTICACIÓN OPCIONAL
 
-   IMPORTANTE:
-   - Nunca confiamos en body.customer_id.
-   - La identidad sale del JWT real.
-   ============================================================ */ async function getAuthenticatedUser(req) {
+   Comprar no requiere cuenta. Si llega una sesión válida,
+   HTPWEB conserva la experiencia de cliente registrado.
+   ============================================================ */ async function getOptionalAuthenticatedUser(req) {
   const authorization = req.headers.get("Authorization");
-  if (!authorization || !authorization.startsWith("Bearer ")) {
-    throw new HttpError(401, "Se requiere iniciar sesión para crear el pedido");
-  }
+  if (!authorization || !authorization.startsWith("Bearer ")) return null;
+
   const accessToken = authorization.slice("Bearer ".length).trim();
-  if (!accessToken) {
-    throw new HttpError(401, "Token de autenticación inválido");
-  }
+  if (!accessToken || accessToken.startsWith("sb_publishable_")) return null;
+
   const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
-  if (error || !data?.user) {
-    console.error("Error validando JWT:", error);
-    throw new HttpError(401, "La sesión no es válida o expiró");
-  }
+  if (error || !data?.user) return null;
   return data.user;
 }
 /* ============================================================
@@ -119,6 +113,85 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     throw new HttpError(400, "El customer debe tener un teléfono válido antes de realizar pedidos");
   }
   return customer;
+}
+
+function normalizeGuestPhone(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (/^0\d{9}$/.test(digits)) digits = "593" + digits.slice(1);
+  else if (/^9\d{8}$/.test(digits)) digits = "593" + digits;
+
+  if (!/^\d{8,15}$/.test(digits)) {
+    throw new HttpError(400, "Ingresa un teléfono válido");
+  }
+  return digits;
+}
+
+async function getOrCreateGuestCustomer(nameValue, phoneValue, emailValue) {
+  const name = String(nameValue || "").trim();
+  const phone = normalizeGuestPhone(phoneValue);
+  const email = optionalText(emailValue)?.toLowerCase() || null;
+
+  if (!name) throw new HttpError(400, "Ingresa tu nombre");
+  if (name.length > 120) throw new HttpError(400, "El nombre es demasiado largo");
+  if (email && email.length > 254) throw new HttpError(400, "El correo es demasiado largo");
+
+  const { data: matches, error: lookupError } = await supabaseAdmin
+    .from("customers")
+    .select("id,profile_id,name,phone,email,active,updated_at")
+    .is("profile_id", null)
+    .eq("phone", phone)
+    .eq("active", true)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (lookupError) {
+    console.error("Error buscando customer invitado:", lookupError);
+    throw new HttpError(500, "No se pudo preparar el cliente del pedido");
+  }
+
+  const existing = Array.isArray(matches) ? matches[0] : null;
+  if (existing) {
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from("customers")
+      .update({
+        name,
+        email: email || existing.email || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", existing.id)
+      .is("profile_id", null)
+      .select("id,profile_id,name,phone,email,active")
+      .single();
+
+    if (updateError || !updated) {
+      console.error("Error actualizando customer invitado:", updateError);
+      throw new HttpError(500, "No se pudo actualizar el cliente del pedido");
+    }
+    return updated;
+  }
+
+  const now = new Date().toISOString();
+  const { data: created, error: insertError } = await supabaseAdmin
+    .from("customers")
+    .insert({
+      profile_id: null,
+      name,
+      phone,
+      email,
+      active: true,
+      marketing_consent: false,
+      created_at: now,
+      updated_at: now
+    })
+    .select("id,profile_id,name,phone,email,active")
+    .single();
+
+  if (insertError || !created) {
+    console.error("Error creando customer invitado:", insertError);
+    throw new HttpError(500, "No se pudo preparar el cliente del pedido");
+  }
+  return created;
 }
 /* ============================================================
    CUSTOMER ↔ DELIVERY
@@ -461,25 +534,22 @@ async function validatePromotionSelections(items) {
       }, 405);
     }
     /* ======================================================
-         2. AUTENTICAR USUARIO
-
-         Primero autenticamos.
-         Después leemos cualquier dato comercial.
-         ====================================================== */ const user = await getAuthenticatedUser(req);
-    /* ======================================================
-         3. RESOLVER CUSTOMER REAL
-
-         NO usamos body.customer_id.
-         ====================================================== */ const customer = await getCustomerForUser(user.id);
-    const customerId = customer.id;
-    /* ======================================================
-         4. LEER BODY
+         2. LEER BODY
          ====================================================== */ let body;
     try {
       body = await req.json();
     } catch  {
       throw new HttpError(400, "El cuerpo de la solicitud no es JSON válido");
     }
+
+    /* ======================================================
+         3. SESIÓN OPCIONAL
+
+         - Con sesión: pedido asociado a la cuenta.
+         - Sin sesión: checkout invitado.
+         ====================================================== */ const user = await getOptionalAuthenticatedUser(req);
+    let customer = null;
+    let customerId = null;
     /* ======================================================
          5. DELIVERY
          ====================================================== */ if (!isValidUuid(body.delivery_id)) {
@@ -539,11 +609,17 @@ async function validatePromotionSelections(items) {
       throw new HttpError(403, "El delivery está inactivo");
     }
     /* ======================================================
-         10. CUSTOMER ↔ DELIVERY
+         10. RESOLVER CUSTOMER Y POLÍTICA DEL DELIVERY
 
-         El CUSTOMER fue obtenido del JWT.
-         Nunca del body.
-         ====================================================== */ await ensureCustomerDelivery(customerId, body.delivery_id, customerLat, customerLng);
+         La cuenta es opcional. Un invitado obtiene un customer
+         interno sin profile_id para conservar integridad.
+         ====================================================== */
+    customer = user
+      ? await getCustomerForUser(user.id)
+      : await getOrCreateGuestCustomer(body.customer_name, body.customer_phone, body.customer_email);
+    customerId = customer.id;
+
+    await ensureCustomerDelivery(customerId, body.delivery_id, customerLat, customerLng);
     /* ======================================================
          11. OBTENER LOCALES REALES
          ====================================================== */ const { data: locals, error: localsError } = await supabaseAdmin.from("locals").select(`
@@ -674,7 +750,8 @@ async function validatePromotionSelections(items) {
          SEGURIDAD:
 
          p_customer_id:
-         customerId derivado del JWT.
+         customerId resuelto por el servidor desde una cuenta
+         autenticada o desde un customer invitado interno.
 
          NO:
          body.customer_id.
@@ -734,14 +811,38 @@ async function validatePromotionSelections(items) {
     if (!order?.order_id) {
       throw new HttpError(500, "La transacción no devolvió el pedido creado");
     }
+    let orderDetail = null;
+    try {
+      const detailResult = await supabaseAdmin
+        .from("orders")
+        .select(`
+          id,delivery_id,status,created_at,subtotal,delivery_fee,total,
+          customer_name,customer_phone,delivery_address,latitude,longitude,address_reference,notes,
+          order_items(local_id,product_name,variant_name,unit_price,quantity,subtotal,promotion_id,promotion_title),
+          order_locals(local_id,status,subtotal,delivery_fee,locals(name))
+        `)
+        .eq("id", order.order_id)
+        .single();
+
+      if (detailResult.error) {
+        console.warn("Pedido creado, pero no se pudo preparar order_detail:", detailResult.error);
+      } else {
+        orderDetail = detailResult.data;
+      }
+    } catch (detailError) {
+      console.warn("Pedido creado, pero falló order_detail:", detailError);
+    }
+
     return jsonResponse({
       ok: true,
+      customer_mode: user ? "ACCOUNT" : "GUEST",
       order: {
         id: order.order_id,
         subtotal: Number(order.subtotal),
         delivery_fee: Number(order.delivery_fee),
         total: Number(order.total)
       },
+      order_detail: orderDetail,
       distances: localsWithDistance
     });
   } catch (error) {
