@@ -13,7 +13,9 @@ test('puente n8n usa cola privada y secreto hash sin credencial en repositorio',
   assert.match(bridge,/extensions\.digest/);
   assert.match(bridge,/automation_claim_jobs/);
   assert.match(bridge,/automation_complete_job/);
-  assert.doesNotMatch(bridge,/htpweb-automation-secret/i);
+  assert.match(bridge,/x-htpweb-automation-secret/);
+  assert.doesNotMatch(bridge,/values\s*\(\s*['"]N8N['"]\s*,\s*['"][a-f0-9]{64}['"]/i);
+  assert.doesNotMatch(bridge,/sb_publishable_[A-Za-z0-9_-]+/);
 });
 
 test('eventos operativos entran a la cola sin reemplazar el flujo asistido',()=>{
