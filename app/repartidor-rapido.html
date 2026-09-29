@@ -102,6 +102,11 @@
     let myMarker=null;
     let lastPosition=null;
     let currentRoute=null;
+    let routeRequestInFlight=false;
+    const autoRouteState={outsideSince:0,outsideSamples:0,lastAutoAt:0};
+    const AUTO_ROUTE_THRESHOLD_M=300;
+    const AUTO_ROUTE_MIN_OUTSIDE_MS=20000;
+    const AUTO_ROUTE_COOLDOWN_MS=60000;
     let signatureCanvas=null;
 
     function takeTokenFromHash(){
@@ -131,6 +136,80 @@
     }
     function currentOrder(){
       return (context?.orders||[]).find(function(o){return o.order_id===selectedOrderId;})||null;
+    }
+
+    function savedRouteForOrder(order){
+      const active=order?.active_route;
+      const route=active?.route;
+      return route&&route.order_id===order?.order_id?route:null;
+    }
+
+    function resetAutoDeviationWindow(){
+      autoRouteState.outsideSince=0;
+      autoRouteState.outsideSamples=0;
+    }
+
+    function syncCurrentRouteFromContext(){
+      const order=currentOrder();
+      currentRoute=savedRouteForOrder(order);
+      resetAutoDeviationWindow();
+    }
+
+    function routeDistanceMeters(lat,lng,coordinates){
+      if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng))||!Array.isArray(coordinates)||coordinates.length<2)return null;
+      const R=6371000;
+      const rad=Math.PI/180;
+      const lat0=Number(lat)*rad;
+      let best=Number.POSITIVE_INFINITY;
+      function xy(point){
+        const plng=Number(point?.[0]),plat=Number(point?.[1]);
+        if(!Number.isFinite(plng)||!Number.isFinite(plat))return null;
+        return [(plng-Number(lng))*rad*R*Math.cos(lat0),(plat-Number(lat))*rad*R];
+      }
+      for(let i=0;i<coordinates.length-1;i++){
+        const a=xy(coordinates[i]),b=xy(coordinates[i+1]);
+        if(!a||!b)continue;
+        const dx=b[0]-a[0],dy=b[1]-a[1];
+        const denom=dx*dx+dy*dy;
+        const t=denom>0?Math.max(0,Math.min(1,-(a[0]*dx+a[1]*dy)/denom)):0;
+        const cx=a[0]+t*dx,cy=a[1]+t*dy;
+        const d=Math.sqrt(cx*cx+cy*cy);
+        if(d<best)best=d;
+      }
+      return Number.isFinite(best)?best:null;
+    }
+
+    async function maybeAutoRecalculateRoute(coords){
+      const order=currentOrder();
+      if(!order||!['READY','EN_ROUTE'].includes(order.status)||routeRequestInFlight)return;
+      const accuracy=Number(coords?.accuracy);
+      if(Number.isFinite(accuracy)&&accuracy>150)return;
+
+      const now=Date.now();
+      const geometry=currentRoute?.order_id===order.order_id?currentRoute?.geometry?.coordinates:null;
+      if(!Array.isArray(geometry)||geometry.length<2){
+        if(now-autoRouteState.lastAutoAt<30000)return;
+        autoRouteState.lastAutoAt=now;
+        await calculateRoute(true,'AUTO');
+        return;
+      }
+
+      const distance=routeDistanceMeters(coords.latitude,coords.longitude,geometry);
+      if(!Number.isFinite(distance))return;
+      if(distance<=AUTO_ROUTE_THRESHOLD_M){
+        resetAutoDeviationWindow();
+        return;
+      }
+
+      if(!autoRouteState.outsideSince)autoRouteState.outsideSince=now;
+      autoRouteState.outsideSamples+=1;
+      if(autoRouteState.outsideSamples<3||now-autoRouteState.outsideSince<AUTO_ROUTE_MIN_OUTSIDE_MS)return;
+      if(now-autoRouteState.lastAutoAt<AUTO_ROUTE_COOLDOWN_MS)return;
+
+      autoRouteState.lastAutoAt=now;
+      resetAutoDeviationWindow();
+      const updated=await calculateRoute(true,'AUTO');
+      if(updated)setStatus('Ruta recalculada automáticamente por desvío.','ok');
     }
 
     function ensureMap(){
@@ -163,7 +242,7 @@
       }
       if(!selectedOrderId||!orders.some(function(o){return o.order_id===selectedOrderId;})){
         selectedOrderId=orders[0].order_id;
-        currentRoute=null;
+        syncCurrentRouteFromContext();
       }
       ordersEl.innerHTML=orders.map(function(o){
         const pickups=(o.locals||[]).filter(function(l){return l.status!=='CANCELLED';});
@@ -177,7 +256,7 @@
       ordersEl.querySelectorAll('[data-order]').forEach(function(btn){
         btn.onclick=function(){
           selectedOrderId=btn.dataset.order;
-          currentRoute=null;
+          syncCurrentRouteFromContext();
           renderOrders();
           renderDetail();
           renderMap();
@@ -418,7 +497,7 @@
         const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
         setStatus(action==='ARRIVED'?'Registrando llegada…':'Confirmando recogida…','');
         const data=await invokeTrack({action:'stop',order_id:order.order_id,local_id:localId,stop_action:action});
-        context=data.context;currentRoute=null;
+        context=data.context;syncCurrentRouteFromContext();
         renderDriver();renderOrders();renderDetail();renderMap();
         setStatus(action==='ARRIVED'?'Llegada al LOCAL registrada.':'Recogida confirmada.','ok');
         if(lastPosition)void calculateRoute(true);
@@ -430,7 +509,7 @@
         const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
         setStatus(next==='EN_ROUTE'?'Iniciando entrega…':'Finalizando entrega…','');
         const data=await invokeTrack({action:'status',order_id:order.order_id,status:next});
-        context=data.context;currentRoute=null;
+        context=data.context;syncCurrentRouteFromContext();
         renderDriver();renderOrders();renderDetail();renderMap();
         setStatus(next==='EN_ROUTE'?'Entrega al cliente iniciada.':'Pedido entregado correctamente.','ok');
         if(next==='DELIVERED'&&!(context?.orders||[]).length)stopTracking();
@@ -486,21 +565,32 @@
       });
     }
 
-    async function calculateRoute(quiet){
+    async function calculateRoute(quiet,source='MANUAL'){
+      if(routeRequestInFlight)return false;
+      routeRequestInFlight=true;
       try{
         const order=currentOrder();if(!order)throw new Error('Selecciona un pedido.');
         if(!quiet)routeStatus.textContent='Calculando ruta por carretera…';
-        const pos=await currentPositionOnce();
+        const pos=source==='AUTO'&&lastPosition?lastPosition:await currentPositionOnce();
         const data=await invokeTrack({
           action:'route',order_id:order.order_id,
-          origin_lat:pos.latitude,origin_lng:pos.longitude
+          origin_lat:pos.latitude,origin_lng:pos.longitude,
+          route_source:source
         });
         currentRoute=data.route;
-        routeStatus.textContent=(currentRoute.optimized?'Ruta optimizada':'Ruta vial')+' · '+currentRoute.distance_km+' km · aprox. '+currentRoute.duration_minutes+' min';
+        if(data.active_route)order.active_route=data.active_route;
+        resetAutoDeviationWindow();
+        routeStatus.textContent=(source==='AUTO'?'Ruta recalculada automáticamente':'')+
+          (source==='AUTO'?' · ':'')+(currentRoute.optimized?'Ruta optimizada':'Ruta vial')+
+          ' · '+currentRoute.distance_km+' km · aprox. '+currentRoute.duration_minutes+' min';
         renderDetail();renderMap();
+        return true;
       }catch(e){
         routeStatus.textContent=e.message||'No se pudo calcular la ruta.';
         if(!quiet)setStatus(routeStatus.textContent,'error');
+        return false;
+      }finally{
+        routeRequestInFlight=false;
       }
     }
 
@@ -571,6 +661,7 @@
         gpsStatus.textContent='GPS activo · '+new Date().toLocaleTimeString()+
           (Number.isFinite(Number(c.accuracy))?' · precisión '+Math.round(Number(c.accuracy))+' m':'')+
           (data.result?.status==='THROTTLED'?' · sincronizando':'');
+        void maybeAutoRecalculateRoute(c);
       }catch(e){gpsStatus.textContent=e.message||'No se pudo enviar la ubicación.';}
     }
 

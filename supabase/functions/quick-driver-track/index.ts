@@ -54,6 +54,24 @@ async function orsFetch(url:string,body:unknown){
   return data;
 }
 
+async function trackingContextWithRoutes(admin:any,tokenHash:string){
+  const {data,error}=await admin.rpc("quick_driver_tracking_context",{p_token_hash:tokenHash});
+  if(error)throw error;
+  const {data:routeSnapshot,error:routeError}=await admin.rpc("quick_driver_route_snapshot",{p_token_hash:tokenHash});
+  if(routeError)throw routeError;
+  const routeByOrder=new Map<string,any>();
+  for(const item of (routeSnapshot?.routes||[])){
+    if(item?.order_id)routeByOrder.set(String(item.order_id),item);
+  }
+  return {
+    ...data,
+    orders:(data?.orders||[]).map((order:any)=>({
+      ...order,
+      active_route:routeByOrder.get(String(order.order_id))||null,
+    })),
+  };
+}
+
 function nearestRoadOrder(matrix:any,localCount:number){
   const remaining=new Set<number>();
   for(let i=1;i<=localCount;i++)remaining.add(i);
@@ -90,9 +108,8 @@ Deno.serve(async(req)=>{
     const admin=createClient(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 
     if(action==="context"){
-      const {data,error}=await admin.rpc("quick_driver_tracking_context",{p_token_hash:tokenHash});
-      if(error)throw error;
-      return json({ok:true,context:data});
+      const context=await trackingContextWithRoutes(admin,tokenHash);
+      return json({ok:true,context});
     }
 
     if(action==="location"){
@@ -112,22 +129,24 @@ Deno.serve(async(req)=>{
       const orderId=String(body?.order_id||"");
       const localId=String(body?.local_id||"");
       if(!validUuid(orderId)||!validUuid(localId))throw new Error("Pedido o LOCAL inválido");
-      const {data,error}=await admin.rpc("quick_driver_stop_action",{
+      const {error}=await admin.rpc("quick_driver_stop_action",{
         p_token_hash:tokenHash,p_order_id:orderId,p_local_id:localId,
         p_action:String(body?.stop_action||""),
       });
       if(error)throw error;
-      return json({ok:true,context:data});
+      const context=await trackingContextWithRoutes(admin,tokenHash);
+      return json({ok:true,context});
     }
 
     if(action==="status"){
       const orderId=String(body?.order_id||"");
       if(!validUuid(orderId))throw new Error("Pedido inválido");
-      const {data,error}=await admin.rpc("quick_driver_set_order_status",{
+      const {error}=await admin.rpc("quick_driver_set_order_status",{
         p_token_hash:tokenHash,p_order_id:orderId,p_new_status:String(body?.status||""),
       });
       if(error)throw error;
-      return json({ok:true,context:data});
+      const context=await trackingContextWithRoutes(admin,tokenHash);
+      return json({ok:true,context});
     }
 
     if(action==="pin"){
@@ -146,8 +165,7 @@ Deno.serve(async(req)=>{
       const originLng=Number(body?.origin_lng);
       if(!validUuid(orderId)||!validPoint(originLat,originLng))throw new Error("Pedido u origen inválido");
 
-      const {data:ctx,error:ctxError}=await admin.rpc("quick_driver_tracking_context",{p_token_hash:tokenHash});
-      if(ctxError)throw ctxError;
+      const ctx=await trackingContextWithRoutes(admin,tokenHash);
       const order=(ctx?.orders||[]).find((o:any)=>o.order_id===orderId);
       if(!order)throw new Error("Pedido no disponible para este repartidor");
       if(!validPoint(order.latitude,order.longitude))throw new Error("El destino del cliente no tiene coordenadas válidas");
@@ -184,7 +202,7 @@ Deno.serve(async(req)=>{
       const summary=feature?.properties?.summary;
       if(!feature?.geometry?.coordinates||!summary)throw new Error("ORS no devolvió una ruta vial válida");
 
-      return json({ok:true,route:{
+      const route={
         order_id:orderId,
         optimized:Boolean(locals.length>1&&ctx?.routes_optimize),
         profile:"driving-car",
@@ -192,7 +210,16 @@ Deno.serve(async(req)=>{
         duration_minutes:Math.round(Number(summary.duration||0)/60),
         geometry:feature.geometry,
         stops:orderedNodes.slice(1).map((node:any,index:number)=>({...node,sequence:index+1})),
-      }});
+      };
+      const routeSource=String(body?.route_source||"MANUAL").toUpperCase()==="AUTO"?"AUTO":"MANUAL";
+      const {data:activeRoute,error:routeSaveError}=await admin.rpc("quick_driver_register_active_route",{
+        p_token_hash:tokenHash,
+        p_order_id:orderId,
+        p_route:route,
+        p_source:routeSource,
+      });
+      if(routeSaveError)throw routeSaveError;
+      return json({ok:true,route,active_route:activeRoute});
     }
 
     throw new Error("Acción inválida");

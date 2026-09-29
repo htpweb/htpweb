@@ -2765,6 +2765,13 @@ function startOrderControlRealtime(order){
       renderOrderControlDetail();
       renderOrderControlMap();
     })
+    .on("broadcast",{event:"route_updated"},({payload})=>{
+      const current=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
+      if(!current||current.id!==order.id||payload?.order_id!==current.id)return;
+      current.active_route=payload;
+      renderOrderControlDetail();
+      renderOrderControlMap();
+    })
     .on("broadcast",{event:"tracking_ended"},()=>{
       void loadOrders({silent:true});
     })
@@ -2818,6 +2825,27 @@ async function orderControlFetchRoadRoute(localGroup,order){
     orderControlState.routeCache.delete(key);
     throw e;
   }
+}
+
+function orderControlRenderSharedRoute(order){
+  const active=order?.active_route;
+  const route=active?.route;
+  if(route?.geometry?.type!=="LineString"||!Array.isArray(route?.geometry?.coordinates))return [];
+  const latLngs=route.geometry.coordinates
+    .map(point=>[Number(point?.[1]),Number(point?.[0])])
+    .filter(point=>orderControlValidPoint(point[0],point[1]));
+  if(latLngs.length<2)return [];
+  const source=active.source==="AUTO"?"recalculada automáticamente":"calculada por repartidor";
+  const version=Number(active.version);
+  const km=Number(route.distance_km);
+  const minutes=Number(route.duration_minutes);
+  const label="Ruta vigente"+(Number.isFinite(version)?" · V"+version:"")+" · "+source+
+    (Number.isFinite(km)?" · "+km.toFixed(2)+" km":"")+
+    (Number.isFinite(minutes)?" · aprox. "+Math.round(minutes)+" min":"");
+  L.polyline(latLngs,{color:"#2563eb",weight:5,opacity:.86})
+    .bindTooltip(label)
+    .addTo(orderControlState.layers);
+  return latLngs;
 }
 
 async function orderControlRenderRoadRoutes(order,generation){
@@ -2920,7 +2948,12 @@ function renderOrderControlMap(){
       bounds.push([lat,lng]);
     }
 
-    void orderControlRenderRoadRoutes(order,generation);
+    const sharedRoutePoints=orderControlRenderSharedRoute(order);
+    if(sharedRoutePoints.length){
+      sharedRoutePoints.forEach(point=>bounds.push(point));
+    }else{
+      void orderControlRenderRoadRoutes(order,generation);
+    }
   }else{
     orderControlState.routeGeneration++;
   }
@@ -3076,11 +3109,12 @@ async function loadOrderControlCenter({silent=false}={}){
     }
 
     const bundles=await Promise.all(ids.map(async deliveryId=>{
-      const [snapshot,drivers]=await Promise.all([
+      const [snapshot,drivers,routes]=await Promise.all([
         rpc("delivery_order_control_snapshot",{p_delivery_id:deliveryId,p_limit:100}),
-        rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]}))
+        rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]})),
+        rpc("delivery_order_routes_snapshot",{p_delivery_id:deliveryId}).catch(()=>({routes:[]}))
       ]);
-      return {deliveryId,snapshot,drivers};
+      return {deliveryId,snapshot,drivers,routes};
     }));
 
     const all=[];
@@ -3089,7 +3123,11 @@ async function loadOrderControlCenter({silent=false}={}){
     bundles.forEach(bundle=>{
       orderControlState.snapshots.set(bundle.deliveryId,bundle.snapshot||{});
       orderControlState.drivers.set(bundle.deliveryId,bundle.drivers||{drivers:[]});
-      (bundle.snapshot?.orders||[]).forEach(order=>all.push(orderControlNormalize(order)));
+      const routeByOrder=new Map((bundle.routes?.routes||[]).map(route=>[route.order_id,route]));
+      (bundle.snapshot?.orders||[]).forEach(order=>all.push(orderControlNormalize({
+        ...order,
+        active_route:routeByOrder.get(order.id)||null
+      })));
     });
     all.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     state.orders=all;
