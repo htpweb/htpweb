@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Confirmar preparación | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a;background:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#fff7ed 0,#f8fafc 230px);min-height:100vh}
+main{max-width:680px;margin:0 auto;padding:24px 16px 48px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;margin-bottom:18px}
+.logo{width:42px;height:42px;border-radius:13px;background:#0f172a;color:white;display:grid;place-items:center;font-weight:900}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px;box-shadow:0 12px 32px #0f172a0c;margin-bottom:14px}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:800;color:#64748b}
+h1{font-size:24px;margin:7px 0 5px}
+h2{font-size:16px;margin:0 0 10px}
+.muted{color:#64748b;line-height:1.45}
+.order-ref{display:inline-flex;padding:5px 9px;border-radius:999px;background:#fff7ed;color:#c2410c;font-size:12px;font-weight:900;margin-top:10px}
+.items{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.items li{display:flex;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px dashed #e2e8f0}
+.items li:last-child{border-bottom:0}
+.qty{font-weight:900;color:#f97316;min-width:34px}
+.time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px}
+button{font:inherit;cursor:pointer}
+.time-btn{border:1px solid #fdba74;background:#fff7ed;color:#9a3412;border-radius:13px;padding:13px 6px;font-weight:900}
+.time-btn:hover,.time-btn:focus{background:#ffedd5;border-color:#f97316}
+.custom{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:10px}
+input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font:inherit}
+.primary{border:0;border-radius:12px;background:#f97316;color:#fff;padding:12px 16px;font-weight:900}
+.primary:disabled,.time-btn:disabled{opacity:.55;cursor:not-allowed}
+.state{padding:14px;border-radius:14px;font-weight:700;line-height:1.45}
+.state.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.state.error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.state.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.hidden{display:none!important}
+.ready-time{font-size:26px;font-weight:900;margin:6px 0}
+@media(max-width:520px){.time-grid{grid-template-columns:repeat(2,1fr)}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="logo">H</div><div>HTPWEB</div></div>
+  <section id="loading" class="card"><div class="muted">Cargando pedido…</div></section>
+  <section id="invalid" class="card hidden">
+    <div class="state error">Este enlace no es válido o ya no está disponible. Solicita al DELIVERY que te envíe uno nuevo.</div>
+  </section>
+  <div id="content" class="hidden">
+    <section class="card">
+      <div class="eyebrow">Solicitud de preparación</div>
+      <h1 id="localName">LOCAL</h1>
+      <div class="muted">Enviado por <strong id="deliveryName">DELIVERY</strong>.</div>
+      <div id="orderRef" class="order-ref">Pedido</div>
+    </section>
+
+    <section class="card">
+      <h2>Productos a preparar</h2>
+      <ul id="items" class="items"></ul>
+      <div id="notesWrap" class="hidden" style="margin-top:12px">
+        <div class="eyebrow">Observaciones</div>
+        <div id="notes" class="muted" style="margin-top:5px"></div>
+      </div>
+    </section>
+
+    <section id="responseCard" class="card">
+      <div class="eyebrow">Confirma el tiempo</div>
+      <h2 style="font-size:20px;margin-top:6px">¿En cuántos minutos estará listo?</h2>
+      <p class="muted">Al confirmar, el DELIVERY podrá programar al repartidor para que llegue cerca de la hora correcta.</p>
+      <div class="time-grid">
+        <button class="time-btn" data-minutes="15">15 min</button>
+        <button class="time-btn" data-minutes="20">20 min</button>
+        <button class="time-btn" data-minutes="30">30 min</button>
+        <button class="time-btn" data-minutes="45">45 min</button>
+      </div>
+      <div class="custom">
+        <input id="customMinutes" type="number" min="5" max="180" inputmode="numeric" placeholder="Otro tiempo (min)">
+        <button id="customBtn" class="primary" type="button">Confirmar</button>
+      </div>
+      <div id="feedback" class="hidden" style="margin-top:12px"></div>
+    </section>
+
+    <section id="confirmedCard" class="card hidden">
+      <div class="state ok">
+        <div>✓ Tiempo confirmado</div>
+        <div id="confirmedMinutes" style="margin-top:5px"></div>
+      </div>
+      <div class="muted" style="margin-top:12px">Hora estimada de pedido listo</div>
+      <div id="estimatedReady" class="ready-time">—</div>
+      <div class="muted">HTPWEB ya informó este tiempo al operador del DELIVERY.</div>
+    </section>
+  </div>
+</main>
+<script>
+const token=new URLSearchParams(location.search).get("t")||"";
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));
+let context=null;
+let busy=false;
+
+function timeText(value){
+  if(!value)return "—";
+  const d=new Date(value);
+  if(Number.isNaN(d.valueOf()))return "—";
+  return d.toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit",timeZone:"America/Guayaquil"});
+}
+function setBusy(value){
+  busy=value;
+  document.querySelectorAll("button,input").forEach(el=>el.disabled=value);
+}
+function showInvalid(){
+  $("loading").classList.add("hidden");
+  $("content").classList.add("hidden");
+  $("invalid").classList.remove("hidden");
+}
+function showConfirmed(minutes,readyAt){
+  $("responseCard").classList.add("hidden");
+  $("confirmedCard").classList.remove("hidden");
+  $("confirmedMinutes").textContent="El pedido estará listo aproximadamente en "+minutes+" minutos.";
+  $("estimatedReady").textContent=timeText(readyAt);
+}
+function render(data){
+  $("loading").classList.add("hidden");
+  $("content").classList.remove("hidden");
+  $("localName").textContent=data.local_name||"LOCAL";
+  $("deliveryName").textContent=data.delivery_name||"DELIVERY";
+  $("orderRef").textContent="Pedido #"+(data.order_ref||"");
+  $("items").innerHTML=(data.items||[]).map(item=>{
+    const detail=[item.variant_name,item.promotion_title?"PROMO: "+item.promotion_title:""].filter(Boolean).join(" · ");
+    return '<li><span class="qty">'+esc(item.quantity)+'×</span><span style="flex:1"><strong>'+esc(item.product_name||"Producto")+'</strong>'+(detail?'<div class="muted">'+esc(detail)+'</div>':"")+'</span></li>';
+  }).join("")||'<li class="muted">Sin productos visibles.</li>';
+  if(data.notes){
+    $("notesWrap").classList.remove("hidden");
+    $("notes").textContent=data.notes;
+  }
+  if(data.status==="CONFIRMED"){
+    showConfirmed(data.preparation_minutes,data.estimated_ready_at);
+  }else if(data.status==="EXPIRED"||data.expired){
+    $("responseCard").innerHTML='<div class="state error">Este enlace venció. Solicita al DELIVERY que vuelva a enviar el pedido.</div>';
+  }else if(data.status!=="SENT"){
+    $("responseCard").innerHTML='<div class="state info">Esta solicitud ya no requiere respuesta.</div>';
+  }
+}
+async function load(){
+  if(token.length<40){showInvalid();return;}
+  try{
+    const {data,error}=await supabaseClient.rpc("local_order_response_context",{p_token:token});
+    if(error)throw error;
+    if(!data?.valid){showInvalid();return;}
+    context=data;
+    render(data);
+  }catch(e){
+    console.error(e);
+    showInvalid();
+  }
+}
+async function confirmMinutes(minutes){
+  if(busy)return;
+  const value=Number(minutes);
+  if(!Number.isInteger(value)||value<5||value>180){
+    $("feedback").className="state error";
+    $("feedback").textContent="Ingresa un tiempo entre 5 y 180 minutos.";
+    $("feedback").classList.remove("hidden");
+    return;
+  }
+  setBusy(true);
+  $("feedback").className="state info";
+  $("feedback").textContent="Confirmando tiempo…";
+  $("feedback").classList.remove("hidden");
+  try{
+    const {data,error}=await supabaseClient.rpc("local_order_response_confirm",{
+      p_token:token,
+      p_minutes:value
+    });
+    if(error)throw error;
+    showConfirmed(data?.preparation_minutes||value,data?.estimated_ready_at);
+  }catch(e){
+    $("feedback").className="state error";
+    $("feedback").textContent=e?.message||"No se pudo confirmar el tiempo.";
+  }finally{
+    setBusy(false);
+  }
+}
+document.querySelectorAll("[data-minutes]").forEach(btn=>{
+  btn.addEventListener("click",()=>confirmMinutes(Number(btn.dataset.minutes)));
+});
+$("customBtn").addEventListener("click",()=>confirmMinutes(Number($("customMinutes").value)));
+load();
+</script>
+</body>
+</html>
