@@ -2498,14 +2498,38 @@ function orderControlGpsAge(location){
 
 function orderControlNextAction(order){
   if(!order)return null;
-  if(order.status==="PENDING")return {step:1,total:6,title:"Confirmar pedido",description:"Revisa los detalles del pedido y confírmalo para notificar al LOCAL e iniciar el flujo operativo.",kind:"transition",nextStatus:"CONFIRMED",button:"Confirmar pedido"};
-  if(order.status==="CONFIRMED")return {step:2,total:6,title:"Iniciar preparación",description:"El pedido ya fue aceptado. Pásalo a preparación mientras los LOCAL trabajan en los productos.",kind:"transition",nextStatus:"PREPARING",button:"Marcar preparando"};
-  if(order.status==="PREPARING")return {step:3,total:6,title:"Dejar pedido listo",description:"Cuando la preparación termine, marca el pedido como listo para habilitar la asignación de repartidor.",kind:"transition",nextStatus:"READY",button:"Marcar listo"};
-  if(order.status==="READY"&&!order.assignment)return {step:4,total:6,title:"Asignar repartidor",description:"El pedido está listo. Selecciona un repartidor disponible para comenzar el despacho.",kind:"dispatch",button:"Ir a asignación"};
-  if(order.status==="READY"&&order.assignment)return {step:4,total:6,title:"Preparar salida",description:"El pedido ya tiene repartidor asignado. Puedes avisarle y dejar que inicie la ruta desde su consola.",kind:"driver",button:"WhatsApp repartidor"};
-  if(order.status==="EN_ROUTE")return {step:5,total:6,title:"Supervisar entrega",description:"El pedido está en camino. Sigue la ubicación del repartidor y el avance de las recogidas hasta la entrega.",kind:"map",button:"Ver seguimiento"};
-  if(order.status==="DELIVERED")return {step:6,total:6,title:"Pedido completado",description:"La entrega fue finalizada. El historial queda disponible para consulta y trazabilidad.",kind:"done"};
-  if(order.status==="CANCELLED")return {step:0,total:6,title:"Pedido cancelado",description:"Este pedido ya no forma parte de la operación activa.",kind:"cancelled"};
+  const activeLocals=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
+  const unsent=activeLocals.filter(ol=>!ol.prep_requested_at);
+  const waiting=activeLocals.filter(ol=>ol.prep_requested_at&&!ol.prep_response_at);
+  const responded=activeLocals.filter(ol=>ol.prep_response_at);
+
+  if(order.status==="PENDING")return {step:1,total:7,title:"Confirmar pedido",description:"Revisa los datos del cliente, dirección, productos y total. Al confirmar, el DELIVERY asume la gestión del pedido.",kind:"transition",nextStatus:"CONFIRMED",button:"Confirmar pedido"};
+
+  if(order.status==="CONFIRMED"&&unsent.length){
+    return {step:2,total:7,title:"Solicitar al LOCAL",description:"Envía el pedido por WhatsApp al LOCAL. El mensaje incluirá un enlace para que confirme en cuántos minutos estará listo.",kind:"local_request",button:"Ir a LOCAL"};
+  }
+
+  if(order.status==="CONFIRMED"&&waiting.length){
+    return {step:3,total:7,title:"Esperando tiempo del LOCAL",description:"La solicitud ya fue enviada. HTPWEB actualizará el pedido en cuanto el LOCAL confirme su tiempo de preparación.",kind:"waiting",button:"Ver solicitudes"};
+  }
+
+  if(order.status==="CONFIRMED"&&activeLocals.length&&responded.length===activeLocals.length){
+    return {step:4,total:7,title:"Programar repartidor",description:"Todos los LOCAL informaron su tiempo estimado. Revisa quién estará disponible cerca de la hora de recogida y programa el despacho.",kind:"dispatch_plan",button:"Ir a despacho"};
+  }
+
+  if(order.status==="PREPARING"&&!order.assignment){
+    return {step:4,total:7,title:"Programar repartidor",description:"El pedido está en preparación. Usa la hora estimada del LOCAL para elegir el repartidor que llegará en el momento adecuado.",kind:"dispatch_plan",button:"Ir a despacho"};
+  }
+
+  if(order.status==="PREPARING"&&order.assignment){
+    return {step:5,total:7,title:"Esperar pedido listo",description:"El repartidor ya está previsto para este pedido. Supervisa la preparación y evita enviarlo demasiado pronto.",kind:"waiting",button:"Ver LOCAL"};
+  }
+
+  if(order.status==="READY"&&!order.assignment)return {step:5,total:7,title:"Asignar repartidor",description:"El pedido ya está listo. Selecciona o confirma el repartidor para comenzar la recogida.",kind:"dispatch",button:"Ir a asignación"};
+  if(order.status==="READY"&&order.assignment)return {step:5,total:7,title:"Enviar a recoger",description:"El pedido está listo y tiene repartidor asignado. Avísale para que inicie la recogida.",kind:"driver",button:"WhatsApp repartidor"};
+  if(order.status==="EN_ROUTE")return {step:6,total:7,title:"Supervisar entrega",description:"El pedido está en camino. Sigue la ubicación del repartidor y el avance de la entrega.",kind:"map",button:"Ver seguimiento"};
+  if(order.status==="DELIVERED")return {step:7,total:7,title:"Pedido completado",description:"La entrega fue finalizada. El historial queda disponible para consulta y trazabilidad.",kind:"done"};
+  if(order.status==="CANCELLED")return {step:0,total:7,title:"Pedido cancelado",description:"Este pedido ya no forma parte de la operación activa.",kind:"cancelled"};
   return null;
 }
 
@@ -2515,7 +2539,9 @@ function renderOrderControlNextAction(order,canOperate){
   let button="";
   if(canOperate&&action.kind==="transition"){
     button=`<button class="btn-primary order-control-next-button" type="button" onclick="changeGlobalOrder('${order.id}','${action.nextStatus}')">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
-  }else if(action.kind==="dispatch"){
+  }else if(action.kind==="local_request"||action.kind==="waiting"){
+    button=`<button class="btn-primary order-control-next-button" type="button" onclick="document.getElementById('orderControlLocalsPanel')?.scrollIntoView({behavior:'smooth',block:'center'})">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
+  }else if(action.kind==="dispatch"||action.kind==="dispatch_plan"){
     button=`<button class="btn-primary order-control-next-button" type="button" onclick="document.getElementById('orderControlDispatchPanel')?.scrollIntoView({behavior:'smooth',block:'center'})">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
   }else if(action.kind==="driver"&&order.assignment){
     button=`<button class="btn-primary order-control-next-button" type="button" onclick="orderControlNotifyDriver('${order.id}')">${esc(action.button)} <span aria-hidden="true">→</span></button>`;
@@ -2577,9 +2603,17 @@ function renderOrderControlDetail(){
     const buttons=canOperate?(localTransitions[ol.status]||[]).map(next=>
       `<button class="${next==="CANCELLED"?"btn-danger":"btn-muted"}" type="button" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
     ).join(""):"";
-    const wa=canOperate&&local.whatsapp
-      ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">WhatsApp LOCAL</button>`
+    const requestLabel=ol.prep_requested_at&&!ol.prep_response_at?"Reenviar solicitud al LOCAL":"Solicitar al LOCAL";
+    const wa=canOperate&&local.whatsapp&&["CONFIRMED","PREPARING"].includes(order.status)&&!["READY","CANCELLED"].includes(ol.status)
+      ? `<button class="btn-primary" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">${esc(requestLabel)}</button>`
       :"";
+    const prepInfo=ol.prep_response_at
+      ? `<div class="order-control-ok"><strong>LOCAL confirmó ${esc(ol.prep_estimate_minutes||"—")} min</strong> · listo aprox. ${esc(orderControlTime(ol.estimated_ready_at))}</div>`
+      :ol.prep_requested_at
+        ? `<div class="order-control-alert"><strong>Solicitud enviada.</strong> Esperando que el LOCAL confirme el tiempo de preparación.</div>`
+        :["CONFIRMED","PREPARING"].includes(order.status)
+          ? '<div class="workspace-note" style="margin-top:8px"><strong>Pendiente:</strong> enviar la solicitud de preparación al LOCAL.</div>'
+          :"";
     const pickupStatus=ol.pickup_status||"PENDING";
     const pickupLabel={
       PENDING:"Pendiente de recogida",
@@ -2597,6 +2631,7 @@ function renderOrderControlDetail(){
         </div>
         <span class="badge status-${esc(ol.status)}">${esc(orderStatusLabel(ol.status))}</span>
       </div>
+      ${prepInfo}
       ${pickupInfo}
       <ul class="order-control-items">
         ${items.length?items.map(item=>`<li><span>${esc(item.quantity)} × ${esc(item.product_name||"Producto")}${item.variant_name?" · "+esc(item.variant_name):""}${item.promotion_title?" · PROMO "+esc(item.promotion_title):""}</span><strong>${esc(orderControlMoney(item.subtotal))}</strong></li>`).join(""):'<li><span class="muted">Sin productos visibles</span></li>'}
@@ -2707,9 +2742,9 @@ function renderOrderControlDetail(){
     </div>
 
     <div class="order-control-detail-grid order-control-detail-grid-modern">
-      <div class="order-control-panel">
+      <div class="order-control-panel" id="orderControlLocalsPanel">
         <div class="order-control-section-heading">
-          <div><h3>Recogidas, productos y locales</h3><p class="muted">Qué debe preparar cada LOCAL y en qué punto está la recogida.</p></div>
+          <div><h3>Recogidas, productos y locales</h3><p class="muted">Envía la solicitud, recibe el tiempo del LOCAL y controla la preparación.</p></div>
         </div>
         <div class="order-control-destination"><strong>Entrega:</strong> ${esc(order.delivery_address||"—")}${order.address_reference?`<span>Referencia: ${esc(order.address_reference)}</span>`:""}</div>
         ${localBlocks||'<div class="muted">Sin locales asociados.</div>'}
@@ -3201,12 +3236,13 @@ async function loadOrderControlCenter({silent=false}={}){
     }
 
     const bundles=await Promise.all(ids.map(async deliveryId=>{
-      const [snapshot,drivers,routes]=await Promise.all([
+      const [snapshot,drivers,routes,preparation]=await Promise.all([
         rpc("delivery_order_control_snapshot",{p_delivery_id:deliveryId,p_limit:100}),
         rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]})),
-        rpc("delivery_order_routes_snapshot",{p_delivery_id:deliveryId}).catch(()=>({routes:[]}))
+        rpc("delivery_order_routes_snapshot",{p_delivery_id:deliveryId}).catch(()=>({routes:[]})),
+        rpc("delivery_local_preparation_snapshot",{p_delivery_id:deliveryId}).catch(()=>({locals:[]}))
       ]);
-      return {deliveryId,snapshot,drivers,routes};
+      return {deliveryId,snapshot,drivers,routes,preparation};
     }));
 
     const all=[];
@@ -3216,10 +3252,18 @@ async function loadOrderControlCenter({silent=false}={}){
       orderControlState.snapshots.set(bundle.deliveryId,bundle.snapshot||{});
       orderControlState.drivers.set(bundle.deliveryId,bundle.drivers||{drivers:[]});
       const routeByOrder=new Map((bundle.routes?.routes||[]).map(route=>[route.order_id,route]));
-      (bundle.snapshot?.orders||[]).forEach(order=>all.push(orderControlNormalize({
-        ...order,
-        active_route:routeByOrder.get(order.id)||null
-      })));
+      const preparationByKey=new Map((bundle.preparation?.locals||[]).map(row=>[`${row.order_id}:${row.local_id}`,row]));
+      (bundle.snapshot?.orders||[]).forEach(order=>{
+        const normalized=orderControlNormalize({
+          ...order,
+          active_route:routeByOrder.get(order.id)||null
+        });
+        normalized.order_locals=(normalized.order_locals||[]).map(ol=>({
+          ...ol,
+          ...(preparationByKey.get(`${order.id}:${ol.local_id}`)||{})
+        }));
+        all.push(normalized);
+      });
     });
     all.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     state.orders=all;
@@ -3337,7 +3381,7 @@ function whatsappOrderRef(orderId){
   return String(orderId||"").replace(/-/g,"").slice(0,8).toUpperCase();
 }
 
-function buildLocalOrderWhatsappText(order,localGroup){
+function buildLocalOrderWhatsappText(order,localGroup,responseUrl){
   const local=localGroup?.locals||{};
   const items=(order?.order_items||[]).filter(item=>item.local_id===localGroup.local_id);
   const itemLines=items.map(item=>{
@@ -3357,7 +3401,8 @@ function buildLocalOrderWhatsappText(order,localGroup){
     order.notes?"Observaciones: "+order.notes:"Observaciones: Sin observaciones",
     "DELIVERY: "+deliveryName,
     "",
-    "Por favor confirme disponibilidad y tiempo aproximado de preparación."
+    "Por favor confirma en cuántos minutos estará listo:",
+    responseUrl||""
   ].join("\n");
 }
 
@@ -3377,6 +3422,15 @@ async function sendLocalOrderWhatsapp(orderId,localId){
       throw new Error("El envío de pedidos a locales por WhatsApp está desactivado.");
     }
 
+    const request=await rpc("delivery_prepare_local_order_request",{
+      p_delivery_id:order.delivery_id,
+      p_order_id:order.id,
+      p_local_id:localId,
+      p_ttl_minutes:180
+    });
+    const responseUrl=new URL("../app/local-pedido.html",window.location.href);
+    responseUrl.searchParams.set("t",request.token);
+
     if(settings?.mode==="AUTOMATIC"){
       if(typeof htpWhatsappSendAutomatic!=="function"){
         throw new Error("El puente automático de WhatsApp no está disponible.");
@@ -3385,7 +3439,8 @@ async function sendLocalOrderWhatsapp(orderId,localId){
         kind:"LOCAL_ORDER",
         delivery_id:order.delivery_id,
         order_id:order.id,
-        local_id:localId
+        local_id:localId,
+        response_url:responseUrl.toString()
       });
       message("Pedido enviado automáticamente al WhatsApp del LOCAL"+(result?.message_id?" · "+result.message_id:"")+".");
       return;
@@ -3394,8 +3449,8 @@ async function sendLocalOrderWhatsapp(orderId,localId){
     if(typeof htpWhatsappOpenAssisted!=="function"){
       throw new Error("El modo asistido de WhatsApp no está disponible.");
     }
-    htpWhatsappOpenAssisted(local.whatsapp,buildLocalOrderWhatsappText(order,localGroup));
-    message("WhatsApp abierto con el pedido listo para enviar.");
+    htpWhatsappOpenAssisted(local.whatsapp,buildLocalOrderWhatsappText(order,localGroup,responseUrl.toString()));
+    message("WhatsApp abierto con el pedido y el enlace de confirmación del LOCAL.");
   }catch(e){
     message(e.message||"No se pudo preparar el pedido para WhatsApp.","error");
   }
