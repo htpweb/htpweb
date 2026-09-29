@@ -67,6 +67,16 @@ test('detalle integra estados, WhatsApp y asignación de repartidor',()=>{
   assert.match(admin,/delivery_unassign_order_driver/);
 });
 
+test('detalle guía al operador con siguiente acción y flujo visual',()=>{
+  assert.match(admin,/Siguiente acción/);
+  assert.match(admin,/renderOrderControlNextAction/);
+  assert.match(admin,/renderOrderControlStepper/);
+  assert.match(admin,/orderControlDispatchPanel/);
+  assert.match(css,/\.order-control-next-action/);
+  assert.match(css,/\.order-control-stepper/);
+  assert.match(css,/\.order-control-selected/);
+});
+
 test('LOCAL_ADMIN conserva vista compatible',()=>{
   assert.match(admin,/state\.role==="LOCAL_ADMIN"/);
   assert.match(admin,/loadOrdersLegacy/);
