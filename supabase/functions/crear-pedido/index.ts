@@ -327,57 +327,88 @@ async function getOrCreateGuestCustomer(nameValue, phoneValue, emailValue) {
 }
 /* ============================================================
    DISTANCIA REAL MEDIANTE ORS
-   ============================================================ */ async function calculateRouteDistance(originLat, originLng, destinationLat, destinationLng) {
+   ============================================================ */
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function calculateRouteDistance(originLat, originLng, destinationLat, destinationLng) {
   if (!ORS_API_KEY) {
     throw new HttpError(500, "No está configurado ORS_API_KEY");
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(()=>controller.abort(), 15000);
-  try {
-    const response = await fetch(ORS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: ORS_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        coordinates: [
-          [
-            originLng,
-            originLat
-          ],
-          [
-            destinationLng,
-            destinationLat
-          ]
-        ],
-        instructions: false
-      }),
-      signal: controller.signal
-    });
-    let data = null;
+
+  const payload = {
+    coordinates: [
+      [originLng, originLat],
+      [destinationLng, destinationLat]
+    ],
+    instructions: false
+  };
+
+  let lastError = null;
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 15000);
+
     try {
-      data = await response.json();
-    } catch  {
-      data = null;
+      const response = await fetch(ORS_URL, {
+        method: "POST",
+        headers: {
+          Authorization: ORS_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+        const message = data?.error?.message || data?.message || "No se pudo calcular la ruta";
+        if (!retryable) {
+          throw new HttpError(502, message);
+        }
+        lastError = new HttpError(502, message);
+      } else {
+        const distanceMeters = Number(data?.routes?.[0]?.summary?.distance);
+        if (!Number.isFinite(distanceMeters) || distanceMeters < 0) {
+          throw new HttpError(502, "OpenRouteService no devolvió una distancia válida");
+        }
+        return Number((distanceMeters / 1000).toFixed(2));
+      }
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 502 && !String(error.message || "").includes("No se pudo calcular la ruta")) {
+        // Explicit non-retryable ORS validation errors keep their original message.
+        throw error;
+      }
+
+      if (error instanceof DOMException && error.name === "AbortError") {
+        lastError = new HttpError(504, "OpenRouteService tardó demasiado en responder");
+      } else if (!(error instanceof HttpError)) {
+        // Transport errors such as HTTP/2 connection resets are transient.
+        console.warn(`OpenRouteService intento ${attempt}/${maxAttempts} falló:`, error);
+        lastError = new HttpError(502, "No se pudo conectar temporalmente con el servicio de rutas");
+      } else {
+        lastError = error;
+      }
+    } finally {
+      clearTimeout(timeout);
     }
-    if (!response.ok) {
-      console.error("OpenRouteService error:", data);
-      throw new HttpError(502, data?.error?.message || data?.message || "No se pudo calcular la ruta");
+
+    if (attempt < maxAttempts) {
+      await wait(attempt === 1 ? 350 : 900);
     }
-    const distanceMeters = Number(data?.routes?.[0]?.summary?.distance);
-    if (!Number.isFinite(distanceMeters) || distanceMeters < 0) {
-      throw new HttpError(502, "OpenRouteService no devolvió una distancia válida");
-    }
-    return Number((distanceMeters / 1000).toFixed(2));
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new HttpError(504, "OpenRouteService tardó demasiado en responder");
-    }
-    throw error;
-  } finally{
-    clearTimeout(timeout);
   }
+
+  throw lastError || new HttpError(502, "No se pudo calcular la ruta por carretera");
 }
 /* ============================================================
    SELECCIONES DE VARIANTES EN PROMOCIONES COMBINABLES

@@ -754,7 +754,6 @@ function openCustomerOrderWhatsapp() {
 
 async function confirmOrder() {
   const button = $("confirmBtn");
-  let whatsappPopup = null;
 
   try {
     if (!items.length) throw new Error("El carrito está vacío.");
@@ -779,17 +778,6 @@ async function confirmOrder() {
 
     if (requiresInvoice && (!documentType || !documentNumber || !invoiceEmail)) {
       throw new Error("Completa los datos de facturación.");
-    }
-
-    if (customerWhatsappSetting?.enabled && customerWhatsappSetting?.whatsapp) {
-      whatsappPopup = window.open("", "_blank");
-      if (whatsappPopup) {
-        try {
-          whatsappPopup.document.title = "HTPWEB · Preparando WhatsApp";
-          whatsappPopup.document.body.innerHTML =
-            '<p style="font-family:Arial,sans-serif;padding:24px">HTPWEB está registrando tu pedido y preparando WhatsApp…</p>';
-        } catch (_) {}
-      }
     }
 
     button.disabled = true;
@@ -894,21 +882,14 @@ async function confirmOrder() {
         );
         whatsappPrepared = true;
 
-        if (whatsappPopup && !whatsappPopup.closed) {
-          whatsappPopup.location.href = lastCustomerWhatsappUrl;
-          whatsappOpened = true;
-        } else {
-          const opened = window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer");
-          whatsappOpened = Boolean(opened);
-        }
-      } else if (whatsappPopup && !whatsappPopup.closed) {
-        whatsappPopup.close();
-        whatsappPopup = null;
+        // No usamos un popup previo. En iPhone/Chrome/Safari un about:blank
+        // puede tomar el foco y suspender esta página antes de terminar el pedido.
+        // La navegación a WhatsApp se hace en esta misma pestaña, solo después
+        // de que HTPWEB confirme que el pedido quedó creado.
+        whatsappOpened = true;
       }
     } catch (whatsappError) {
       console.warn("El pedido se creó, pero no se pudo preparar WhatsApp.", whatsappError);
-      if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
-      whatsappPopup = null;
       lastCustomerWhatsappUrl = "";
     }
 
@@ -956,6 +937,11 @@ async function confirmOrder() {
         : "Pedido registrado correctamente.",
       "success"
     );
+
+    if (whatsappPrepared && lastCustomerWhatsappUrl) {
+      window.location.href = lastCustomerWhatsappUrl;
+      return;
+    }
   } catch (e) {
     if (whatsappPopup && !whatsappPopup.closed) whatsappPopup.close();
     console.error(e);

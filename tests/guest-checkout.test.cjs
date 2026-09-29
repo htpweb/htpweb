@@ -57,3 +57,29 @@ test('checkout invitado puede leer la configuración pública de WhatsApp',()=>{
   const migration=fs.readFileSync('supabase/migrations/20260929005735_guest_checkout_public_whatsapp_setting.sql','utf8');
   assert.match(migration,/grant execute on function public\.public_delivery_customer_order_whatsapp\(uuid\) to anon/);
 });
+
+
+test('checkout no abre about:blank antes de crear el pedido',()=>{
+  const start=cart.indexOf('async function confirmOrder()');
+  const end=cart.indexOf('\ninit();',start);
+  const block=cart.slice(start,end);
+  assert.doesNotMatch(block,/window\.open\("", "_blank"\)/);
+  assert.doesNotMatch(block,/Preparando WhatsApp/);
+});
+
+test('WhatsApp se abre en la misma pestaña solo después de pedido exitoso',()=>{
+  const start=cart.indexOf('async function confirmOrder()');
+  const end=cart.indexOf('\ninit();',start);
+  const block=cart.slice(start,end);
+  const invokeIndex=block.indexOf('functions.invoke("crear-pedido"');
+  const redirectIndex=block.indexOf('window.location.href = lastCustomerWhatsappUrl');
+  assert.ok(invokeIndex>=0);
+  assert.ok(redirectIndex>invokeIndex);
+});
+
+test('crear-pedido reintenta fallas transitorias de OpenRouteService',()=>{
+  assert.match(edge,/const maxAttempts = 3/);
+  assert.match(edge,/for \(let attempt = 1; attempt <= maxAttempts; attempt\+\+\)/);
+  assert.match(edge,/response\.status === 408 \|\| response\.status === 429 \|\| response\.status >= 500/);
+  assert.match(edge,/HTTP\/2 connection resets are transient/);
+});
