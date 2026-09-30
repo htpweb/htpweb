@@ -389,7 +389,10 @@
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
             <select id="orderScope" style="min-width:230px;max-width:320px"></select>
-            <button id="orderControlRefresh" class="btn-muted" type="button">Actualizar ahora</button>
+            <button id="orderControlLiveView" class="btn-primary" type="button">Operación actual</button>
+            <button id="orderControlHistoryView" class="btn-muted" type="button">Historial</button>
+            <button id="orderControlClearView" class="btn-muted" type="button">Limpiar vista</button>
+            <button id="orderControlRefresh" class="btn-muted" type="button">Actualizar</button>
           </div>
         </div>
 
@@ -403,6 +406,7 @@
               <option value="PREPARING">Preparando</option>
               <option value="READY">Listos</option>
               <option value="EN_ROUTE">En camino</option>
+              <option value="HISTORY">Historial cerrado</option>
               <option value="DELIVERED">Entregados</option>
               <option value="CANCELLED">Cancelados</option>
               <option value="ALL">Todos</option>
@@ -423,11 +427,21 @@
       <div id="orderControlKpis" class="order-control-kpis"></div>
 
       <div class="order-control-layout">
+        <div class="card order-control-queue-card">
+          <div class="row between">
+            <div>
+              <h3 style="margin:0">Pedidos</h3>
+              <p id="orderControlQueueMeta" class="muted" style="margin:4px 0 0"></p>
+            </div>
+          </div>
+          <div id="ordersList" class="order-control-queue"></div>
+        </div>
+
         <div class="card order-control-map-card">
           <div class="row between" style="gap:10px;flex-wrap:wrap">
             <div>
               <h3 style="margin:0">Mapa operativo</h3>
-              <p class="muted" style="margin:4px 0 0">Clientes activos y, para el pedido seleccionado, locales de recogida y repartidor.</p>
+              <p class="muted" style="margin:4px 0 0">LOCAL · repartidor · cliente</p>
             </div>
             <div class="order-control-map-legend">
               <span><i class="legend-dot legend-customer"></i> Cliente</span>
@@ -436,22 +450,14 @@
             </div>
           </div>
           <div id="orderControlMap" class="order-control-map"></div>
-          <small class="muted">Las rutas LOCAL → cliente se trazan por calles con OpenRouteService/HeiGIT, usando el mismo criterio vial de HTPWEB. El repartidor conserva además su flujo de GPS y optimización de rutas.</small>
         </div>
 
-        <div class="card order-control-queue-card">
-          <div class="row between">
-            <div>
-              <h3 style="margin:0">Cola operativa</h3>
-              <p id="orderControlQueueMeta" class="muted" style="margin:4px 0 0"></p>
-            </div>
+        <div id="orderControlDetail" class="card order-control-detail">
+          <div class="order-control-empty-state">
+            <strong>Selecciona un pedido</strong>
+            <span>Aquí aparecerá únicamente lo que necesitas hacer ahora.</span>
           </div>
-          <div id="ordersList" class="order-control-queue"></div>
         </div>
-      </div>
-
-      <div id="orderControlDetail" class="card order-control-detail">
-        <div class="muted">Selecciona un pedido para abrir la consola operativa.</div>
       </div>
     </section>
 

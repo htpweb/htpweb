@@ -2417,7 +2417,8 @@ function orderControlFilteredOrders(){
   const search=($("orderControlSearch")?.value||"").trim().toLowerCase();
   return (state.orders||[]).filter(order=>{
     if(filter==="ACTIVE"&&!orderControlActiveStatuses.has(order.status))return false;
-    if(filter!=="ALL"&&filter!=="ACTIVE"&&order.status!==filter)return false;
+    if(filter==="HISTORY"&&!["DELIVERED","CANCELLED"].includes(order.status))return false;
+    if(filter!=="ALL"&&filter!=="ACTIVE"&&filter!=="HISTORY"&&order.status!==filter)return false;
     if(!search)return true;
     const localNames=(order.order_locals||[]).map(x=>x.locals?.name||"").join(" ");
     const itemNames=(order.order_items||[]).map(x=>x.product_name||"").join(" ");
@@ -2427,6 +2428,20 @@ function orderControlFilteredOrders(){
     ].join(" ").toLowerCase();
     return haystack.includes(search);
   });
+}
+
+function orderControlSetView(filter){
+  const select=$("orderControlFilter");
+  const search=$("orderControlSearch");
+  if(select)select.value=filter;
+  if(search)search.value="";
+  orderControlState.selectedId=null;
+  renderOrderControl();
+}
+
+function orderControlClearView(){
+  orderControlSetView("ACTIVE");
+  message("Vista operativa limpia. Los pedidos cerrados permanecen en Historial.");
 }
 
 function renderOrderControlKpis(){
@@ -2474,10 +2489,9 @@ function renderOrderControlQueue(){
         <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
       </div>
       <div class="order-control-order-meta">
-        <span><strong>${esc(order.customer_name||"Cliente")}</strong> · ${esc(order.customer_phone||"")}</span>
+        <span><strong>${esc(order.customer_name||"Cliente")}</strong> · ${esc(orderControlMoney(order.total))}</span>
         <span>${esc(locals||"Sin locales")}</span>
-        <span>${esc(order.delivery_address||"Sin dirección")}</span>
-        <span><strong>${esc(orderControlMoney(order.total))}</strong> · estado ${esc(orderControlAge(orderControlCurrentSince(order)))}</span>
+        <span class="order-control-age-line">Estado ${esc(orderControlAge(orderControlCurrentSince(order)))}</span>
       </div>
       <div class="order-control-order-flags">${flags}</div>
     </button>`;
@@ -10601,6 +10615,9 @@ function bindEvents() {
   $("refreshBtn").onclick = refreshAll;
   if ($("orderScope")) $("orderScope").onchange = loadOrders;
   if ($("orderControlRefresh")) $("orderControlRefresh").onclick = () => loadOrders();
+  if ($("orderControlLiveView")) $("orderControlLiveView").onclick = () => orderControlSetView("ACTIVE");
+  if ($("orderControlHistoryView")) $("orderControlHistoryView").onclick = () => orderControlSetView("HISTORY");
+  if ($("orderControlClearView")) $("orderControlClearView").onclick = orderControlClearView;
   if ($("orderControlFilter")) $("orderControlFilter").onchange = renderOrderControl;
   if ($("orderControlSearch")) $("orderControlSearch").oninput = renderOrderControlQueue;
   if ($("orderControlAutoRefresh")) $("orderControlAutoRefresh").onchange = () => {

@@ -607,3 +607,69 @@ body.admin-role-error .sidebar-footer{
   #section-orders .order-control-step-copy strong{white-space:normal}
   #section-orders .order-control-plan-grid{grid-template-columns:1fr}
 }
+
+/* Centro de control · modo SCADA compacto 2026-09-30 */
+#section-orders .order-control-kpis{grid-template-columns:repeat(7,minmax(105px,1fr))}
+#section-orders .order-control-kpi{min-height:66px;padding:9px 10px;border-radius:12px;gap:9px}
+#section-orders .order-control-kpi-icon{width:34px;height:34px;flex-basis:34px;border-radius:9px;font-size:16px}
+#section-orders .order-control-kpi strong{font-size:22px}
+#section-orders .order-control-kpi small{display:none}
+#section-orders .order-control-layout{
+  display:grid;
+  grid-template-columns:minmax(270px,.62fr) minmax(460px,1.15fr) minmax(360px,.9fr);
+  gap:12px;
+  align-items:stretch;
+}
+#section-orders .order-control-queue-card,
+#section-orders .order-control-map-card,
+#section-orders .order-control-detail{
+  min-width:0;
+  height:560px;
+  box-sizing:border-box;
+}
+#section-orders .order-control-queue{max-height:490px}
+#section-orders .order-control-map{height:490px}
+#section-orders .order-control-detail{
+  background:#fff;
+  border:1px solid #e8edf4;
+  box-shadow:0 8px 24px #0f172a0a;
+  padding:12px;
+  overflow:auto;
+}
+#section-orders .order-control-order-row{padding:10px 11px;border-radius:11px}
+#section-orders .order-control-order-meta{font-size:12px;gap:2px}
+#section-orders .order-control-age-line{color:#64748b;font-size:11px}
+#section-orders .order-control-order-flags{margin-top:6px}
+#section-orders .order-control-selected{padding:12px;box-shadow:none;border:0}
+#section-orders .order-control-head-grid,
+#section-orders .order-control-detail-grid-modern,
+#section-orders .order-control-bottom-grid{grid-template-columns:1fr}
+#section-orders .order-control-summary-grid-modern{grid-template-columns:repeat(2,minmax(0,1fr))}
+#section-orders .order-control-stepper{grid-template-columns:repeat(4,1fr);row-gap:12px}
+#section-orders .order-control-step:nth-child(4)::after{display:none}
+#section-orders .order-control-panel{padding:11px}
+#section-orders .order-control-section-heading p{display:none}
+#section-orders .order-control-empty-state{
+  height:100%;
+  display:grid;
+  place-content:center;
+  text-align:center;
+  gap:6px;
+  color:#64748b;
+  padding:20px;
+}
+#section-orders .order-control-empty-state strong{font-size:18px;color:#0f172a}
+@media(max-width:1450px){
+  #section-orders .order-control-layout{grid-template-columns:minmax(280px,.7fr) minmax(0,1.3fr)}
+  #section-orders .order-control-detail{grid-column:1/-1;height:auto;max-height:640px}
+  #section-orders .order-control-kpis{grid-template-columns:repeat(4,minmax(105px,1fr))}
+}
+@media(max-width:900px){
+  #section-orders .order-control-layout{grid-template-columns:1fr}
+  #section-orders .order-control-queue-card,
+  #section-orders .order-control-map-card,
+  #section-orders .order-control-detail{height:auto}
+  #section-orders .order-control-queue{max-height:360px}
+  #section-orders .order-control-map{height:360px}
+  #section-orders .order-control-kpis{grid-template-columns:repeat(2,minmax(105px,1fr))}
+}
