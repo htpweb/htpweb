@@ -506,6 +506,38 @@
         <small id="whatsappSettingsHelp" class="muted"></small>
       </div>
 
+      <div class="card" id="whatsappConnectionCard">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Conexión WhatsApp Business</h3>
+            <p class="muted" style="margin:.35rem 0 0">Cada DELIVERY usa su propio remitente. Puedes conectar un WhatsApp propio o solicitar que HTPWEB administre la conexión.</p>
+          </div>
+          <span id="whatsappConnectionBadge" class="badge">Sin conectar</span>
+        </div>
+
+        <div id="whatsappConnectionCurrent" class="workspace-note" style="margin-top:12px"></div>
+
+        <div id="whatsappConnectionAdmin" style="margin-top:14px">
+          <div class="form-grid">
+            <div>
+              <label>Tipo de conexión</label>
+              <select id="whatsappConnectionMode">
+                <option value="HTPWEB_MANAGED">Administrado por HTPWEB</option>
+                <option value="OWN">WhatsApp Business propio</option>
+              </select>
+            </div>
+            <div id="whatsappRequestedPhoneWrap">
+              <label>Número que usará el DELIVERY</label>
+              <input id="whatsappRequestedPhone" inputmode="tel" maxlength="40" placeholder="0989351622">
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+            <button id="whatsappConnectionRequestBtn" class="btn-primary" type="button">Preparar conexión</button>
+          </div>
+          <small id="whatsappConnectionHelp" class="muted"></small>
+        </div>
+      </div>
+
       <div class="card">
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
