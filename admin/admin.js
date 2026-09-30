@@ -7876,7 +7876,7 @@ async function loadAnalytics() {
   }
 }
 
-const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,whatsappSettings:null,whatsappProvider:null,candidate:null,quickDriver:null};
+const driverWorkspaceState={drivers:null,dispatch:null,proofSettings:null,sos:null,deviation:null,whatsappSettings:null,whatsappProvider:null,whatsappConnection:null,candidate:null,quickDriver:null};
 const safetySosState={
   deliveryChannel:null,
   deliveryId:null,
@@ -8376,6 +8376,87 @@ function renderDispatchModeControls(){
       esc(dispatch.concurrent_per_driver??0)+fallback;
 }
 
+
+function renderWhatsappConnectionControls(){
+  const connection=driverWorkspaceState.whatsappConnection||{
+    configured:false,
+    status:"DISCONNECTED",
+    connection_mode:null
+  };
+  const badge=$("whatsappConnectionBadge");
+  const current=$("whatsappConnectionCurrent");
+  const adminBox=$("whatsappConnectionAdmin");
+  const mode=$("whatsappConnectionMode");
+  const phoneWrap=$("whatsappRequestedPhoneWrap");
+  const phone=$("whatsappRequestedPhone");
+  const button=$("whatsappConnectionRequestBtn");
+  const help=$("whatsappConnectionHelp");
+  const labels={CONNECTED:"Conectado",PENDING:"Pendiente",DISCONNECTED:"Sin conectar",ERROR:"Error"};
+
+  if(badge){
+    badge.textContent=labels[connection.status]||connection.status||"Sin conectar";
+    badge.className="badge";
+  }
+
+  if(current){
+    if(connection.configured){
+      current.innerHTML="<strong>WhatsApp conectado:</strong> "+
+        esc(connection.display_phone||connection.requested_phone||"—")+
+        (connection.verified_name?" · "+esc(connection.verified_name):"")+
+        " · "+esc(connection.connection_mode==="OWN"?"WhatsApp propio":"Administrado por HTPWEB")+
+        (connection.environment==="TEST"?" · Entorno de prueba":"");
+    }else if(connection.status==="PENDING"){
+      current.innerHTML="<strong>Conexión pendiente.</strong> "+
+        esc(connection.requested_phone||"Número por definir")+
+        " · "+esc(connection.connection_mode==="OWN"?"WhatsApp propio":"Administrado por HTPWEB")+".";
+    }else if(connection.status==="ERROR"){
+      current.innerHTML="<strong>Error de conexión.</strong> "+esc(connection.last_error||"Revisa la configuración.");
+    }else{
+      current.textContent="Este DELIVERY todavía no tiene un remitente WhatsApp Business conectado.";
+    }
+  }
+
+  const canManage=state.role==="DELIVERY_ADMIN";
+  if(adminBox)adminBox.classList.toggle("hidden",!canManage);
+  if(!canManage)return;
+
+  const selected=connection.connection_mode||mode?.value||"HTPWEB_MANAGED";
+  if(mode)mode.value=selected;
+  if(phone&&connection.requested_phone&&!phone.value)phone.value=connection.requested_phone;
+  if(phoneWrap)phoneWrap.classList.toggle("hidden",(mode?.value||selected)==="OWN");
+  if(button)button.textContent=connection.status==="PENDING"?"Actualizar solicitud":"Preparar conexión";
+
+  if(help){
+    help.textContent=(mode?.value||selected)==="OWN"
+      ?"WhatsApp propio: HTPWEB prepara la vinculación y el administrador del número autoriza Meta una sola vez."
+      :"Administrado por HTPWEB: ingresa el número del DELIVERY. HTPWEB prepara y administra la conexión; Meta puede exigir una verificación del número.";
+  }
+}
+
+async function requestWhatsappConnection(){
+  try{
+    const deliveryId=driverWorkspaceDeliveryId();
+    if(!deliveryId)throw new Error("Selecciona un DELIVERY.");
+    const mode=$("whatsappConnectionMode")?.value||"HTPWEB_MANAGED";
+    const phone=mode==="HTPWEB_MANAGED"?($("whatsappRequestedPhone")?.value||"").trim():null;
+    if(mode==="HTPWEB_MANAGED"&&!phone){
+      throw new Error("Ingresa el número de WhatsApp que usará el DELIVERY.");
+    }
+    driverWorkspaceState.whatsappConnection=await rpc("delivery_request_whatsapp_connection",{
+      p_delivery_id:deliveryId,
+      p_connection_mode:mode,
+      p_phone:phone
+    });
+    message(mode==="OWN"
+      ?"Solicitud de WhatsApp propio preparada. HTPWEB continuará con la autorización de Meta."
+      :"Solicitud enviada al MASTER. HTPWEB continuará con la activación del número.");
+    renderWhatsappConnectionControls();
+    renderWhatsappSettingsControls();
+  }catch(e){
+    message(e.message||"No se pudo preparar la conexión WhatsApp.","error");
+  }
+}
+
 function renderWhatsappSettingsControls(){
   const settings=driverWorkspaceState.whatsappSettings||{
     mode:"ASSISTED",
@@ -8385,6 +8466,7 @@ function renderWhatsappSettingsControls(){
     customer_order_available:true
   };
   const provider=driverWorkspaceState.whatsappProvider||{configured:false};
+  const connection=driverWorkspaceState.whatsappConnection||{configured:false,status:"DISCONNECTED"};
   const select=$("whatsappModeSelect");
   const save=$("whatsappSettingsSave");
   const localOrders=$("whatsappLocalOrders");
@@ -8395,7 +8477,7 @@ function renderWhatsappSettingsControls(){
 
   const canManage=state.role==="DELIVERY_ADMIN";
   const automaticOption=[...select.options].find(option=>option.value==="AUTOMATIC");
-  if(automaticOption)automaticOption.disabled=provider.configured!==true;
+  if(automaticOption)automaticOption.disabled=provider.configured!==true||connection.configured!==true;
 
   select.value=settings.mode||"ASSISTED";
   localOrders.checked=settings.local_orders!==false;
@@ -8413,22 +8495,25 @@ function renderWhatsappSettingsControls(){
       ?" · Pedido del cliente por WhatsApp activo: después de registrar el pedido, se abre WhatsApp del cliente para enviarlo al DELIVERY."
       :" · Pedido del cliente por WhatsApp desactivado.");
 
-  if(provider.configured===true){
+  if(provider.configured===true&&connection.configured===true){
     help.textContent=(settings.mode==="AUTOMATIC"
       ?"Automático activo: HTPWEB usa la API oficial de Meta. Las asignaciones a repartidores se notifican desde backend."
       :"Proveedor Meta listo. Puedes mantener Asistido o activar Automático.")+customerHelp;
   }else{
     help.textContent=(settings.mode==="AUTOMATIC"
-      ?"Automático está seleccionado, pero faltan credenciales o plantillas de Meta. Cambia a Asistido hasta completar la conexión."
-      :"Asistido activo. Automático quedará disponible cuando se configuren las credenciales y plantillas de Meta.")+customerHelp;
+      ?"Automático está seleccionado, pero este DELIVERY aún no tiene su WhatsApp Business completamente conectado. Cambia a Asistido hasta completar la conexión."
+      :"Asistido activo. Automático quedará disponible cuando el WhatsApp Business de este DELIVERY esté conectado y Meta tenga las plantillas listas.")+customerHelp;
   }
 }
 
 async function saveWhatsappSettings(){
   try{
     const mode=$("whatsappModeSelect")?.value||"ASSISTED";
-    if(mode==="AUTOMATIC"&&driverWorkspaceState.whatsappProvider?.configured!==true){
-      throw new Error("Primero configura las credenciales y plantillas oficiales de Meta.");
+    if(mode==="AUTOMATIC"&&(
+      driverWorkspaceState.whatsappProvider?.configured!==true||
+      driverWorkspaceState.whatsappConnection?.configured!==true
+    )){
+      throw new Error("Primero conecta el WhatsApp Business de este DELIVERY y completa la configuración de Meta.");
     }
     driverWorkspaceState.whatsappSettings=await rpc("delivery_set_whatsapp_settings",{
       p_delivery_id:driverWorkspaceDeliveryId(),
@@ -9099,13 +9184,14 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
-    const [drivers,dispatch,proofSettings,sos,deviation,whatsappSettings,whatsappProvider]=await Promise.all([
+    const [drivers,dispatch,proofSettings,sos,deviation,whatsappSettings,whatsappConnection,whatsappProvider]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
       rpc("delivery_route_deviation_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
       rpc("delivery_whatsapp_settings_snapshot",{p_delivery_id:deliveryId}),
+      rpc("delivery_whatsapp_connection_snapshot",{p_delivery_id:deliveryId}),
       typeof htpWhatsappProviderStatus==="function"
         ? htpWhatsappProviderStatus(deliveryId)
         : Promise.resolve({configured:false})
@@ -9116,6 +9202,7 @@ async function loadDriverWorkspace(){
     driverWorkspaceState.sos=sos||{};
     driverWorkspaceState.deviation=deviation||{};
     driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:true,driver_dispatch:true,customer_orders:true,customer_order_available:true};
+    driverWorkspaceState.whatsappConnection=whatsappConnection||{configured:false,status:"DISCONNECTED"};
     driverWorkspaceState.whatsappProvider=whatsappProvider||{configured:false};
     const notice=$("driversPlanNotice");
     if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
@@ -9127,6 +9214,7 @@ async function loadDriverWorkspace(){
         : '');
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
     renderDispatchModeControls();
+    renderWhatsappConnectionControls();
     renderWhatsappSettingsControls();
     renderDeliveryProofSettingsControls();
     renderDriversList();
@@ -10594,6 +10682,8 @@ function bindEvents() {
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("whatsappSettingsSave")) $("whatsappSettingsSave").onclick = saveWhatsappSettings;
+  if ($("whatsappConnectionRequestBtn")) $("whatsappConnectionRequestBtn").onclick = requestWhatsappConnection;
+  if ($("whatsappConnectionMode")) $("whatsappConnectionMode").onchange = renderWhatsappConnectionControls;
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
   if ($("deliveryDeviationRefresh")) $("deliveryDeviationRefresh").onclick = loadDeliveryRouteDeviationSnapshotOnly;
