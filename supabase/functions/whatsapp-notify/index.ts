@@ -111,12 +111,65 @@ function createAdminClient() {
   });
 }
 
+async function providerConfigForDelivery(admin: any, deliveryId: string) {
+  const base = providerConfig();
+  const { data: connection, error } = await admin.rpc(
+    "whatsapp_delivery_provider_config",
+    { p_delivery_id: deliveryId },
+  );
+
+  if (error) {
+    console.error("whatsapp provider config:", error);
+    throw new HttpError(
+      500,
+      "HTPWEB no pudo resolver el WhatsApp de este DELIVERY",
+      "WHATSAPP_CONNECTION_LOOKUP_FAILED",
+    );
+  }
+
+  if (!connection?.configured) {
+    return {
+      ...base,
+      accessToken: "",
+      phoneNumberId: "",
+      connectionMode: connection?.connection_mode || null,
+      environment: connection?.environment || null,
+      displayPhone: connection?.display_phone || null,
+      verifiedName: connection?.verified_name || null,
+      localOrderConfigured: false,
+      driverDispatchConfigured: false,
+    };
+  }
+
+  const accessToken = connection.credential_source === "VAULT"
+    ? String(connection.access_token || "").trim()
+    : base.accessToken;
+  const phoneNumberId = String(connection.phone_number_id || "").trim();
+  const core = Boolean(
+    /^v\d+\.\d+$/.test(base.graphVersion) && accessToken && phoneNumberId,
+  );
+
+  return {
+    ...base,
+    accessToken,
+    phoneNumberId,
+    connectionMode: connection.connection_mode || null,
+    environment: connection.environment || null,
+    displayPhone: connection.display_phone || null,
+    verifiedName: connection.verified_name || null,
+    wabaId: connection.waba_id || null,
+    localOrderConfigured: core && Boolean(base.localTemplate),
+    driverDispatchConfigured: core &&
+      Boolean(base.driverAssignedTemplate && base.driverUnassignedTemplate && base.publicUrl),
+  };
+}
+
 async function sendTemplate(
+  cfg: any,
   phone: unknown,
   templateName: string,
   parameters: string[],
 ) {
-  const cfg = providerConfig();
   if (!cfg.accessToken || !cfg.phoneNumberId || !cfg.graphVersion) {
     throw new HttpError(
       503,
@@ -275,7 +328,8 @@ const authenticatedHandler = withSupabase(
         );
       }
 
-      const cfg = providerConfig();
+      const admin = createAdminClient();
+      const cfg = await providerConfigForDelivery(admin, deliveryId);
 
       if (kind === "STATUS") {
         return jsonResponse({
@@ -284,6 +338,10 @@ const authenticatedHandler = withSupabase(
           local_order_configured: cfg.localOrderConfigured,
           driver_dispatch_configured: cfg.driverDispatchConfigured,
           mode: settings.mode || "ASSISTED",
+          connection_mode: cfg.connectionMode,
+          environment: cfg.environment,
+          display_phone: cfg.displayPhone,
+          verified_name: cfg.verifiedName,
         });
       }
 
@@ -374,6 +432,7 @@ const authenticatedHandler = withSupabase(
       );
 
       const sent = await sendTemplate(
+        cfg,
         local.whatsapp,
         cfg.localTemplate,
         [
@@ -384,13 +443,18 @@ const authenticatedHandler = withSupabase(
         ],
       );
 
-      const admin = createAdminClient();
       await recordOutbound(admin, sent, {
         deliveryId,
         orderId: order.id,
         localId,
         messageType: "pedido_local",
-        payload: { kind: "LOCAL_ORDER", template: cfg.localTemplate },
+        payload: {
+          kind: "LOCAL_ORDER",
+          template: cfg.localTemplate,
+          sender_phone_number_id: cfg.phoneNumberId,
+          sender_display_phone: cfg.displayPhone,
+          connection_mode: cfg.connectionMode,
+        },
       });
 
       const { error: prepError } = await admin
@@ -451,7 +515,7 @@ async function internalDriverHandler(req: Request) {
         throw new HttpError(400, "Pedido o LOCAL inválido", "INVALID_ORDER_LOCAL");
       }
 
-      const cfg = providerConfig();
+      const cfg = await providerConfigForDelivery(admin, deliveryId);
       if (!cfg.localOrderConfigured) {
         throw new HttpError(503, "WhatsApp automático para locales todavía no está configurado", "WHATSAPP_NOT_CONFIGURED");
       }
@@ -496,7 +560,7 @@ async function internalDriverHandler(req: Request) {
         return String(item.quantity) + " x " + item.product_name + variant + promotion;
       }).join("; "), 900);
 
-      const sent = await sendTemplate(local.whatsapp, cfg.localTemplate, [
+      const sent = await sendTemplate(cfg, local.whatsapp, cfg.localTemplate, [
         orderRef(order.id),
         clip(local.name || "LOCAL", 120),
         itemSummary,
@@ -508,7 +572,13 @@ async function internalDriverHandler(req: Request) {
         orderId,
         localId,
         messageType: "pedido_local",
-        payload: { kind, template: cfg.localTemplate },
+        payload: {
+          kind,
+          template: cfg.localTemplate,
+          sender_phone_number_id: cfg.phoneNumberId,
+          sender_display_phone: cfg.displayPhone,
+          connection_mode: cfg.connectionMode,
+        },
       });
 
       const now = new Date().toISOString();
@@ -577,7 +647,7 @@ async function internalDriverHandler(req: Request) {
       throw new HttpError(404, "Pedido inexistente", "ORDER_NOT_FOUND");
     }
 
-    const cfg = providerConfig();
+    const cfg = await providerConfigForDelivery(admin, assignment.delivery_id);
     if (!cfg.driverDispatchConfigured) {
       throw new HttpError(
         503,
@@ -603,14 +673,21 @@ async function internalDriverHandler(req: Request) {
         ])
       : [orderRef(order.id)];
 
-    const sent = await sendTemplate(driver.phone, templateName, parameters);
+    const sent = await sendTemplate(cfg, driver.phone, templateName, parameters);
 
     await recordOutbound(admin, sent, {
       deliveryId: assignment.delivery_id,
       orderId: order.id,
       driverUserId: assignment.driver_user_id,
       messageType: kind === "DRIVER_ASSIGNED" ? "pedido_repartidor" : "retiro_repartidor",
-      payload: { kind, template: templateName, assignment_id: assignment.id },
+      payload: {
+        kind,
+        template: templateName,
+        assignment_id: assignment.id,
+        sender_phone_number_id: cfg.phoneNumberId,
+        sender_display_phone: cfg.displayPhone,
+        connection_mode: cfg.connectionMode,
+      },
     });
 
     return jsonResponse({
