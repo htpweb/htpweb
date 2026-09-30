@@ -208,6 +208,44 @@ async function parseJson(req: Request) {
   }
 }
 
+async function recordOutbound(
+  admin: any,
+  sent: { message_id: string | null; to: string },
+  values: {
+    deliveryId: string;
+    orderId: string;
+    localId?: string | null;
+    driverUserId?: string | null;
+    messageType: string;
+    payload?: Record<string, unknown>;
+  },
+) {
+  if (!sent.message_id) {
+    throw new HttpError(502, "Meta no devolvió el identificador del mensaje", "MESSAGE_ID_MISSING");
+  }
+
+  const { error } = await admin.rpc("whatsapp_record_outbound", {
+    p_provider_message_id: sent.message_id,
+    p_delivery_id: values.deliveryId,
+    p_order_id: values.orderId,
+    p_local_id: values.localId || null,
+    p_driver_user_id: values.driverUserId || null,
+    p_contact_phone: sent.to,
+    p_message_type: values.messageType,
+    p_payload: values.payload || {},
+  });
+
+  if (error) {
+    console.error("whatsapp_record_outbound:", error);
+    throw new HttpError(500, "El mensaje salió, pero HTPWEB no pudo vincularlo al pedido", "OUTBOUND_RECORD_FAILED");
+  }
+}
+
+function driverConsoleUrl(publicUrl: string) {
+  const base = publicUrl.replace(/\/+$/, "");
+  return base + "/admin/index.html";
+}
+
 const authenticatedHandler = withSupabase(
   { auth: "user" },
   async (req: Request, ctx: any) => {
@@ -346,6 +384,22 @@ const authenticatedHandler = withSupabase(
         ],
       );
 
+      const admin = createAdminClient();
+      await recordOutbound(admin, sent, {
+        deliveryId,
+        orderId: order.id,
+        localId,
+        messageType: "pedido_local",
+        payload: { kind: "LOCAL_ORDER", template: cfg.localTemplate },
+      });
+
+      const { error: prepError } = await admin
+        .from("order_locals")
+        .update({ prep_requested_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("order_id", order.id)
+        .eq("local_id", localId);
+      if (prepError) console.warn("prep_requested_at:", prepError);
+
       return jsonResponse({
         ok: true,
         kind,
@@ -388,11 +442,99 @@ async function internalDriverHandler(req: Request) {
 
     const body: any = await parseJson(req);
     const kind = String(body?.kind || "").toUpperCase();
-    const assignmentId = String(body?.assignment_id || "");
+
+    if (kind === "LOCAL_ORDER_AUTO") {
+      const deliveryId = String(body?.delivery_id || "");
+      const orderId = String(body?.order_id || "");
+      const localId = String(body?.local_id || "");
+      if (!validUuid(deliveryId) || !validUuid(orderId) || !validUuid(localId)) {
+        throw new HttpError(400, "Pedido o LOCAL inválido", "INVALID_ORDER_LOCAL");
+      }
+
+      const cfg = providerConfig();
+      if (!cfg.localOrderConfigured) {
+        throw new HttpError(503, "WhatsApp automático para locales todavía no está configurado", "WHATSAPP_NOT_CONFIGURED");
+      }
+
+      const { data: order, error: orderError } = await admin
+        .from("orders")
+        .select(
+          "id,delivery_id,notes," +
+            "order_items(local_id,product_name,variant_name,quantity,subtotal,promotion_title)," +
+            "order_locals(local_id,prep_requested_at,subtotal,locals(id,name,whatsapp))",
+        )
+        .eq("id", orderId)
+        .eq("delivery_id", deliveryId)
+        .maybeSingle();
+
+      if (orderError || !order) {
+        throw new HttpError(404, orderError?.message || "Pedido no disponible", "ORDER_NOT_AVAILABLE");
+      }
+
+      const localGroup = (order.order_locals || []).find((row: any) => row.local_id === localId);
+      if (!localGroup) {
+        throw new HttpError(404, "El LOCAL no pertenece al pedido", "LOCAL_NOT_IN_ORDER");
+      }
+      if (localGroup.prep_requested_at) {
+        return jsonResponse({ ok: true, kind, order_id: orderId, local_id: localId, already_sent: true });
+      }
+
+      const relation = localGroup.locals;
+      const local = Array.isArray(relation) ? relation[0] : relation;
+      if (!local?.whatsapp) {
+        throw new HttpError(422, "El LOCAL no tiene WhatsApp registrado", "LOCAL_WITHOUT_WHATSAPP");
+      }
+
+      const items = (order.order_items || []).filter((item: any) => item.local_id === localId);
+      if (!items.length) {
+        throw new HttpError(409, "El subpedido no tiene productos", "LOCAL_WITHOUT_ITEMS");
+      }
+
+      const itemSummary = clip(items.map((item: any) => {
+        const variant = item.variant_name ? " (" + item.variant_name + ")" : "";
+        const promotion = item.promotion_title ? " [PROMO: " + item.promotion_title + "]" : "";
+        return String(item.quantity) + " x " + item.product_name + variant + promotion;
+      }).join("; "), 900);
+
+      const sent = await sendTemplate(local.whatsapp, cfg.localTemplate, [
+        orderRef(order.id),
+        clip(local.name || "LOCAL", 120),
+        itemSummary,
+        clip(order.notes || "Sin observaciones", 300),
+      ]);
+
+      await recordOutbound(admin, sent, {
+        deliveryId,
+        orderId,
+        localId,
+        messageType: "pedido_local",
+        payload: { kind, template: cfg.localTemplate },
+      });
+
+      const now = new Date().toISOString();
+      const { error: prepError } = await admin
+        .from("order_locals")
+        .update({ prep_requested_at: now, updated_at: now })
+        .eq("order_id", orderId)
+        .eq("local_id", localId);
+      if (prepError) {
+        console.warn("prep_requested_at:", prepError);
+      }
+
+      return jsonResponse({
+        ok: true,
+        kind,
+        order_id: orderId,
+        local_id: localId,
+        message_id: sent.message_id,
+      });
+    }
 
     if (!["DRIVER_ASSIGNED", "DRIVER_UNASSIGNED"].includes(kind)) {
-      throw new HttpError(400, "Evento de repartidor inválido", "INVALID_KIND");
+      throw new HttpError(400, "Evento automático inválido", "INVALID_KIND");
     }
+
+    const assignmentId = String(body?.assignment_id || "");
     if (!validUuid(assignmentId)) {
       throw new HttpError(400, "assignment_id inválido", "INVALID_ASSIGNMENT");
     }
@@ -449,14 +591,27 @@ async function internalDriverHandler(req: Request) {
       : cfg.driverUnassignedTemplate;
 
     const parameters = kind === "DRIVER_ASSIGNED"
-      ? [
-        orderRef(order.id),
-        clip(order.delivery_address || "Ver detalle en HTPWEB", 240),
-        cfg.publicUrl,
-      ]
+      ? (templateName === "htpweb_driver_assignment_v1"
+        ? [
+          orderRef(order.id),
+          "Ver detalles en HTPWEB",
+          driverConsoleUrl(cfg.publicUrl),
+        ]
+        : [
+          orderRef(order.id),
+          driverConsoleUrl(cfg.publicUrl),
+        ])
       : [orderRef(order.id)];
 
     const sent = await sendTemplate(driver.phone, templateName, parameters);
+
+    await recordOutbound(admin, sent, {
+      deliveryId: assignment.delivery_id,
+      orderId: order.id,
+      driverUserId: assignment.driver_user_id,
+      messageType: kind === "DRIVER_ASSIGNED" ? "pedido_repartidor" : "retiro_repartidor",
+      payload: { kind, template: templateName, assignment_id: assignment.id },
+    });
 
     return jsonResponse({
       ok: true,

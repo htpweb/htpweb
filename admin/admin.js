@@ -2435,14 +2435,16 @@ function renderOrderControlKpis(){
   const active=orders.filter(o=>orderControlActiveStatuses.has(o.status));
   const count=status=>orders.filter(o=>o.status===status).length;
   const unassigned=orders.filter(o=>o.status==="READY"&&!o.assignment).length;
+  const preassigned=orders.filter(o=>o.driver_plan?.status==="PLANNED"&&!o.assignment).length;
   const activeValue=active.reduce((sum,o)=>sum+Number(o.total||0),0);
   box.innerHTML=[
     {label:"Activos",value:active.length,detail:orderControlMoney(activeValue)+" en operación",cls:"order-control-kpi-active",icon:"▣"},
     {label:"Pendientes",value:count("PENDING"),detail:"Esperando aceptación",cls:"order-control-kpi-attention",icon:"◷"},
     {label:"Preparando",value:count("PREPARING"),detail:"Locales trabajando",cls:"order-control-kpi-preparing",icon:"◉"},
+    {label:"Preasignados",value:preassigned,detail:"Reservados, aún sin aviso al repartidor",cls:"order-control-kpi-preparing",icon:"⌛"},
     {label:"Listos",value:count("READY"),detail:"Listos para despacho",cls:"order-control-kpi-ready",icon:"◇"},
     {label:"En camino",value:count("EN_ROUTE"),detail:"Con repartidor",cls:"order-control-kpi-route",icon:"➜"},
-    {label:"Sin repartidor",value:unassigned,detail:"Pedidos READY por asignar",cls:unassigned?"order-control-kpi-unassigned order-control-kpi-attention":"order-control-kpi-unassigned",icon:"!"}
+    {label:"Sin repartidor",value:unassigned,detail:"Pedidos listos por asignar",cls:unassigned?"order-control-kpi-unassigned order-control-kpi-attention":"order-control-kpi-unassigned",icon:"!"}
   ].map(k=>`<div class="order-control-kpi ${k.cls}">
     <div class="order-control-kpi-icon" aria-hidden="true">${esc(k.icon)}</div>
     <div class="order-control-kpi-copy"><span>${esc(k.label)}</span><strong>${esc(k.value)}</strong><small>${esc(k.detail)}</small></div>
@@ -2459,8 +2461,9 @@ function renderOrderControlQueue(){
     const locals=(order.order_locals||[]).map(x=>x.locals?.name||"LOCAL").join(", ");
     const assignment=order.assignment;
     const flags=[
+      order.driver_plan?.status==="PLANNED"&&!assignment?'<span class="badge">Preasignado · '+esc(order.driver_plan.driver_name||"Repartidor")+'</span>':"",
       order.status==="READY"&&!assignment?'<span class="badge">Sin repartidor</span>':"",
-      assignment?'<span class="badge">'+esc(assignment.driver_name||"Repartidor")+'</span>':""
+      assignment?'<span class="badge">Asignado · '+esc(assignment.driver_name||"Repartidor")+'</span>':""
     ].join("");
     return `<button class="order-control-order-row ${selected?"selected":""}" type="button" data-order-control-id="${esc(order.id)}">
       <div class="order-control-order-head">
@@ -2499,35 +2502,39 @@ function orderControlGpsAge(location){
 function orderControlNextAction(order){
   if(!order)return null;
   const activeLocals=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
-  const hasDriverCommitment=Boolean(order.assignment||order.driver_plan?.status==="PLANNED");
   const unsent=activeLocals.filter(ol=>!ol.prep_requested_at);
   const waiting=activeLocals.filter(ol=>ol.prep_requested_at&&!ol.prep_response_at);
   const responded=activeLocals.filter(ol=>ol.prep_response_at);
+  const preassigned=order.driver_plan?.status==="PLANNED"&&!order.assignment;
 
-  if(order.status==="PENDING")return {step:1,total:7,title:"Confirmar pedido",description:"Revisa los datos del cliente, dirección, productos y total. Al confirmar, el DELIVERY asume la gestión del pedido.",kind:"transition",nextStatus:"CONFIRMED",button:"Confirmar pedido"};
+  if(order.status==="PENDING")return {step:1,total:7,title:"Confirmar pedido",description:"Revisa cliente, dirección, productos y total. Al confirmar, HTPWEB enviará automáticamente cada parte del pedido al LOCAL correspondiente por WhatsApp.",kind:"transition",nextStatus:"CONFIRMED",button:"Confirmar pedido"};
 
   if(order.status==="CONFIRMED"&&unsent.length){
-    return {step:2,total:7,title:"Solicitar al LOCAL",description:"Envía el pedido por WhatsApp al LOCAL. El mensaje incluirá un enlace para que confirme en cuántos minutos estará listo.",kind:"local_request",button:"Ir a LOCAL"};
+    return {step:2,total:7,title:"Enviando a los locales",description:"HTPWEB está enviando automáticamente el pedido por WhatsApp. Si algún envío falla, podrás reintentarlo desde ese LOCAL.",kind:"waiting",button:"Ver locales"};
   }
 
   if(order.status==="CONFIRMED"&&waiting.length){
-    return {step:3,total:7,title:"Esperando tiempo del LOCAL",description:"La solicitud ya fue enviada. HTPWEB actualizará el pedido en cuanto el LOCAL confirme su tiempo de preparación.",kind:"waiting",button:"Ver solicitudes"};
+    return {step:3,total:7,title:"Esperando tiempo del LOCAL",description:"El LOCAL ya recibió el pedido. Debe responder directamente por WhatsApp con los minutos de preparación.",kind:"waiting",button:"Ver locales"};
   }
 
-  if(order.status==="CONFIRMED"&&activeLocals.length&&responded.length===activeLocals.length){
-    return {step:4,total:7,title:"Programar repartidor",description:"Todos los LOCAL informaron su tiempo estimado. Revisa quién estará disponible cerca de la hora de recogida y programa el despacho.",kind:"dispatch_plan",button:"Ir a despacho"};
+  if(order.status==="CONFIRMED"&&responded.length){
+    return {step:4,total:7,title:"Analizando preasignación",description:"HTPWEB ya recibió tiempos de preparación y está buscando el repartidor más conveniente según disponibilidad y ubicación.",kind:"dispatch_plan",button:"Ver reparto"};
   }
 
-  if(order.status==="PREPARING"&&!hasDriverCommitment){
-    return {step:4,total:7,title:"Programar repartidor",description:"El pedido está en preparación. Usa la hora estimada del LOCAL para elegir el repartidor que llegará en el momento adecuado.",kind:"dispatch_plan",button:"Ir a despacho"};
+  if(order.status==="PREPARING"&&order.assignment){
+    return {step:5,total:7,title:"Repartidor asignado",description:"El repartidor ya recibió el aviso por WhatsApp y debe abrir HTPWEB para gestionar la recogida. El LOCAL continúa preparando.",kind:"dispatch_plan",button:"Ver reparto"};
   }
 
-  if(order.status==="PREPARING"&&hasDriverCommitment){
-    return {step:5,total:7,title:"Repartidor programado",description:"El repartidor ya está reservado para este pedido. HTPWEB lo activará cuando el pedido quede listo para recoger.",kind:"dispatch_plan",button:"Ver programación"};
+  if(order.status==="PREPARING"&&preassigned){
+    return {step:4,total:7,title:"Pedido preasignado",description:"HTPWEB reservó un repartidor. Aún no fue avisado; la asignación se activará cerca de la hora calculada de salida, siempre que esté libre.",kind:"dispatch_plan",button:"Ver preasignación"};
   }
 
-  if(order.status==="READY"&&!order.assignment)return {step:5,total:7,title:"Asignar repartidor",description:"El pedido ya está listo. Selecciona o confirma el repartidor para comenzar la recogida.",kind:"dispatch",button:"Ir a asignación"};
-  if(order.status==="READY"&&order.assignment)return {step:5,total:7,title:"Enviar a recoger",description:"El pedido está listo y tiene repartidor asignado. Avísale para que inicie la recogida.",kind:"driver",button:"WhatsApp repartidor"};
+  if(order.status==="PREPARING"){
+    return {step:4,total:7,title:"Buscando repartidor",description:"El pedido está en preparación. HTPWEB está calculando la mejor preasignación según tiempos, ubicación y disponibilidad.",kind:"dispatch_plan",button:"Ver reparto"};
+  }
+
+  if(order.status==="READY"&&!order.assignment)return {step:5,total:7,title:"Asignar repartidor",description:"El pedido está listo y aún no tiene repartidor. Revisa la disponibilidad para despacharlo.",kind:"dispatch",button:"Ir a asignación"};
+  if(order.status==="READY"&&order.assignment)return {step:5,total:7,title:"Recogida activa",description:"El pedido está listo y ya tiene repartidor asignado.",kind:"dispatch",button:"Ver recogida"};
   if(order.status==="EN_ROUTE")return {step:6,total:7,title:"Supervisar entrega",description:"El pedido está en camino. Sigue la ubicación del repartidor y el avance de la entrega.",kind:"map",button:"Ver seguimiento"};
   if(order.status==="DELIVERED")return {step:7,total:7,title:"Pedido completado",description:"La entrega fue finalizada. El historial queda disponible para consulta y trazabilidad.",kind:"done"};
   if(order.status==="CANCELLED")return {step:0,total:7,title:"Pedido cancelado",description:"Este pedido ya no forma parte de la operación activa.",kind:"cancelled"};
@@ -2619,16 +2626,16 @@ function renderOrderControlDetail(){
     const buttons=canOperate?(localTransitions[ol.status]||[]).map(next=>
       `<button class="${next==="CANCELLED"?"btn-danger":"btn-muted"}" type="button" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
     ).join(""):"";
-    const requestLabel=ol.prep_requested_at&&!ol.prep_response_at?"Reenviar solicitud al LOCAL":"Solicitar al LOCAL";
+    const requestLabel=ol.prep_requested_at?"Reenviar WhatsApp":"Reintentar WhatsApp";
     const wa=canOperate&&local.whatsapp&&["CONFIRMED","PREPARING"].includes(order.status)&&!["READY","CANCELLED"].includes(ol.status)
-      ? `<button class="btn-primary" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">${esc(requestLabel)}</button>`
+      ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">${esc(requestLabel)}</button>`
       :"";
     const prepInfo=ol.prep_response_at
       ? `<div class="order-control-ok"><strong>LOCAL confirmó ${esc(ol.prep_estimate_minutes||"—")} min</strong> · listo aprox. ${esc(orderControlTime(ol.estimated_ready_at))}</div>`
       :ol.prep_requested_at
-        ? `<div class="order-control-alert"><strong>Solicitud enviada.</strong> Esperando que el LOCAL confirme el tiempo de preparación.</div>`
+        ? `<div class="order-control-alert"><strong>WhatsApp enviado.</strong> Esperando que el LOCAL responda directamente con los minutos de preparación.</div>`
         :["CONFIRMED","PREPARING"].includes(order.status)
-          ? '<div class="workspace-note" style="margin-top:8px"><strong>Pendiente:</strong> enviar la solicitud de preparación al LOCAL.</div>'
+          ? '<div class="workspace-warning" style="margin-top:8px"><strong>Aún no enviado.</strong> HTPWEB intenta el envío automático; usa Reintentar WhatsApp si continúa pendiente.</div>'
           :"";
     const pickupStatus=ol.pickup_status||"PENDING";
     const pickupLabel={
@@ -2671,9 +2678,14 @@ function renderOrderControlDetail(){
     const gps=assignment.location;
     const age=orderControlGpsAge(gps);
     const stale=age!==null&&age>5*60*1000;
+    const driverModeLabel={REGULAR:"Regular",EMERGENCY:"Emergencia"}[assignment.driver_mode||driver.driver_mode]||"Regular";
+    const assignmentNotice=order.status==="PREPARING"
+      ? '<div class="workspace-note" style="margin:8px 0"><strong>Asignación activa.</strong> El repartidor ya recibió el aviso y debe abrir HTPWEB. El LOCAL continúa preparando.</div>'
+      :"";
     driverPanel=`<div class="order-control-driver">
-      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")} · ${esc(assignment.driver_mode||driver.driver_mode||"REGULAR")}</div></div>
+      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")} · ${esc(driverModeLabel)}</div></div>
       <div class="muted">Asignado: ${esc(orderControlTime(assignment.assigned_at))}</div>
+      ${assignmentNotice}
       <div class="${stale?"order-control-stale":"muted"}">GPS: ${gps?esc(orderControlAge(gps.captured_at)):"sin ubicación recibida"}${gps?.accuracy_m?" · precisión "+esc(Math.round(Number(gps.accuracy_m)))+" m":""}</div>
       <div class="order-control-actions">
         ${driver.phone||assignment.driver_phone?`<button class="btn-muted" type="button" onclick="orderControlNotifyDriver('${order.id}')">WhatsApp repartidor</button>`:""}
@@ -2685,18 +2697,18 @@ function renderOrderControlDetail(){
       full_name:driverPlan.driver_name,
       phone:driverPlan.driver_phone
     };
+    const sourceLabel={AUTO:"Automática",HYBRID:"Híbrida",MANUAL:"Manual"}[driverPlan.source]||"Automática";
     driverPanel=`<div class="order-control-driver">
-      <div class="order-control-ok"><strong>Repartidor programado</strong><br>${esc(plannedDriver.full_name||"Repartidor")} · recogida prevista ${esc(orderControlTime(driverPlan.planned_for))}</div>
+      <div class="order-control-ok"><strong>Repartidor preasignado</strong><br>${esc(plannedDriver.full_name||"Repartidor")} · pedido listo aprox. ${esc(orderControlTime(driverPlan.planned_for))}</div>
       <div class="order-control-plan-grid">
-        <div><span>Disponible / salida sugerida</span><strong>${esc(orderControlTime(driverPlan.ideal_departure_at))}</strong></div>
-        <div><span>Origen</span><strong>${esc(driverPlan.source||"MANUAL")}</strong></div>
+        <div><span>Hora calculada de salida</span><strong>${esc(orderControlTime(driverPlan.ideal_departure_at))}</strong></div>
+        <div><span>Preasignación</span><strong>${esc(sourceLabel)}</strong></div>
       </div>
-      ${driverPlan.activation_error?`<div class="order-control-alert"><strong>No se pudo activar automáticamente:</strong> ${esc(driverPlan.activation_error)}</div>`:""}
+      ${driverPlan.activation_error?`<div class="order-control-alert"><strong>Asignación pendiente:</strong> ${esc(driverPlan.activation_error)}</div>`:""}
       <div class="order-control-actions">
-        ${plannedDriver.phone?`<button class="btn-primary" type="button" onclick="orderControlNotifyPlannedDriver('${order.id}')">WhatsApp repartidor</button>`:""}
-        <button class="btn-muted" type="button" onclick="orderControlCancelDriverPlan('${order.id}')">Cambiar programación</button>
+        <button class="btn-muted" type="button" onclick="orderControlCancelDriverPlan('${order.id}')">Cambiar preasignación</button>
       </div>
-      <div class="muted">Cuando el pedido pase a <strong>Listo</strong>, HTPWEB intentará convertir esta programación en asignación activa.</div>
+      <div class="muted"><strong>El repartidor todavía no ha sido avisado.</strong> HTPWEB lo asignará cerca de la hora calculada de salida cuando confirme que está libre.</div>
     </div>`;
   }else if(["CONFIRMED","PREPARING"].includes(order.status)){
     const options=drivers.length?drivers.map(d=>{
@@ -9460,6 +9472,63 @@ async function viewDeliveryProofMedia(orderId,kind){
   }
 }
 
+function driverPickupStatusLabel(value){
+  return {
+    PENDING:"Pendiente",
+    ARRIVED:"Llegué al LOCAL",
+    PICKED_UP:"Recogido"
+  }[value]||"Pendiente";
+}
+
+function renderDriverPickupList(order){
+  const locals=Array.isArray(order?.locals)?order.locals:[];
+  if(!locals.length)return '<div class="workspace-warning"><strong>Recogidas:</strong> HTPWEB todavía no cargó los LOCAL de este pedido.</div>';
+
+  return '<div class="card" style="box-shadow:none;margin:12px 0">'+
+    '<h3 style="margin-top:0">Recogidas</h3>'+
+    locals.map(local=>{
+      const pickup=local.pickup_status||"PENDING";
+      const eta=local.estimated_ready_at
+        ? orderControlTime(local.estimated_ready_at)
+        : "Sin hora confirmada";
+      const items=(local.items||[]).map(item=>{
+        const detail=[item.variant_name,item.promotion_title?"Promoción: "+item.promotion_title:""].filter(Boolean).join(" · ");
+        return '<li><strong>'+esc(item.quantity)+' × '+esc(item.product_name||"Producto")+'</strong>'+
+          (detail?'<div class="muted">'+esc(detail)+'</div>':"")+'</li>';
+      }).join("");
+      let pickupAction="";
+      if(order.assignment_status==="ACTIVE"&&["PREPARING","READY"].includes(order.status)){
+        if(pickup==="PENDING"){
+          pickupAction='<button class="btn-primary" type="button" data-driver-pickup-order="'+esc(order.order_id)+'" data-driver-pickup-local="'+esc(local.local_id)+'" data-driver-pickup-action="ARRIVED">Llegué al LOCAL</button>';
+        }else if(pickup==="ARRIVED"){
+          pickupAction='<button class="btn-primary" type="button" data-driver-pickup-order="'+esc(order.order_id)+'" data-driver-pickup-local="'+esc(local.local_id)+'" data-driver-pickup-action="PICKED_UP">Pedido recogido</button>';
+        }
+      }
+      return '<div class="order-local" style="margin-top:10px">'+
+        '<div class="row between"><div><strong>'+esc(local.name||"LOCAL")+'</strong><div class="muted">'+esc(local.address||"")+'</div></div>'+
+        '<span class="badge">'+esc(driverPickupStatusLabel(pickup))+'</span></div>'+
+        '<div class="muted" style="margin-top:6px">Listo aprox.: '+esc(eta)+' · Estado: '+esc(orderStatusLabel(local.status))+'</div>'+
+        (items?'<ul class="order-control-items">'+items+'</ul>':'')+
+        (pickupAction?'<div class="order-control-actions">'+pickupAction+'</div>':'')+
+        '</div>';
+    }).join("")+
+    '</div>';
+}
+
+async function driverPickupAction(orderId,localId,action){
+  try{
+    await rpc("driver_set_local_pickup_status",{
+      p_order_id:orderId,
+      p_local_id:localId,
+      p_action:action
+    });
+    message(action==="ARRIVED"?"Llegada al LOCAL registrada.":"Recogida confirmada.");
+    await loadDriverOrders();
+  }catch(e){
+    message(e.message||"No se pudo actualizar la recogida.","error");
+  }
+}
+
 function renderDriverOrders(){
   const box=$("driverOrdersList");if(!box)return;
   let items=Array.isArray(state.driverOrders)?[...state.driverOrders]:[];
@@ -9485,12 +9554,16 @@ function renderDriverOrders(){
     const inCurrentPlan=state.driverRoutePlan?.delivery_id===o.delivery_id&&
       state.driverRoutePlan?.stops?.some(stop=>stop.order_id===o.order_id);
 
-    if(o.assignment_status==="ACTIVE"&&o.status==="READY"){
-      if(inCurrentPlan&&nextRouteOrderId!==o.order_id){
+    if(o.assignment_status==="ACTIVE"&&o.status==="PREPARING"){
+      action='<div class="workspace-note"><strong>Pedido asignado.</strong> El LOCAL todavía está preparando. Revisa la hora estimada y mantén HTPWEB abierto para iniciar la recogida en el momento indicado.</div>';
+    }else if(o.assignment_status==="ACTIVE"&&o.status==="READY"){
+      if(o.all_pickups_complete!==true){
+        action='<div class="workspace-warning"><strong>Completa las recogidas</strong> antes de iniciar la entrega.</div>';
+      }else if(inCurrentPlan&&nextRouteOrderId!==o.order_id){
         action='<button class="btn-muted" type="button" disabled>Según ruta: espera</button>';
       }else{
         action='<button class="btn-primary" type="button" data-driver-status="'+esc(o.order_id)+'" data-next="EN_ROUTE">'+
-          (nextRouteOrderId===o.order_id?'Iniciar siguiente parada':'Iniciar ruta')+'</button>';
+          (nextRouteOrderId===o.order_id?'Iniciar siguiente parada':'Iniciar entrega')+'</button>';
       }
     }else if(o.assignment_status==="ACTIVE"&&o.status==="EN_ROUTE"){
       const proofReady=!o.proof?.enabled||o.proof?.ready===true;
@@ -9523,15 +9596,21 @@ function renderDriverOrders(){
       ? '<div class="workspace-note" style="margin:8px 0"><strong>Siguiente parada de la ruta optimizada</strong></div>'
       : '';
     const proofPanel=renderDriverProofPanel(o);
+    const pickupPanel=renderDriverPickupList(o);
 
     return '<div class="card"><div class="row between"><div><strong>Pedido '+esc(o.order_id)+'</strong>'+
       '<div class="muted">'+esc(o.delivery_name||"DELIVERY")+' · asignado '+esc(new Date(o.assigned_at).toLocaleString("es-EC"))+'</div></div>'+
-      '<span class="badge status-'+esc(o.status)+'">'+esc(o.status)+'</span></div>'+routeMarker+
+      '<span class="badge status-'+esc(o.status)+'">'+esc(orderStatusLabel(o.status))+'</span></div>'+routeMarker+
       '<p><strong>Cliente:</strong> '+esc(o.customer_name||"")+' · '+esc(o.customer_phone||"")+'</p>'+
       '<p><strong>Entrega:</strong> '+esc(o.delivery_address||"")+(o.address_reference?' · '+esc(o.address_reference):'')+'</p>'+
-      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+safetyAction+deviationAction+proofPanel+action+'</div>';
+      '<p><strong>Total:</strong> &#36;'+Number(o.total||0).toFixed(2)+'</p>'+pickupPanel+safetyAction+deviationAction+proofPanel+action+'</div>';
   }).join("");
 
+  box.querySelectorAll("[data-driver-pickup-action]").forEach(b=>b.onclick=()=>driverPickupAction(
+    b.dataset.driverPickupOrder,
+    b.dataset.driverPickupLocal,
+    b.dataset.driverPickupAction
+  ));
   box.querySelectorAll("[data-driver-status]").forEach(b=>b.onclick=()=>driverChangeStatus(b.dataset.driverStatus,b.dataset.next));
   box.querySelectorAll("[data-driver-sos]").forEach(b=>b.onclick=()=>triggerDriverSos(b.dataset.driverSos));
   box.querySelectorAll("[data-driver-deviation-plan]").forEach(b=>b.onclick=async()=>{
