@@ -673,3 +673,191 @@ body.admin-role-error .sidebar-footer{
   #section-orders .order-control-map{height:360px}
   #section-orders .order-control-kpis{grid-template-columns:repeat(2,minmax(105px,1fr))}
 }
+
+/* Centro de control · vista operador 2026-09-30 */
+#section-orders .order-control-modebar{
+  margin:0 0 12px;
+  padding:12px;
+  border:1px solid #dbe4ef;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 4px 16px #0f172a0a;
+}
+#section-orders .order-control-mode-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+#section-orders .order-control-mode-title>div{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#section-orders .order-control-mode-title span:not(.badge){font-size:12px;color:#64748b}
+#section-orders .order-control-mode-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#section-orders .order-control-mode-option{
+  appearance:none;
+  border:1px solid #dbe4ef;
+  border-radius:12px;
+  background:#f8fafc;
+  text-align:left;
+  padding:10px 11px;
+  cursor:pointer;
+  min-height:64px;
+}
+#section-orders .order-control-mode-option strong{display:block;font-size:13px;color:#0f172a}
+#section-orders .order-control-mode-option span{display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#64748b}
+#section-orders .order-control-mode-option.active{border:2px solid #2563eb;background:#eff6ff}
+#section-orders .order-control-mode-option.disabled{opacity:.48;cursor:not-allowed}
+
+#section-orders .order-control-layout{
+  display:grid;
+  grid-template-columns:minmax(270px,330px) minmax(0,1fr);
+  gap:12px;
+  align-items:start;
+}
+#section-orders .order-control-queue-card{grid-column:1;grid-row:1}
+#section-orders .order-control-detail{grid-column:2;grid-row:1}
+#section-orders .order-control-map-card{grid-column:1/-1;grid-row:2}
+#section-orders .order-control-queue-card,
+#section-orders .order-control-detail{height:auto;min-height:560px}
+#section-orders .order-control-queue{max-height:650px}
+#section-orders .order-control-map{height:300px;margin-bottom:0}
+
+#section-orders .order-control-selected-compact{border:0;padding:0;box-shadow:none}
+#section-orders .order-control-progress-panel-compact{
+  margin:0 0 12px;
+  padding:12px 10px;
+  border:1px solid #dbe4ef;
+  border-radius:14px;
+  background:#f8fafc;
+  overflow-x:auto;
+}
+#section-orders .order-control-ribbon{
+  display:flex;
+  align-items:flex-start;
+  min-width:720px;
+}
+#section-orders .order-control-ribbon-step{
+  flex:1;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  text-align:center;
+  color:#94a3b8;
+  font-size:11px;
+  min-width:82px;
+}
+#section-orders .order-control-ribbon-step:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:15px;
+  left:calc(50% + 18px);
+  right:calc(-50% + 18px);
+  height:3px;
+  background:#e2e8f0;
+  z-index:0;
+}
+#section-orders .order-control-ribbon-step.done:not(:last-child)::after{background:#22c55e}
+#section-orders .order-control-ribbon-node{
+  width:31px;height:31px;border-radius:50%;
+  display:grid;place-items:center;
+  border:2px solid #cbd5e1;
+  background:#fff;
+  font-weight:900;
+  z-index:1;
+}
+#section-orders .order-control-ribbon-step.done{color:#166534}
+#section-orders .order-control-ribbon-step.done .order-control-ribbon-node{background:#22c55e;border-color:#22c55e;color:#fff}
+#section-orders .order-control-ribbon-step.active{color:#9a3412}
+#section-orders .order-control-ribbon-step.active .order-control-ribbon-node{
+  background:#f97316;border-color:#f97316;color:#fff;box-shadow:0 0 0 5px #ffedd5
+}
+
+#section-orders .order-control-main-detail-grid{
+  display:grid;
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);
+  gap:12px;
+}
+#section-orders .order-control-client-panel{grid-column:1}
+#section-orders .order-control-locals-panel{grid-column:2;grid-row:1/3}
+#section-orders .order-control-dispatch-panel{grid-column:1}
+#section-orders .order-control-drivers-panel{grid-column:1/-1}
+#section-orders .order-control-client-name{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#section-orders .order-control-client-name span{color:#64748b;font-size:12px}
+#section-orders .order-control-client-address{
+  margin-top:10px;padding:10px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0
+}
+#section-orders .order-control-client-address span{display:block;margin-top:4px;color:#64748b;font-size:12px}
+#section-orders .order-control-local-compact{
+  border:1px solid #e2e8f0;border-radius:12px;padding:11px;background:#fff;margin-top:8px
+}
+#section-orders .order-control-local-signals{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#section-orders .order-control-local-signal{
+  padding:4px 7px;border-radius:999px;font-size:10px;font-weight:800;background:#f1f5f9;color:#475569
+}
+#section-orders .order-control-local-signal.ok{background:#dcfce7;color:#166534}
+#section-orders .order-control-local-signal.wait{background:#fef3c7;color:#92400e}
+#section-orders .order-control-local-signal.pending{background:#f1f5f9;color:#475569}
+#section-orders .order-control-local-signal.pickup{background:#dbeafe;color:#1d4ed8}
+#section-orders .order-control-products-compact{list-style:none;padding:0;margin:9px 0 0;display:grid;gap:6px}
+#section-orders .order-control-products-compact li{
+  display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:start;
+  border-top:1px dashed #e2e8f0;padding-top:6px;font-size:12px
+}
+#section-orders .order-control-products-compact li strong{grid-column:1/-1}
+#section-orders .order-control-products-compact li span{color:#64748b}
+#section-orders .order-control-mini-label{
+  display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:800;margin-bottom:2px
+}
+#section-orders .order-control-dispatch-focus{display:grid;gap:9px}
+#section-orders .order-control-plan-inline,
+#section-orders .order-control-suggestion-line{
+  display:flex;justify-content:space-between;gap:8px;align-items:center;
+  padding:9px 10px;border:1px solid #dbe4ef;border-radius:10px;background:#f8fafc
+}
+#section-orders .order-control-plan-inline span,
+#section-orders .order-control-suggestion-line span{font-size:11px;color:#64748b}
+#section-orders .order-control-driver-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#section-orders .order-control-driver-card{
+  border:1px solid #e2e8f0;border-radius:11px;padding:9px;background:#f8fafc;min-width:0
+}
+#section-orders .order-control-driver-card>.muted{font-size:11px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#section-orders .order-control-driver-card small{display:block;margin-top:4px;color:#64748b}
+#section-orders .order-control-driver-state{font-size:10px;font-weight:900;padding:3px 7px;border-radius:999px}
+#section-orders .order-control-driver-state.free{background:#dcfce7;color:#166534}
+#section-orders .order-control-driver-state.busy{background:#fee2e2;color:#991b1b}
+
+/* ocultos en la vista del operador */
+#section-orders .order-control-bottom-grid,
+#section-orders .order-control-timeline,
+#section-orders .order-control-costs,
+#section-orders .order-control-notes,
+#section-orders .order-control-notes-empty{display:none!important}
+
+@media(max-width:980px){
+  #section-orders .order-control-layout{grid-template-columns:1fr}
+  #section-orders .order-control-queue-card,
+  #section-orders .order-control-detail,
+  #section-orders .order-control-map-card{grid-column:1;grid-row:auto;min-height:0}
+  #section-orders .order-control-queue{max-height:320px}
+  #section-orders .order-control-main-detail-grid{grid-template-columns:1fr}
+  #section-orders .order-control-client-panel,
+  #section-orders .order-control-locals-panel,
+  #section-orders .order-control-dispatch-panel,
+  #section-orders .order-control-drivers-panel{grid-column:1;grid-row:auto}
+  #section-orders .order-control-driver-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  #section-orders .order-control-header{position:static}
+  #section-orders .order-control-mode-options{grid-template-columns:1fr}
+  #section-orders .order-control-mode-option{min-height:54px}
+  #section-orders .order-control-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #section-orders .order-control-kpi{min-height:58px}
+  #section-orders .order-control-driver-summary{grid-template-columns:1fr}
+  #section-orders .order-control-selected-head{flex-direction:column}
+  #section-orders .order-control-selected-head .order-control-actions{width:100%}
+  #section-orders .order-control-selected-head .order-control-actions button{flex:1}
+  #section-orders .order-control-map{height:280px}
+  #section-orders .order-control-ribbon{min-width:670px}
+}

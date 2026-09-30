@@ -2277,6 +2277,7 @@ const orderControlState={
   selectedId:null,
   drivers:new Map(),
   snapshots:new Map(),
+  dispatches:new Map(),
   map:null,
   layers:null,
   routeCache:new Map(),
@@ -2444,6 +2445,68 @@ function orderControlClearView(){
   message("Vista operativa limpia. Los pedidos cerrados permanecen en Historial.");
 }
 
+function orderControlCurrentDeliveryId(){
+  const scoped=$("orderScope")?.value||"";
+  if(scoped&&state.role!=="LOCAL_ADMIN")return scoped;
+  const selected=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
+  if(selected?.delivery_id)return selected.delivery_id;
+  const ids=orderControlDeliveryIds();
+  return ids.length===1?ids[0]:null;
+}
+
+function renderOrderControlModeBar(){
+  const box=$("orderControlModeBar");if(!box)return;
+  const deliveryId=orderControlCurrentDeliveryId();
+  if(!deliveryId){
+    box.innerHTML='<div class="workspace-note">Selecciona un DELIVERY para definir el modo de operación.</div>';
+    return;
+  }
+  const dispatch=orderControlState.dispatches.get(deliveryId)||{};
+  const mode=dispatch.mode||"NONE";
+  const allowed=Array.isArray(dispatch.allowed_modes)?dispatch.allowed_modes:[];
+  const canChange=state.role==="DELIVERY_ADMIN";
+  const definitions=[
+    {code:"MANUAL",label:"Manual",desc:"Tú confirmas envíos, asignaciones y cambios."},
+    {code:"HYBRID",label:"Híbrido",desc:"HTPWEB propone y prepara; tú apruebas antes de enviar o cambiar."},
+    {code:"AUTO",label:"Automático",desc:"HTPWEB envía, preasigna y asigna sin esperar confirmación."}
+  ];
+  box.innerHTML='<div class="order-control-mode-title"><div><strong>Modo de operación</strong><span>Define cuánto automatiza HTPWEB.</span></div><span class="badge">'+esc(({MANUAL:"Manual",HYBRID:"Híbrido",AUTO:"Automático",NONE:"No disponible"})[mode]||mode)+'</span></div>'+
+    '<div class="order-control-mode-options">'+definitions.map(item=>{
+      const enabled=allowed.includes(item.code);
+      return '<button type="button" class="order-control-mode-option '+(mode===item.code?'active ':'')+(!enabled?'disabled':'')+'" data-order-mode="'+esc(item.code)+'" '+(!canChange||!enabled?'disabled':'')+'>'+
+        '<strong>'+esc(item.label)+'</strong><span>'+esc(item.desc)+'</span></button>';
+    }).join("")+'</div>'+
+    (canChange?'':'<small class="muted">Solo el administrador del DELIVERY puede cambiar este modo.</small>');
+
+  box.querySelectorAll("[data-order-mode]").forEach(btn=>{
+    btn.onclick=()=>orderControlSetOperationMode(btn.dataset.orderMode);
+  });
+}
+
+async function orderControlSetOperationMode(mode){
+  const deliveryId=orderControlCurrentDeliveryId();
+  if(!deliveryId)return;
+  try{
+    await rpc("delivery_set_dispatch_mode",{p_delivery_id:deliveryId,p_mode:mode});
+    const whatsappMode=mode==="MANUAL"?"ASSISTED":"AUTOMATIC";
+    try{
+      await rpc("delivery_set_whatsapp_settings",{
+        p_delivery_id:deliveryId,
+        p_mode:whatsappMode,
+        p_local_orders:true,
+        p_driver_dispatch:true,
+        p_customer_orders:true
+      });
+    }catch(e){
+      console.warn("No se pudo sincronizar el modo de WhatsApp.",e);
+    }
+    message("Modo de operación cambiado a "+({MANUAL:"Manual",HYBRID:"Híbrido",AUTO:"Automático"}[mode]||mode)+".");
+    await loadOrders({silent:true});
+  }catch(e){
+    message(e.message||"No se pudo cambiar el modo de operación.","error");
+  }
+}
+
 function renderOrderControlKpis(){
   const box=$("orderControlKpis");if(!box)return;
   const orders=state.orders||[];
@@ -2580,289 +2643,248 @@ function renderOrderControlNextAction(order,canOperate){
 }
 
 function renderOrderControlStepper(order){
-  if(order?.status==="CANCELLED")return '<div class="order-control-cancelled-flow"><strong>Pedido cancelado</strong><span>El flujo operativo terminó antes de la entrega.</span></div>';
+  if(order?.status==="CANCELLED"){
+    return '<div class="order-control-cancelled-flow"><strong>Pedido cancelado</strong><span>El flujo operativo terminó.</span></div>';
+  }
 
-  const activeLocals=(order?.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
-  const allRequested=activeLocals.length>0&&activeLocals.every(ol=>ol.prep_requested_at);
-  const allResponded=activeLocals.length>0&&activeLocals.every(ol=>ol.prep_response_at);
-  const hasDriver=Boolean(order?.assignment||order?.driver_plan?.status==="PLANNED");
-
+  const pickups=(order?.order_locals||[]).map(ol=>ol.pickup_status||"PENDING");
+  const hasPickupProgress=pickups.some(status=>status==="ARRIVED"||status==="PICKED_UP");
   let current=0;
   if(order?.status!=="PENDING")current=1;
-  if(allRequested)current=2;
-  if(allResponded)current=3;
-  if(hasDriver)current=4;
-  if(order?.status==="EN_ROUTE")current=5;
-  if(order?.status==="DELIVERED")current=6;
+  if(["PREPARING","READY","EN_ROUTE","DELIVERED"].includes(order?.status))current=2;
+  if(order?.driver_plan?.status==="PLANNED")current=Math.max(current,3);
+  if(order?.assignment)current=Math.max(current,4);
+  if(hasPickupProgress)current=Math.max(current,5);
+  if(order?.status==="EN_ROUTE")current=6;
+  if(order?.status==="DELIVERED")current=7;
 
   const steps=[
     "Recibido",
-    "Confirmado",
-    "LOCAL solicitado",
-    "Tiempo confirmado",
-    "Repartidor",
+    "Aceptado",
+    "Preparando",
+    "Preasignado",
+    "Asignado",
+    "Recogiendo",
     "En camino",
     "Entregado"
   ];
 
-  return `<div class="order-control-stepper">${steps.map((label,index)=>{
+  return '<div class="order-control-ribbon" aria-label="Avance del pedido">'+steps.map((label,index)=>{
     const stateClass=index<current?"done":index===current?"active":"future";
-    return `<div class="order-control-step ${stateClass}">
-      <div class="order-control-step-node">${index<current?"✓":index+1}</div>
-      <div class="order-control-step-copy"><strong>${esc(label)}</strong>${index===current?'<span>Actual</span>':""}</div>
-    </div>`;
-  }).join("")}</div>`;
+    return '<div class="order-control-ribbon-step '+stateClass+'">'+
+      '<span class="order-control-ribbon-node">'+(index<current?"✓":index+1)+'</span>'+
+      '<strong>'+esc(label)+'</strong>'+
+    '</div>';
+  }).join("")+'</div>';
+}
+
+function orderControlDriverLocationText(driver){
+  const loc=driver?.location;
+  if(!loc)return "Sin ubicación reciente";
+  const reference=loc.zone_name||loc.zone_description||"";
+  if(reference)return reference+" · "+orderControlAge(loc.captured_at);
+  if(orderControlValidPoint(loc.latitude,loc.longitude)){
+    return Number(loc.latitude).toFixed(5)+", "+Number(loc.longitude).toFixed(5)+" · "+orderControlAge(loc.captured_at);
+  }
+  return "Ubicación "+orderControlAge(loc.captured_at);
+}
+
+function renderOrderControlDriverSummary(order){
+  const drivers=orderControlDriverList(order);
+  if(!drivers.length)return '<div class="muted">No hay repartidores operativos.</div>';
+  return '<div class="order-control-driver-summary">'+drivers.map(driver=>{
+    const active=Number(driver.active_orders||0);
+    const stateLabel=active>0?"Ocupado":"Libre";
+    const stateClass=active>0?"busy":"free";
+    return '<div class="order-control-driver-card">'+
+      '<div class="row between" style="gap:8px"><strong>'+esc(driver.full_name||"Repartidor")+'</strong>'+
+      '<span class="order-control-driver-state '+stateClass+'">'+esc(stateLabel)+'</span></div>'+
+      '<div class="muted">'+esc(orderControlDriverLocationText(driver))+'</div>'+
+      '<small>'+esc(active)+' pedido'+(active===1?"":"s")+' activo'+(active===1?"":"s")+'</small>'+
+    '</div>';
+  }).join("")+'</div>';
+}
+
+async function orderControlSendPendingLocals(orderId){
+  const order=(state.orders||[]).find(o=>o.id===orderId);
+  if(!order)return;
+  const pending=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED"&&!ol.prep_requested_at&&ol.locals?.whatsapp);
+  if(!pending.length){
+    message("No hay envíos pendientes a LOCAL.");
+    return;
+  }
+  for(const local of pending){
+    await sendLocalOrderWhatsapp(order.id,local.local_id);
+  }
+  await loadOrders({silent:true});
+}
+
+function orderControlCompactDispatchPanel(order,canOperate){
+  const drivers=orderControlDriverList(order);
+  const assignment=order.assignment||null;
+  const plan=order.driver_plan||null;
+  const suggestion=order.driver_suggestion||null;
+  const mode=order.dispatch_mode||orderControlState.dispatches.get(order.delivery_id)?.mode||"MANUAL";
+  const modeLabel={MANUAL:"Manual",HYBRID:"Híbrido",AUTO:"Automático"}[mode]||mode;
+
+  if(assignment){
+    const driver=drivers.find(d=>d.user_id===assignment.driver_user_id)||{
+      full_name:assignment.driver_name,
+      phone:assignment.driver_phone,
+      location:assignment.location
+    };
+    return '<div class="order-control-dispatch-focus">'+
+      '<div class="row between" style="gap:8px"><div><span class="order-control-mini-label">Asignado</span><strong>'+esc(driver.full_name||"Repartidor")+'</strong></div><span class="badge">'+esc(modeLabel)+'</span></div>'+
+      '<div class="muted">'+esc(orderControlDriverLocationText(driver))+'</div>'+
+      '<div class="order-control-actions">'+
+        (mode==="MANUAL"&&canOperate&&driver.phone?'<button class="btn-primary" type="button" onclick="orderControlNotifyDriver(\''+order.id+'\')">Enviar WhatsApp</button>':'')+
+        (canOperate&&order.status!=="EN_ROUTE"?'<button class="btn-muted" type="button" onclick="orderControlUnassignDriver(\''+order.id+'\')">Cambiar repartidor</button>':'')+
+      '</div>'+
+    '</div>';
+  }
+
+  if(plan?.status==="PLANNED"){
+    return '<div class="order-control-dispatch-focus">'+
+      '<div class="row between" style="gap:8px"><div><span class="order-control-mini-label">Preasignado</span><strong>'+esc(plan.driver_name||"Repartidor")+'</strong></div><span class="badge">'+esc(modeLabel)+'</span></div>'+
+      '<div class="order-control-plan-inline"><span>Salida calculada</span><strong>'+esc(orderControlTime(plan.ideal_departure_at))+'</strong></div>'+
+      (canOperate?'<button class="btn-muted" type="button" onclick="orderControlCancelDriverPlan(\''+order.id+'\')">Modificar preasignación</button>':'')+
+    '</div>';
+  }
+
+  if(["CONFIRMED","PREPARING"].includes(order.status)){
+    const options=drivers.length?drivers.map(d=>{
+      const selected=suggestion?.driver_user_id===d.user_id?" selected":"";
+      return '<option value="'+esc(d.user_id)+'"'+selected+'>'+esc(d.full_name||"Repartidor")+' · '+(Number(d.active_orders||0)>0?"Ocupado":"Libre")+'</option>';
+    }).join(""):'<option value="">Sin repartidores operativos</option>';
+
+    if(mode==="AUTO"){
+      return '<div class="workspace-note"><strong>Automático:</strong> HTPWEB calculará y activará la mejor preasignación cuando tenga el tiempo del LOCAL.</div>';
+    }
+
+    return '<div class="order-control-dispatch-focus">'+
+      (suggestion?'<div class="order-control-suggestion-line"><span>HTPWEB recomienda</span><strong>'+esc(suggestion.driver_name||"Repartidor")+'</strong></div>':'')+
+      '<select id="orderControlPlanDriverSelect">'+options+'</select>'+
+      '<button class="btn-primary" type="button" onclick="orderControlPlanDriver(\''+order.id+'\')" '+(!drivers.length?'disabled':'')+'>'+
+        (mode==="HYBRID"?"Aprobar preasignación":"Preasignar repartidor")+
+      '</button>'+
+    '</div>';
+  }
+
+  if(order.status==="READY"){
+    const options=drivers.length?drivers.map(d=>
+      '<option value="'+esc(d.user_id)+'">'+esc(d.full_name||"Repartidor")+' · '+(Number(d.active_orders||0)>0?"Ocupado":"Libre")+'</option>'
+    ).join(""):'<option value="">Sin repartidores operativos</option>';
+    if(mode==="AUTO"){
+      return '<div class="workspace-warning"><strong>Esperando repartidor libre.</strong> HTPWEB asignará automáticamente en cuanto exista capacidad.</div>';
+    }
+    return '<div class="order-control-dispatch-focus"><select id="orderControlDriverSelect">'+options+'</select>'+
+      '<button class="btn-primary" type="button" onclick="orderControlAssignDriver(\''+order.id+'\')" '+(!drivers.length?'disabled':'')+'>'+
+      (mode==="HYBRID"?"Aprobar asignación":"Asignar repartidor")+'</button></div>';
+  }
+
+  return '<div class="muted">Sin acción de reparto pendiente.</div>';
 }
 
 function renderOrderControlDetail(){
   const box=$("orderControlDetail");if(!box)return;
   const order=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
   if(!order){
-    box.innerHTML='<div class="muted">Selecciona un pedido para abrir la consola operativa.</div>';
+    box.innerHTML='<div class="order-control-empty-state"><strong>Selecciona un pedido</strong><span>Aquí verás el avance, los productos, ubicaciones y reparto.</span></div>';
     return;
   }
 
   const canOperate=["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role);
-  const globalButtons=canOperate?(globalTransitions[order.status]||[]).map(next=>
-    `<button class="${next==="CANCELLED"?"btn-danger":"btn-primary"}" type="button" onclick="changeGlobalOrder('${order.id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
-  ).join(""):"";
-
-  const customerWhatsapp=order.customer_phone
-    ? `<button class="btn-muted" type="button" onclick="orderControlWhatsappCustomer('${order.id}')">WhatsApp cliente</button>`
-    :"";
-  const mapButton=Number.isFinite(Number(order.latitude))&&Number.isFinite(Number(order.longitude))
-    ? `<button class="btn-muted" type="button" onclick="orderControlFocusMap('${order.id}')">Ver destino en mapa</button>`
-    :"";
-
-  const localBlocks=(order.order_locals||[]).map(ol=>{
-    const local=ol.locals||{};
-    const items=(order.order_items||[]).filter(item=>item.local_id===ol.local_id);
-    const buttons=canOperate?(localTransitions[ol.status]||[]).map(next=>
-      `<button class="${next==="CANCELLED"?"btn-danger":"btn-muted"}" type="button" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${esc(orderTransitionLabel(next))}</button>`
-    ).join(""):"";
-    const requestLabel=ol.prep_requested_at?"Reenviar WhatsApp":"Reintentar WhatsApp";
-    const wa=canOperate&&local.whatsapp&&["CONFIRMED","PREPARING"].includes(order.status)&&!["READY","CANCELLED"].includes(ol.status)
-      ? `<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp('${order.id}','${ol.local_id}')">${esc(requestLabel)}</button>`
-      :"";
-    const prepInfo=ol.prep_response_at
-      ? `<div class="order-control-ok"><strong>LOCAL confirmó ${esc(ol.prep_estimate_minutes||"—")} min</strong> · listo aprox. ${esc(orderControlTime(ol.estimated_ready_at))}</div>`
-      :ol.prep_requested_at
-        ? `<div class="order-control-alert"><strong>WhatsApp enviado.</strong> Esperando que el LOCAL responda directamente con los minutos de preparación.</div>`
-        :["CONFIRMED","PREPARING"].includes(order.status)
-          ? '<div class="workspace-warning" style="margin-top:8px"><strong>Aún no enviado.</strong> HTPWEB intenta el envío automático; usa Reintentar WhatsApp si continúa pendiente.</div>'
-          :"";
-    const pickupStatus=ol.pickup_status||"PENDING";
-    const pickupLabel={
-      PENDING:"Pendiente de recogida",
-      ARRIVED:"Repartidor llegó",
-      PICKED_UP:"Recogido"
-    }[pickupStatus]||pickupStatus;
-    const pickupInfo=order.assignment
-      ? `<div class="${pickupStatus==="PICKED_UP"?"order-control-ok":pickupStatus==="ARRIVED"?"order-control-alert":"workspace-note"}" style="margin:8px 0 0;padding:8px 10px"><strong>Repartidor:</strong> ${esc(pickupLabel)}${ol.arrived_at?" · llegó "+esc(orderControlTime(ol.arrived_at)):""}${ol.picked_up_at?" · recogió "+esc(orderControlTime(ol.picked_up_at)):""}</div>`
-      :"";
-    return `<div class="order-control-local">
-      <div class="row between" style="gap:8px">
-        <div>
-          <strong>${esc(local.name||ol.local_id)}</strong>
-          <div class="muted">${esc(local.address||"")}</div>
-        </div>
-        <span class="badge status-${esc(ol.status)}">${esc(orderStatusLabel(ol.status))}</span>
-      </div>
-      ${prepInfo}
-      ${pickupInfo}
-      <ul class="order-control-items">
-        ${items.length?items.map(item=>`<li><span>${esc(item.quantity)} × ${esc(item.product_name||"Producto")}${item.variant_name?" · "+esc(item.variant_name):""}${item.promotion_title?" · PROMO "+esc(item.promotion_title):""}</span><strong>${esc(orderControlMoney(item.subtotal))}</strong></li>`).join(""):'<li><span class="muted">Sin productos visibles</span></li>'}
-      </ul>
-      <div class="muted" style="margin-top:8px">Subtotal ${esc(orderControlMoney(ol.subtotal))} · Delivery ${esc(orderControlMoney(ol.delivery_fee))}${ol.delivery_distance_km!==null&&ol.delivery_distance_km!==undefined?" · Ruta vial ORS "+esc(Number(ol.delivery_distance_km).toFixed(2))+" km":""}</div>
-      ${buttons||wa?`<div class="order-control-actions">${buttons}${wa}</div>`:""}
-    </div>`;
-  }).join("");
-
-  const drivers=orderControlDriverList(order);
-  const assignment=order.assignment;
-  const driverPlan=order.driver_plan||null;
-  const driverSuggestion=order.driver_suggestion||null;
-  let driverPanel="";
-  if(assignment){
-    const driver=drivers.find(d=>d.user_id===assignment.driver_user_id)||{
-      user_id:assignment.driver_user_id,
-      full_name:assignment.driver_name,
-      phone:assignment.driver_phone
-    };
-    const gps=assignment.location;
-    const age=orderControlGpsAge(gps);
-    const stale=age!==null&&age>5*60*1000;
-    const driverModeLabel={REGULAR:"Regular",EMERGENCY:"Emergencia"}[assignment.driver_mode||driver.driver_mode]||"Regular";
-    const assignmentNotice=order.status==="PREPARING"
-      ? '<div class="workspace-note" style="margin:8px 0"><strong>Asignación activa.</strong> El repartidor ya recibió el aviso y debe abrir HTPWEB. El LOCAL continúa preparando.</div>'
-      :"";
-    driverPanel=`<div class="order-control-driver">
-      <div><strong>${esc(driver.full_name||assignment.driver_name||"Repartidor")}</strong><div class="muted">${esc(driver.phone||assignment.driver_phone||"Sin teléfono")} · ${esc(driverModeLabel)}</div></div>
-      <div class="muted">Asignado: ${esc(orderControlTime(assignment.assigned_at))}</div>
-      ${assignmentNotice}
-      <div class="${stale?"order-control-stale":"muted"}">GPS: ${gps?esc(orderControlAge(gps.captured_at)):"sin ubicación recibida"}${gps?.accuracy_m?" · precisión "+esc(Math.round(Number(gps.accuracy_m)))+" m":""}</div>
-      <div class="order-control-actions">
-        ${driver.phone||assignment.driver_phone?`<button class="btn-muted" type="button" onclick="orderControlNotifyDriver('${order.id}')">WhatsApp repartidor</button>`:""}
-        ${order.status!=="EN_ROUTE"?`<button class="btn-muted" type="button" onclick="orderControlUnassignDriver('${order.id}')">Quitar asignación</button>`:""}
-      </div>
-    </div>`;
-  }else if(driverPlan?.status==="PLANNED"){
-    const plannedDriver=drivers.find(d=>d.user_id===driverPlan.driver_user_id)||{
-      full_name:driverPlan.driver_name,
-      phone:driverPlan.driver_phone
-    };
-    const sourceLabel={AUTO:"Automática",HYBRID:"Híbrida",MANUAL:"Manual"}[driverPlan.source]||"Automática";
-    driverPanel=`<div class="order-control-driver">
-      <div class="order-control-ok"><strong>Repartidor preasignado</strong><br>${esc(plannedDriver.full_name||"Repartidor")} · pedido listo aprox. ${esc(orderControlTime(driverPlan.planned_for))}</div>
-      <div class="order-control-plan-grid">
-        <div><span>Hora calculada de salida</span><strong>${esc(orderControlTime(driverPlan.ideal_departure_at))}</strong></div>
-        <div><span>Preasignación</span><strong>${esc(sourceLabel)}</strong></div>
-      </div>
-      ${driverPlan.activation_error?`<div class="order-control-alert"><strong>Asignación pendiente:</strong> ${esc(driverPlan.activation_error)}</div>`:""}
-      <div class="order-control-actions">
-        <button class="btn-muted" type="button" onclick="orderControlCancelDriverPlan('${order.id}')">Cambiar preasignación</button>
-      </div>
-      <div class="muted"><strong>El repartidor todavía no ha sido avisado.</strong> HTPWEB lo asignará cerca de la hora calculada de salida cuando confirme que está libre.</div>
-    </div>`;
-  }else if(["CONFIRMED","PREPARING"].includes(order.status)){
-    const options=drivers.length?drivers.map(d=>{
-      const selected=driverSuggestion?.driver_user_id===d.user_id?" selected":"";
-      return `<option value="${esc(d.user_id)}"${selected}>${esc(d.full_name||"Repartidor")} · ${esc(d.active_orders||0)} activo(s)</option>`;
-    }).join(""):'<option value="">No hay repartidores activos</option>';
-    const recommendation=driverSuggestion
-      ? `<div class="order-control-recommendation">
-          <div class="order-control-recommendation-head"><strong>🤖 Recomendación HTPWEB</strong><span>${esc(driverSuggestion.driver_name||"Repartidor")}</span></div>
-          <div class="order-control-plan-grid">
-            <div><span>Pedido listo aprox.</span><strong>${esc(orderControlTime(driverSuggestion.planned_for))}</strong></div>
-            <div><span>Libre estimado</span><strong>${esc(orderControlTime(driverSuggestion.available_at))}</strong></div>
-            <div><span>Salida sugerida</span><strong>${esc(orderControlTime(driverSuggestion.ideal_departure_at))}</strong></div>
-            <div><span>Viaje al LOCAL</span><strong>${esc(driverSuggestion.travel_minutes||"—")} min</strong></div>
-          </div>
-        </div>`
-      : '<div class="workspace-note">HTPWEB todavía no tiene una recomendación automática para este pedido.</div>';
-    driverPanel=`<div class="order-control-driver">
-      ${recommendation}
-      <label for="orderControlPlanDriverSelect"><strong>Repartidor a programar</strong></label>
-      <select id="orderControlPlanDriverSelect">${options}</select>
-      <div class="order-control-actions">
-        <button class="btn-primary" type="button" onclick="orderControlPlanDriver('${order.id}')" ${drivers.length?"":"disabled"}>Programar repartidor</button>
-        <button class="btn-muted" type="button" onclick="showSection('drivers')">Abrir Repartidores</button>
-      </div>
-      <div class="muted">Programar no significa enviarlo todavía: HTPWEB reserva al repartidor para la hora estimada del LOCAL.</div>
-    </div>`;
-  }else if(order.status==="READY"){
-    const options=drivers.length?drivers.map(d=>
-      `<option value="${esc(d.user_id)}">${esc(d.full_name||"Repartidor")} · ${esc(d.active_orders||0)} activo(s)</option>`
-    ).join(""):'<option value="">No hay repartidores activos</option>';
-    driverPanel=`<div class="order-control-driver">
-      <div class="order-control-alert"><strong>Despacho pendiente.</strong> El pedido está listo pero todavía no tiene repartidor.</div>
-      <select id="orderControlDriverSelect">${options}</select>
-      <div class="order-control-actions">
-        <button class="btn-primary" type="button" onclick="orderControlAssignDriver('${order.id}')" ${drivers.length?"":"disabled"}>Asignar repartidor</button>
-        <button class="btn-muted" type="button" onclick="showSection('drivers')">Abrir Repartidores</button>
-      </div>
-    </div>`;
-  }else{
-    driverPanel='<div class="muted">Sin acciones de despacho disponibles para este estado.</div>';
-  }
-
-  const alerts=[];
-  const localStatuses=(order.order_locals||[]).map(x=>x.status);
-  if(order.status==="READY"&&!assignment)alerts.push("Pedido listo sin repartidor asignado.");
-  if(["CONFIRMED","PREPARING"].includes(order.status)&&!assignment&&!driverPlan&&driverSuggestion)alerts.push("Hay una recomendación de repartidor pendiente de programar.");
-  if(order.status==="EN_ROUTE"&&!assignment)alerts.push("Pedido en camino sin asignación activa registrada.");
-  if(assignment&&!assignment.location)alerts.push("Repartidor asignado sin ubicación GPS disponible.");
-  const gpsAge=orderControlGpsAge(assignment?.location);
-  if(gpsAge!==null&&gpsAge>5*60*1000)alerts.push("La última ubicación del repartidor tiene más de 5 minutos.");
-  if(["CONFIRMED","PREPARING"].includes(order.status)&&localStatuses.some(s=>s==="PENDING"))alerts.push("Hay LOCAL todavía pendiente de confirmar.");
-  const alertHtml=alerts.length?`<div class="order-control-alert"><strong>Atención operativa</strong><br>${alerts.map(esc).join("<br>")}</div>`:
-    '<div class="order-control-ok"><strong>Sin alertas operativas críticas para este pedido.</strong></div>';
-
-  const history=Array.isArray(order.history)?order.history:[];
-  const timeline=history.length?history.map(h=>`<div class="order-control-timeline-row">
-    <div><strong>${esc(orderControlTime(h.created_at))}</strong></div>
-    <div><span class="badge status-${esc(h.new_status)}">${esc(orderStatusLabel(h.new_status))}</span> ${h.local_id?"· LOCAL": "· Pedido general"}<div class="muted">${esc(h.actor_role||"Sistema")}${h.note?" · "+esc(h.note):""}</div></div>
-  </div>`).join(""):'<div class="muted">Sin historial disponible.</div>';
-  const nextActionHtml=renderOrderControlNextAction(order,canOperate);
+  const mode=order.dispatch_mode||orderControlState.dispatches.get(order.delivery_id)?.mode||"MANUAL";
+  const activeLocals=(order.order_locals||[]).filter(ol=>ol.status!=="CANCELLED");
+  const pendingLocals=activeLocals.filter(ol=>!ol.prep_requested_at&&ol.locals?.whatsapp);
   const stepperHtml=renderOrderControlStepper(order);
 
-  box.innerHTML=`
-    <div class="order-control-selected">
-      <div class="order-control-selected-head">
-        <div>
-          <div class="order-control-eyebrow">Pedido seleccionado</div>
-          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-            <h2 style="margin:0">Pedido #${esc(orderControlRef(order.id))}</h2>
-            <span class="badge status-${esc(order.status)}">${esc(orderStatusLabel(order.status))}</span>
-          </div>
-          <div class="muted">${esc(orderControlTime(order.created_at))} · ${esc(orderControlAge(order.created_at))}</div>
-        </div>
-      </div>
+  const headerActions=[];
+  if(canOperate&&order.status==="PENDING"){
+    headerActions.push('<button class="btn-primary" type="button" onclick="changeGlobalOrder(\''+order.id+'\',\'CONFIRMED\')">Aceptar pedido</button>');
+  }
+  if(canOperate&&!["DELIVERED","CANCELLED"].includes(order.status)){
+    headerActions.push('<button class="btn-danger" type="button" onclick="changeGlobalOrder(\''+order.id+'\',\'CANCELLED\')">Cancelar</button>');
+  }
 
-      <div class="order-control-head-grid">
-        <div class="order-control-head-main">
-          <div class="order-control-summary-grid order-control-summary-grid-modern">
-            <div><span>Cliente</span><strong>${esc(order.customer_name||"—")}</strong></div>
-            <div><span>Teléfono</span><strong>${esc(order.customer_phone||"—")}</strong></div>
-            <div><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
-            <div><span>Tipo de entrega</span><strong>Delivery</strong></div>
-            <div><span>Estado actual</span><strong>${esc(orderStatusLabel(order.status))}</strong><small>${esc(orderControlAge(orderControlCurrentSince(order)))}</small></div>
-          </div>
+  const customerActions=[
+    order.customer_phone?'<button class="btn-primary" type="button" onclick="orderControlWhatsappCustomer(\''+order.id+'\')">WhatsApp cliente</button>':"",
+    orderControlValidPoint(order.latitude,order.longitude)?'<button class="btn-muted" type="button" onclick="orderControlFocusMap(\''+order.id+'\')">Ver ubicación</button>':""
+  ].filter(Boolean).join("");
 
-          <div class="order-control-actions order-control-primary-actions">
-            ${globalButtons}
-            ${customerWhatsapp}
-            ${mapButton}
-          </div>
-          ${alertHtml}
-        </div>
-        ${nextActionHtml}
-      </div>
-    </div>
+  const bulkLocalAction=canOperate&&pendingLocals.length
+    ? '<button class="'+(mode==="HYBRID"?"btn-primary":"btn-muted")+'" type="button" onclick="orderControlSendPendingLocals(\''+order.id+'\')">'+
+      (mode==="HYBRID"?"Aprobar envío a locales":mode==="MANUAL"?"Enviar pendientes":"Reintentar pendientes")+
+      '</button>'
+    :"";
 
-    <div class="order-control-panel order-control-progress-panel">
-      <div class="order-control-section-heading">
-        <div>
-          <h3>Estado del pedido</h3>
-          <p class="muted">Avance operativo desde la recepción hasta la entrega.</p>
-        </div>
-      </div>
-      ${stepperHtml}
-    </div>
+  const localBlocks=activeLocals.map(ol=>{
+    const local=ol.locals||{};
+    const items=(order.order_items||[]).filter(item=>item.local_id===ol.local_id);
+    const eta=ol.prep_response_at
+      ? '<span class="order-control-local-signal ok">Preparando · '+esc(ol.prep_estimate_minutes||"—")+' min</span>'
+      : ol.prep_requested_at
+        ? '<span class="order-control-local-signal wait">Esperando tiempo</span>'
+        : '<span class="order-control-local-signal pending">Pendiente de envío</span>';
+    const whatsappLabel=ol.prep_requested_at?"Reenviar WhatsApp":mode==="HYBRID"?"Aprobar WhatsApp":mode==="AUTO"?"Reintentar WhatsApp":"Enviar WhatsApp";
+    const whatsappButton=canOperate&&local.whatsapp&&!["READY","CANCELLED"].includes(ol.status)&&["CONFIRMED","PREPARING"].includes(order.status)
+      ? '<button class="btn-muted" type="button" onclick="sendLocalOrderWhatsapp(\''+order.id+'\',\''+ol.local_id+'\')">'+esc(whatsappLabel)+'</button>'
+      :"";
+    const products=items.length?items.map(item=>
+      '<li><strong>'+esc(item.quantity)+' × '+esc(item.product_name||"Producto")+'</strong>'+
+      (item.variant_name?'<span>'+esc(item.variant_name)+'</span>':'')+
+      (item.promotion_title?'<span>Promoción: '+esc(item.promotion_title)+'</span>':'')+
+      '</li>'
+    ).join(""):'<li class="muted">Sin productos visibles</li>';
 
-    <div class="order-control-detail-grid order-control-detail-grid-modern">
-      <div class="order-control-panel" id="orderControlLocalsPanel">
-        <div class="order-control-section-heading">
-          <div><h3>Recogidas, productos y locales</h3><p class="muted">Envía la solicitud, recibe el tiempo del LOCAL y controla la preparación.</p></div>
-        </div>
-        <div class="order-control-destination"><strong>Entrega:</strong> ${esc(order.delivery_address||"—")}${order.address_reference?`<span>Referencia: ${esc(order.address_reference)}</span>`:""}</div>
-        ${localBlocks||'<div class="muted">Sin locales asociados.</div>'}
-      </div>
+    return '<article class="order-control-local-compact">'+
+      '<div class="row between" style="gap:8px"><div><strong>'+esc(local.name||"LOCAL")+'</strong><div class="muted">'+esc(local.address||"")+'</div></div>'+
+      '<span class="badge status-'+esc(ol.status)+'">'+esc(orderStatusLabel(ol.status))+'</span></div>'+
+      '<div class="order-control-local-signals">'+eta+
+        (ol.pickup_status&&ol.pickup_status!=="PENDING"?'<span class="order-control-local-signal pickup">'+esc({ARRIVED:"Repartidor llegó",PICKED_UP:"Recogido"}[ol.pickup_status]||ol.pickup_status)+'</span>':'')+
+      '</div>'+
+      '<ul class="order-control-products-compact">'+products+'</ul>'+
+      (whatsappButton?'<div class="order-control-actions">'+whatsappButton+'</div>':'')+
+    '</article>';
+  }).join("");
 
-      <div class="order-control-panel" id="orderControlDispatchPanel">
-        <div class="order-control-section-heading">
-          <div><h3>Repartidor y despacho</h3><p class="muted">Asignación, comunicación y estado del GPS para la entrega.</p></div>
-        </div>
-        ${driverPanel}
-      </div>
-    </div>
+  box.innerHTML=
+    '<div class="order-control-selected order-control-selected-compact">'+
+      '<div class="order-control-selected-head">'+
+        '<div><div class="order-control-eyebrow">Pedido seleccionado</div><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<h2 style="margin:0">#'+esc(orderControlRef(order.id))+'</h2>'+
+          '<span class="badge status-'+esc(order.status)+'">'+esc(orderStatusLabel(order.status))+'</span>'+
+        '</div><div class="muted">'+esc(order.customer_name||"Cliente")+' · '+esc(orderControlAge(order.created_at))+'</div></div>'+
+        (headerActions.length?'<div class="order-control-actions" style="margin-top:0">'+headerActions.join("")+'</div>':'')+
+      '</div>'+
+      '<div class="order-control-progress-panel-compact">'+stepperHtml+'</div>'+
+      '<div class="order-control-main-detail-grid">'+
+        '<section class="order-control-panel order-control-client-panel">'+
+          '<div class="order-control-section-heading"><h3>Cliente y ubicación</h3></div>'+
+          '<div class="order-control-client-name"><strong>'+esc(order.customer_name||"Cliente")+'</strong><span>'+esc(order.customer_phone||"Sin teléfono")+'</span></div>'+
+          '<div class="order-control-client-address">'+
+            '<strong>'+esc(order.delivery_address||"Sin dirección")+'</strong>'+
+            (order.address_reference?'<span>Referencia: '+esc(order.address_reference)+'</span>':'')+
+          '</div>'+
+          '<div class="order-control-actions">'+customerActions+'</div>'+
+        '</section>'+
 
-    <div class="order-control-bottom-grid">
-      <div class="order-control-panel">
-        <div class="order-control-section-heading"><div><h3>Línea de tiempo</h3><p class="muted">Historial de cambios del pedido y de sus LOCAL.</p></div></div>
-        <div class="order-control-timeline">${timeline}</div>
-      </div>
-      <div class="order-control-panel">
-        <div class="order-control-section-heading"><div><h3>Costos y observaciones</h3><p class="muted">Resumen económico y notas operativas.</p></div></div>
-        <div class="order-control-costs">
-          <div class="summary-line"><span>Productos</span><strong>${esc(orderControlMoney(order.subtotal))}</strong></div>
-          <div class="summary-line"><span>Delivery</span><strong>${esc(orderControlMoney(order.delivery_fee))}</strong></div>
-          <div class="summary-line order-control-total-line"><span>Total</span><strong>${esc(orderControlMoney(order.total))}</strong></div>
-        </div>
-        ${order.notes?`<div class="workspace-note order-control-notes"><strong>Observaciones</strong><div>${esc(order.notes)}</div></div>`:'<div class="muted order-control-notes-empty">Sin observaciones registradas.</div>'}
-      </div>
-    </div>
-  `;
+        '<section class="order-control-panel order-control-locals-panel" id="orderControlLocalsPanel">'+
+          '<div class="order-control-section-heading row between" style="gap:8px"><h3>Locales y productos</h3>'+bulkLocalAction+'</div>'+
+          (localBlocks||'<div class="muted">Sin locales asociados.</div>')+
+        '</section>'+
+
+        '<section class="order-control-panel order-control-dispatch-panel" id="orderControlDispatchPanel">'+
+          '<div class="order-control-section-heading"><h3>Reparto</h3></div>'+
+          orderControlCompactDispatchPanel(order,canOperate)+
+        '</section>'+
+
+        '<section class="order-control-panel order-control-drivers-panel">'+
+          '<div class="order-control-section-heading"><h3>Repartidores operativos</h3></div>'+
+          renderOrderControlDriverSummary(order)+
+        '</section>'+
+      '</div>'+
+    '</div>';
 }
 
 function ensureOrderControlMap(){
@@ -3334,6 +3356,7 @@ function orderControlWhatsappCustomer(orderId){
 
 function renderOrderControl(){
   renderOrderControlKpis();
+  renderOrderControlModeBar();
   renderOrderControlQueue();
   renderOrderControlDetail();
   renderOrderControlMap();
@@ -3370,28 +3393,32 @@ async function loadOrderControlCenter({silent=false}={}){
     if(!ids.length){
       state.orders=[];
       orderControlState.drivers.clear();
+      orderControlState.dispatches.clear();
       orderControlState.lastSync=new Date().toISOString();
       renderOrderControl();
       return;
     }
 
     const bundles=await Promise.all(ids.map(async deliveryId=>{
-      const [snapshot,drivers,routes,preparation,planning]=await Promise.all([
+      const [snapshot,drivers,routes,preparation,planning,dispatch]=await Promise.all([
         rpc("delivery_order_control_snapshot",{p_delivery_id:deliveryId,p_limit:100}),
         rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}).catch(()=>({drivers:[]})),
         rpc("delivery_order_routes_snapshot",{p_delivery_id:deliveryId}).catch(()=>({routes:[]})),
         rpc("delivery_local_preparation_snapshot",{p_delivery_id:deliveryId}).catch(()=>({locals:[]})),
-        rpc("delivery_driver_planning_snapshot",{p_delivery_id:deliveryId}).catch(()=>({orders:[]}))
+        rpc("delivery_driver_planning_snapshot",{p_delivery_id:deliveryId}).catch(()=>({orders:[]})),
+        rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}).catch(()=>({mode:"NONE",allowed_modes:[]}))
       ]);
-      return {deliveryId,snapshot,drivers,routes,preparation,planning};
+      return {deliveryId,snapshot,drivers,routes,preparation,planning,dispatch};
     }));
 
     const all=[];
     orderControlState.snapshots.clear();
     orderControlState.drivers.clear();
+    orderControlState.dispatches.clear();
     bundles.forEach(bundle=>{
       orderControlState.snapshots.set(bundle.deliveryId,bundle.snapshot||{});
       orderControlState.drivers.set(bundle.deliveryId,bundle.drivers||{drivers:[]});
+      orderControlState.dispatches.set(bundle.deliveryId,bundle.dispatch||{mode:"NONE",allowed_modes:[]});
       const routeByOrder=new Map((bundle.routes?.routes||[]).map(route=>[route.order_id,route]));
       const preparationByKey=new Map((bundle.preparation?.locals||[]).map(row=>[`${row.order_id}:${row.local_id}`,row]));
       const planningByOrder=new Map((bundle.planning?.orders||[]).map(row=>[row.order_id,row]));

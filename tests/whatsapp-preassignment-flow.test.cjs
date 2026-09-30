@@ -64,10 +64,10 @@ test('recogida física sustituye LISTO si el LOCAL no lo envió',()=>{
 });
 
 test('preasignado no avisa y asignado obliga a abrir HTPWEB',()=>{
-  assert.match(admin,/Repartidor preasignado/);
-  assert.match(admin,/todavía no ha sido avisado/);
+  assert.match(admin,/Preasignado/);
+  assert.match(admin,/Salida calculada/);
   assert.doesNotMatch(
-    admin.match(/else if\(driverPlan\?\.status==="PLANNED"\)[\s\S]*?else if\(\["CONFIRMED","PREPARING"\]/)?.[0]||'',
+    admin.match(/if\(plan\?\.status==="PLANNED"\)[\s\S]*?if\(\["CONFIRMED","PREPARING"\]/)?.[0]||'',
     /orderControlNotifyPlannedDriver/
   );
   assert.match(edge,/"Ver detalles en HTPWEB"/);
@@ -80,9 +80,10 @@ test('preasignado no avisa y asignado obliga a abrir HTPWEB',()=>{
 
 test('interfaz operativa usa términos claros en español',()=>{
   assert.match(admin,/Preasignados/);
-  assert.match(admin,/Pedido preasignado/);
-  assert.match(admin,/Hora calculada de salida/);
-  assert.match(admin,/Enviando a los locales/);
-  assert.match(admin,/Esperando tiempo del LOCAL/);
-  assert.match(admin,/Asignación activa/);
+  assert.match(admin,/Aceptado/);
+  assert.match(admin,/Preparando/);
+  assert.match(admin,/Recogiendo/);
+  assert.match(admin,/Modo de operación/);
+  assert.match(admin,/WhatsApp cliente/);
+  assert.match(admin,/Repartidores operativos/);
 });
