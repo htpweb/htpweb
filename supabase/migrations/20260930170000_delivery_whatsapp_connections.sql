@@ -146,7 +146,8 @@ begin
     p_delivery_id,v_mode,'PENDING','PRODUCTION',
     case when v_mode='HTPWEB_MANAGED' then 'PLATFORM' else 'VAULT' end,
     v_phone,now(),auth.uid(),now(),
-    null,null,null,null,null,null,null,null,null,null,null
+    null,null,null,null,null,
+    null,null,null,null,null
   )
   on conflict(delivery_id) do update
   set connection_mode=excluded.connection_mode,
