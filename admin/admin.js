@@ -10683,7 +10683,17 @@ function bindEvents() {
   if ($("dispatchModeSave")) $("dispatchModeSave").onclick = saveDispatchMode;
   if ($("whatsappSettingsSave")) $("whatsappSettingsSave").onclick = saveWhatsappSettings;
   if ($("whatsappConnectionRequestBtn")) $("whatsappConnectionRequestBtn").onclick = requestWhatsappConnection;
-  if ($("whatsappConnectionMode")) $("whatsappConnectionMode").onchange = renderWhatsappConnectionControls;
+  if ($("whatsappConnectionMode")) $("whatsappConnectionMode").onchange = () => {
+    const mode=$("whatsappConnectionMode")?.value||"HTPWEB_MANAGED";
+    const wrap=$("whatsappRequestedPhoneWrap");
+    const help=$("whatsappConnectionHelp");
+    if(wrap)wrap.classList.toggle("hidden",mode==="OWN");
+    if(help){
+      help.textContent=mode==="OWN"
+        ?"WhatsApp propio: HTPWEB prepara la vinculación y el administrador del número autoriza Meta una sola vez."
+        :"Administrado por HTPWEB: ingresa el número del DELIVERY. HTPWEB prepara y administra la conexión; Meta puede exigir una verificación del número.";
+    }
+  };
   if ($("deliveryProofSettingsSave")) $("deliveryProofSettingsSave").onclick = saveDeliveryProofSettings;
   if ($("deliverySosRefresh")) $("deliverySosRefresh").onclick = loadDeliverySosSnapshotOnly;
   if ($("deliveryDeviationRefresh")) $("deliveryDeviationRefresh").onclick = loadDeliveryRouteDeviationSnapshotOnly;
