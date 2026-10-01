@@ -911,7 +911,7 @@ async function confirmOrder() {
         // No usamos un popup previo. En iPhone/Chrome/Safari un about:blank
         // puede tomar el foco y suspender esta página antes de terminar el pedido.
         // La navegación a WhatsApp se hace en esta misma pestaña, solo después
-        // de que HTPWEB confirme que el pedido quedó creado.
+        // de que el pedido quede confirmado.
         whatsappOpened = true;
       }
     } catch (whatsappError) {
@@ -959,7 +959,7 @@ async function confirmOrder() {
     $("successCard").classList.remove("hidden");
     showMessage(
       whatsappPrepared
-        ? "Pedido registrado en ${negocioActual.name} y preparado para WhatsApp."
+        ? "Pedido registrado en " + negocioActual.name + " y preparado para WhatsApp."
         : "Pedido registrado correctamente.",
       "success"
     );
