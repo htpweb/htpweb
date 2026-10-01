@@ -15,7 +15,16 @@
 <body>
 <header>
   <div class="header-row">
-    <div class="brand" id="brand">HTPWEB</div>
+    <div class="delivery-brand-shell">
+      <div class="delivery-brand-logo-frame">
+        <img id="deliveryLogo" class="delivery-brand-logo hidden" alt="">
+        <span id="deliveryLogoFallback" class="delivery-brand-fallback">D</span>
+      </div>
+      <div class="delivery-brand-copy">
+        <div class="brand" id="brand">DELIVERY</div>
+        <div class="delivery-platform-signature" id="platformBrand">by HTPWEB</div>
+      </div>
+    </div>
     <div class="header-actions">
       <a class="btn btn-light" id="ordersLink" href="#">Mis pedidos</a>
       <a class="btn btn-light" id="authLink" href="#">Acceder</a>
@@ -83,8 +92,7 @@ async function init() {
   try {
     negocioActual = await cargarNegocio();
 
-    document.title = negocioActual.name;
-    $("brand").textContent = negocioActual.name;
+    htpApplyDeliveryBrand(negocioActual);
     $("title").textContent = "¿Qué quieres pedir?";
     $("subtitle").textContent = negocioActual.description || `Explora los locales disponibles en ${negocioActual.name}.`;
     $("cartLink").href = urlDelivery("carrito.html");
