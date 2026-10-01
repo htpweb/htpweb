@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PUBLIC_ROOT = "https://htpweb.github.io/htpweb/";
+const PUBLIC_ROOT = "https://htpweb.github.io/";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -33,6 +33,7 @@ Deno.serve(async (req: Request) => {
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
+
   const deliveryId = body?.delivery_id;
   const localId = body?.local_id;
   if (!validUuid(deliveryId) || !validUuid(localId)) return json({ error: "Identificadores inválidos." }, 400);
@@ -41,13 +42,33 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: allowed, error: allowedError } = await userDb.rpc("delivery_share_locals", { p_delivery_id: deliveryId });
+
+  const { data: allowed, error: allowedError } = await userDb.rpc("delivery_share_locals", {
+    p_delivery_id: deliveryId,
+  });
   if (allowedError) return json({ error: allowedError.message || "Sin permiso para compartir." }, 403);
+
   const rows = Array.isArray(allowed) ? allowed : [];
   const allowedLocal = rows.find((row: any) => row?.id === localId);
-  if (!allowedLocal?.share_code) return json({ error: "LOCAL no disponible para este DELIVERY." }, 404);
+  const code = String(allowedLocal?.share_public_code || "").trim().toUpperCase();
+  if (!/^[A-HJ-NP-Z2-9]{3}$/.test(code)) return json({ error: "Código público corto no disponible." }, 404);
 
-  const code = String(allowedLocal.share_code).trim().toUpperCase();
-  if (!/^[A-F0-9]{6}$/.test(code)) return json({ error: "Código corto inválido." }, 500);
-  return json({ url: PUBLIC_ROOT + code, source: "htpweb", cached: true });
+  const admin = createClient(supabaseUrl, serviceRole, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: delivery, error: deliveryError } = await admin
+    .from("deliveries")
+    .select("public_share_path")
+    .eq("id", deliveryId)
+    .maybeSingle();
+
+  if (deliveryError) return json({ error: "No se pudo resolver el DELIVERY." }, 500);
+  const path = String(delivery?.public_share_path || "").trim();
+  if (!/^[A-Za-z0-9]{3,40}$/.test(path)) return json({ error: "Ruta pública del DELIVERY no disponible." }, 404);
+
+  return json({
+    url: PUBLIC_ROOT + encodeURIComponent(path) + "/" + encodeURIComponent(code),
+    source: "htpweb",
+    cached: true
+  });
 });
