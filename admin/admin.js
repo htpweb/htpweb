@@ -11138,7 +11138,7 @@ async function authorizeMasterDeliveryRepresentative(){
     });
 
     if(result?.status==="CLAIMED"){
-      message("Acceso habilitado: ese correo ya tenía una cuenta confirmada.");
+      message("Acceso habilitado: ese correo ya tenía una cuenta HTPWEB confirmada. No se enviará otro correo; la persona puede iniciar sesión directamente.");
     }else{
       message("Correo autorizado. La persona debe registrarse o iniciar sesión con ese mismo correo.");
     }
