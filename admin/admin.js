@@ -27,7 +27,6 @@ const state = {
   shareLocals: [],
   shareProducts: [],
   shareGallery: [],
-  shareShortUrls: new Map(),
   advertisements: [],
   advertisementDeliveries: [],
   advertisementLocals: [],
@@ -1882,44 +1881,7 @@ function buildShortSharedLocalUrl(localId = null) {
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
   if (!local?.share_code) return buildSharedLocalUrl(localId);
-  return new URL("../p/"+encodeURIComponent(local.share_code)+"/", publicAppRootUrl()).toString();
-}
-
-async function getExternalShortSharedLocalUrl(localId = null) {
-  const delivery = currentShareDelivery();
-  const local = localId
-    ? state.shareLocals.find(item => item.id === localId)
-    : currentShareLocal();
-  const fallback = buildShortSharedLocalUrl(localId);
-  if (!delivery?.id || !local?.id) return fallback;
-
-  const cache = state.shareShortUrls instanceof Map ? state.shareShortUrls : null;
-  const key = delivery.id + ":" + local.id;
-  const brandedPrefix = "https://tinyurl.com/" + String(delivery.slug || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 42)
-    .replace(/-+/g, "-") + "-";
-  if (cache?.has(key)) {
-    const cached = String(cache.get(key) || "");
-    if (cached.startsWith(brandedPrefix)) return cached;
-    cache.delete(key);
-  }
-
-  try {
-    const { data, error } = await supabaseClient.functions.invoke("share-short-url", {
-      body: { delivery_id: delivery.id, local_id: local.id }
-    });
-    if (error) throw error;
-    const candidate = String(data?.url || "").trim();
-    const url = /^https?:\/\//i.test(candidate) ? candidate : fallback;
-    if (url) cache?.set(key, url);
-    return url;
-  } catch (error) {
-    console.warn("No se pudo obtener TinyURL; se usa el enlace HTPWEB.", error);
-    return fallback;
-  }
+  return new URL("../"+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
 }
 
 function shareLocalCategory(local) {
@@ -2081,9 +2043,8 @@ function shareLocalOrderPlainText(url = buildShortSharedLocalUrl()) {
 }
 
 async function copyShareLocalOrderLink() {
-  const fallback=buildShortSharedLocalUrl();
-  if(!fallback)return;
-  const url=await getExternalShortSharedLocalUrl();
+  const url=buildShortSharedLocalUrl();
+  if(!url)return;
   const plain=shareLocalOrderPlainText(url);
   try{
     if(navigator.clipboard?.write&&typeof ClipboardItem!=="undefined"){
@@ -2179,10 +2140,8 @@ async function shareOriginalGalleryImage(imageId) {
   const image=state.shareGallery.find(item=>item.id===imageId);
   if(!image)return;
   try{
-    const [file,url]=await Promise.all([
-      galleryImageFile(image),
-      getExternalShortSharedLocalUrl()
-    ]);
+    const file=await galleryImageFile(image);
+    const url=buildShortSharedLocalUrl();
     const plain=shareLocalOrderPlainText(url);
 
     if(plain&&navigator.clipboard?.writeText){
