@@ -23,7 +23,7 @@ function validUuid(value: unknown): value is string {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-async function createTinyUrl(target: string) {
+async function createTinyUrl(target: string, alias: string) {
   const token = (Deno.env.get("TINYURL_API_TOKEN") || "").trim();
 
   if (token) {
@@ -34,7 +34,7 @@ async function createTinyUrl(target: string) {
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
-      body: JSON.stringify({ url: target, domain: "tinyurl.com" }),
+      body: JSON.stringify({ url: target, domain: "tinyurl.com", alias }),
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) throw new Error("TinyURL API respondió " + response.status + ".");
@@ -44,7 +44,8 @@ async function createTinyUrl(target: string) {
     return tiny;
   }
 
-  const endpoint = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(target);
+  const endpoint = "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(target)
+    + "&alias=" + encodeURIComponent(alias);
   const response = await fetch(endpoint, {
     headers: { "User-Agent": "HTPWEB-Share/1.0" },
     signal: AbortSignal.timeout(8000),
@@ -103,8 +104,12 @@ Deno.serve(async (req: Request) => {
   if (!delivery?.slug || !link?.share_code) return json({ error: "Enlace de compartir no disponible." }, 404);
 
   const fallback = PUBLIC_SHORT_BASE + encodeURIComponent(String(link.share_code)) + "/";
-  if (TINY_RE.test(String(link.share_tiny_url || ""))) {
-    return json({ url: link.share_tiny_url, source: "tinyurl", cached: true, fallback });
+  const alias = (String(delivery.slug || "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 42)
+    + "-" + String(link.share_code || "").toLowerCase()).replace(/-+/g, "-");
+  const brandedTiny = "https://tinyurl.com/" + alias;
+
+  if (String(link.share_tiny_url || "") === brandedTiny) {
+    return json({ url: brandedTiny, source: "tinyurl", cached: true, fallback });
   }
 
   const preview = new URL(PREVIEW_BASE);
@@ -112,7 +117,7 @@ Deno.serve(async (req: Request) => {
   preview.searchParams.set("l", localId);
 
   try {
-    const tiny = await createTinyUrl(preview.toString());
+    const tiny = await createTinyUrl(preview.toString(), alias);
     const { error: updateError } = await admin
       .from("local_deliveries")
       .update({ share_tiny_url: tiny, share_tiny_url_created_at: new Date().toISOString() })
