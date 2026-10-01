@@ -346,8 +346,7 @@ async function init() {
   try {
     if (!await obtenerUsuarioActual()) { irAAcceso(rutaActualRelativa()); return; }
     delivery = await cargarNegocio();
-    document.title = "Mis pedidos | " + delivery.name;
-    $('deliveryName').textContent = delivery.name;
+    htpApplyDeliveryBrand(delivery, { titlePrefix: "Mis pedidos" });
     $('shopLink').href = urlDelivery('index.html');
     $('cartLink').href = urlDelivery('carrito.html');
     $('cartLink').classList.remove('hidden');
