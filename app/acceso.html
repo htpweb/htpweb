@@ -552,7 +552,7 @@ $("registerForm").onsubmit = async event => {
       return;
     }
 
-    showMessage("Cuenta creada. Revisa tu correo para confirmarla. Si no encuentras el mensaje o lo borras, usa ‘Reenviar correo de confirmación’. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
+    showMessage("Si este correo es nuevo, revisa Recibidos y Spam para confirmar la cuenta. Si ya tenías una cuenta HTPWEB confirmada, no se enviará otro correo: usa ‘Iniciar sesión’ o ‘Olvidé mi contraseña’. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
     showLogin();
     $("loginEmail").value = email;
   } catch (e) {
