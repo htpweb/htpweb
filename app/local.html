@@ -14,9 +14,16 @@
 <body>
 <header>
   <div class="header-row">
-    <div>
-      <div class="brand" id="deliveryName">DELIVERY</div>
-      <small id="localName"></small>
+    <div class="delivery-brand-shell">
+      <div class="delivery-brand-logo-frame">
+        <img id="deliveryLogo" class="delivery-brand-logo hidden" alt="">
+        <span id="deliveryLogoFallback" class="delivery-brand-fallback">D</span>
+      </div>
+      <div class="delivery-brand-copy">
+        <div class="brand" id="brand">DELIVERY</div>
+        <div class="delivery-platform-signature" id="platformBrand">by HTPWEB</div>
+        <small id="localName"></small>
+      </div>
     </div>
     <div class="header-actions">
       <button class="btn btn-light" id="backBtn">← Locales</button>
@@ -59,7 +66,7 @@ async function init() {
     if (!localId) throw new Error("No se especificó el local.");
 
     negocioActual = await cargarNegocio();
-    $("deliveryName").textContent = negocioActual.name;
+    htpApplyDeliveryBrand(negocioActual);
     $("backBtn").onclick = () => location.href = urlDelivery("index.html");
     $("cartBtn").onclick = () => location.href = urlDelivery("carrito.html");
     updateCartCount();
