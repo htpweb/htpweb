@@ -11,7 +11,7 @@
 <script src="../config/addresses.js"></script>
 <script src="../config/orders.js?v=20260927-1955"></script>
 <script src="../config/cart.js"></script>
-<script src="../config/whatsapp.js?v=20261001-brand2"></script>
+<script src="../config/whatsapp.js?v=20261001-brand3"></script>
 <script src="../config/ads.js"></script>
 <link rel="stylesheet" href="../assets/app.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -226,6 +226,26 @@ function showCheckoutMessage(text, type = "error") {
   }
   box.textContent = text;
   box.className = type === "success" ? "success" : "error";
+}
+
+function sanitizeCustomerWhatsappBrand(text, deliveryName) {
+  const brand = String(deliveryName || negocioActual?.name || "DELIVERY").trim() || "DELIVERY";
+  let value = String(text || "");
+
+  value = value.replace(/^\*?HTPWEB\s*·\s*Pedido\s*#([^*\n]+)\*?/im, "*" + brand + " · Pedido #$1*");
+  value = value.replace(/^DELIVERY:\s*.+(?:\r?\n)?/gim, "");
+  value = value.replace(/Pedido registrado correctamente en HTPWEB\.?/gi, "Pedido registrado correctamente en " + brand + ".");
+
+  if (!/^\*[^\n]+\s·\sPedido\s#/m.test(value)) {
+    value = "*" + brand + " · Pedido*\n\n" + value.trim();
+  }
+
+  value = value.replace(/\n{3,}/g, "\n\n").trim();
+  if (!/_Plataforma HTPWEB_\s*$/i.test(value)) {
+    value += "\n_Plataforma HTPWEB_";
+  }
+
+  return value;
 }
 
 async function reloadCart() {
@@ -897,9 +917,10 @@ async function confirmOrder() {
           (user ? await obtenerPedidoCliente(negocioActual.id, data.order.id) : null);
         if (!canonicalOrder) throw new Error("No se pudo preparar el detalle del pedido para WhatsApp.");
 
-        const whatsappText = htpWhatsappBuildCustomerOrderText(
-          canonicalOrder,
-          customerWhatsappSetting.delivery_name || negocioActual.name
+        const deliveryBrandName = customerWhatsappSetting.delivery_name || negocioActual.name;
+        const whatsappText = sanitizeCustomerWhatsappBrand(
+          htpWhatsappBuildCustomerOrderText(canonicalOrder, deliveryBrandName),
+          deliveryBrandName
         );
 
         lastCustomerWhatsappUrl = htpWhatsappAssistedUrl(
