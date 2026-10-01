@@ -70,9 +70,9 @@ function htpWhatsappBuildCustomerOrderText(order, deliveryName) {
 
   const groups = Array.isArray(order.order_locals) ? order.order_locals : [];
   const items = Array.isArray(order.order_items) ? order.order_items : [];
+  const brand = String(deliveryName || "DELIVERY").trim() || "DELIVERY";
   const lines = [
-    "*HTPWEB · Pedido #" + htpWhatsappOrderRef(order.id) + "*",
-    "DELIVERY: " + (deliveryName || "HTPWEB"),
+    "*" + brand + " · Pedido #" + htpWhatsappOrderRef(order.id) + "*",
     "",
     "*Cliente:* " + (order.customer_name || "Cliente"),
     "*Teléfono:* " + (order.customer_phone || "—"),
@@ -128,7 +128,7 @@ function htpWhatsappBuildCustomerOrderText(order, deliveryName) {
     lines.push("", "*Observaciones:* " + order.notes);
   }
 
-  lines.push("", "Pedido registrado correctamente en HTPWEB.");
+  lines.push("", "Pedido registrado correctamente en " + brand + ".", "_Plataforma HTPWEB_");
   return lines.join("\n");
 }
 
