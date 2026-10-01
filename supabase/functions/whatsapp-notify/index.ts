@@ -58,12 +58,17 @@ function providerConfig() {
   const graphVersion = String(Deno.env.get("WHATSAPP_GRAPH_API_VERSION") || "").trim();
   const accessToken = String(Deno.env.get("WHATSAPP_ACCESS_TOKEN") || "").trim();
   const phoneNumberId = String(Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") || "").trim();
-  const localTemplate = String(Deno.env.get("WHATSAPP_TEMPLATE_LOCAL_ORDER") || "").trim();
+  const localTemplate = String(
+    Deno.env.get("WHATSAPP_TEMPLATE_LOCAL_ORDER_BRANDED") ||
+    Deno.env.get("WHATSAPP_TEMPLATE_LOCAL_ORDER") || ""
+  ).trim();
   const driverAssignedTemplate = String(
-    Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_ASSIGNMENT") || "",
+    Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_ASSIGNMENT_BRANDED") ||
+      Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_ASSIGNMENT") || "",
   ).trim();
   const driverUnassignedTemplate = String(
-    Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_UNASSIGNMENT") || "",
+    Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_UNASSIGNMENT_BRANDED") ||
+      Deno.env.get("WHATSAPP_TEMPLATE_DRIVER_UNASSIGNMENT") || "",
   ).trim();
   const publicUrl = String(Deno.env.get("HTPWEB_PUBLIC_URL") || "").trim();
   const language = String(Deno.env.get("WHATSAPP_TEMPLATE_LANGUAGE") || "es").trim();
@@ -162,6 +167,52 @@ async function providerConfigForDelivery(admin: any, deliveryId: string) {
     driverDispatchConfigured: core &&
       Boolean(base.driverAssignedTemplate && base.driverUnassignedTemplate && base.publicUrl),
   };
+}
+
+function localOrderTemplateParameters(
+  cfg: any,
+  orderId: string,
+  localName: string,
+  itemSummary: string,
+  notes: string,
+) {
+  if (cfg.localTemplate === "htpweb_local_order_brand_v1") {
+    return [
+      clip(cfg.deliveryName || "DELIVERY", 120),
+      orderRef(orderId),
+      clip(localName || "LOCAL", 120),
+      itemSummary,
+      clip(notes || "Sin observaciones", 300),
+    ];
+  }
+  return [
+    orderRef(orderId),
+    clip(localName || "LOCAL", 120),
+    itemSummary,
+    clip(notes || "Sin observaciones", 300),
+  ];
+}
+
+function driverTemplateParameters(
+  cfg: any,
+  templateName: string,
+  kind: string,
+  orderId: string,
+) {
+  if (kind === "DRIVER_ASSIGNED" && templateName === "htpweb_driver_assignment_brand_v1") {
+    return [
+      clip(cfg.deliveryName || "DELIVERY", 120),
+      orderRef(orderId),
+      driverConsoleUrl(cfg.publicUrl),
+    ];
+  }
+  if (kind === "DRIVER_UNASSIGNED" && templateName === "htpweb_driver_unassignment_brand_v1") {
+    return [
+      clip(cfg.deliveryName || "DELIVERY", 120),
+      orderRef(orderId),
+    ];
+  }
+  return null;
 }
 
 async function sendTemplate(
@@ -435,12 +486,13 @@ const authenticatedHandler = withSupabase(
         cfg,
         local.whatsapp,
         cfg.localTemplate,
-        [
-          orderRef(order.id),
-          clip(local.name || "LOCAL", 120),
+        localOrderTemplateParameters(
+          cfg,
+          order.id,
+          local.name || "LOCAL",
           itemSummary,
-          clip(order.notes || "Sin observaciones", 300),
-        ],
+          order.notes || "Sin observaciones",
+        ),
       );
 
       await recordOutbound(admin, sent, {
@@ -660,18 +712,24 @@ async function internalDriverHandler(req: Request) {
       ? cfg.driverAssignedTemplate
       : cfg.driverUnassignedTemplate;
 
-    const parameters = kind === "DRIVER_ASSIGNED"
+    const brandedParameters = driverTemplateParameters(
+      cfg,
+      templateName,
+      kind,
+      order.id,
+    );
+    const parameters = brandedParameters || (kind === "DRIVER_ASSIGNED"
       ? (templateName === "htpweb_driver_assignment_v1"
         ? [
           orderRef(order.id),
-          "Ver detalles en HTPWEB",
+          "Ver detalles en " + (cfg.deliveryName || "el DELIVERY"),
           driverConsoleUrl(cfg.publicUrl),
         ]
         : [
           orderRef(order.id),
           driverConsoleUrl(cfg.publicUrl),
         ])
-      : [orderRef(order.id)];
+      : [orderRef(order.id)]);
 
     const sent = await sendTemplate(cfg, driver.phone, templateName, parameters);
 
