@@ -40,7 +40,7 @@
 
       <form id="recoveryForm" class="hidden">
         <h2>Crear nueva contraseña</h2>
-        <p class="muted">Escribe una nueva contraseña para tu cuenta HTPWEB.</p>
+        <p class="muted">Escribe una nueva contraseña para tu cuenta.</p>
 
         <label>Nueva contraseña</label>
         <input id="recoveryPassword" type="password" minlength="6" autocomplete="new-password" required>
@@ -226,6 +226,7 @@ async function init() {
     if (slug) {
       const delivery = await cargarNegocio();
       $("brand").textContent = delivery.name;
+      document.title = "Acceso | " + delivery.name;
     }
   } catch (e) {
     console.warn(e);
@@ -255,7 +256,7 @@ async function init() {
           const current=deliveries[0]||{};
           showMessage(
             "El servicio administrativo del DELIVERY está "+(current.state==="EXPIRED"?"vencido":"sin vigencia")+
-            ". Puedes seguir usando tu cuenta como cliente; el acceso se restablece cuando HTPWEB registre la renovación.",
+            ". Puedes seguir usando tu cuenta como cliente; el acceso se restablece cuando se registre la renovación.",
             "error"
           );
         }
@@ -436,7 +437,7 @@ $("resendConfirmationBtn").onclick = async () => {
     const code = String(e?.code || "");
 
     if (code === "over_email_send_rate_limit" || /email rate limit exceeded/i.test(raw)) {
-      showMessage("HTPWEB no pudo enviar otro correo porque el servicio de correo alcanzó su límite temporal. Espera hasta una hora y vuelve a intentarlo. Si todavía tienes el primer correo en Elementos eliminados/Papelera, puedes recuperarlo y usar ese enlace.");
+      showMessage("No se pudo enviar otro correo porque el servicio de correo alcanzó su límite temporal. Espera hasta una hora y vuelve a intentarlo. Si todavía tienes el primer correo en Elementos eliminados/Papelera, puedes recuperarlo y usar ese enlace.");
       return;
     }
 
@@ -455,7 +456,7 @@ $("resendConfirmationBtn").onclick = async () => {
 $("forgotPasswordBtn").onclick = async () => {
   const email = $("loginEmail").value.trim();
   if (!email) {
-    showMessage("Escribe primero el correo de tu cuenta HTPWEB.");
+    showMessage("Escribe primero el correo de tu cuenta.");
     $("loginEmail").focus();
     return;
   }
@@ -552,7 +553,7 @@ $("registerForm").onsubmit = async event => {
       return;
     }
 
-    showMessage("Si este correo es nuevo, revisa Recibidos y Spam para confirmar la cuenta. Si ya tenías una cuenta HTPWEB confirmada, no se enviará otro correo: usa ‘Iniciar sesión’ o ‘Olvidé mi contraseña’. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
+    showMessage("Si este correo es nuevo, revisa Recibidos y Spam para confirmar la cuenta. Si ya tenías una cuenta confirmada, no se enviará otro correo: usa ‘Iniciar sesión’ o ‘Olvidé mi contraseña’. Si MASTER autorizó este correo para un DELIVERY, el acceso se activará automáticamente al iniciar sesión.", "success");
     showLogin();
     $("loginEmail").value = email;
   } catch (e) {
