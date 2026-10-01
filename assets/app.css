@@ -1457,3 +1457,61 @@ body.visual-menu-viewer-open{
     grid-row:auto;
   }
 }
+
+
+/* Marca pública del DELIVERY */
+.delivery-brand-shell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.delivery-brand-logo-frame{
+  width:46px;
+  height:46px;
+  flex:0 0 46px;
+  border-radius:12px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:#fff;
+  border:1px solid rgba(15,23,42,.10);
+}
+.delivery-brand-logo{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:contain;
+  background:#fff;
+}
+.delivery-brand-fallback{
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  font-size:15px;
+  font-weight:800;
+  letter-spacing:.02em;
+  color:#111827;
+  background:#f8fafc;
+}
+.delivery-brand-copy{
+  min-width:0;
+}
+.delivery-platform-signature{
+  margin-top:1px;
+  font-size:10px;
+  line-height:1.1;
+  opacity:.62;
+  letter-spacing:.04em;
+}
+@media (max-width:640px){
+  .delivery-brand-logo-frame{
+    width:40px;
+    height:40px;
+    flex-basis:40px;
+  }
+  .delivery-brand-shell .brand{
+    font-size:18px;
+  }
+}
