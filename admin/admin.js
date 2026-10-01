@@ -331,7 +331,7 @@ function showSection(name) {
 async function loadScopes() {
   if (state.role === "MASTER") {
     const [dRes, lRes] = await Promise.all([
-      supabaseClient.from("deliveries").select("id,name,slug,description,logo_url,phone,whatsapp,active,city_id").order("name"),
+      supabaseClient.from("deliveries").select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,active,city_id").order("name"),
       supabaseClient.from("locals").select("id,name,active").order("name")
     ]);
 
@@ -356,7 +356,7 @@ async function loadScopes() {
     if (ids.length) {
       const dRes = await supabaseClient
         .from("deliveries")
-        .select("id,name,slug,active")
+        .select("id,name,slug,public_share_path,active")
         .in("id", ids)
         .order("name");
 
@@ -1877,9 +1877,15 @@ function buildSharedLocalUrl(localId = null) {
 }
 
 function buildShortSharedLocalUrl(localId = null) {
+  const delivery = currentShareDelivery();
   const local = localId
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
+  if (delivery?.public_share_path && local?.share_public_code) {
+    return "https://htpweb.github.io/" +
+      encodeURIComponent(delivery.public_share_path) + "/" +
+      encodeURIComponent(local.share_public_code);
+  }
   if (!local?.share_code) return buildSharedLocalUrl(localId);
   return new URL("../"+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
 }
@@ -4225,6 +4231,9 @@ function masterDeliveryPublicUrl(deliveryOrId) {
   const delivery = typeof deliveryOrId === "string"
     ? state.deliveries.find(item => item.id === deliveryOrId)
     : deliveryOrId;
+  if (delivery?.public_share_path) {
+    return "https://htpweb.github.io/" + encodeURIComponent(delivery.public_share_path) + "/";
+  }
   if (!delivery?.slug) return "";
   const url = new URL("index.html", publicAppRootUrl());
   url.searchParams.set("delivery", delivery.slug);
