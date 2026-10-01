@@ -1463,13 +1463,13 @@ body.visual-menu-viewer-open{
 .delivery-brand-shell{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:14px;
   min-width:0;
 }
 .delivery-brand-logo-frame{
-  width:46px;
-  height:46px;
-  flex:0 0 46px;
+  width:60px;
+  height:60px;
+  flex:0 0 60px;
   border-radius:12px;
   overflow:hidden;
   display:grid;
@@ -1507,9 +1507,9 @@ body.visual-menu-viewer-open{
 }
 @media (max-width:640px){
   .delivery-brand-logo-frame{
-    width:40px;
-    height:40px;
-    flex-basis:40px;
+    width:48px;
+    height:48px;
+    flex-basis:48px;
   }
   .delivery-brand-shell .brand{
     font-size:18px;
