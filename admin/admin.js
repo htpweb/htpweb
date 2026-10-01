@@ -4252,6 +4252,66 @@ async function loadCities() {
     ).join("");
 }
 
+function masterDeliveryPublicUrl(deliveryOrId) {
+  const delivery = typeof deliveryOrId === "string"
+    ? state.deliveries.find(item => item.id === deliveryOrId)
+    : deliveryOrId;
+  if (!delivery?.slug) return "";
+  const url = new URL("index.html", publicAppRootUrl());
+  url.searchParams.set("delivery", delivery.slug);
+  return url.toString();
+}
+
+async function copyMasterDeliveryPublicUrl(deliveryId) {
+  const url = masterDeliveryPublicUrl(deliveryId);
+  if (!url) return message("Este DELIVERY no tiene slug público.", "error");
+  try {
+    await navigator.clipboard.writeText(url);
+    message("Link público del DELIVERY copiado.");
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = url;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    message(copied ? "Link público del DELIVERY copiado." : "No se pudo copiar el link.", copied ? "success" : "error");
+  }
+}
+
+async function shareMasterDeliveryPublicUrl(deliveryId) {
+  const delivery = state.deliveries.find(item => item.id === deliveryId);
+  const url = masterDeliveryPublicUrl(delivery);
+  if (!delivery || !url) return message("Este DELIVERY no tiene página pública disponible.", "error");
+
+  const payload = {
+    title: delivery.name || "HTPWEB",
+    text: "PIDE AQUÍ | " + (delivery.name || "HTPWEB"),
+    url
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(payload);
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+
+  await copyMasterDeliveryPublicUrl(deliveryId);
+  message("Tu navegador no abrió el menú Compartir; el link quedó copiado.");
+}
+
+function openMasterDeliveryPublicUrl(deliveryId) {
+  const url = masterDeliveryPublicUrl(deliveryId);
+  if (!url) return message("Este DELIVERY no tiene página pública disponible.", "error");
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 async function loadDeliveriesModule() {
   if (state.role !== "MASTER") return;
 
@@ -4269,18 +4329,34 @@ async function loadDeliveriesModule() {
     ? `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Slug</th><th>Estado</th><th>Teléfono</th><th>ID</th><th>Acción</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Estado</th><th>Página pública</th><th>Teléfono</th><th>Acciones</th></tr></thead>
           <tbody>
-            ${state.deliveries.map(d => `
+            ${state.deliveries.map(d => {
+              const publicUrl = masterDeliveryPublicUrl(d);
+              return `
               <tr>
-                <td>${esc(d.name)}</td>
-                <td>${esc(d.slug)}</td>
+                <td>
+                  <strong>${esc(d.name)}</strong>
+                  <div class="muted"><code>${esc(d.slug || "sin-slug")}</code></div>
+                </td>
                 <td>${d.active ? "Activo" : "Inactivo"}</td>
-                <td>${esc(d.phone || "")}</td>
-                <td><code>${esc(d.id)}</code></td>
-                <td><button class="btn-muted" type="button" onclick="editMasterDeliveryRecord('${esc(d.id)}')">Configurar</button></td>
+                <td style="min-width:320px">
+                  ${publicUrl
+                    ? '<a href="'+esc(publicUrl)+'" target="_blank" rel="noopener noreferrer" style="word-break:break-all">'+esc(publicUrl)+'</a>'
+                    : '<span class="muted">Sin slug público</span>'}
+                  ${publicUrl ? '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">'+
+                    '<button class="btn-muted" type="button" onclick="copyMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Copiar link</button>'+
+                    '<button class="btn-primary" type="button" onclick="shareMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Compartir</button>'+
+                    '<button class="btn-muted" type="button" onclick="openMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Abrir página</button>'+
+                    '</div>' : ''}
+                </td>
+                <td>${esc(d.phone || "—")}</td>
+                <td>
+                  <button class="btn-muted" type="button" onclick="editMasterDeliveryRecord('${esc(d.id)}')">Configurar</button>
+                </td>
               </tr>
-            `).join("")}
+            `;
+            }).join("")}
           </tbody>
         </table>
       </div>
