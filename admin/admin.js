@@ -1895,7 +1895,17 @@ async function getExternalShortSharedLocalUrl(localId = null) {
 
   const cache = state.shareShortUrls instanceof Map ? state.shareShortUrls : null;
   const key = delivery.id + ":" + local.id;
-  if (cache?.has(key)) return cache.get(key);
+  const brandedPrefix = "https://tinyurl.com/" + String(delivery.slug || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 42)
+    .replace(/-+/g, "-") + "-";
+  if (cache?.has(key)) {
+    const cached = String(cache.get(key) || "");
+    if (cached.startsWith(brandedPrefix)) return cached;
+    cache.delete(key);
+  }
 
   try {
     const { data, error } = await supabaseClient.functions.invoke("share-short-url", {
