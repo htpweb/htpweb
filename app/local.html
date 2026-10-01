@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Local | HTPWEB</title>
+<title>Local</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
@@ -15,7 +15,7 @@
 <header>
   <div class="header-row">
     <div>
-      <div class="brand" id="deliveryName">HTPWEB</div>
+      <div class="brand" id="deliveryName">DELIVERY</div>
       <small id="localName"></small>
     </div>
     <div class="header-actions">
@@ -84,6 +84,7 @@ async function init() {
 
     if (localRes.error || !localRes.data) throw new Error("Local no encontrado.");
     localActual = localRes.data;
+    document.title = localActual.name + " | " + negocioActual.name;
 
     try {
       const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
