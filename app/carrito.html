@@ -20,9 +20,16 @@
 <body>
 <header>
   <div class="header-row">
-    <div>
-      <div class="brand">Mi carrito</div>
-      <small id="deliveryName"></small>
+    <div class="delivery-brand-shell">
+      <div class="delivery-brand-logo-frame">
+        <img id="deliveryLogo" class="delivery-brand-logo hidden" alt="">
+        <span id="deliveryLogoFallback" class="delivery-brand-fallback">D</span>
+      </div>
+      <div class="delivery-brand-copy">
+        <div class="brand" id="brand">DELIVERY</div>
+        <div class="delivery-platform-signature" id="platformBrand">by HTPWEB</div>
+        <small>Mi carrito</small>
+      </div>
     </div>
     <button class="btn btn-light" id="backBtn">← Seguir comprando</button>
   </div>
@@ -149,8 +156,7 @@ let locationAccepted = false;
 async function init() {
   try {
     negocioActual = await cargarNegocio();
-    document.title = "Mi carrito | " + negocioActual.name;
-    $("deliveryName").textContent = negocioActual.name;
+    htpApplyDeliveryBrand(negocioActual, { titlePrefix: "Mi carrito" });
     $("backBtn").onclick = () => location.href = urlDelivery("index.html");
 
     await reloadCart();
