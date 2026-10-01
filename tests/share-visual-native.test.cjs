@@ -66,7 +66,9 @@ test('enlace corto elimina UUID y destaca el DELIVERY',()=>{
   assert.match(admin,/local\?\.share_code/);
   assert.match(admin,/PIDE AQUÍ \| /);
   assert.match(admin,/delivery\.name/);
-  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
+  assert.match(admin,/https:\/\/htpweb\.github\.io\//);
+  assert.match(admin,/delivery\.public_share_path/);
+  assert.match(admin,/local\.share_public_code/);
 });
 
 test('resolver corto abre el LOCAL real',()=>{
@@ -94,7 +96,9 @@ test('WEBP se convierte a JPG al compartir para WhatsApp',()=>{
 
 test('ruta corta nueva omite /p/ y la ruta anterior queda como compatibilidad',()=>{
   const page=fs.readFileSync('p/index.html','utf8');
-  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
+  assert.match(admin,/https:\/\/htpweb\.github\.io\//);
+  assert.match(admin,/delivery\.public_share_path/);
+  assert.match(admin,/local\.share_public_code/);
   assert.doesNotMatch(admin,/\.\.\/p\//);
   assert.match(page,/params\.get\("s"\)/);
   assert.match(page,/location\.hash/);
@@ -106,7 +110,17 @@ test('ruta corta nueva omite /p/ y la ruta anterior queda como compatibilidad',(
 
 
 test('HTPWEB-only: compartir usa únicamente el dominio propio y el código corto',()=>{
-  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
+  assert.match(admin,/https:\/\/htpweb\.github\.io\//);
+  assert.match(admin,/delivery\.public_share_path/);
+  assert.match(admin,/local\.share_public_code/);
   assert.doesNotMatch(admin,/tinyurl/i);
   assert.doesNotMatch(admin,/share-short-url/);
+});
+
+
+test('root HTPWEB usa DELIVERY + código de 3 caracteres',()=>{
+  assert.match(admin,/https:\/\/htpweb\.github\.io\//);
+  assert.match(admin,/delivery\.public_share_path/);
+  assert.match(admin,/local\.share_public_code/);
+  assert.match(admin,/masterDeliveryPublicUrl/);
 });
