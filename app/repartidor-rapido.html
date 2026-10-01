@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>HTPWEB · Repartidor</title>
+  <title>Repartidor</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     *{box-sizing:border-box}
@@ -45,8 +45,8 @@
 </head>
 <body>
   <main class="wrap">
-    <div class="brand">HTPWEB · Repartidor</div>
-    <div class="muted">Consola móvil de reparto</div>
+    <div class="brand" id="driverBrand">DELIVERY · Repartidor</div>
+    <div class="muted"><span style="font-size:10px">by HTPWEB</span> · Consola móvil de reparto</div>
 
     <section class="card">
       <div id="status" class="status">Validando acceso…</div>
@@ -227,7 +227,7 @@
       const until=emergency&&context.emergency_expires_at?new Date(context.emergency_expires_at).toLocaleString():'';
       driverInfo.innerHTML=
         '<div class="row between wraprow"><div><strong>'+esc(context.driver_name||'Repartidor')+'</strong>'+
-        '<div class="muted small">'+esc(context.delivery_name||'HTPWEB')+(context.phone?' · '+esc(context.phone):'')+'</div></div>'+
+        '<div class="muted small">'+esc(context.delivery_name||'DELIVERY')+(context.phone?' · '+esc(context.phone):'')+'</div></div>'+
         '<span class="pill '+(emergency?'orange':'green')+'">'+(emergency?'EMERGENCIA':'REGULAR')+'</span></div>'+
         (emergency?'<div class="muted small" style="margin-top:6px">Cupo temporal hasta '+esc(until)+'</div>':'');
     }
@@ -460,8 +460,8 @@
 
     async function invokeTrack(body){
       const result=await supabaseClient.functions.invoke('quick-driver-track',{body:Object.assign({token:trackingToken},body)});
-      if(result.error)throw new Error(result.data?.error||result.data?.message||result.error.message||'No se pudo comunicar con HTPWEB.');
-      if(!result.data?.ok)throw new Error(result.data?.error||'No se pudo comunicar con HTPWEB.');
+      if(result.error)throw new Error(result.data?.error||result.data?.message||result.error.message||'No se pudo comunicar con el servicio del DELIVERY.');
+      if(!result.data?.ok)throw new Error(result.data?.error||'No se pudo comunicar con el servicio del DELIVERY.');
       return result.data;
     }
 
@@ -474,6 +474,10 @@
       try{
         const data=await invokeTrack({action:'context'});
         context=data.context;
+        const deliveryBrand=context?.delivery_name||"DELIVERY";
+        const driverBrand=document.getElementById("driverBrand");
+        if(driverBrand)driverBrand.textContent=deliveryBrand+" · Repartidor";
+        document.title="Repartidor | "+deliveryBrand;
         if(!selectedOrderId&&context?.orders?.length)selectedOrderId=context.orders[0].order_id;
         renderDriver();renderOrders();renderDetail();renderMap();
         startBtn.disabled=!context?.can_share;
