@@ -39,3 +39,53 @@ function urlDelivery(path, extra = {}) {
 
   return `${path}?${params.toString()}`;
 }
+
+
+function htpDeliveryInitials(name) {
+  return String(name || "D")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part.charAt(0).toUpperCase())
+    .join("") || "D";
+}
+
+function htpApplyDeliveryBrand(delivery, options = {}) {
+  if (!delivery) return;
+  const name = String(delivery.name || "DELIVERY").trim() || "DELIVERY";
+  const brandEl = document.getElementById(options.brandId || "brand");
+  const logoEl = document.getElementById(options.logoId || "deliveryLogo");
+  const fallbackEl = document.getElementById(options.fallbackId || "deliveryLogoFallback");
+  const platformEl = document.getElementById(options.platformId || "platformBrand");
+
+  if (brandEl) brandEl.textContent = name;
+  if (platformEl) platformEl.textContent = options.platformText || "by HTPWEB";
+
+  if (fallbackEl) {
+    fallbackEl.textContent = htpDeliveryInitials(name);
+    fallbackEl.classList.remove("hidden");
+  }
+
+  if (logoEl) {
+    if (delivery.logo_url) {
+      logoEl.src = delivery.logo_url;
+      logoEl.alt = "Logo de " + name;
+      logoEl.classList.remove("hidden");
+      logoEl.onerror = () => {
+        logoEl.classList.add("hidden");
+        fallbackEl?.classList.remove("hidden");
+      };
+      logoEl.onload = () => fallbackEl?.classList.add("hidden");
+    } else {
+      logoEl.removeAttribute("src");
+      logoEl.classList.add("hidden");
+    }
+  }
+
+  const prefix = String(options.titlePrefix || "").trim();
+  document.title = prefix ? prefix + " | " + name : name;
+}
+
+window.htpDeliveryInitials = htpDeliveryInitials;
+window.htpApplyDeliveryBrand = htpApplyDeliveryBrand;
