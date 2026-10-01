@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Confirmar preparación | HTPWEB</title>
+<title>Confirmar preparación</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <style>
@@ -42,7 +42,7 @@ input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font:i
 </head>
 <body>
 <main>
-  <div class="brand"><div class="logo">H</div><div>HTPWEB</div></div>
+  <div class="brand"><div class="logo" id="brandLogo">D</div><div><div id="brandName">DELIVERY</div><div class="muted" style="font-size:10px;font-weight:600">by HTPWEB</div></div></div>
   <section id="loading" class="card"><div class="muted">Cargando pedido…</div></section>
   <section id="invalid" class="card hidden">
     <div class="state error">Este enlace no es válido o ya no está disponible. Solicita al DELIVERY que te envíe uno nuevo.</div>
@@ -88,7 +88,7 @@ input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font:i
       </div>
       <div class="muted" style="margin-top:12px">Hora estimada de pedido listo</div>
       <div id="estimatedReady" class="ready-time">—</div>
-      <div class="muted">HTPWEB ya informó este tiempo al operador del DELIVERY.</div>
+      <div class="muted">Este tiempo ya fue informado a <strong id="confirmedDeliveryName">DELIVERY</strong>.</div>
       <button id="readyBtn" class="primary" type="button" style="width:100%;margin-top:16px">Pedido listo para retirar</button>
       <div id="readyFeedback" class="hidden" style="margin-top:12px"></div>
     </section>
@@ -132,7 +132,12 @@ function render(data){
   $("loading").classList.add("hidden");
   $("content").classList.remove("hidden");
   $("localName").textContent=data.local_name||"LOCAL";
-  $("deliveryName").textContent=data.delivery_name||"DELIVERY";
+  const deliveryName=data.delivery_name||"DELIVERY";
+  $("deliveryName").textContent=deliveryName;
+  $("brandName").textContent=deliveryName;
+  $("brandLogo").textContent=deliveryName.trim().slice(0,1).toUpperCase()||"D";
+  $("confirmedDeliveryName").textContent=deliveryName;
+  document.title="Preparación | "+deliveryName;
   $("orderRef").textContent="Pedido #"+(data.order_ref||"");
   $("items").innerHTML=(data.items||[]).map(item=>{
     const detail=[item.variant_name,item.promotion_title?"PROMO: "+item.promotion_title:""].filter(Boolean).join(" · ");
@@ -203,7 +208,7 @@ async function markReady(){
     $("readyBtn").disabled=true;
     $("readyBtn").textContent="✓ Pedido listo informado";
     $("readyFeedback").className="state ok";
-    $("readyFeedback").textContent="Listo. HTPWEB avisó al DELIVERY y puede activar al repartidor programado.";
+    $("readyFeedback").textContent="Listo. "+(context?.delivery_name||"El DELIVERY")+" recibió el aviso y puede activar al repartidor programado.";
     if(context)context.local_status="READY";
   }catch(e){
     $("readyFeedback").className="state error";
