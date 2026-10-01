@@ -4245,7 +4245,7 @@ async function copyMasterDeliveryPublicUrl(deliveryId) {
   if (!url) return message("Este DELIVERY no tiene slug público.", "error");
   try {
     await navigator.clipboard.writeText(url);
-    message("Link público del DELIVERY copiado.");
+    message("Link corto del DELIVERY copiado.");
   } catch {
     const input = document.createElement("textarea");
     input.value = url;
@@ -4256,7 +4256,7 @@ async function copyMasterDeliveryPublicUrl(deliveryId) {
     input.select();
     const copied = document.execCommand("copy");
     input.remove();
-    message(copied ? "Link público del DELIVERY copiado." : "No se pudo copiar el link.", copied ? "success" : "error");
+    message(copied ? "Link corto del DELIVERY copiado." : "No se pudo copiar el link.", copied ? "success" : "error");
   }
 }
 
@@ -4295,7 +4295,7 @@ async function loadDeliveriesModule() {
 
   const { data, error } = await supabaseClient
     .from("deliveries")
-    .select("id,name,slug,description,logo_url,phone,whatsapp,active,city_id")
+    .select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,active,city_id")
     .order("name");
 
   if (error) throw error;
@@ -4307,7 +4307,7 @@ async function loadDeliveriesModule() {
     ? `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Estado</th><th>Página pública</th><th>Teléfono</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Estado</th><th>Link público del DELIVERY</th><th>Teléfono</th><th>Acciones</th></tr></thead>
           <tbody>
             ${state.deliveries.map(d => {
               const publicUrl = masterDeliveryPublicUrl(d);
@@ -4325,7 +4325,7 @@ async function loadDeliveriesModule() {
                   ${publicUrl ? '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">'+
                     '<button class="btn-muted" type="button" onclick="copyMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Copiar link</button>'+
                     '<button class="btn-primary" type="button" onclick="shareMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Compartir</button>'+
-                    '<button class="btn-muted" type="button" onclick="openMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Abrir página</button>'+
+                    '<button class="btn-muted" type="button" onclick="openMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Ver locales</button>'+
                     '</div>' : ''}
                 </td>
                 <td>${esc(d.phone || "—")}</td>
