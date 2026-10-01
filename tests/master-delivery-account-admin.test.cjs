@@ -48,3 +48,11 @@ test('MASTER muestra links públicos de cada DELIVERY con copiar, compartir y ab
   assert.match(admin,/navigator\.share\(payload\)/);
   assert.match(admin,/copyMasterDeliveryPublicUrl/);
 });
+
+
+test('MASTER usa link corto raíz y abre locales del DELIVERY',()=>{
+  assert.match(admin,/public_share_path/);
+  assert.match(admin,/https:\/\/htpweb\.github\.io\//);
+  assert.match(admin,/Ver locales/);
+  assert.match(admin,/Link corto del DELIVERY copiado/);
+});
