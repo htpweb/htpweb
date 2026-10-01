@@ -27,6 +27,7 @@ const state = {
   shareLocals: [],
   shareProducts: [],
   shareGallery: [],
+  shareShortUrls: new Map(),
   advertisements: [],
   advertisementDeliveries: [],
   advertisementLocals: [],
@@ -1884,6 +1885,33 @@ function buildShortSharedLocalUrl(localId = null) {
   return new URL("../p/"+encodeURIComponent(local.share_code)+"/", publicAppRootUrl()).toString();
 }
 
+async function getExternalShortSharedLocalUrl(localId = null) {
+  const delivery = currentShareDelivery();
+  const local = localId
+    ? state.shareLocals.find(item => item.id === localId)
+    : currentShareLocal();
+  const fallback = buildShortSharedLocalUrl(localId);
+  if (!delivery?.id || !local?.id) return fallback;
+
+  const cache = state.shareShortUrls instanceof Map ? state.shareShortUrls : null;
+  const key = delivery.id + ":" + local.id;
+  if (cache?.has(key)) return cache.get(key);
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("share-short-url", {
+      body: { delivery_id: delivery.id, local_id: local.id }
+    });
+    if (error) throw error;
+    const candidate = String(data?.url || "").trim();
+    const url = /^https?:\/\//i.test(candidate) ? candidate : fallback;
+    if (url) cache?.set(key, url);
+    return url;
+  } catch (error) {
+    console.warn("No se pudo obtener TinyURL; se usa el enlace HTPWEB.", error);
+    return fallback;
+  }
+}
+
 function shareLocalCategory(local) {
   return local?.business_category_name || "Otros";
 }
@@ -2037,16 +2065,16 @@ function renderShareGallery() {
   });
 }
 
-function shareLocalOrderPlainText() {
+function shareLocalOrderPlainText(url = buildShortSharedLocalUrl()) {
   const delivery=currentShareDelivery();
-  const url=buildShortSharedLocalUrl();
   return url&&delivery?"PIDE AQUÍ | "+delivery.name+"\n"+url:"";
 }
 
 async function copyShareLocalOrderLink() {
-  const url=buildShortSharedLocalUrl();
-  if(!url)return;
-  const plain=shareLocalOrderPlainText();
+  const fallback=buildShortSharedLocalUrl();
+  if(!fallback)return;
+  const url=await getExternalShortSharedLocalUrl();
+  const plain=shareLocalOrderPlainText(url);
   try{
     if(navigator.clipboard?.write&&typeof ClipboardItem!=="undefined"){
       const html='<a href="'+esc(url)+'">PIDE AQUÍ</a>';
@@ -2057,11 +2085,11 @@ async function copyShareLocalOrderLink() {
     }else{
       await navigator.clipboard.writeText(plain);
     }
-    message("PIDE AQUÍ copiado. En Estado de WhatsApp, pégalo con la herramienta T / Texto sobre la foto, no en Añadir comentario.");
+    message("PIDE AQUÍ copiado con enlace corto. En Estado de WhatsApp, pégalo sobre la foto con Texto / T.");
   }catch{
     try{
       await navigator.clipboard.writeText(plain);
-      message("PIDE AQUÍ copiado. En Estado de WhatsApp, pégalo con la herramienta T / Texto sobre la foto, no en Añadir comentario.");
+      message("PIDE AQUÍ copiado con enlace corto. En Estado de WhatsApp, pégalo sobre la foto con Texto / T.");
     }catch{
       message("No se pudo copiar el enlace.","error");
     }
@@ -2141,14 +2169,41 @@ async function shareOriginalGalleryImage(imageId) {
   const image=state.shareGallery.find(item=>item.id===imageId);
   if(!image)return;
   try{
-    const file=await galleryImageFile(image);
-    const canShare=Boolean(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]})));
+    const [file,url]=await Promise.all([
+      galleryImageFile(image),
+      getExternalShortSharedLocalUrl()
+    ]);
+    const plain=shareLocalOrderPlainText(url);
+
+    if(plain&&navigator.clipboard?.writeText){
+      void navigator.clipboard.writeText(plain).catch(()=>{});
+    }
+
+    const filePayload={files:[file]};
+    const richPayload=plain?{files:[file],text:plain}:filePayload;
+    const canShare=Boolean(navigator.share&&(!navigator.canShare||navigator.canShare(filePayload)));
+
     if(canShare){
-      await navigator.share({files:[file]});
+      let sharedWithLink=false;
+      if(plain&&(!navigator.canShare||navigator.canShare(richPayload))){
+        try{
+          await navigator.share(richPayload);
+          sharedWithLink=true;
+        }catch(error){
+          if(error?.name==="AbortError")throw error;
+        }
+      }
+      if(!sharedWithLink){
+        await navigator.share(filePayload);
+      }
+      message(sharedWithLink
+        ?"Foto + enlace corto enviados al menú Compartir."
+        :"Foto compartida. El enlace corto quedó copiado por si WhatsApp no adjunta el texto.");
       return;
     }
+
     downloadOriginalFile(file);
-    message("La foto original se descargó. Puedes publicarla directamente en tu Estado.");
+    message("La foto se descargó y el enlace corto quedó copiado. Publícalos juntos en tu Estado.");
   }catch(e){
     if(e?.name==="AbortError")return;
     message(e.message||"No se pudo compartir la foto.","error");
