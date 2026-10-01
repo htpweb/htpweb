@@ -37,3 +37,14 @@ test('Activo exige perfil activo y Auth no bloqueada',()=>{
   assert.match(status,/banned_until>now\(\)/);
   assert.match(status,/account_disabled/);
 });
+
+
+test('MASTER muestra links públicos de cada DELIVERY con copiar, compartir y abrir',()=>{
+  assert.match(admin,/function masterDeliveryPublicUrl/);
+  assert.match(admin,/url\.searchParams\.set\("delivery", delivery\.slug\)/);
+  assert.match(admin,/Copiar link/);
+  assert.match(admin,/Compartir/);
+  assert.match(admin,/Abrir página/);
+  assert.match(admin,/navigator\.share\(payload\)/);
+  assert.match(admin,/copyMasterDeliveryPublicUrl/);
+});
