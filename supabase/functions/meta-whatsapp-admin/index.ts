@@ -125,6 +125,56 @@ const templates = [
     }],
   },
   {
+    name: "htpweb_local_order_brand_v1",
+    language: "es",
+    category: "UTILITY",
+    allow_category_change: true,
+    components: [{
+      type: "BODY",
+      text:
+        "Nuevo pedido de {{1}}\nPedido {{2}}\nLOCAL: {{3}}\nProductos: {{4}}\nObservaciones: {{5}}\nResponde con los minutos de preparación (por ejemplo, 20). Cuando esté listo, responde LISTO.\n\nPlataforma HTPWEB",
+      example: {
+        body_text: [[
+          "Sobre Ruedas",
+          "A1B2C3D4",
+          "Asados Codesa",
+          "2 x Parrillada; 1 x Cola",
+          "Sin observaciones",
+        ]],
+      },
+    }],
+  },
+  {
+    name: "htpweb_driver_assignment_brand_v1",
+    language: "es",
+    category: "UTILITY",
+    allow_category_change: true,
+    components: [{
+      type: "BODY",
+      text:
+        "Nuevo pedido asignado por {{1}}\nPedido {{2}}\nAbre este enlace para ver recogida, ruta y entrega:\n{{3}}\n\nPlataforma HTPWEB",
+      example: {
+        body_text: [[
+          "Sobre Ruedas",
+          "A1B2C3D4",
+          "https://htpweb.github.io/htpweb/admin/index.html",
+        ]],
+      },
+    }],
+  },
+  {
+    name: "htpweb_driver_unassignment_brand_v1",
+    language: "es",
+    category: "UTILITY",
+    allow_category_change: true,
+    components: [{
+      type: "BODY",
+      text:
+        "Actualización de {{1}}\nEl pedido {{2}} ya no está asignado a ti.\n\nPlataforma HTPWEB",
+      example: { body_text: [["Sobre Ruedas", "A1B2C3D4"]] },
+    }],
+  },
+  {
     name: "htpweb_driver_unassignment_v1",
     language: "es",
     category: "UTILITY",
