@@ -25,7 +25,8 @@ test('cada foto se comparte sin generar una pieza nueva',()=>{
   assert.match(admin,/data-share-gallery-image/);
   assert.match(admin,/shareOriginalGalleryImage/);
   assert.match(admin,/galleryImageFile/);
-  assert.match(admin,/getExternalShortSharedLocalUrl/);
+  assert.match(admin,/buildShortSharedLocalUrl/);
+  assert.doesNotMatch(admin,/getExternalShortSharedLocalUrl/);
   assert.match(admin,/richPayload=plain\?\{files:\[file\],text:plain\}/);
   assert.match(admin,/navigator\.share\(richPayload\)/);
   assert.match(admin,/navigator\.share\(filePayload\)/);
@@ -65,7 +66,7 @@ test('enlace corto elimina UUID y destaca el DELIVERY',()=>{
   assert.match(admin,/local\?\.share_code/);
   assert.match(admin,/PIDE AQUÍ \| /);
   assert.match(admin,/delivery\.name/);
-  assert.match(admin,/\.\.\/p\//);
+  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
 });
 
 test('resolver corto abre el LOCAL real',()=>{
@@ -91,9 +92,10 @@ test('WEBP se convierte a JPG al compartir para WhatsApp',()=>{
   assert.match(admin,/\.jpg"/);
 });
 
-test('enlace corto usa query estable y conserva hash antiguo como compatibilidad',()=>{
+test('ruta corta nueva omite /p/ y la ruta anterior queda como compatibilidad',()=>{
   const page=fs.readFileSync('p/index.html','utf8');
-  assert.match(admin,/\.\.\/p\//);
+  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
+  assert.doesNotMatch(admin,/\.\.\/p\//);
   assert.match(page,/params\.get\("s"\)/);
   assert.match(page,/location\.hash/);
 });
