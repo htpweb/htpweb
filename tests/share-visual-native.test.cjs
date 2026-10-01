@@ -99,20 +99,12 @@ test('enlace corto usa query estable y conserva hash antiguo como compatibilidad
 });
 
 
-test('TinyURL se genera en backend, se cachea y conserva fallback HTPWEB',()=>{
-  const edge=fs.readFileSync('supabase/functions/share-short-url/index.ts','utf8');
-  assert.match(edge,/tinyurl\.com/);
-  assert.match(edge,/share_tiny_url/);
-  assert.match(edge,/share-preview/);
-  assert.match(edge,/PUBLIC_SHORT_BASE/);
-  assert.match(edge,/source: "htpweb"/);
-});
 
 
-test('El enlace corto prioriza el slug del DELIVERY',()=>{
-  const edge=fs.readFileSync('supabase/functions/share-short-url/index.ts','utf8');
-  assert.match(edge,/brandedTiny/);
-  assert.match(edge,/String\(delivery\.slug/);
-  assert.match(edge,/String\(link\.share_code/);
-  assert.match(admin,/brandedPrefix/);
+
+
+test('HTPWEB-only: compartir usa únicamente el dominio propio y el código corto',()=>{
+  assert.match(admin,/new URL\("\.\.\/"\+encodeURIComponent\(local\.share_code\), publicAppRootUrl\(\)\)/);
+  assert.doesNotMatch(admin,/tinyurl/i);
+  assert.doesNotMatch(admin,/share-short-url/);
 });
