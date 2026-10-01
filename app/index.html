@@ -97,7 +97,8 @@ async function init() {
       ? urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) })
       : urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) });
 
-    await Promise.all([loadCatalog(), loadDeliveryPromotions()]);
+    await loadCatalog();
+    await loadDeliveryPromotions();
     renderCategories();
     renderLocals();
   } catch (error) {
@@ -108,31 +109,57 @@ async function init() {
 }
 
 async function loadCatalog() {
-  const { data: relations, error: relError } = await supabaseClient
-    .from("local_deliveries")
-    .select("local_id")
-    .eq("delivery_id", negocioActual.id)
-    .eq("active", true);
+  const [relationsRes, zonesRes] = await Promise.all([
+    supabaseClient
+      .from("local_deliveries")
+      .select("local_id")
+      .eq("delivery_id", negocioActual.id)
+      .eq("active", true),
 
-  if (relError) throw relError;
+    supabaseClient
+      .from("delivery_zones")
+      .select("zone_id")
+      .eq("delivery_id", negocioActual.id)
+      .eq("active", true)
+  ]);
 
-  const ids = [...new Set((relations || []).map(x => x.local_id))];
-  if (!ids.length) {
+  if (relationsRes.error) throw relationsRes.error;
+  if (zonesRes.error) throw zonesRes.error;
+
+  const linkedIds = [...new Set((relationsRes.data || []).map(x => x.local_id))];
+  const zoneIds = [...new Set((zonesRes.data || []).map(x => x.zone_id))];
+
+  if (!linkedIds.length || !zoneIds.length) {
     locals = [];
     categories = [];
     localCategoryAssignments = [];
     products = [];
+    availabilityByLocal = new Map();
     return;
   }
 
-  const [localsRes, catsRes, assignmentsRes, productsRes] = await Promise.all([
-    supabaseClient
-      .from("locals")
-      .select("id,name,description,banner_url,logo_url,address,active")
-      .in("id", ids)
-      .eq("active", true)
-      .order("name"),
+  const localsRes = await supabaseClient
+    .from("locals")
+    .select("id,name,description,banner_url,logo_url,address,zone_id,active")
+    .in("id", linkedIds)
+    .in("zone_id", zoneIds)
+    .eq("active", true)
+    .order("name");
 
+  if (localsRes.error) throw localsRes.error;
+
+  locals = localsRes.data || [];
+  const ids = locals.map(local => local.id);
+
+  if (!ids.length) {
+    categories = [];
+    localCategoryAssignments = [];
+    products = [];
+    availabilityByLocal = new Map();
+    return;
+  }
+
+  const [catsRes, assignmentsRes, productsRes] = await Promise.all([
     supabaseClient
       .from("local_business_categories")
       .select("id,name,description,active")
@@ -153,12 +180,10 @@ async function loadCatalog() {
       .order("name")
   ]);
 
-  if (localsRes.error) throw localsRes.error;
   if (catsRes.error) throw catsRes.error;
   if (assignmentsRes.error) throw assignmentsRes.error;
   if (productsRes.error) throw productsRes.error;
 
-  locals = localsRes.data || [];
   categories = catsRes.data || [];
   localCategoryAssignments = assignmentsRes.data || [];
   products = productsRes.data || [];
@@ -166,7 +191,7 @@ async function loadCatalog() {
   try {
     const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
       "public_locals_order_availability",
-      { p_local_ids: locals.map(local => local.id) }
+      { p_local_ids: ids }
     );
 
     if (availabilityError) throw availabilityError;
@@ -188,7 +213,9 @@ async function loadDeliveryPromotions() {
   });
   if (error) throw error;
 
-  deliveryPromotions = Array.isArray(data?.promotions) ? data.promotions : [];
+  const coveredLocalIds = new Set(locals.map(local => local.id));
+  deliveryPromotions = (Array.isArray(data?.promotions) ? data.promotions : [])
+    .filter(promotion => coveredLocalIds.has(promotion.local_id));
   const targetDate = data?.target_date
     ? new Date(String(data.target_date) + "T12:00:00").toLocaleDateString("es-EC", {
         weekday: "long", day: "numeric", month: "long"
