@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mi carrito | HTPWEB</title>
+<title>Mi carrito</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/negocio.js"></script>
@@ -149,6 +149,7 @@ let locationAccepted = false;
 async function init() {
   try {
     negocioActual = await cargarNegocio();
+    document.title = "Mi carrito | " + negocioActual.name;
     $("deliveryName").textContent = negocioActual.name;
     $("backBtn").onclick = () => location.href = urlDelivery("index.html");
 
@@ -958,7 +959,7 @@ async function confirmOrder() {
     $("successCard").classList.remove("hidden");
     showMessage(
       whatsappPrepared
-        ? "Pedido registrado en HTPWEB y preparado para WhatsApp."
+        ? "Pedido registrado en ${negocioActual.name} y preparado para WhatsApp."
         : "Pedido registrado correctamente.",
       "success"
     );
