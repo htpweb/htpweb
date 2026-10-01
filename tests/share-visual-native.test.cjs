@@ -25,7 +25,10 @@ test('cada foto se comparte sin generar una pieza nueva',()=>{
   assert.match(admin,/data-share-gallery-image/);
   assert.match(admin,/shareOriginalGalleryImage/);
   assert.match(admin,/galleryImageFile/);
-  assert.match(admin,/navigator\.share\(\{files:\[file\]\}\)/);
+  assert.match(admin,/getExternalShortSharedLocalUrl/);
+  assert.match(admin,/richPayload=plain\?\{files:\[file\],text:plain\}/);
+  assert.match(admin,/navigator\.share\(richPayload\)/);
+  assert.match(admin,/navigator\.share\(filePayload\)/);
   assert.doesNotMatch(admin,/drawShareArtwork/);
 });
 
@@ -93,4 +96,14 @@ test('enlace corto usa query estable y conserva hash antiguo como compatibilidad
   assert.match(admin,/\.\.\/p\//);
   assert.match(page,/params\.get\("s"\)/);
   assert.match(page,/location\.hash/);
+});
+
+
+test('TinyURL se genera en backend, se cachea y conserva fallback HTPWEB',()=>{
+  const edge=fs.readFileSync('supabase/functions/share-short-url/index.ts','utf8');
+  assert.match(edge,/tinyurl\.com/);
+  assert.match(edge,/share_tiny_url/);
+  assert.match(edge,/share-preview/);
+  assert.match(edge,/PUBLIC_SHORT_BASE/);
+  assert.match(edge,/source: "htpweb"/);
 });
