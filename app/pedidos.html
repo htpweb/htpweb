@@ -6,17 +6,27 @@
 <title>Mis pedidos</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
-<script src="../config/negocio.js"></script>
+<script src="../config/negocio.js?v=20261001-brand4"></script>
 <script src="../config/auth.js"></script>
 <script src="../config/orders.js"></script>
 <script src="../config/ads.js"></script>
-<link rel="stylesheet" href="../assets/app.css">
+<link rel="stylesheet" href="../assets/app.css?v=20261001-brand4">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <header><div class="header-row">
-  <div><div class="brand">Mis pedidos</div><small id="deliveryName"></small></div>
+  <div class="delivery-brand-shell">
+    <div class="delivery-brand-logo-frame">
+      <img id="deliveryLogo" class="delivery-brand-logo hidden" alt="">
+      <span id="deliveryLogoFallback" class="delivery-brand-fallback">D</span>
+    </div>
+    <div class="delivery-brand-copy">
+      <div class="brand" id="brand">DELIVERY</div>
+      <div class="delivery-platform-signature" id="platformBrand">by HTPWEB</div>
+      <small>Mis pedidos</small>
+    </div>
+  </div>
   <div class="header-actions">
     <a class="btn btn-light" id="shopLink" href="../index.html">Volver a la tienda</a>
     <a class="btn btn-primary hidden" id="cartLink" href="#">Carrito</a>
