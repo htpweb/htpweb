@@ -1,5 +1,5 @@
 (() => {
-  const SCROLL_PX_PER_SECOND = 65;
+  const SCROLL_PX_PER_SECOND = 130;
   const scriptBase = document.currentScript?.src
     ? new URL(".", document.currentScript.src)
     : new URL("../config/", location.href);
