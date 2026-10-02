@@ -81,9 +81,14 @@
 
         <div class="visual-menu-layout">
           <div class="visual-menu-image-column">
+            <div class="visual-menu-mobile-pagebar">
+              <button id="visualMenuMobilePrev" class="visual-menu-mobile-page-btn" type="button" aria-label="Hoja anterior">‹</button>
+              <strong id="visualMenuMobileCounter">Hoja 1 de 1</strong>
+              <button id="visualMenuMobileNext" class="visual-menu-mobile-page-btn" type="button" aria-label="Hoja siguiente">›</button>
+              <button id="visualMenuMobileOpen" class="visual-menu-mobile-open" type="button">Ver menú grande</button>
+            </div>
             <button id="visualMenuImageButton" type="button" class="visual-menu-image-button" aria-label="Abrir menú ampliado">
               <img id="visualMenuImage" class="visual-menu-image" alt="Menú del local">
-              <span class="visual-menu-zoom-hint">🔍 Ver menú grande</span>
             </button>
           </div>
 
@@ -92,6 +97,9 @@
               <div class="visual-menu-products-title">
                 <strong>Productos de esta hoja</strong>
                 <span class="muted">Abre una categoría o busca un producto.</span>
+              </div>
+              <div id="visualMenuClosedNotice" class="visual-menu-closed-notice hidden">
+                LOCAL CERRADO · Puedes consultar el menú, pero no agregar productos en este momento.
               </div>
               <div class="visual-menu-search-wrap">
                 <span class="visual-menu-search-icon" aria-hidden="true">⌕</span>
@@ -122,6 +130,9 @@
 
       $m("visualMenuPrev").onclick = () => stepPage(-1);
       $m("visualMenuNext").onclick = () => stepPage(1);
+      $m("visualMenuMobilePrev").onclick = () => stepPage(-1);
+      $m("visualMenuMobileNext").onclick = () => stepPage(1);
+      $m("visualMenuMobileOpen").onclick = openViewer;
       $m("visualMenuImageButton").onclick = openViewer;
     }
 
@@ -665,11 +676,19 @@
     $m("visualMenuImage").alt = page.title || `Hoja ${pageIndex + 1} del menú`;
     $m("visualMenuPageLabel").textContent = page.title || `Hoja ${pageIndex + 1}`;
     $m("visualMenuPageCounter").textContent = `${pageIndex + 1} / ${menuPages.length}`;
+    if ($m("visualMenuMobileCounter")) {
+      $m("visualMenuMobileCounter").textContent = `Hoja ${pageIndex + 1} de ${menuPages.length}`;
+    }
 
     const multiple = menuPages.length > 1;
     $m("visualMenuPageNav").classList.toggle("hidden", !multiple);
     $m("visualMenuPrev").disabled = !multiple;
     $m("visualMenuNext").disabled = !multiple;
+    if ($m("visualMenuMobilePrev")) $m("visualMenuMobilePrev").disabled = !multiple;
+    if ($m("visualMenuMobileNext")) $m("visualMenuMobileNext").disabled = !multiple;
+
+    const closed = typeof availability !== "undefined" && availability && availability.is_open !== true;
+    $m("visualMenuClosedNotice")?.classList.toggle("hidden", !closed);
 
     $m("visualMenuProducts").innerHTML = renderCategoryGroups(page, "inline");
     renderSearchResults("inline");

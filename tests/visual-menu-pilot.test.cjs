@@ -185,3 +185,20 @@ test("visor móvil dedica la pantalla a leer el menú y vuelve a productos",()=>
   assert.match(css,/\.visual-menu-viewer-image-wrap\{[\s\S]*height:100dvh/);
   assert.match(css,/touch-action:pan-x pan-y pinch-zoom/);
 });
+
+test("móvil fija media pantalla del menú con navegación de hojas sincronizada",()=>{
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(menu,/visualMenuMobilePrev/);
+  assert.match(menu,/visualMenuMobileNext/);
+  assert.match(menu,/visualMenuMobileCounter/);
+  assert.match(menu,/Hoja \$\{pageIndex \+ 1\} de \$\{menuPages\.length\}/);
+  assert.match(css,/\.visual-menu-image-column\{[\s\S]*position:sticky[\s\S]*height:50vh/);
+});
+
+test("LOCAL cerrado sigue permitiendo consultar pero explica por qué no se puede agregar",()=>{
+  const local=fs.readFileSync("app/local.html","utf8");
+  assert.match(local,/id="localOrderStatusNotice"/);
+  assert.match(local,/Este local está CERRADO en este momento/);
+  assert.match(menu,/visualMenuClosedNotice/);
+  assert.match(menu,/LOCAL CERRADO/);
+});

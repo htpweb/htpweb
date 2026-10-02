@@ -27,3 +27,10 @@ test('mobile category filtering prioritizes local results over advertising',()=>
   assert.match(ads,/mobileFilterActive/);
   assert.match(ads,/localsSection\.insertAdjacentElement\("afterend", section\)/);
 });
+
+test('catalog cards use simple DISPONIBLE or CERRADO availability labels',()=>{
+  assert.match(html,/text: "DISPONIBLE"/);
+  assert.match(html,/text: "CERRADO"/);
+  assert.doesNotMatch(html,/Abre a las/);
+  assert.doesNotMatch(html,/Abierto hasta/);
+});
