@@ -12,7 +12,7 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261002-advertising2">
+<link rel="stylesheet" href="../assets/admin.css?v=20261002-deliveryqr1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1989,10 +1989,43 @@
   </main>
 </div>
 
+<div id="deliveryQrModal" class="delivery-qr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="deliveryQrTitle">
+  <div class="delivery-qr-dialog">
+    <button id="deliveryQrClose" class="delivery-qr-close" type="button" aria-label="Cerrar">×</button>
+    <div class="delivery-qr-header">
+      <div>
+        <h2 id="deliveryQrTitle" style="margin:0">Código QR</h2>
+        <p class="muted" style="margin:.35rem 0 0">QR público del DELIVERY para compartir o imprimir.</p>
+      </div>
+    </div>
+    <div class="delivery-qr-layout">
+      <div class="delivery-qr-preview-wrap">
+        <canvas id="deliveryQrCardCanvas" class="delivery-qr-card-canvas" width="900" height="1120"></canvas>
+        <div id="deliveryQrRaw" class="delivery-qr-raw" aria-hidden="true"></div>
+      </div>
+      <div class="delivery-qr-info">
+        <div id="deliveryQrLogoWrap" class="delivery-qr-logo-wrap hidden">
+          <img id="deliveryQrLogo" alt="">
+        </div>
+        <h3 id="deliveryQrName" style="margin:0"></h3>
+        <p class="muted" style="margin:.35rem 0 0">Escanea y pide aquí</p>
+        <a id="deliveryQrUrl" target="_blank" rel="noopener noreferrer"></a>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:16px">
+          <button id="deliveryQrDownloadBranded" class="btn-primary" type="button">Descargar tarjeta QR</button>
+          <button id="deliveryQrDownloadPure" class="btn-muted" type="button">Descargar QR</button>
+          <button id="deliveryQrCopy" class="btn-muted" type="button">Copiar link</button>
+          <button id="deliveryQrOpen" class="btn-muted" type="button">Abrir página</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261002-advertising3"></script>
+<script src="./admin.js?v=20261002-deliveryqr1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
