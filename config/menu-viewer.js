@@ -83,7 +83,7 @@
           <div class="visual-menu-image-column">
             <button id="visualMenuImageButton" type="button" class="visual-menu-image-button" aria-label="Abrir menú ampliado">
               <img id="visualMenuImage" class="visual-menu-image" alt="Menú del local">
-              <span class="visual-menu-zoom-hint">🔍 Ver menú y comprar</span>
+              <span class="visual-menu-zoom-hint">🔍 Ver menú grande</span>
             </button>
           </div>
 
@@ -141,6 +141,7 @@
             <button id="visualMenuViewerPrev" class="media-viewer-nav media-viewer-prev hidden" type="button" aria-label="Hoja anterior">‹</button>
             <img id="visualMenuViewerImage" class="visual-menu-viewer-image" alt="">
             <button id="visualMenuViewerNext" class="media-viewer-nav media-viewer-next hidden" type="button" aria-label="Hoja siguiente">›</button>
+            <button id="visualMenuViewerReturn" class="visual-menu-viewer-return" type="button">Volver a productos</button>
           </div>
 
           <div class="visual-menu-viewer-content">
@@ -185,6 +186,7 @@
 
       document.body.appendChild(viewer);
       $m("visualMenuViewerClose").onclick = closeViewer;
+      $m("visualMenuViewerReturn").onclick = closeViewer;
       $m("visualMenuViewerPrev").onclick = () => stepPage(-1);
       $m("visualMenuViewerNext").onclick = () => stepPage(1);
       viewer.onclick = event => {
