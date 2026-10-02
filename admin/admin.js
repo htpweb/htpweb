@@ -188,6 +188,15 @@ async function init() {
 
     state.role = role;
 
+    try {
+      const qaResult = await supabaseClient.rpc("qa_profile_selector_snapshot");
+      if (!qaResult.error && qaResult.data?.enabled) {
+        $("qaProfilesAdminLink")?.classList.remove("hidden");
+      }
+    } catch (qaError) {
+      console.warn("Selector QA no disponible:", qaError);
+    }
+
     if (["DELIVERY_ADMIN","DELIVERY_OPERATOR","DELIVERY_DRIVER"].includes(state.role)) {
       const serviceResult = await supabaseClient.rpc("my_delivery_service_access");
       if (serviceResult.error) throw serviceResult.error;

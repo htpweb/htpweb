@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perfiles de prueba | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261002-qa1">
+<style>
+.qa-shell{max-width:760px;margin:0 auto;padding:24px 16px 48px}.qa-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;margin-bottom:16px}.qa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.qa-role{border:1px solid #dbe4ee;border-radius:14px;padding:14px;background:#fff;text-align:left}.qa-role.current{border:2px solid #111827}.qa-role button{width:100%;margin-top:10px}.qa-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}.qa-meta div{padding:10px;background:#f8fafc;border-radius:10px}.danger-note{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px}
+@media(max-width:620px){.qa-meta{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="qa-shell">
+<div class="row between" style="gap:12px;flex-wrap:wrap"><div><h1>Perfiles de prueba</h1><p class="muted">Cambia esta cuenta entre perfiles HTPWEB sin utilizar MASTER.</p></div><a class="btn btn-muted" href="../index.html">Inicio</a></div>
+<div id="message" class="hidden"></div>
+<section id="accountCard" class="qa-card"><div class="muted">Validando cuenta de pruebas…</div></section>
+<section id="rolesCard" class="qa-card hidden"><h2>Seleccionar perfil</h2><div id="roles" class="qa-grid"></div></section>
+<section id="scopeCard" class="qa-card hidden"><h2>Entorno aislado de prueba</h2><div id="scope" class="qa-meta"></div><div class="danger-note" style="margin-top:12px">MASTER no está disponible en este selector. Las pruebas de DELIVERY se realizan sobre <strong>PRUEBAS</strong> y las de LOCAL_ADMIN sobre <strong>HTPWEB LOCAL PRUEBAS</strong>, evitando modificar negocios reales.</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const labels={
+ CLIENT:["CLIENT","Compra como cliente y prueba navegación pública."],
+ DELIVERY_ADMIN:["DELIVERY_ADMIN","Administra el DELIVERY PRUEBAS."],
+ DELIVERY_OPERATOR:["DELIVERY_OPERATOR","Prueba operación y pedidos sin gestión administrativa completa."],
+ DELIVERY_DRIVER:["DELIVERY_DRIVER","Prueba consola y entregas del repartidor."],
+ LOCAL_ADMIN:["LOCAL_ADMIN","Administra HTPWEB LOCAL PRUEBAS con plan LOCAL Pro."]
+};
+let snapshot=null;
+function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
+function target(role){
+ if(role==="CLIENT")return "../app/index.html?delivery="+encodeURIComponent(snapshot.delivery_slug||"");
+ if(role==="DELIVERY_DRIVER")return "../admin/index.html";
+ return "../admin/index.html";
+}
+function render(){
+ $("accountCard").innerHTML='<h2 style="margin-top:0">Cuenta autorizada</h2><div class="qa-meta"><div><small>Correo</small><strong style="display:block">'+esc(snapshot.email||"")+'</strong></div><div><small>Teléfono</small><strong style="display:block">'+esc(snapshot.phone||"")+'</strong></div><div><small>Perfil actual</small><strong style="display:block">'+esc(snapshot.current_role||"")+'</strong></div><div><small>MASTER</small><strong style="display:block">No habilitado</strong></div></div>';
+ $("rolesCard").classList.remove("hidden");$("scopeCard").classList.remove("hidden");
+ $("roles").innerHTML=(snapshot.allowed_roles||[]).map(role=>{
+  const meta=labels[role]||[role,""];
+  return '<article class="qa-role '+(snapshot.current_role===role?"current":"")+'"><strong>'+esc(meta[0])+'</strong><p class="muted">'+esc(meta[1])+'</p><button class="'+(snapshot.current_role===role?"btn-muted":"btn-primary")+'" data-role="'+esc(role)+'" '+(snapshot.current_role===role?"disabled":"")+'>'+(snapshot.current_role===role?"Perfil activo":"Cambiar a este perfil")+'</button></article>';
+ }).join("");
+ $("roles").querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>switchRole(b.dataset.role));
+ $("scope").innerHTML='<div><small>DELIVERY de pruebas</small><strong style="display:block">'+esc(snapshot.delivery_name||"—")+'</strong></div><div><small>LOCAL de pruebas</small><strong style="display:block">'+esc(snapshot.local_name||"—")+'</strong></div>';
+}
+async function switchRole(role){
+ if(role==="MASTER")return show("MASTER no está permitido en el selector.");
+ try{
+  const {data,error}=await supabaseClient.rpc("qa_set_profile_role",{p_role_code:role});if(error)throw error;
+  snapshot=data;show("Perfil cambiado a "+role+".","success");render();
+  setTimeout(()=>location.href=target(role),450);
+ }catch(e){show(e.message||"No se pudo cambiar el perfil.");}
+}
+async function init(){
+ const user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return;}
+ const {data,error}=await supabaseClient.rpc("qa_profile_selector_snapshot");if(error)throw error;
+ if(!data?.enabled)throw new Error("Esta cuenta no tiene habilitado el selector de perfiles de prueba.");
+ snapshot=data;render();
+}
+init().catch(e=>show(e.message||"No se pudo abrir el selector."));
+</script>
+</body></html>
