@@ -2244,3 +2244,20 @@ body.has-htpweb-ad{
     min-width:0;
   }
 }
+
+/* CLIENT móvil — ancla del menú debajo de la cabecera sticky */
+@media(max-width:760px){
+  #visualMenuCard .visual-menu-image-column{
+    top:76px;
+    z-index:29;
+  }
+  #visualMenuCard .visual-menu-mobile-pagebar{
+    position:relative;
+    z-index:2;
+  }
+}
+@media(max-width:390px){
+  #visualMenuCard .visual-menu-image-column{
+    top:72px;
+  }
+}
