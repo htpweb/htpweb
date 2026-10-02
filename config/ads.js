@@ -1,6 +1,9 @@
 (() => {
   const ROTATE_MS = 5000;
-  const scriptBase = document.currentScript?.src ? new URL(".", document.currentScript.src) : new URL("../config/", location.href);
+  const scriptBase = document.currentScript?.src
+    ? new URL(".", document.currentScript.src)
+    : new URL("../config/", location.href);
+
   let ads = [];
   let index = 0;
   let timer = null;
@@ -54,7 +57,7 @@
   const belongsToDelivery = row => {
     const rowDelivery = text(row, ["delivery_id"]);
     if (rowDelivery) return rowDelivery === delivery?.id;
-    return ["HTPWEB", "GLOBAL", "DELIVERY", "LOCAL", "PRODUCT"].includes(scope(row));
+    return ["HTPWEB", "GLOBAL"].includes(scope(row));
   };
 
   async function resolveTarget(row) {
@@ -62,43 +65,50 @@
     if (explicit) {
       try {
         const url = new URL(explicit, location.href);
-        if (url.origin === location.origin) return url.href;
-        if (["http:", "https:"].includes(url.protocol)) return url.href;
+        if (url.origin === location.origin || ["http:", "https:"].includes(url.protocol)) return url.href;
       } catch (_) {}
     }
 
     let localId = text(row, ["local_id"]);
     let productId = text(row, ["product_id"]);
-    const rowScope = scope(row);
-    const destinationId = text(row, ["destination_id", "target_id"]);
-    if (!localId && rowScope === "LOCAL") localId = destinationId;
-    if (!productId && rowScope === "PRODUCT") productId = destinationId;
 
     if (productId && !localId) {
-      const { data, error } = await supabaseClient.from("products").select("id,local_id,active")
-        .eq("id", productId).eq("active", true).maybeSingle();
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("id,local_id,active")
+        .eq("id", productId)
+        .eq("active", true)
+        .maybeSingle();
       if (error || !data) return null;
       localId = data.local_id;
     }
 
     if (localId) {
-      const { data: relation, error } = await supabaseClient.from("local_deliveries").select("local_id")
-        .eq("delivery_id", delivery.id).eq("local_id", localId).eq("active", true).maybeSingle();
+      const { data: relation, error } = await supabaseClient
+        .from("local_deliveries")
+        .select("local_id")
+        .eq("delivery_id", delivery.id)
+        .eq("local_id", localId)
+        .eq("active", true)
+        .maybeSingle();
+
       if (error || !relation) return null;
+
       const params = { local: localId };
       if (productId) params.product = productId;
-      else params.view = "banner";
       return urlDelivery("local.html", params);
     }
+
     return urlDelivery("index.html");
   }
 
   async function normalize(row) {
     const href = await resolveTarget(row);
     if (!href) return null;
+
     return {
       id: String(text(row, ["id"], "")),
-      title: String(text(row, ["title", "headline", "name"], scope(row) === "LOCAL" ? "Local recomendado" : "Producto recomendado")),
+      title: String(text(row, ["title", "headline", "name"], "Publicidad")),
       description: String(text(row, ["description", "subtitle", "body", "message"], "")),
       image: String(text(row, ["image_url", "banner_url", "media_url"], "")),
       priority: Number(text(row, ["priority", "display_order", "weight"], 0)) || 0,
@@ -115,84 +125,170 @@
       local_id: ad.localId,
       product_id: ad.productId,
       advertisement_id: ad.id,
-      metadata: { placement: "persistent_banner" }
+      metadata: { placement: "client_home_carousel" }
     }, extra);
   }
 
-  function ensureShell() {
-    let shell = document.getElementById("htpwebAdBanner");
-    if (shell) return shell;
-    shell = document.createElement("aside");
-    shell.id = "htpwebAdBanner";
-    shell.className = "htpweb-ad-banner";
-    shell.setAttribute("aria-live", "polite");
-    shell.innerHTML = `
-      <a class="htpweb-ad-link" id="htpwebAdLink" href="#">
-        <div class="htpweb-ad-media" id="htpwebAdMedia" aria-hidden="true"></div>
-        <div class="htpweb-ad-copy">
-          <span class="htpweb-ad-label">PUBLICIDAD</span>
-          <strong id="htpwebAdTitle"></strong>
-          <span id="htpwebAdDescription"></span>
-        </div>
-        <span class="htpweb-ad-cta">Ver</span>
-        <span class="htpweb-ad-progress" id="htpwebAdProgress"></span>
-      </a>`;
-    shell.querySelector("#htpwebAdLink").addEventListener("click", () => trackAd("AD_CLICK", ads[index]));
-    document.body.appendChild(shell);
-    document.body.classList.add("has-htpweb-ad");
-    return shell;
+  function isClientHome() {
+    const page = location.pathname.split("/").pop() || "";
+    return page === "index.html" || page === "";
   }
 
-  function show(ad) {
-    ensureShell();
-    const link = document.getElementById("htpwebAdLink");
-    const media = document.getElementById("htpwebAdMedia");
-    const title = document.getElementById("htpwebAdTitle");
-    const description = document.getElementById("htpwebAdDescription");
-    const progress = document.getElementById("htpwebAdProgress");
-    link.href = ad.href;
-    title.textContent = ad.title;
-    description.textContent = ad.description || "Toca para ver la promoción.";
-    media.style.backgroundImage = ad.image ? `url("${String(ad.image).replace(/"/g, "%22")}")` : "";
-    media.classList.toggle("no-image", !ad.image);
-    progress.classList.remove("run");
-    void progress.offsetWidth;
-    progress.classList.add("run");
-    trackAd("AD_IMPRESSION", ad, { dedupeKey: `ad-impression:${ad.id}:${index}` });
+  function ensureCarousel() {
+    let section = document.getElementById("htpwebAdvertising");
+    if (section) return section;
+
+    const categories = document.getElementById("categories")?.closest("section");
+    const localsSection = document.getElementById("locals")?.closest("section");
+    if (!categories || !localsSection) return null;
+
+    section = document.createElement("section");
+    section.id = "htpwebAdvertising";
+    section.className = "client-ad-section";
+    section.innerHTML = `
+      <div class="client-ad-heading">
+        <div>
+          <h2>Destacados</h2>
+          <p>Locales patrocinados</p>
+        </div>
+        <div class="client-ad-dots" id="htpwebAdDots" aria-label="Posición de publicidad"></div>
+      </div>
+      <div class="client-ad-rail" id="htpwebAdRail" aria-label="Publicidad"></div>
+    `;
+
+    categories.insertAdjacentElement("afterend", section);
+    return section;
+  }
+
+  function renderDots() {
+    const box = document.getElementById("htpwebAdDots");
+    if (!box) return;
+    box.innerHTML = ads.map((_, i) =>
+      '<button type="button" class="client-ad-dot ' + (i === index ? "active" : "") +
+      '" aria-label="Ver anuncio ' + (i + 1) + '" data-ad-dot="' + i + '"></button>'
+    ).join("");
+
+    box.querySelectorAll("[data-ad-dot]").forEach(button => {
+      button.onclick = () => goTo(Number(button.dataset.adDot || 0), true);
+    });
+  }
+
+  function renderCards() {
+    const rail = document.getElementById("htpwebAdRail");
+    if (!rail) return;
+
+    rail.innerHTML = ads.map((ad, i) => `
+      <a class="client-ad-card" href="${String(ad.href).replace(/"/g, "&quot;")}" data-ad-index="${i}">
+        <img src="${String(ad.image || "").replace(/"/g, "&quot;")}" alt="${String(ad.title).replace(/"/g, "&quot;")}" loading="${i === 0 ? "eager" : "lazy"}">
+        <span class="client-ad-overlay" aria-hidden="true"></span>
+        <span class="client-ad-sponsored">PUBLICIDAD</span>
+        <span class="client-ad-copy">
+          <strong>${ad.title}</strong>
+          ${ad.description ? '<span>' + ad.description + '</span>' : ""}
+          <em>Ver local</em>
+        </span>
+      </a>
+    `).join("");
+
+    rail.querySelectorAll(".client-ad-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const ad = ads[Number(card.dataset.adIndex || 0)];
+        trackAd("AD_CLICK", ad);
+      });
+    });
+
+    rail.addEventListener("scroll", () => {
+      const cards = [...rail.querySelectorAll(".client-ad-card")];
+      if (!cards.length) return;
+      const center = rail.scrollLeft + rail.clientWidth / 2;
+      let best = 0;
+      let distance = Infinity;
+      cards.forEach((card, i) => {
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const nextDistance = Math.abs(cardCenter - center);
+        if (nextDistance < distance) {
+          distance = nextDistance;
+          best = i;
+        }
+      });
+      if (best !== index) {
+        index = best;
+        renderDots();
+      }
+    }, { passive: true });
+  }
+
+  function goTo(nextIndex, userInitiated = false) {
+    if (!ads.length) return;
+    index = ((nextIndex % ads.length) + ads.length) % ads.length;
+    const rail = document.getElementById("htpwebAdRail");
+    const card = rail?.querySelector('[data-ad-index="' + index + '"]');
+    if (rail && card) {
+      rail.scrollTo({ left: Math.max(0, card.offsetLeft - 2), behavior: "smooth" });
+    }
+    renderDots();
+    const ad = ads[index];
+    trackAd("AD_IMPRESSION", ad, {
+      dedupeKey: "ad-impression:" + ad.id + ":" + index + ":" + (userInitiated ? "manual" : "auto")
+    });
   }
 
   function rotate() {
-    if (!ads.length) return;
-    index = (index + 1) % ads.length;
-    show(ads[index]);
+    if (ads.length <= 1) return;
+    goTo(index + 1, false);
+  }
+
+  function startRotation() {
+    if (timer) clearInterval(timer);
+    if (ads.length > 1) timer = setInterval(rotate, ROTATE_MS);
   }
 
   async function load() {
     try {
+      if (!isClientHome()) return;
+
       await ensureAnalytics();
       delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
       if (!delivery?.id) return;
-      const { data, error } = await supabaseClient.from("advertisements").select("*");
+
+      const { data, error } = await supabaseClient
+        .from("advertisements")
+        .select("*");
+
       if (error) {
         console.warn("Publicidad no disponible:", error.message || error);
         return;
       }
-      const eligible = (data || []).filter(row => bool(text(row, ["active", "enabled", "is_active"], true), true))
-        .filter(dateOk).filter(belongsToDelivery);
-      const normalized = (await Promise.all(eligible.map(normalize))).filter(Boolean)
+
+      const eligible = (data || [])
+        .filter(row => bool(text(row, ["active", "enabled", "is_active"], true), true))
+        .filter(dateOk)
+        .filter(belongsToDelivery);
+
+      const normalized = (await Promise.all(eligible.map(normalize)))
+        .filter(ad => ad && ad.image)
         .sort((a, b) => b.priority - a.priority);
+
       if (!normalized.length) return;
+
       ads = normalized;
       index = 0;
-      show(ads[0]);
-      if (timer) clearInterval(timer);
-      if (ads.length > 1) timer = setInterval(rotate, ROTATE_MS);
+
+      if (!ensureCarousel()) return;
+      renderCards();
+      renderDots();
+      trackAd("AD_IMPRESSION", ads[0], { dedupeKey: "ad-impression:" + ads[0].id + ":0:initial" });
+      startRotation();
     } catch (error) {
       console.warn("No se pudo iniciar la publicidad:", error);
     }
   }
 
-  window.HTPWEBAds = { load };
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load, { once: true });
-  else load();
+  window.HTPWEBAds = { load, goTo };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", load, { once: true });
+  } else {
+    load();
+  }
 })();
