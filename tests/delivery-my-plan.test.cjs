@@ -22,7 +22,7 @@ test('Mi Plan muestra contrato, capacidad usada y funciones incluidas',()=>{
   assert.match(admin,/Áreas restringidas/);
   assert.match(admin,/Operadores/);
   assert.match(admin,/Repartidores/);
-  assert.match(admin,/Etapa 2/);
+  assert.doesNotMatch(admin,/Etapa 2/);
   assert.match(admin,/Versión contratada|versión /);
   assert.match(html,/id="myPlanFeatures"/);
 });
