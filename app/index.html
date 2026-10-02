@@ -11,7 +11,7 @@
 <script src="../config/auth.js"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261002-mobile1"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-mobile1">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-visits1">
 </head>
 <body>
 <header>
@@ -42,6 +42,12 @@
     </div>
     <input id="search" class="search" placeholder="Buscar local o producto...">
   </section>
+
+  <div id="globalVisitCounter" class="global-visit-counter hidden" aria-live="polite">
+    <span aria-hidden="true">👁</span>
+    <span>Visitas HTPWEB</span>
+    <strong id="globalVisitCount">0</strong>
+  </div>
 
   <section class="card client-categories-shell" id="clientCategoriesShell">
     <h2>Categorías</h2>
@@ -81,6 +87,7 @@ async function init() {
     $("cartLink").href = urlDelivery("carrito.html");
     $("ordersLink").href = urlDelivery("pedidos.html");
     updateCartCount();
+    loadGlobalVisitCounter();
 
     const user = await obtenerUsuarioActual();
     const authText = user ? "Mi cuenta" : "Acceder";
@@ -386,6 +393,37 @@ function renderLocals() {
             ? 'No encontramos locales en esta categoría.'
             : 'No encontramos locales disponibles.') +
     '</div>';
+}
+
+async function loadGlobalVisitCounter() {
+  try {
+    if (!negocioActual?.id || !window.supabaseClient?.rpc) return;
+
+    const storageKey = "htpweb:delivery-visit:" + negocioActual.id;
+    let alreadyCounted = false;
+    try {
+      alreadyCounted = sessionStorage.getItem(storageKey) === "1";
+    } catch (_) {}
+
+    const rpcName = alreadyCounted
+      ? "global_delivery_visit_count"
+      : "register_delivery_visit";
+    const args = alreadyCounted ? {} : { p_delivery_id: negocioActual.id };
+    const { data, error } = await supabaseClient.rpc(rpcName, args);
+    if (error) throw error;
+
+    if (!alreadyCounted) {
+      try { sessionStorage.setItem(storageKey, "1"); } catch (_) {}
+    }
+
+    const value = Number(data || 0);
+    $("globalVisitCount").textContent = Number.isFinite(value)
+      ? value.toLocaleString("es-EC")
+      : "0";
+    $("globalVisitCounter").classList.remove("hidden");
+  } catch (error) {
+    console.warn("No se pudo cargar el contador global de visitas:", error);
+  }
 }
 
 function updateCartCount() {
