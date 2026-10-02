@@ -18,14 +18,14 @@ test('client home advertising uses continuous infinite horizontal carousel',()=>
   assert.doesNotMatch(ads,/setInterval\(rotate/);
   assert.match(css,/\.client-ad-rail\{[\s\S]*overflow-x:auto[\s\S]*scroll-snap-type:none/);
   assert.match(css,/\.client-ad-card\{[\s\S]*scroll-snap-align:none/);
-  assert.match(index,/ads\.js\?v=20261002-continuous2/);
+  assert.match(index,/ads\.js\?v=20261002-continuous3/);
 });
 
 test('advertising is limited to client home and old fixed banner is disabled',()=>{
   assert.match(ads,/function isClientHome/);
   assert.match(ads,/if \(!isClientHome\(\)\) return/);
   assert.match(css,/\.htpweb-ad-banner\{[\s\S]*display:none!important/);
-  assert.match(index,/ads\.js\?v=20261002-continuous2/);
+  assert.match(index,/ads\.js\?v=20261002-continuous3/);
 });
 
 test('client requests ads by delivery coverage zones and sends valid impression key',()=>{

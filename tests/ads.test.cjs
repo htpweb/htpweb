@@ -9,7 +9,7 @@ test("motor de publicidad usa cobertura del DELIVERY y conserva deep links", () 
   assert.match(js, /rpc\("public_delivery_advertisements"/);
   assert.match(js, /p_delivery_id:\s*delivery\.id/);
   assert.match(js, /urlDelivery\("local\.html", params\)/);
-  assert.match(js, /SCROLL_PX_PER_SECOND = 65/);
+  assert.match(js, /SCROLL_PX_PER_SECOND = 130/);
 });
 
 test("publicidad se renderiza solo en el inicio del CLIENT", () => {
