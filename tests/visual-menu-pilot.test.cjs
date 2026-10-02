@@ -168,3 +168,20 @@ test("visor de promociones contiene el arte completo sin recorte",()=>{
   assert.match(css,/object-fit:contain/);
   assert.match(css,/object-position:center/);
 });
+
+test("móvil mantiene una referencia sticky del menú mientras se compran productos",()=>{
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(menu,/Ver menú grande/);
+  assert.match(css,/@media\(max-width:760px\)[\s\S]*\.visual-menu-image-column\{[\s\S]*position:sticky/);
+  assert.match(css,/\.visual-menu-image\{[\s\S]*max-height:32vh/);
+});
+
+test("visor móvil dedica la pantalla a leer el menú y vuelve a productos",()=>{
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(menu,/visualMenuViewerReturn/);
+  assert.match(menu,/Volver a productos/);
+  assert.match(menu,/\$m\("visualMenuViewerReturn"\)\.onclick = closeViewer/);
+  assert.match(css,/\.visual-menu-viewer-content\{[\s\S]*display:none/);
+  assert.match(css,/\.visual-menu-viewer-image-wrap\{[\s\S]*height:100dvh/);
+  assert.match(css,/touch-action:pan-x pan-y pinch-zoom/);
+});

@@ -1957,3 +1957,111 @@ body.has-htpweb-ad{
     min-width:44px;
   }
 }
+
+/* CLIENT móvil — menú visual legible y referencia persistente */
+.visual-menu-viewer-return{
+  display:none;
+}
+
+@media(max-width:760px){
+  .visual-menu-layout{
+    display:block;
+  }
+  .visual-menu-image-column{
+    position:sticky;
+    top:64px;
+    z-index:8;
+    margin:0 -10px 10px;
+    padding:0 10px 8px;
+    background:#fff;
+    box-shadow:0 8px 14px rgba(15,23,42,.08);
+  }
+  .visual-menu-image-button{
+    border-radius:14px;
+  }
+  .visual-menu-image{
+    width:100%;
+    max-height:32vh;
+    object-fit:contain;
+  }
+  .visual-menu-zoom-hint{
+    right:18px;
+    bottom:16px;
+  }
+  .visual-menu-products-column{
+    position:relative;
+    z-index:1;
+  }
+
+  .visual-menu-viewer{
+    padding:0;
+    background:#0f172a;
+  }
+  .visual-menu-viewer-panel{
+    width:100%;
+    height:100dvh;
+    max-height:100dvh;
+    display:block;
+    border-radius:0;
+    background:#0f172a;
+  }
+  .visual-menu-viewer-image-wrap{
+    width:100%;
+    height:100dvh;
+    min-height:100dvh;
+    overflow:auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#0f172a;
+    touch-action:pan-x pan-y pinch-zoom;
+    overscroll-behavior:contain;
+  }
+  .visual-menu-viewer-image{
+    width:auto;
+    height:auto;
+    max-width:100%;
+    max-height:100dvh;
+    object-fit:contain;
+    touch-action:pan-x pan-y pinch-zoom;
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+  .visual-menu-viewer-content{
+    display:none;
+  }
+  .visual-menu-viewer-return{
+    position:fixed;
+    left:50%;
+    bottom:max(18px,env(safe-area-inset-bottom));
+    z-index:170;
+    transform:translateX(-50%);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:180px;
+    min-height:44px;
+    padding:10px 16px;
+    border-radius:999px;
+    border:0;
+    background:rgba(255,255,255,.96);
+    color:#111827;
+    font-weight:900;
+    box-shadow:0 8px 24px rgba(0,0,0,.28);
+  }
+  .visual-menu-viewer .media-viewer-close{
+    position:fixed;
+    top:max(12px,env(safe-area-inset-top));
+    right:12px;
+    z-index:171;
+  }
+}
+
+@media(max-width:390px){
+  .visual-menu-image-column{
+    top:62px;
+  }
+  .visual-menu-image{
+    max-height:29vh;
+  }
+}
