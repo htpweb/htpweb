@@ -35,5 +35,5 @@ test("Formulario soporta scopes, banner y cobertura por zonas", () => {
 test("LOCAL y PRODUCTO generan destino sobre el DELIVERY que atiende el local", () => {
   assert.match(admin, /from\("local_deliveries"\)/);
   assert.match(admin, /eq\("local_id",localId\)/);
-  assert.match(admin, /base\.searchParams\.set\("delivery", delivery\.slug\)/);
+  assert.match(admin, /url\.searchParams\.set\("delivery",delivery\.slug\)/);
 });

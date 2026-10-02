@@ -58,6 +58,6 @@ test('Repartidores y despacho manual ya son operativos dentro de Etapa 2',()=>{
   assert.match(drivers,/dispatch\.manual/);
   assert.match(drivers,/orders\.concurrent_per_driver\.max/);
   assert.match(drivers,/usage_available',true/);
-  assert.match(admin,/Gestiona cuáles cuentas están activas desde Repartidores/);
+  assert.match(admin,/delivery_set_driver/);
   assert.doesNotMatch(admin,/consumo se habilitará con el módulo de repartidores/);
 });

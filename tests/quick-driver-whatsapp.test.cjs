@@ -2,8 +2,8 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const migration=fs.readFileSync('supabase/migrations/20260927214500_quick_driver_whatsapp_tracking.sql','utf8');
-const emergencyMigration=fs.readFileSync('supabase/migrations/20260927225000_emergency_driver_plan_capacity.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260927213322_quick_driver_whatsapp_tracking.sql','utf8');
+const emergencyMigration=fs.readFileSync('supabase/migrations/20260927225602_emergency_driver_plan_capacity.sql','utf8');
 const registerFn=fs.readFileSync('supabase/functions/quick-driver/index.ts','utf8');
 const trackFn=fs.readFileSync('supabase/functions/quick-driver-track/index.ts','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');

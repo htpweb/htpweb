@@ -9,13 +9,12 @@ const adminJs=fs.readFileSync("admin/admin.js","utf8");
 const panel=fs.readFileSync("admin/delivery-promotions.js","utf8");
 const migration=fs.readFileSync("supabase/migrations/20260926153209_delivery_day_promotions_and_catalog_visibility.sql","utf8");
 
-test("CLIENTE tiene panel exclusivo de promociones por día",()=>{
-  assert.match(client,/Promociones del día/);
-  assert.match(client,/promotionDayOffset/);
+test("CLIENTE integra promociones del día como filtro del catálogo",()=>{
   assert.match(client,/public_delivery_promotions/);
-  assert.match(client,/Mañana/);
-  assert.match(client,/Ver y comprar/);
-  assert.match(client,/promotion:/);
+  assert.match(client,/p_day_offset: 0/);
+  assert.match(client,/__PROMOTIONS__/);
+  assert.match(client,/🔥 Promociones/);
+  assert.match(client,/promotionCountForLocal/);
 });
 
 test("productos marcados solo promoción no aparecen en catálogos públicos",()=>{

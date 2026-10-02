@@ -6,7 +6,7 @@ const localHtml = fs.readFileSync("app/local.html", "utf8");
 
 test("tarjeta muestra cantidad real del carrito y no un 1 fijo", () => {
   assert.match(localHtml, /value="\$\{cartQuantityForProduct\(product\.id, vs\[0\]\?\.id \|\| null\)\}"/);
-  assert.match(localHtml, /aria-label="Cantidad en carrito" readonly/);
+  assert.match(localHtml, /aria-label="Cantidad en carrito" oninput=/);
   assert.doesNotMatch(localHtml, /id="qty-\$\{product\.id\}"[^>]*value="1"/);
 });
 

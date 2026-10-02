@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const migration=fs.readFileSync('supabase/migrations/20260927225000_emergency_driver_plan_capacity.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260927225602_emergency_driver_plan_capacity.sql','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 const mobile=fs.readFileSync('app/repartidor-rapido.html','utf8');

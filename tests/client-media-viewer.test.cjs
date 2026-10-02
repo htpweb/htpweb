@@ -36,7 +36,7 @@ test("CLIENT puede ver la galería pública del LOCAL", () => {
 test("banner de LOCAL y publicidad abren la experiencia ampliada", () => {
   assert.match(viewer, /function openBanner\(/);
   assert.match(viewer, /localCard.*addEventListener\("click"/s);
-  assert.match(ads, /params\.view = "banner"/);
+  assert.match(ads, /return urlDelivery\("local\.html", params\)/);
 });
 
 test("visor es responsive y bloquea scroll de fondo", () => {
