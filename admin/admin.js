@@ -1367,12 +1367,20 @@ async function loadOverview() {
   let activePromotions = null;
   let deliveredTodayCount = 0;
   let deliveredValue = 0;
+  let globalVisits = null;
   let masterSnapshotLoaded = false;
 
   // MASTER usa un solo snapshot del servidor para evitar múltiples HEAD COUNT
   // sobre tablas con RLS. Esto elimina especialmente tres conteos completos
   // de products que eran el principal cuello de botella del dashboard.
   if (state.role === "MASTER") {
+    try {
+      globalVisits = Number(await rpc("global_delivery_visit_count"));
+    } catch (e) {
+      console.warn("No se pudo cargar el contador global de visitas.", e);
+      globalVisits = null;
+    }
+
     try {
       const started = performance.now();
       const snapshot = await rpc("master_overview_snapshot", {
@@ -1455,6 +1463,12 @@ async function loadOverview() {
   const productsWithoutImage = productsTotal === null || productsWithImage === null ? null : Math.max(0, productsTotal - productsWithImage);
 
   const kpis = [
+    ...(state.role === "MASTER" ? [{
+      label: "Visitas",
+      value: globalVisits === null ? "—" : Number(globalVisits || 0).toLocaleString("es-EC"),
+      detail: "Acumuladas en todos los DELIVERY",
+      tone: "neutral"
+    }] : []),
     {
       label: "Pedidos hoy",
       value: ordersToday === null ? "—" : ordersToday,
