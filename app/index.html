@@ -367,9 +367,7 @@ function renderLocals() {
       ...ps.map(p => p.description)
     ].some(v => normalizeSearchText(v).includes(q));
 
-    // Cuando el usuario escribe una búsqueda, esta debe ser global y no quedar
-    // bloqueada por una categoría seleccionada previamente.
-    return q ? textMatch : categoryMatch;
+    return textMatch && categoryMatch;
   });
 
   $("locals").innerHTML = filtered.length ? filtered.map(local => {
@@ -407,7 +405,15 @@ function renderLocals() {
         </div>
       </article>
     `;
-  }).join("") : '<div class="card empty">No encontramos locales para esta búsqueda.</div>';
+  }).join("") : '<div class="card empty">' +
+    (q && categoryId
+      ? 'No encontramos resultados para "' + esc(rawQuery.trim()) + '" en la categoría seleccionada.'
+      : q
+        ? 'No encontramos resultados para "' + esc(rawQuery.trim()) + '".'
+        : categoryId
+          ? 'No encontramos locales en esta categoría.'
+          : 'No encontramos locales disponibles.') +
+    '</div>';
 }
 
 function updateCartCount() {
