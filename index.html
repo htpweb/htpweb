@@ -25,6 +25,7 @@
     <p class="muted">Selecciona el servicio de DELIVERY que deseas utilizar.</p>
     <div class="top-actions">
       <a class="btn btn-muted" href="./app/acceso.html">Acceder</a>
+      <a class="btn btn-muted hidden" id="qaProfilesLink" href="./app/perfiles-prueba.html">Perfiles de prueba</a>
       <a class="btn btn-dark" href="./admin/index.html">Panel administrativo</a>
     </div>
   </section>
@@ -43,6 +44,12 @@ async function init() {
   const message = document.getElementById("message");
 
   try {
+    const sessionResult = await supabaseClient.auth.getSession();
+    if (sessionResult.data?.session) {
+      const qa = await supabaseClient.rpc("qa_profile_selector_snapshot");
+      if (!qa.error && qa.data?.enabled) document.getElementById("qaProfilesLink")?.classList.remove("hidden");
+    }
+
     const { data, error } = await supabaseClient
       .from("deliveries")
       .select("id,name,slug,description,logo_url,active")
