@@ -43,7 +43,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","share","orders","requests","deliveries","expressdemo","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
@@ -312,6 +312,7 @@ function showSection(name) {
   if (name === "driverorders") loadDriverOrders();
   if (name === "requests") loadRequests();
   if (name === "deliveries") (state.role === "MASTER" && window.loadDeliveryMasterWorkspace ? window.loadDeliveryMasterWorkspace() : loadDeliveriesModule());
+  if (name === "expressdemo") loadExpressDemoSlots();
   if (name === "users") loadUsersModule();
   if (name === "localsmaster") { bindMasterLocals(); loadMasterLocals(); }
   if (name === "categoriesmaster") loadMasterLocalBusinessCategories();
@@ -4505,6 +4506,64 @@ async function openMasterDeliveryQr(deliveryId) {
 
   $("deliveryQrCopy").onclick = () => copyMasterDeliveryPublicUrl(deliveryId);
   $("deliveryQrOpen").onclick = () => openMasterDeliveryPublicUrl(deliveryId);
+}
+
+
+const EXPRESS_DEMO_ROOT="https://htpweb.github.io/htpweb/express/";
+
+function expressSlotUrl(slotKey){
+  return EXPRESS_DEMO_ROOT+"?slot="+encodeURIComponent(slotKey);
+}
+
+async function copyExpressSlotLink(slotKey){
+  const url=expressSlotUrl(slotKey);
+  await navigator.clipboard.writeText(url);
+  message("Link "+slotKey+" copiado.");
+}
+
+function openExpressSlotLink(slotKey){
+  window.open(expressSlotUrl(slotKey),"_blank","noopener,noreferrer");
+}
+
+async function resetExpressDemoSlot(slotKey){
+  if(state.role!=="MASTER")return;
+  if(!confirm("¿Liberar "+slotKey+" para asignarlo a otro prospecto? La demo ya creada seguirá activa hasta su vencimiento."))return;
+  try{
+    await rpc("master_reset_express_slot",{p_slot_key:slotKey});
+    message(slotKey+" quedó disponible nuevamente.");
+    await loadExpressDemoSlots();
+  }catch(e){message(e.message||"No se pudo liberar el link Express.","error");}
+}
+
+async function loadExpressDemoSlots(){
+  if(state.role!=="MASTER")return;
+  const box=$("expressDemoSlots");
+  if(!box)return;
+  box.innerHTML='<div class="muted">Cargando Express...</div>';
+  try{
+    const rows=await rpc("master_express_slots_snapshot");
+    box.innerHTML=(Array.isArray(rows)?rows:[]).map(row=>{
+      const url=expressSlotUrl(row.slot_key);
+      const occupied=Boolean(row.demo_id);
+      const status=occupied?(row.demo_active?"EN USO":"USADO"):"DISPONIBLE";
+      const expiry=row.demo_expires_at?new Date(row.demo_expires_at).toLocaleDateString("es-EC"):"—";
+      return '<div class="card express-demo-card">'+
+        '<div class="row between" style="gap:10px;align-items:flex-start">'+
+          '<div><div class="express-slot-name">'+esc(row.slot_key)+'</div><div class="badge">'+esc(status)+'</div></div>'+
+          '<button class="btn-muted" type="button" onclick="openExpressSlotLink(\''+esc(row.slot_key)+'\')">Abrir</button>'+
+        '</div>'+
+        '<a class="express-slot-url" href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(url)+'</a>'+
+        (occupied?'<div class="express-slot-meta"><strong>'+esc(row.demo_name||"Demo Express")+'</strong><span>WhatsApp: '+esc(row.demo_whatsapp||"—")+'</span><span>Vence: '+esc(expiry)+'</span></div>':'<div class="muted">Listo para enviar a un nuevo prospecto.</div>')+
+        '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">'+
+          '<button class="btn-primary" type="button" onclick="copyExpressSlotLink(\''+esc(row.slot_key)+'\')">Copiar link</button>'+
+          '<button class="btn-muted" type="button" onclick="openExpressSlotLink(\''+esc(row.slot_key)+'\')">Probar</button>'+
+          (occupied?'<button class="btn-muted" type="button" onclick="resetExpressDemoSlot(\''+esc(row.slot_key)+'\')">Liberar</button>':'')+
+        '</div>'+
+      '</div>';
+    }).join("")||'<div class="muted">No hay links Express configurados.</div>';
+  }catch(e){
+    box.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron cargar los links Express.")+'</div>';
+  }
 }
 
 async function loadDeliveriesModule() {

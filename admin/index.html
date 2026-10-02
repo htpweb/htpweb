@@ -12,7 +12,7 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261002-deliveryqr1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261002-express1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -36,6 +36,7 @@
       <button data-section="driverorders">Mis entregas</button>
       <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
+      <button data-section="expressdemo">Express Demo</button>
       <button data-section="localsmaster">Locales</button>
       <button data-section="categoriesmaster">Categorías</button>
       <button data-section="zonesmaster">Zonas</button>
@@ -805,6 +806,22 @@
       </div>
     </section>
 
+
+    <section id="section-expressdemo" class="section">
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0">HTPWEB Express Demo</h2>
+            <p class="muted" style="margin:.35rem 0 0">Links controlados por MASTER para entregar demos Express de 15 días.</p>
+          </div>
+          <a class="btn-muted" href="../express/" target="_blank" rel="noopener">Vista Express</a>
+        </div>
+        <div class="workspace-note" style="margin-top:14px">Cada link puede ser usado por un prospecto. Cuando lo use, quedará marcado como ocupado. Puedes liberarlo desde MASTER sin borrar la demo ya creada.</div>
+      </div>
+      <div id="expressDemoSlots" class="express-demo-grid">
+        <div class="muted">Cargando Express...</div>
+      </div>
+    </section>
 
     <section id="section-categoriesmaster" class="section"></section>
     <section id="section-zonesmaster" class="section"></section>
@@ -2025,7 +2042,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261002-deliveryqr1"></script>
+<script src="./admin.js?v=20261002-express1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
