@@ -19,10 +19,10 @@ test('MASTER ya no habilita tarifas manualmente dentro del DELIVERY',()=>{
 });
 
 test('DELIVERY_ADMIN configura precios solo dentro de modalidades contratadas',()=>{
-  const load=admin.match(/async function loadFeeDelivery\(\)[\s\S]*?async function saveFeeConfig/)?.[0]||'';
-  assert.match(load,/delivery_fee_capability_status/);
-  assert.match(load,/capabilityStatus\?\.fixed/);
-  assert.match(load,/capabilityStatus\?\.distance/);
+  const load=admin.match(/async function loadFeeDelivery\(\)[\s\S]*?function feeReadNonNegative/)?.[0]||'';
+  assert.match(load,/delivery_fee_workspace/);
+  assert.match(load,/workspace\?\.capabilities/);
+  assert.match(load,/state\.feeCapabilities/);
   assert.match(hardening,/delivery_fees\.fixed/);
   assert.match(hardening,/delivery_fees\.distance/);
   assert.match(feeMigration,/delivery_fee_mode_enabled/);
