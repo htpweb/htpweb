@@ -3676,15 +3676,6 @@ async function sendLocalOrderWhatsapp(orderId,localId){
     const responseUrl=new URL("../app/local-pedido.html",window.location.href);
     responseUrl.searchParams.set("t",request.token);
 
-    await rpc("delivery_enqueue_local_order_automation",{
-      p_delivery_id:order.delivery_id,
-      p_order_id:order.id,
-      p_local_id:localId,
-      p_token:request.token
-    }).catch(error=>{
-      console.warn("HTPWEB n8n queue:",error?.message||error);
-    });
-
     if(settings?.mode==="AUTOMATIC"){
       if(typeof htpWhatsappSendAutomatic!=="function"){
         throw new Error("El puente automático de WhatsApp no está disponible.");
