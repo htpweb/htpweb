@@ -118,14 +118,36 @@
     };
   }
 
+  function advertisingVisitorKey() {
+    try {
+      const storageKey = "HTPWEB_AD_VISITOR_V1";
+      let value = window.localStorage.getItem(storageKey);
+      if (!value) {
+        value = window.crypto?.randomUUID?.() || ("v-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+        window.localStorage.setItem(storageKey, value);
+      }
+      return value;
+    } catch {
+      return "session-" + Math.random().toString(36).slice(2);
+    }
+  }
+
   function trackAd(eventType, ad, extra = {}) {
     if (!ad?.id) return;
+    const metadata = { placement: "client_home_carousel" };
+    if (eventType === "AD_IMPRESSION") {
+      metadata.impression_key = [
+        advertisingVisitorKey(),
+        delivery?.id || "delivery",
+        ad.id
+      ].join(":");
+    }
     window.HTPWEBAnalytics?.track(eventType, {
       delivery_id: delivery?.id,
       local_id: ad.localId,
       product_id: ad.productId,
       advertisement_id: ad.id,
-      metadata: { placement: "client_home_carousel" }
+      metadata
     }, extra);
   }
 
@@ -178,7 +200,7 @@
     if (!rail) return;
 
     rail.innerHTML = ads.map((ad, i) => `
-      <a class="client-ad-card" href="${String(ad.href).replace(/"/g, "&quot;")}" data-ad-index="${i}">
+      <a class="client-ad-card" href="${String(ad.href).replace(/"/g, "&quot;")}" data-ad-index="${i}" data-ad-key="${ad.presentationKey || ad.id}">
         <img src="${String(ad.image || "").replace(/"/g, "&quot;")}" alt="${String(ad.title).replace(/"/g, "&quot;")}" loading="${i === 0 ? "eager" : "lazy"}">
         <span class="client-ad-overlay" aria-hidden="true"></span>
         <span class="client-ad-sponsored">PUBLICIDAD</span>
@@ -251,9 +273,9 @@
       delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
       if (!delivery?.id) return;
 
-      const { data, error } = await supabaseClient
-        .from("advertisements")
-        .select("*");
+      const { data, error } = await supabaseClient.rpc("public_delivery_advertisements", {
+        p_delivery_id: delivery.id
+      });
 
       if (error) {
         console.warn("Publicidad no disponible:", error.message || error);
@@ -262,12 +284,20 @@
 
       const eligible = (data || [])
         .filter(row => bool(text(row, ["active", "enabled", "is_active"], true), true))
-        .filter(dateOk)
-        .filter(belongsToDelivery);
+        .filter(dateOk);
 
-      const normalized = (await Promise.all(eligible.map(normalize)))
+      let normalized = (await Promise.all(eligible.map(normalize)))
         .filter(ad => ad && ad.image)
         .sort((a, b) => b.priority - a.priority);
+
+      if (normalized.length && normalized.length < 3) {
+        const internal = normalized.find(ad =>
+          String((data || []).find(row => String(row.id) === ad.id)?.is_internal) === "true"
+        ) || normalized[normalized.length - 1];
+        while (normalized.length < 3 && internal) {
+          normalized = normalized.concat([{ ...internal, presentationKey: internal.id + "-fill-" + normalized.length }]);
+        }
+      }
 
       if (!normalized.length) return;
 
