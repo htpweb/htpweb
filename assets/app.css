@@ -1,5 +1,5 @@
 *{box-sizing:border-box}
-:root{font-family:Inter,Arial,sans-serif;color:#202124;background:#f5f6f8}
+:root{font-family:Inter,Arial,sans-serif;color:#202124;background:#f5f6f8;--brand-primary:#e53935;--brand-dark:#111111;--brand-accent:#e53935;--brand-on-primary:#fff;--brand-on-dark:#fff;--brand-soft:#fff3f2}
 body{margin:0;background:#f5f6f8;color:#202124}
 header{background:#111;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:30}
 .header-row{max-width:1120px;margin:auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
@@ -1577,4 +1577,36 @@ body.visual-menu-viewer-open{
     width:100%;
     max-width:none;
   }
+}
+
+
+/* DELIVERY public theme variables — activated only when negocio.js loads a delivery */
+html[data-delivery-theme] header,
+html[data-delivery-theme] .hero{
+  background:var(--brand-dark);
+  color:var(--brand-on-dark);
+}
+html[data-delivery-theme] .btn-primary{
+  background:var(--brand-primary);
+  color:var(--brand-on-primary);
+}
+html[data-delivery-theme] .btn-dark{
+  background:var(--brand-dark);
+  color:var(--brand-on-dark);
+}
+html[data-delivery-theme] .chip.active{
+  background:var(--brand-primary);
+  color:var(--brand-on-primary);
+  border-color:var(--brand-primary);
+}
+html[data-delivery-theme] .media-viewer-close{
+  background:var(--brand-primary);
+  color:var(--brand-on-primary);
+}
+html[data-delivery-theme] .promotion-mix-row.has-quantity{
+  background:var(--brand-soft);
+  box-shadow:inset 4px 0 0 var(--brand-primary);
+}
+html[data-delivery-theme] .shared-product-target{
+  outline-color:var(--brand-accent);
 }
