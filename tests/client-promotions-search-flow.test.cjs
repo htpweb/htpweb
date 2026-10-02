@@ -20,13 +20,13 @@ test('promotion filter shows only locals with promotions today and combines with
   assert.match(index,/No hay locales con promociones para hoy/);
 });
 
-test('locals advertise today promotions and open promotion tab from filter',()=>{
-  assert.match(index,/local-promo-line/);
-  assert.match(index,/promo-today-badge/);
-  assert.match(index,/promo\$\{promoCount === 1 \? "" : "s"\} hoy/);
+test('promotions are indicated by the special daily filter, not badges on each local',()=>{
+  assert.doesNotMatch(index,/promo-today-badge/);
+  assert.doesNotMatch(index,/local-promo-line/);
   assert.match(index,/promotion:'" \+ promo\.id/);
   assert.match(index,/Ver promociones/);
-  assert.match(css,/\.promo-today-badge\{/);
+  assert.match(css,/\.promo-filter-chip\{/);
+  assert.match(css,/content:"HOY"/);
 });
 
 test('local keeps menu and promotions tabs and shows promotion count',()=>{
