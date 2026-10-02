@@ -14,7 +14,7 @@ async function cargarNegocio() {
 
   const { data, error } = await supabaseClient
     .from("deliveries")
-    .select("id,name,slug,description,logo_url,phone,whatsapp,city_id,active")
+    .select("id,name,slug,description,logo_url,phone,whatsapp,city_id,theme_key,active")
     .eq("slug", slug)
     .eq("active", true)
     .single();
@@ -24,6 +24,7 @@ async function cargarNegocio() {
   }
 
   negocio = data;
+  htpApplyDeliveryTheme(negocio);
   return negocio;
 }
 
@@ -40,6 +41,31 @@ function urlDelivery(path, extra = {}) {
   return `${path}?${params.toString()}`;
 }
 
+
+
+const HTPWEB_DELIVERY_THEMES = {
+  HTPWEB:    { primary:"#e53935", dark:"#111111", accent:"#e53935", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#fff3f2" },
+  OCEAN:     { primary:"#1565c0", dark:"#0d2340", accent:"#42a5f5", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#eef6ff" },
+  SKY:       { primary:"#0288d1", dark:"#0b3550", accent:"#4fc3f7", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#eefaff" },
+  FOREST:    { primary:"#2e7d32", dark:"#153a20", accent:"#66bb6a", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#f1f8f2" },
+  SUNSET:    { primary:"#ef6c00", dark:"#2f1b0d", accent:"#ff9800", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#fff7ed" },
+  PURPLE:    { primary:"#7b1fa2", dark:"#2d1238", accent:"#ab47bc", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#faf1fd" },
+  TURQUOISE: { primary:"#00897b", dark:"#083c37", accent:"#26a69a", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#eefaf8" },
+  GRAPHITE:  { primary:"#455a64", dark:"#172127", accent:"#78909c", onPrimary:"#ffffff", onDark:"#ffffff", soft:"#f3f6f7" }
+};
+
+function htpApplyDeliveryTheme(delivery) {
+  const key = String(delivery?.theme_key || "HTPWEB").toUpperCase();
+  const theme = HTPWEB_DELIVERY_THEMES[key] || HTPWEB_DELIVERY_THEMES.HTPWEB;
+  const root = document.documentElement;
+  root.style.setProperty("--brand-primary", theme.primary);
+  root.style.setProperty("--brand-dark", theme.dark);
+  root.style.setProperty("--brand-accent", theme.accent);
+  root.style.setProperty("--brand-on-primary", theme.onPrimary);
+  root.style.setProperty("--brand-on-dark", theme.onDark);
+  root.style.setProperty("--brand-soft", theme.soft);
+  root.dataset.deliveryTheme = HTPWEB_DELIVERY_THEMES[key] ? key : "HTPWEB";
+}
 
 function htpDeliveryInitials(name) {
   return String(name || "D")
@@ -87,5 +113,7 @@ function htpApplyDeliveryBrand(delivery, options = {}) {
   document.title = prefix ? prefix + " | " + name : name;
 }
 
+window.HTPWEB_DELIVERY_THEMES = HTPWEB_DELIVERY_THEMES;
+window.htpApplyDeliveryTheme = htpApplyDeliveryTheme;
 window.htpDeliveryInitials = htpDeliveryInitials;
 window.htpApplyDeliveryBrand = htpApplyDeliveryBrand;
