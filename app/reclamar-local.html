@@ -1,0 +1,70 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reclamar mi LOCAL | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261002-localclaim1">
+<style>
+.claim-shell{max-width:980px;margin:auto;padding:24px 16px}.claim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.claim-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px}.claim-card h3{margin:0 0 8px}.claim-card img{width:58px;height:58px;border-radius:12px;object-fit:cover;float:right;margin-left:12px}
+.status-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:18px;border:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<main class="claim-shell">
+<div class="row between" style="gap:12px;flex-wrap:wrap"><div><h1>Reclamar mi LOCAL</h1><p class="muted">Si tu negocio ya estÃ¡ en HTPWEB, solicita administrarlo con tu propia cuenta.</p></div><a class="btn btn-muted" href="../index.html">Volver</a></div>
+<div id="message" class="hidden"></div>
+<section class="status-card">
+<h2>Mis solicitudes</h2><div id="claims" class="muted">Cargandoâ€¦</div>
+</section>
+<section class="card">
+<h2>Buscar mi negocio</h2>
+<div class="row" style="gap:8px;flex-wrap:wrap"><input id="search" type="search" placeholder="Nombre o direcciÃ³n del LOCAL" style="flex:1;min-width:230px"><button id="searchBtn" class="btn-primary">Buscar</button></div>
+<p class="muted">HTPWEB revisarÃ¡ la solicitud. Al aprobarla, tu cuenta administrarÃ¡ el LOCAL. DespuÃ©s MASTER asignarÃ¡ el plan correspondiente.</p>
+<div id="results" class="claim-grid"></div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function show(t,type="error"){$("message").textContent=t;$("message").className=type==="success"?"success":"error"}
+async function loadClaims(){
+ const {data,error}=await supabaseClient.rpc("my_local_claim_requests");if(error)throw error;
+ const rows=Array.isArray(data)?data:[];
+ $("claims").innerHTML=rows.length?rows.map(x=>'<div class="row between" style="padding:8px 0;border-bottom:1px solid #eee"><span><strong>'+esc(x.local_name)+'</strong><small style="display:block">'+new Date(x.created_at).toLocaleDateString("es-EC")+'</small></span><span class="badge">'+esc(x.applied_at?"APLICADA":x.status)+'</span></div>').join(""):'No tienes solicitudes de reclamaciÃ³n.';
+}
+async function search(){
+ const q=$("search").value.trim();
+ const {data,error}=await supabaseClient.rpc("claimable_locals",{p_search:q||null});if(error)throw error;
+ const rows=Array.isArray(data)?data:[];
+ $("results").innerHTML=rows.length?rows.map(x=>'<article class="claim-card">'+
+   (x.logo_url?'<img src="'+esc(x.logo_url)+'" alt="">':"")+
+   '<h3>'+esc(x.name)+'</h3><p class="muted">'+esc([x.address,x.canton,x.province].filter(Boolean).join(" Â· "))+'</p>'+
+   (x.pending_claim?'<button disabled>ReclamaciÃ³n en revisiÃ³n</button>':'<button class="btn-primary" data-claim="'+x.id+'">Este es mi negocio</button>')+
+   '</article>').join(""):'<div class="muted">No encontramos LOCAL disponibles con esa bÃºsqueda.</div>';
+ $("results").querySelectorAll("[data-claim]").forEach(b=>b.onclick=()=>submitClaim(b.dataset.claim));
+}
+async function submitClaim(localId){
+ if(!confirm("Â¿Solicitar administrar este LOCAL? MASTER revisarÃ¡ la reclamaciÃ³n antes de entregarte el control."))return;
+ try{
+  await supabaseClient.rpc("submit_local_claim",{p_local_id:localId,p_evidence:{source:"SELF_SERVICE",note:"Solicitud realizada desde Reclamar mi LOCAL"}}).then(({error})=>{if(error)throw error});
+  show("Solicitud enviada. HTPWEB la revisarÃ¡ antes de activar el control del LOCAL.","success");await Promise.all([loadClaims(),search()]);
+ }catch(e){show(e.message||"No se pudo enviar la reclamaciÃ³n.");}
+}
+async function init(){
+ const user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return;}
+ const {data:role,error}=await supabaseClient.rpc("current_role_code");if(error)throw error;
+ if(role!=="CLIENT"){
+  $("results").innerHTML='<div class="muted">La reclamaciÃ³n inicial se realiza desde una cuenta CLIENT. Tu cuenta actual es '+esc(role||"sin rol")+'.</div>';
+  await loadClaims().catch(()=>{});return;
+ }
+ await Promise.all([loadClaims(),search()]);
+ $("searchBtn").onclick=()=>search().catch(e=>show(e.message));
+ $("search").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();search().catch(err=>show(err.message));}};
+}
+init().catch(e=>show(e.message||"No se pudo abrir la reclamaciÃ³n."));
+</script>
+</body></html>
