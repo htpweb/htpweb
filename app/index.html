@@ -10,8 +10,8 @@
 <script src="../config/negocio.js?v=20261002-theme3"></script>
 <script src="../config/auth.js"></script>
 <script src="../config/cart.js"></script>
-<script src="../config/ads.js?v=20261002-continuous4"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-continuous1">
+<script src="../config/ads.js?v=20261002-mobile1"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261002-mobile1">
 </head>
 <body>
 <header>
@@ -27,27 +27,29 @@
       </div>
     </div>
     <div class="header-actions">
-      <a class="btn btn-light" id="ordersLink" href="#">Mis pedidos</a>
-      <a class="btn btn-light" id="authLink" href="#">Acceder</a>
-      <a class="btn btn-primary" id="cartLink" href="#">🛒 <span id="cartCount">0</span></a>
+      <a class="btn btn-light mobile-header-action" id="ordersLink" href="#" aria-label="Mis pedidos"><span class="mobile-action-icon" aria-hidden="true">📦</span><span class="mobile-action-label">Mis pedidos</span></a>
+      <a class="btn btn-light mobile-header-action" id="authLink" href="#" aria-label="Acceder"><span class="mobile-action-icon" aria-hidden="true">👤</span><span class="mobile-action-label">Acceder</span></a>
+      <a class="btn btn-primary mobile-header-action cart-action" id="cartLink" href="#" aria-label="Carrito"><span class="mobile-action-icon" aria-hidden="true">🛒</span><span id="cartCount">0</span></a>
     </div>
   </div>
 </header>
 
 <main>
-  <section class="card hero">
-    <h1 id="title">Cargando...</h1>
-    <p id="subtitle">Explora locales y productos.</p>
+  <section class="card hero client-search-shell" id="clientSearchShell">
+    <div class="client-search-intro">
+      <h1 id="title">Cargando...</h1>
+      <p id="subtitle">Explora locales y productos.</p>
+    </div>
     <input id="search" class="search" placeholder="Buscar local o producto...">
   </section>
 
-  <section class="card">
+  <section class="card client-categories-shell" id="clientCategoriesShell">
     <h2>Categorías</h2>
     <div id="categories" class="chips"></div>
   </section>
 
-  <section>
-    <h2>Locales</h2>
+  <section id="localsSection" class="client-locals-section">
+    <h2 id="localsHeading">Locales</h2>
     <div id="locals" class="grid"></div>
   </section>
 
@@ -81,15 +83,19 @@ async function init() {
     updateCartCount();
 
     const user = await obtenerUsuarioActual();
-    $("authLink").textContent = user ? "Mi cuenta" : "Acceder";
-    $("authLink").href = user
-      ? urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) })
-      : urlDelivery("acceso.html", { return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug) });
+    const authText = user ? "Mi cuenta" : "Acceder";
+    const authLabel = $("authLink")?.querySelector(".mobile-action-label");
+    if (authLabel) authLabel.textContent = authText;
+    if ($("authLink")) $("authLink").setAttribute("aria-label", authText);
+    $("authLink").href = urlDelivery("acceso.html", {
+      return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug)
+    });
 
     await loadCatalog();
     await loadDeliveryPromotions();
     renderCategories();
     renderLocals();
+    updateMobileFilterLayout();
   } catch (error) {
     console.error(error);
     $("error").textContent = error.message || "No se pudo cargar el delivery.";
@@ -240,10 +246,40 @@ function renderCategories() {
     ).join("");
 }
 
+function isMobileCatalog() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function updateMobileFilterLayout() {
+  const queryActive = normalizeSearchText($("search")?.value).length > 0;
+  const filterActive = Boolean(categoryId) || queryActive;
+  document.body.classList.toggle("client-filter-active", isMobileCatalog() && filterActive);
+
+  const adSection = document.getElementById("htpwebAdvertising");
+  const categoriesSection = $("clientCategoriesShell");
+  const localsSection = $("localsSection");
+  if (!adSection || !categoriesSection || !localsSection) return;
+
+  if (isMobileCatalog() && filterActive) {
+    localsSection.insertAdjacentElement("afterend", adSection);
+  } else {
+    categoriesSection.insertAdjacentElement("afterend", adSection);
+  }
+}
+
+function focusFilteredResults() {
+  if (!isMobileCatalog()) return;
+  window.requestAnimationFrame(() => {
+    $("localsSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function selectCategory(id) {
   categoryId = id;
   renderCategories();
   renderLocals();
+  updateMobileFilterLayout();
+  focusFilteredResults();
 }
 
 function availabilityText(localId) {
@@ -288,6 +324,18 @@ function normalizeSearchText(value) {
 function renderLocals() {
   const rawQuery = $("search").value;
   const q = normalizeSearchText(rawQuery);
+  const selectedCategory = categoryId && categoryId !== "__PROMOTIONS__"
+    ? categories.find(category => category.id === categoryId)
+    : null;
+  if ($("localsHeading")) {
+    $("localsHeading").textContent = categoryId === "__PROMOTIONS__"
+      ? "Locales · Promociones"
+      : selectedCategory
+        ? "Locales · " + selectedCategory.name
+        : q
+          ? "Resultados"
+          : "Locales";
+  }
 
   const filtered = locals.filter(local => {
     const ps = products.filter(p => p.local_id === local.id);
@@ -367,7 +415,11 @@ function updateCartCount() {
   $("cartCount").textContent = carritoCantidad(negocioActual.slug);
 }
 
-$("search").addEventListener("input", renderLocals);
+$("search").addEventListener("input", () => {
+  renderLocals();
+  updateMobileFilterLayout();
+});
+window.addEventListener("resize", updateMobileFilterLayout);
 window.addEventListener("htpweb:cart", updateCartCount);
 init();
 </script>
