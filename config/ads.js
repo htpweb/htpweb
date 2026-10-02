@@ -1,12 +1,17 @@
 (() => {
-  const ROTATE_MS = 5000;
+  const SCROLL_PX_PER_SECOND = 42;
   const scriptBase = document.currentScript?.src
     ? new URL(".", document.currentScript.src)
     : new URL("../config/", location.href);
 
   let ads = [];
   let index = 0;
-  let timer = null;
+  let animationFrame = null;
+  let lastFrameAt = 0;
+  let loopWidth = 0;
+  let loopStart = 0;
+  let loopEnd = 0;
+  let carouselPaused = false;
   let delivery = null;
 
   async function ensureAnalytics() {
@@ -199,9 +204,9 @@
     const rail = document.getElementById("htpwebAdRail");
     if (!rail) return;
 
-    rail.innerHTML = ads.map((ad, i) => `
-      <a class="client-ad-card" href="${String(ad.href).replace(/"/g, "&quot;")}" data-ad-index="${i}" data-ad-key="${ad.presentationKey || ad.id}">
-        <img src="${String(ad.image || "").replace(/"/g, "&quot;")}" alt="${String(ad.title).replace(/"/g, "&quot;")}" loading="${i === 0 ? "eager" : "lazy"}">
+    const cardMarkup = (ad, i, copy) => `
+      <a class="client-ad-card" href="${String(ad.href).replace(/"/g, "&quot;")}" data-ad-index="${i}" data-ad-copy="${copy}" data-ad-key="${ad.presentationKey || ad.id}">
+        <img src="${String(ad.image || "").replace(/"/g, "&quot;")}" alt="${String(ad.title).replace(/"/g, "&quot;")}" loading="${copy === 1 && i === 0 ? "eager" : "lazy"}">
         <span class="client-ad-overlay" aria-hidden="true"></span>
         <span class="client-ad-sponsored">PUBLICIDAD</span>
         <span class="client-ad-copy">
@@ -210,7 +215,11 @@
           <em>Ver local</em>
         </span>
       </a>
-    `).join("");
+    `;
+
+    rail.innerHTML = [0, 1, 2]
+      .flatMap(copy => ads.map((ad, i) => cardMarkup(ad, i, copy)))
+      .join("");
 
     rail.querySelectorAll(".client-ad-card").forEach(card => {
       card.addEventListener("click", () => {
@@ -219,34 +228,62 @@
       });
     });
 
-    rail.addEventListener("scroll", () => {
+    const syncIndexFromScroll = () => {
       const cards = [...rail.querySelectorAll(".client-ad-card")];
       if (!cards.length) return;
       const center = rail.scrollLeft + rail.clientWidth / 2;
-      let best = 0;
+      let best = index;
       let distance = Infinity;
-      cards.forEach((card, i) => {
+      cards.forEach(card => {
         const cardCenter = card.offsetLeft + card.offsetWidth / 2;
         const nextDistance = Math.abs(cardCenter - center);
         if (nextDistance < distance) {
           distance = nextDistance;
-          best = i;
+          best = Number(card.dataset.adIndex || 0);
         }
       });
       if (best !== index) {
         index = best;
         renderDots();
+        const ad = ads[index];
+        trackAd("AD_IMPRESSION", ad, {
+          dedupeKey: "ad-impression:" + ad.id + ":" + index + ":continuous"
+        });
       }
-    }, { passive: true });
+    };
+
+    rail.addEventListener("scroll", syncIndexFromScroll, { passive: true });
+    rail.addEventListener("mouseenter", () => { carouselPaused = true; });
+    rail.addEventListener("mouseleave", () => { carouselPaused = false; lastFrameAt = 0; });
+    rail.addEventListener("pointerdown", () => { carouselPaused = true; });
+    rail.addEventListener("pointerup", () => { carouselPaused = false; lastFrameAt = 0; });
+    rail.addEventListener("pointercancel", () => { carouselPaused = false; lastFrameAt = 0; });
+
+    requestAnimationFrame(() => {
+      const first = rail.querySelector('.client-ad-card[data-ad-copy="0"][data-ad-index="0"]');
+      const middle = rail.querySelector('.client-ad-card[data-ad-copy="1"][data-ad-index="0"]');
+      const third = rail.querySelector('.client-ad-card[data-ad-copy="2"][data-ad-index="0"]');
+      if (!first || !middle || !third) return;
+      loopWidth = middle.offsetLeft - first.offsetLeft;
+      loopStart = middle.offsetLeft;
+      loopEnd = third.offsetLeft;
+      rail.scrollLeft = loopStart;
+    });
+  }
+
+  function normalizeLoopPosition(rail) {
+    if (!loopWidth) return;
+    if (rail.scrollLeft >= loopEnd) rail.scrollLeft -= loopWidth;
+    else if (rail.scrollLeft < loopStart - loopWidth) rail.scrollLeft += loopWidth;
   }
 
   function goTo(nextIndex, userInitiated = false) {
     if (!ads.length) return;
     index = ((nextIndex % ads.length) + ads.length) % ads.length;
     const rail = document.getElementById("htpwebAdRail");
-    const card = rail?.querySelector('[data-ad-index="' + index + '"]');
+    const card = rail?.querySelector('[data-ad-copy="1"][data-ad-index="' + index + '"]');
     if (rail && card) {
-      rail.scrollTo({ left: Math.max(0, card.offsetLeft - 2), behavior: "smooth" });
+      rail.scrollTo({ left: card.offsetLeft, behavior: "smooth" });
     }
     renderDots();
     const ad = ads[index];
@@ -255,14 +292,26 @@
     });
   }
 
-  function rotate() {
-    if (ads.length <= 1) return;
-    goTo(index + 1, false);
-  }
-
   function startRotation() {
-    if (timer) clearInterval(timer);
-    if (ads.length > 1) timer = setInterval(rotate, ROTATE_MS);
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    if (ads.length <= 1) return;
+
+    const step = now => {
+      const rail = document.getElementById("htpwebAdRail");
+      if (!rail) return;
+      if (!lastFrameAt) lastFrameAt = now;
+      const delta = Math.min(64, now - lastFrameAt);
+      lastFrameAt = now;
+
+      if (!carouselPaused && loopWidth > 0) {
+        rail.scrollLeft += (SCROLL_PX_PER_SECOND * delta) / 1000;
+        normalizeLoopPosition(rail);
+      }
+      animationFrame = requestAnimationFrame(step);
+    };
+
+    lastFrameAt = 0;
+    animationFrame = requestAnimationFrame(step);
   }
 
   async function load() {

@@ -8,20 +8,24 @@ const index=fs.readFileSync('app/index.html','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const adminHtml=fs.readFileSync('admin/index.html','utf8');
 
-test('client home advertising uses inline horizontal carousel',()=>{
+test('client home advertising uses continuous infinite horizontal carousel',()=>{
   assert.match(ads,/client_home_carousel/);
   assert.match(ads,/client-ad-rail/);
-  assert.match(ads,/scrollTo\(\{ left:/);
-  assert.match(ads,/setInterval\(rotate, ROTATE_MS\)/);
-  assert.match(css,/\.client-ad-rail\{[\s\S]*overflow-x:auto/);
-  assert.match(css,/\.client-ad-card\{[\s\S]*scroll-snap-align:start/);
+  assert.match(ads,/\[0, 1, 2\][\s\S]*flatMap/);
+  assert.match(ads,/requestAnimationFrame\(step\)/);
+  assert.match(ads,/SCROLL_PX_PER_SECOND/);
+  assert.match(ads,/normalizeLoopPosition/);
+  assert.doesNotMatch(ads,/setInterval\(rotate/);
+  assert.match(css,/\.client-ad-rail\{[\s\S]*overflow-x:auto[\s\S]*scroll-snap-type:none/);
+  assert.match(css,/\.client-ad-card\{[\s\S]*scroll-snap-align:none/);
+  assert.match(index,/ads\.js\?v=20261002-continuous1/);
 });
 
 test('advertising is limited to client home and old fixed banner is disabled',()=>{
   assert.match(ads,/function isClientHome/);
   assert.match(ads,/if \(!isClientHome\(\)\) return/);
   assert.match(css,/\.htpweb-ad-banner\{[\s\S]*display:none!important/);
-  assert.match(index,/ads\.js\?v=20261002-zones1/);
+  assert.match(index,/ads\.js\?v=20261002-continuous1/);
 });
 
 test('client requests ads by delivery coverage zones and sends valid impression key',()=>{
