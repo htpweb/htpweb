@@ -1,70 +1,147 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reclamar mi LOCAL | HTPWEB</title>
+<title>Reclamar LOCAL | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-localclaim1">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-localclaim2">
 <style>
-.claim-shell{max-width:980px;margin:auto;padding:24px 16px}.claim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.claim-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px}.claim-card h3{margin:0 0 8px}.claim-card img{width:58px;height:58px;border-radius:12px;object-fit:cover;float:right;margin-left:12px}
-.status-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:18px;border:1px solid #e5e7eb}
+.claim-shell{max-width:860px;margin:auto;padding:24px 16px}.claim-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin-bottom:16px}
+.claim-local{display:flex;gap:14px;align-items:center}.claim-local img{width:72px;height:72px;border-radius:14px;object-fit:cover;background:#eef2f7}
+.evidence-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.method-note{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}.challenge{font-size:1.35rem;font-weight:800;letter-spacing:.08em}
+@media(max-width:680px){.evidence-grid{grid-template-columns:1fr}.claim-shell{padding:14px 10px}}
 </style>
 </head>
 <body>
 <main class="claim-shell">
-<div class="row between" style="gap:12px;flex-wrap:wrap"><div><h1>Reclamar mi LOCAL</h1><p class="muted">Si tu negocio ya estÃ¡ en HTPWEB, solicita administrarlo con tu propia cuenta.</p></div><a class="btn btn-muted" href="../index.html">Volver</a></div>
-<div id="message" class="hidden"></div>
-<section class="status-card">
-<h2>Mis solicitudes</h2><div id="claims" class="muted">Cargandoâ€¦</div>
-</section>
-<section class="card">
-<h2>Buscar mi negocio</h2>
-<div class="row" style="gap:8px;flex-wrap:wrap"><input id="search" type="search" placeholder="Nombre o direcciÃ³n del LOCAL" style="flex:1;min-width:230px"><button id="searchBtn" class="btn-primary">Buscar</button></div>
-<p class="muted">HTPWEB revisarÃ¡ la solicitud. Al aprobarla, tu cuenta administrarÃ¡ el LOCAL. DespuÃ©s MASTER asignarÃ¡ el plan correspondiente.</p>
-<div id="results" class="claim-grid"></div>
-</section>
+  <div class="row between" style="gap:12px;flex-wrap:wrap">
+    <div><h1>Reclamar este LOCAL</h1><p class="muted">HTPWEB entregará el control solo después de verificar que administras el negocio.</p></div>
+    <button id="backBtn" class="btn-muted">Volver al LOCAL</button>
+  </div>
+  <div id="message" class="hidden"></div>
+  <section id="localCard" class="claim-card"><div class="muted">Cargando LOCAL…</div></section>
+  <section id="statusCard" class="claim-card hidden"></section>
+  <section id="formCard" class="claim-card hidden">
+    <h2>Datos del responsable</h2>
+    <div class="evidence-grid">
+      <div><label>Nombre completo *</label><input id="responsibleName" autocomplete="name"></div>
+      <div><label>Relación con el negocio *</label>
+        <select id="responsibleRole"><option value="">Seleccionar…</option><option>PROPIETARIO</option><option>ADMINISTRADOR</option><option>REPRESENTANTE</option></select>
+      </div>
+      <div><label>WhatsApp de contacto *</label><input id="declaredWhatsapp" type="tel" placeholder="09XXXXXXXX"></div>
+      <div><label>Método principal de verificación *</label>
+        <select id="verificationMethod">
+          <option value="REGISTERED_WHATSAPP">WhatsApp registrado del negocio</option>
+          <option value="SOCIAL">Red social oficial</option>
+          <option value="PHYSICAL">Evidencia física en el establecimiento</option>
+          <option value="DOCUMENT">Documento comercial</option>
+        </select>
+      </div>
+    </div>
+    <div class="method-note" style="margin-top:14px">
+      <strong>Cómo verificaremos</strong>
+      <p id="methodHelp" class="muted" style="margin-bottom:0"></p>
+    </div>
+    <div class="evidence-grid" style="margin-top:14px">
+      <div><label>Enlace de evidencia</label><input id="evidenceUrl" type="url" placeholder="https://..."></div>
+      <div><label>Detalle de evidencia</label><input id="evidenceNote" placeholder="Describe cómo podemos comprobarlo"></div>
+    </div>
+    <p class="muted">Al enviar la solicitud, HTPWEB genera un código único. MASTER puede contactar el WhatsApp que ya consta en la ficha del LOCAL y pedirte responder con ese código, o comprobarlo mediante la evidencia indicada.</p>
+    <button id="submitBtn" class="btn-primary" type="button">Enviar solicitud de reclamación</button>
+  </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function show(t,type="error"){$("message").textContent=t;$("message").className=type==="success"?"success":"error"}
-async function loadClaims(){
- const {data,error}=await supabaseClient.rpc("my_local_claim_requests");if(error)throw error;
- const rows=Array.isArray(data)?data:[];
- $("claims").innerHTML=rows.length?rows.map(x=>'<div class="row between" style="padding:8px 0;border-bottom:1px solid #eee"><span><strong>'+esc(x.local_name)+'</strong><small style="display:block">'+new Date(x.created_at).toLocaleDateString("es-EC")+'</small></span><span class="badge">'+esc(x.applied_at?"APLICADA":x.status)+'</span></div>').join(""):'No tienes solicitudes de reclamaciÃ³n.';
+const params=new URLSearchParams(location.search);
+const localId=params.get("local")||"";
+const delivery=params.get("delivery")||"";
+let context=null;
+function backUrl(){return localId&&delivery?"local.html?delivery="+encodeURIComponent(delivery)+"&local="+encodeURIComponent(localId):"../index.html"}
+function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
+function methodHelp(){
+ const m=$("verificationMethod").value;
+ const map={
+  REGISTERED_WHATSAPP:"MASTER verificará contigo usando el WhatsApp que HTPWEB ya tiene registrado para este LOCAL. No necesitas publicar datos adicionales.",
+  SOCIAL:"Usa una cuenta oficial del negocio. Puedes colocar temporalmente el código de verificación en la biografía o una publicación y pegar aquí el enlace.",
+  PHYSICAL:"Puedes mostrar el código de verificación dentro del establecimiento y aportar un enlace a una fotografía que permita identificar el negocio.",
+  DOCUMENT:"Indica qué documento comercial puedes presentar a MASTER (por ejemplo RUC, permiso o factura del negocio). No publiques información sensible en un enlace público."
+ };
+ $("methodHelp").textContent=map[m]||"";
 }
-async function search(){
- const q=$("search").value.trim();
- const {data,error}=await supabaseClient.rpc("claimable_locals",{p_search:q||null});if(error)throw error;
- const rows=Array.isArray(data)?data:[];
- $("results").innerHTML=rows.length?rows.map(x=>'<article class="claim-card">'+
-   (x.logo_url?'<img src="'+esc(x.logo_url)+'" alt="">':"")+
-   '<h3>'+esc(x.name)+'</h3><p class="muted">'+esc([x.address,x.canton,x.province].filter(Boolean).join(" Â· "))+'</p>'+
-   (x.pending_claim?'<button disabled>ReclamaciÃ³n en revisiÃ³n</button>':'<button class="btn-primary" data-claim="'+x.id+'">Este es mi negocio</button>')+
-   '</article>').join(""):'<div class="muted">No encontramos LOCAL disponibles con esa bÃºsqueda.</div>';
- $("results").querySelectorAll("[data-claim]").forEach(b=>b.onclick=()=>submitClaim(b.dataset.claim));
+function renderLocal(){
+ $("localCard").innerHTML='<div class="claim-local">'+(context.logo_url?'<img src="'+esc(context.logo_url)+'" alt="">':'<div style="width:72px;height:72px;border-radius:14px;background:#eef2f7"></div>')+
+ '<div><h2 style="margin:0">'+esc(context.name)+'</h2><p class="muted" style="margin:5px 0">'+esc(context.address||"")+'</p>'+
+ (context.whatsapp_masked?'<small>WhatsApp registrado: '+esc(context.whatsapp_masked)+'</small>':"")+'</div></div>';
 }
-async function submitClaim(localId){
- if(!confirm("Â¿Solicitar administrar este LOCAL? MASTER revisarÃ¡ la reclamaciÃ³n antes de entregarte el control."))return;
- try{
-  await supabaseClient.rpc("submit_local_claim",{p_local_id:localId,p_evidence:{source:"SELF_SERVICE",note:"Solicitud realizada desde Reclamar mi LOCAL"}}).then(({error})=>{if(error)throw error});
-  show("Solicitud enviada. HTPWEB la revisarÃ¡ antes de activar el control del LOCAL.","success");await Promise.all([loadClaims(),search()]);
- }catch(e){show(e.message||"No se pudo enviar la reclamaciÃ³n.");}
+function fillFromPayload(p={}){
+ $("responsibleName").value=p.responsible_name||"";
+ $("responsibleRole").value=p.responsible_role||"";
+ $("declaredWhatsapp").value=p.declared_whatsapp||"";
+ $("verificationMethod").value=p.verification_method||"REGISTERED_WHATSAPP";
+ $("evidenceUrl").value=p.evidence_url||"";
+ $("evidenceNote").value=p.evidence_note||"";
+ methodHelp();
 }
-async function init(){
- const user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return;}
- const {data:role,error}=await supabaseClient.rpc("current_role_code");if(error)throw error;
- if(role!=="CLIENT"){
-  $("results").innerHTML='<div class="muted">La reclamaciÃ³n inicial se realiza desde una cuenta CLIENT. Tu cuenta actual es '+esc(role||"sin rol")+'.</div>';
-  await loadClaims().catch(()=>{});return;
+function renderState(){
+ renderLocal();
+ const req=context.request;
+ if(context.claimed){
+  $("statusCard").classList.remove("hidden");$("formCard").classList.add("hidden");
+  $("statusCard").innerHTML='<h2>LOCAL ya reclamado</h2><p>Este negocio ya está administrado por su propietario en HTPWEB.</p>';
+  return;
  }
- await Promise.all([loadClaims(),search()]);
- $("searchBtn").onclick=()=>search().catch(e=>show(e.message));
- $("search").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();search().catch(err=>show(err.message));}};
+ if(!req){$("formCard").classList.remove("hidden");$("statusCard").classList.add("hidden");methodHelp();return;}
+ $("statusCard").classList.remove("hidden");
+ const p=req.payload||{};
+ const challenge=p.challenge_code?'<p>Código de verificación: <span class="challenge">'+esc(p.challenge_code)+'</span></p>':"";
+ const match=p.declared_whatsapp_matches_registered===true?'<p><strong>WhatsApp declarado coincide con la ficha:</strong> Sí ✓</p>':p.declared_whatsapp_matches_registered===false?'<p><strong>WhatsApp declarado coincide con la ficha:</strong> No</p>':"";
+ $("statusCard").innerHTML='<h2>Estado de la reclamación</h2><p><span class="badge">'+esc(req.applied_at?"APLICADA":req.status)+'</span></p>'+challenge+match+
+  (req.review_note?'<p><strong>Nota de MASTER:</strong> '+esc(req.review_note)+'</p>':"")+
+  (req.status==="PENDING"?'<p class="muted">MASTER está revisando la propiedad. Puede verificar el WhatsApp registrado o la evidencia enviada.</p>':"");
+ if(req.status==="NEEDS_INFO"&&!req.applied_at){
+  $("formCard").classList.remove("hidden");$("submitBtn").textContent="Enviar información adicional";fillFromPayload(p);
+ }else $("formCard").classList.add("hidden");
 }
-init().catch(e=>show(e.message||"No se pudo abrir la reclamaciÃ³n."));
+function evidencePayload(){
+ return{
+  responsible_name:$("responsibleName").value.trim(),
+  responsible_role:$("responsibleRole").value,
+  declared_whatsapp:$("declaredWhatsapp").value.trim(),
+  verification_method:$("verificationMethod").value,
+  evidence_url:$("evidenceUrl").value.trim()||null,
+  evidence_note:$("evidenceNote").value.trim()||null,
+  source_delivery_slug:delivery||null
+ };
+}
+async function submit(){
+ try{
+  const payload=evidencePayload();
+  if(!payload.responsible_name||!payload.responsible_role||!payload.declared_whatsapp)throw new Error("Completa nombre, relación con el negocio y WhatsApp.");
+  if(context.request?.status==="NEEDS_INFO"){
+    const {error}=await supabaseClient.rpc("update_local_claim_evidence",{p_request_id:context.request.id,p_evidence:payload});if(error)throw error;
+    show("Información adicional enviada a MASTER.","success");
+  }else{
+    const {error}=await supabaseClient.rpc("submit_local_claim",{p_local_id:localId,p_evidence:payload});if(error)throw error;
+    show("Solicitud enviada. MASTER verificará que administras este LOCAL antes de aprobarla.","success");
+  }
+  await load();
+ }catch(e){show(e.message||"No se pudo enviar la reclamación.");}
+}
+async function load(){
+ if(!localId)throw new Error("La reclamación debe iniciarse desde la página de un LOCAL.");
+ const user=await obtenerUsuarioActual();
+ if(!user){irAAcceso(rutaActualRelativa());return;}
+ const {data:role,error:roleError}=await supabaseClient.rpc("current_role_code");if(roleError)throw roleError;
+ if(role!=="CLIENT")throw new Error("La reclamación inicial debe hacerse desde una cuenta CLIENT.");
+ const {data,error}=await supabaseClient.rpc("claim_local_context",{p_local_id:localId});if(error)throw error;if(!data)throw new Error("LOCAL no disponible.");
+ context=data;renderState();
+}
+$("backBtn").onclick=()=>location.href=backUrl();
+$("verificationMethod").onchange=methodHelp;
+$("submitBtn").onclick=submit;
+load().catch(e=>show(e.message||"No se pudo abrir la reclamación."));
 </script>
 </body></html>

@@ -15,7 +15,7 @@ test("self-service LOCAL claim is authenticated and still MASTER-reviewed",()=>{
  assert.ok(sql.includes("values('CLAIM_LOCAL',null,p_local_id,auth.uid(),'PENDING'"));
  assert.match(sql,/reclamaci.n en revisi.n/);
  assert.match(page,/submit_local_claim/);
- assert.match(page,/MASTER revisar/);
+ assert.match(page,/MASTER verific/);
 });
 
 test("CLIENT customer context survives conversion to LOCAL_ADMIN",()=>{
@@ -27,10 +27,13 @@ test("CLIENT customer context survives conversion to LOCAL_ADMIN",()=>{
  assert.match(admin,/perfil de compra CUSTOMER se conservar/);
 });
 
-test("landing exposes LOCAL claim onboarding",()=>{
- const html=read("index.html");
- assert.match(html,/Reclamar mi LOCAL/);
- assert.match(html,/crear y administrar tu propia tienda HTPWEB/);
+test("claim onboarding starts inside each unclaimed DELIVERY-visible LOCAL",()=>{
+ const landing=read("index.html");
+ const local=read("app/local.html");
+ assert.doesNotMatch(landing,/Reclamar mi LOCAL/);
+ assert.match(local,/Reclamar este LOCAL/);
+ assert.match(local,/public_local_claim_state/);
+ assert.match(local,/reclamar-local\.html\?local=/);
 });
 
 test("managed LOCAL checkout hands cart to existing DELIVERY checkout",()=>{

@@ -60,6 +60,7 @@ const sharedProductId = params.get("product") || "";
 let negocioActual = null;
 let localActual = null;
 let availability = null;
+let claimState = null;
 let products = [];
 let variants = [];
 
@@ -94,6 +95,18 @@ async function init() {
     if (localRes.error || !localRes.data) throw new Error("Local no encontrado.");
     localActual = localRes.data;
     document.title = localActual.name + " | " + negocioActual.name;
+
+    try {
+      const { data: claimData, error: claimError } = await supabaseClient.rpc(
+        "public_local_claim_state",
+        { p_local_id: localId }
+      );
+      if (claimError) throw claimError;
+      claimState = claimData || null;
+    } catch (claimError) {
+      console.warn("No se pudo cargar el estado de reclamación del LOCAL:", claimError);
+      claimState = null;
+    }
 
     try {
       const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
@@ -217,6 +230,21 @@ function render() {
     <p class="muted">${esc(localActual.description || "")}</p>
     ${localActual.address ? `<p><strong>Dirección:</strong> ${esc(localActual.address)}</p>` : ""}
     ${currentAvailability ? `<p class="local-availability-detail ${currentAvailability.className}">${esc(currentAvailability.text)}</p>` : ""}
+    ${claimState?.claimed ? `
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
+        <small class="muted">✓ Información administrada por el negocio.</small>
+      </div>
+    ` : claimState?.pending ? `
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
+        <small class="muted">La propiedad de este LOCAL está actualmente en proceso de verificación.</small>
+      </div>
+    ` : `
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
+        <strong style="display:block;margin-bottom:4px">¿Administras este negocio?</strong>
+        <span class="muted" style="display:block;margin-bottom:10px">Verifica tu propiedad para actualizar productos, promociones, horarios y administrar tu tienda en HTPWEB.</span>
+        <a class="btn btn-muted" href="reclamar-local.html?local=${encodeURIComponent(localActual.id)}&delivery=${encodeURIComponent(negocioActual.slug || "")}">Reclamar este LOCAL</a>
+      </div>
+    `}
   `;
 
   const orderNotice = $("localOrderStatusNotice");

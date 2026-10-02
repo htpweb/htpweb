@@ -3985,7 +3985,17 @@ function renderRequestPayload(payload = {}) {
     facebook_url: "Facebook",
     tiktok_url: "TikTok",
     telegram_url: "Telegram",
-    google_maps_url: "Google Maps"
+    google_maps_url: "Google Maps",
+    responsible_name: "Responsable",
+    responsible_role: "Relación con el negocio",
+    declared_whatsapp: "WhatsApp declarado",
+    verification_method: "Método de verificación",
+    evidence_url: "Enlace de evidencia",
+    evidence_note: "Detalle de evidencia",
+    challenge_code: "Código de verificación",
+    declared_whatsapp_matches_registered: "Coincide con WhatsApp registrado",
+    verification_status: "Estado de verificación",
+    source_delivery_slug: "DELIVERY de origen"
   };
 
   const entries = Object.entries(payload || {});
@@ -4087,6 +4097,16 @@ async function loadRequests() {
   }
 
   state.requests = data || [];
+  if (state.role === "MASTER") {
+    await Promise.all(state.requests.filter(req => req.request_type === "CLAIM_LOCAL").map(async req => {
+      try {
+        req.claim_verification = await rpc("master_claim_verification_snapshot", { p_request_id: req.id });
+      } catch (error) {
+        console.warn("No se pudo cargar la verificación del CLAIM:", error);
+        req.claim_verification = null;
+      }
+    }));
+  }
 
   $("requestsList").innerHTML = state.requests.length
     ? state.requests.map(renderRequest).join("")
@@ -4121,6 +4141,41 @@ async function reviewLocalPartnership(requestId,accept){
   }catch(e){message(e.message||"No se pudo revisar la solicitud.","error");}
 }
 
+function renderClaimVerification(req) {
+  if (req.request_type !== "CLAIM_LOCAL" || state.role !== "MASTER") return "";
+  const v = req.claim_verification || {};
+  const p = v.payload || req.payload || {};
+  const registeredWhatsapp = String(v.registered_whatsapp || "").replace(/\D/g, "");
+  const whatsappHref = registeredWhatsapp
+    ? "https://wa.me/" + registeredWhatsapp + "?text=" + encodeURIComponent(
+        "HTPWEB · Verificación de propiedad de " + (v.local_name || "LOCAL") +
+        "\n\nCódigo de verificación: " + (p.challenge_code || "SIN CÓDIGO") +
+        "\n\nResponde a este mensaje desde el WhatsApp oficial del negocio para confirmar que administras este LOCAL."
+      )
+    : "";
+  const socialLinks = [
+    ["Instagram", v.instagram_url],
+    ["Facebook", v.facebook_url],
+    ["TikTok", v.tiktok_url]
+  ].filter(row => row[1]);
+
+  return `
+    <div class="claim-verification-box" style="margin:12px 0;padding:12px;border:1px solid #dbe4ee;border-radius:12px;background:#f8fafc">
+      <strong>Verificación de propiedad</strong>
+      <div style="margin-top:8px"><strong>Responsable:</strong> ${esc(p.responsible_name || "—")} · ${esc(p.responsible_role || "—")}</div>
+      <div><strong>WhatsApp declarado:</strong> ${esc(p.declared_whatsapp || "—")}</div>
+      <div><strong>WhatsApp registrado en HTPWEB:</strong> ${esc(v.registered_whatsapp || "No registrado")}</div>
+      <div><strong>Coincidencia automática:</strong> ${p.declared_whatsapp_matches_registered === true ? "Sí ✓" : p.declared_whatsapp_matches_registered === false ? "No" : "Sin comprobar"}</div>
+      <div><strong>Código:</strong> <span style="font-weight:800;letter-spacing:.08em">${esc(p.challenge_code || "—")}</span></div>
+      <div><strong>Método:</strong> ${esc(p.verification_method || "—")}</div>
+      ${p.evidence_note ? `<div><strong>Detalle:</strong> ${esc(p.evidence_note)}</div>` : ""}
+      ${p.evidence_url ? `<div><a href="${esc(p.evidence_url)}" target="_blank" rel="noopener">Abrir evidencia aportada</a></div>` : ""}
+      ${socialLinks.length ? `<div style="margin-top:6px"><strong>Redes registradas:</strong> ${socialLinks.map(([name,url]) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>`).join(" · ")}</div>` : ""}
+      ${whatsappHref ? `<div style="margin-top:10px"><a class="btn btn-muted" href="${esc(whatsappHref)}" target="_blank" rel="noopener">Verificar por WhatsApp registrado</a></div>` : '<div class="muted" style="margin-top:8px">Este LOCAL no tiene WhatsApp registrado para verificación directa.</div>'}
+    </div>
+  `;
+}
+
 function renderRequest(req) {
   const masterActions = state.role === "MASTER" && req.status === "PENDING"
     ? `
@@ -4151,6 +4206,7 @@ function renderRequest(req) {
       </div>
       <p><strong>Delivery:</strong> ${esc(deliveryLabel(req.delivery_id))}</p>
       ${(req.local_id || payloadName) ? `<p><strong>Local:</strong> ${esc(requestedLocal)}</p>` : ""}
+      ${renderClaimVerification(req)}
       ${renderRequestPayload(req.payload || {})}
       ${req.review_note ? `<p><strong>Revisión:</strong> ${esc(req.review_note)}</p>` : ""}
       ${req.possible_duplicate_local_id ? `<p><strong>Posible duplicado:</strong> ${esc(localLabel(req.possible_duplicate_local_id))}</p>` : ""}
@@ -4240,7 +4296,15 @@ async function submitRequest() {
 
 async function reviewRequest(id, status, type) {
   try {
-    const note = prompt("Nota de revisión:") || null;
+    const promptText = type === "CLAIM_LOCAL" && status === "APPROVED"
+      ? "Describe cómo verificaste que el solicitante administra este LOCAL (por ejemplo: respondió desde el WhatsApp registrado con el código HTP):"
+      : "Nota de revisión:";
+    const noteRaw = prompt(promptText);
+    if (noteRaw === null) return;
+    const note = noteRaw.trim() || null;
+    if (type === "CLAIM_LOCAL" && status === "APPROVED" && !note) {
+      throw new Error("Debes documentar cómo verificaste la propiedad antes de aprobar.");
+    }
     let duplicateId = null;
 
     if (status === "APPROVED" && type === "CREATE_LOCAL") {
