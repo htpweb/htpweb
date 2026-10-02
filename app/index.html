@@ -11,7 +11,7 @@
 <script src="../config/auth.js"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-promo-badge2">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-promo-filter2">
 </head>
 <body>
 <header>
@@ -336,7 +336,6 @@ function renderLocals() {
             <h3>${esc(local.name)}</h3>
             ${availability ? `<span class="availability-badge ${availability.className}">${esc(availability.text)}</span>` : ""}
           </div>
-          ${promoCount ? `<div class="local-promo-line"><span class="promo-today-badge">🔥 ${promoCount} promo${promoCount === 1 ? "" : "s"} hoy</span></div>` : ""}
           <p class="muted">${esc(local.description || "")}</p>
           ${ps.slice(0,3).map(p => `
             <div class="summary-line">
