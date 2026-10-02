@@ -202,3 +202,13 @@ test("LOCAL cerrado sigue permitiendo consultar pero explica por qué no se pued
   assert.match(menu,/visualMenuClosedNotice/);
   assert.match(menu,/LOCAL CERRADO/);
 });
+
+test("LOCAL cerrado reemplaza los controles de compra por candado y aviso",()=>{
+  const local=fs.readFileSync("app/local.html","utf8");
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(menu,/closed-order-control/);
+  assert.match(menu,/Disponible cuando abra/);
+  assert.match(local,/closed-order-control/);
+  assert.match(local,/Disponible cuando abra/);
+  assert.match(css,/\.closed-order-control\{/);
+});

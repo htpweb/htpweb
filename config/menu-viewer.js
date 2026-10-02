@@ -536,13 +536,21 @@
   }
 
   function renderQuantityStepper(productId, variantId, scope, quantity, closed) {
+    if (closed) {
+      return `
+        <div class="closed-order-control" aria-label="Disponible cuando abra">
+          <span class="closed-order-lock" aria-hidden="true">🔒</span>
+          <span>Disponible cuando abra</span>
+        </div>
+      `;
+    }
+
     return `
       <div class="quantity-stepper visual-menu-compact-stepper">
         <button
           type="button"
           class="qty-step-btn"
           aria-label="Disminuir cantidad"
-          ${closed ? "disabled" : ""}
           onclick="HTPWEBVisualMenu.change('${productId}',-1,'${scope}','${variantId || ""}')"
         >−</button>
         <input
@@ -552,14 +560,12 @@
           step="1"
           value="${quantity}"
           aria-label="Cantidad en carrito"
-          ${closed ? "disabled" : ""}
           oninput="HTPWEBVisualMenu.set('${productId}',this.value,'${scope}','${variantId || ""}')"
         >
         <button
           type="button"
           class="qty-step-btn"
           aria-label="Aumentar cantidad"
-          ${closed ? "disabled" : ""}
           onclick="HTPWEBVisualMenu.change('${productId}',1,'${scope}','${variantId || ""}')"
         >+</button>
       </div>

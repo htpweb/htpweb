@@ -10,7 +10,7 @@
 <script src="../config/negocio.js?v=20261002-theme3"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261002-mobile1"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-localstatus1">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-closed1">
 </head>
 <body>
 <header>
@@ -248,30 +248,32 @@ function render() {
           ` : ""}
 
           <div class="row product-buy-row">
-            <div class="quantity-stepper" aria-label="Cantidad en carrito">
+            ${availability && availability.is_open !== true ? `
+              <div class="closed-order-control" aria-label="Disponible cuando abra">
+                <span class="closed-order-lock" aria-hidden="true">🔒</span>
+                <span>Disponible cuando abra</span>
+              </div>
+            ` : `
+              <div class="quantity-stepper" aria-label="Cantidad en carrito">
+                <button
+                  type="button"
+                  class="qty-step-btn"
+                  aria-label="Disminuir cantidad"
+                  onclick="event.stopPropagation(); changeProductQuantity('${product.id}', -1)"
+                >−</button>
+                <input id="qty-${product.id}" type="number" min="0" step="1" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" aria-label="Cantidad en carrito" oninput="event.stopPropagation(); setProductQuantity('${product.id}', this.value)">
+                <button
+                  type="button"
+                  class="qty-step-btn"
+                  aria-label="Aumentar cantidad"
+                  onclick="event.stopPropagation(); changeProductQuantity('${product.id}', 1)"
+                >+</button>
+              </div>
               <button
-                type="button"
-                class="qty-step-btn"
-                aria-label="Disminuir cantidad"
-                onclick="event.stopPropagation(); changeProductQuantity('${product.id}', -1)"
-                ${availability && availability.is_open !== true ? "disabled" : ""}
-              >−</button>
-              <input id="qty-${product.id}" type="number" min="0" step="1" value="${cartQuantityForProduct(product.id, vs[0]?.id || null)}" aria-label="Cantidad en carrito" oninput="event.stopPropagation(); setProductQuantity('${product.id}', this.value)">
-              <button
-                type="button"
-                class="qty-step-btn"
-                aria-label="Aumentar cantidad"
-                onclick="event.stopPropagation(); changeProductQuantity('${product.id}', 1)"
-                ${availability && availability.is_open !== true ? "disabled" : ""}
-              >+</button>
-            </div>
-            <button
-              class="btn btn-primary"
-              onclick="event.stopPropagation(); addProduct('${product.id}')"
-              ${availability && availability.is_open !== true ? "disabled" : ""}
-            >
-              ${availability && availability.is_open !== true ? "Local cerrado" : "Agregar"}
-            </button>
+                class="btn btn-primary"
+                onclick="event.stopPropagation(); addProduct('${product.id}')"
+              >Agregar</button>
+            `}
           </div>
         </div>
       </div>
@@ -449,7 +451,7 @@ window.addEventListener("htpweb:cart", () => {
 init();
 </script>
 <script src="../config/media-viewer.js?v=202609271312"></script>
-<script src="../config/menu-viewer.js?v=20261002-mobilemenu2"></script>
+<script src="../config/menu-viewer.js?v=20261002-closed1"></script>
 <script src="../config/promotions.js?v=20261002-promo-filter1"></script>
 </body>
 </html>
