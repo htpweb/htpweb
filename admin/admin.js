@@ -7170,8 +7170,9 @@ function selectedAdvertisingZoneIds() {
 }
 
 async function loadAdvertisingTargets() {
-  const scope = $("advertisementScope")?.value || "LOCAL";
   const internal = $("advertisementInternal")?.checked === true;
+  if (internal && $("advertisementScope")) $("advertisementScope").value = "HTPWEB";
+  const scope = $("advertisementScope")?.value || "LOCAL";
 
   $("advertisementDeliveryField")?.classList.toggle("hidden", scope !== "DELIVERY");
   $("advertisementLocalField")?.classList.toggle("hidden", !["LOCAL","PRODUCT"].includes(scope));
@@ -7448,11 +7449,11 @@ async function saveAdvertisement() {
   try {
     if (state.role !== "MASTER") throw new Error("Solo MASTER puede publicar campañas.");
 
-    const scope = $("advertisementScope").value;
+    const internal = $("advertisementInternal").checked === true;
+    const scope = internal ? "HTPWEB" : $("advertisementScope").value;
     const title = $("advertisementTitle").value.trim();
     if (!title) throw new Error("Escribe el título del anuncio.");
 
-    const internal = $("advertisementInternal").checked === true;
     const deliveryId = scope === "DELIVERY" ? ($("advertisementDelivery").value || null) : null;
     const localId = ["LOCAL","PRODUCT"].includes(scope) ? ($("advertisementLocal").value || null) : null;
     const productId = scope === "PRODUCT" ? ($("advertisementProduct").value || null) : null;
@@ -7539,7 +7540,9 @@ async function previewAdvertisementDestination() {
     if (scope === "DELIVERY") {
       delivery=state.advertisementDeliveries.find(row => row.id === $("advertisementDelivery").value);
       if (!delivery?.slug) throw new Error("Selecciona un DELIVERY.");
-      window.open(urlDelivery ? urlDelivery("index.html") : ("../app/index.html?delivery="+encodeURIComponent(delivery.slug)),"_blank","noopener");
+      const home = new URL("../app/index.html", location.href);
+      home.searchParams.set("delivery", delivery.slug);
+      window.open(home.href,"_blank","noopener");
       return;
     }
 
