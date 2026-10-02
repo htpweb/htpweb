@@ -42,7 +42,7 @@ const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
-let store=null,items=[],products=new Map(),variants=new Map(),deliveries=[];
+let store=null,items=[],products=new Map(),variants=new Map(),deliveries=[],inventory=[];
 async function trackLocal(eventType,metadata={}){
  try{
   if(!store?.local?.id)return;
@@ -64,8 +64,13 @@ async function loadCart(){
  render();
 }
 function lineInfo(item){
+ if(item.promotion_id){
+   const s=item.snapshot||{};
+   const selection=Array.isArray(s.promotion_selection)?s.promotion_selection.filter(x=>Number(x.quantity||0)>0).map(x=>Number(x.quantity||0)+" × "+(x.variant_name||x.product_name||"opción")).join(" · "):"";
+   return{p:{image_url:s.promotion_image_url||null},v:null,price:Number(s.price||0),name:s.promotion_title||"Promoción",detail:s.option_name||selection||null};
+ }
  const p=products.get(item.product_id)||item.snapshot||{},v=item.variant_id?variants.get(item.variant_id):null;
- const price=Number(v?.price??item.snapshot?.price??p.price??0);return{p,v,price,name:p.name||item.snapshot?.name||"Producto"};
+ const price=Number(v?.price??item.snapshot?.price??p.price??0);return{p,v,price,name:p.name||item.snapshot?.name||"Producto",detail:null};
 }
 function subtotal(){return items.reduce((sum,i)=>sum+lineInfo(i).price*Number(i.quantity||0),0)}
 function render(){
@@ -73,7 +78,7 @@ function render(){
  if(!items.length){$("cart").innerHTML='<p class="muted">Tu carrito está vacío.</p>';$("summary").innerHTML="";$("checkout").classList.add("hidden");return;}
  $("cart").innerHTML=items.map((i,idx)=>{const x=lineInfo(i);return '<div class="cart-row">'+
   (x.p.image_url?'<img src="'+esc(x.p.image_url)+'" alt="">':'<div></div>')+
-  '<div><strong>'+esc(x.name)+'</strong>'+(x.v?'<small style="display:block">'+esc(x.v.name)+'</small>':"")+'<div>'+money(x.price)+'</div></div>'+
+  '<div><strong>'+esc(x.name)+'</strong>'+(x.v?'<small style="display:block">'+esc(x.v.name)+'</small>':"")+(x.detail?'<small style="display:block">'+esc(x.detail)+'</small>':"")+'<div>'+money(x.price)+'</div></div>'+
   '<div class="qty"><button data-minus="'+idx+'">−</button><strong>'+i.quantity+'</strong><button data-plus="'+idx+'">+</button><button data-remove="'+idx+'">×</button></div></div>'}).join("");
  $("summary").innerHTML='<div class="row between" style="margin-top:14px"><span>Subtotal</span><span class="total">'+money(subtotal())+'</span></div>';
  $("checkout").classList.remove("hidden");
@@ -81,8 +86,28 @@ function render(){
  $("cart").querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>change(Number(b.dataset.plus),1));
  $("cart").querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>remove(Number(b.dataset.remove)));
 }
-function change(idx,delta){const i=items[idx],n=Math.max(0,Number(i.quantity)+delta);if(n===0)return remove(idx);items=carritoCambiarCantidad(scope(),i,n);render()}
+function inventoryRow(item,list=inventory){
+ if(item.promotion_id)return null;
+ return (list||[]).find(x=>x.product_id===item.product_id&&(x.variant_id||null)===(item.variant_id||null))||null;
+}
+function assertStock(item,quantity,list=inventory){
+ const row=inventoryRow(item,list);
+ if(row?.track_stock&&Number(quantity)>Number(row.available_qty||0)){
+   const x=lineInfo(item);throw new Error(x.name+" solo tiene "+Number(row.available_qty||0)+" unidad(es) disponibles.");
+ }
+}
+function change(idx,delta){
+ try{
+  const i=items[idx],n=Math.max(0,Number(i.quantity)+delta);if(n===0)return remove(idx);
+  if(delta>0)assertStock(i,n);
+  items=carritoCambiarCantidad(scope(),i,n);render();
+ }catch(e){$("message").textContent=e.message;$("message").className="error";}
+}
 function remove(idx){items=carritoEliminar(scope(),items[idx]);render()}
+async function validateFreshStock(){
+ const {data,error}=await supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id});if(error)throw error;
+ const fresh=Array.isArray(data)?data:[];items.forEach(i=>assertStock(i,Number(i.quantity||0),fresh));inventory=fresh;
+}
 function renderFulfillment(){
  const s=store.settings,rows=[];
  if(s.pickup_enabled)rows.push({value:"PICKUP",label:"Retirar en "+store.local.name});
@@ -118,6 +143,7 @@ function buildMessage(){
 async function send(){
  try{
   if(!items.length)throw new Error("El carrito está vacío.");
+  await validateFreshStock();
   const fulfillment=document.querySelector('input[name="fulfillment"]:checked')?.value||"";
   if(store.settings.order_mode==="HTPWEB_MANAGED"&&fulfillment.startsWith("HTP:")){
     const delivery=deliveries.find(x=>"HTP:"+x.delivery_id===fulfillment);
@@ -137,7 +163,12 @@ async function init(){
  try{
   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});if(error)throw error;if(!data)throw new Error("Tienda no disponible.");
   store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);
-  const d=await supabaseClient.rpc("public_local_delivery_choices",{p_local_id:store.local.id});if(d.error)throw d.error;deliveries=Array.isArray(d.data)?d.data:[];
+  const [d,inv]=await Promise.all([
+    supabaseClient.rpc("public_local_delivery_choices",{p_local_id:store.local.id}),
+    supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id})
+  ]);
+  if(d.error)throw d.error;if(inv.error)throw inv.error;
+  deliveries=Array.isArray(d.data)?d.data:[];inventory=Array.isArray(inv.data)?inv.data:[];
   $("backBtn").onclick=()=>{
     const next=new URL("tienda.html",location.href);next.searchParams.set("local",key);
     if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
