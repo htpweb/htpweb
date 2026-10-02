@@ -64,7 +64,13 @@ function htpApplyDeliveryTheme(delivery) {
   root.style.setProperty("--brand-on-primary", theme.onPrimary);
   root.style.setProperty("--brand-on-dark", theme.onDark);
   root.style.setProperty("--brand-soft", theme.soft);
-  root.dataset.deliveryTheme = HTPWEB_DELIVERY_THEMES[key] ? key : "HTPWEB";
+  const resolvedKey = HTPWEB_DELIVERY_THEMES[key] ? key : "HTPWEB";
+  root.dataset.deliveryTheme = resolvedKey;
+  root.classList.remove("delivery-theme-pending");
+  try {
+    const slug = String(delivery?.slug || obtenerDeliverySlug() || "").trim();
+    if (slug) window.sessionStorage.setItem("HTPWEB_THEME:" + slug, resolvedKey);
+  } catch {}
 }
 
 function htpDeliveryInitials(name) {
