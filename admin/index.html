@@ -208,6 +208,34 @@
         <textarea id="profileDeliveryDescription" rows="4" maxlength="1200" placeholder="Ej. Tus locales favoritos, entregados donde estés."></textarea>
         <small class="muted">Este texto se muestra a los clientes en la página principal del DELIVERY.</small>
 
+        <div class="delivery-theme-panel">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Colores de mi página</h3>
+              <p class="muted" style="margin:5px 0 0">Elige una paleta aprobada. Cambia la página que ven tus clientes, no el panel administrativo.</p>
+            </div>
+            <span id="profileDeliveryThemeLabel" class="badge">HTPWEB</span>
+          </div>
+          <input id="profileDeliveryTheme" type="hidden" value="HTPWEB">
+          <div id="profileDeliveryThemePalette" class="delivery-theme-grid">
+            <button type="button" class="delivery-theme-option" data-theme-key="HTPWEB" aria-label="HTPWEB rojo y negro"><span style="--swatch-a:#111111;--swatch-b:#e53935"></span><strong>HTPWEB</strong><small>Rojo / Negro</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="OCEAN" aria-label="Océano azul"><span style="--swatch-a:#0d2340;--swatch-b:#1565c0"></span><strong>Océano</strong><small>Azul / Blanco</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="SKY" aria-label="Cielo celeste"><span style="--swatch-a:#0b3550;--swatch-b:#0288d1"></span><strong>Cielo</strong><small>Celeste / Azul</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="FOREST" aria-label="Bosque verde"><span style="--swatch-a:#153a20;--swatch-b:#2e7d32"></span><strong>Bosque</strong><small>Verde / Blanco</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="SUNSET" aria-label="Atardecer naranja"><span style="--swatch-a:#2f1b0d;--swatch-b:#ef6c00"></span><strong>Atardecer</strong><small>Naranja / Negro</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="PURPLE" aria-label="Morado"><span style="--swatch-a:#2d1238;--swatch-b:#7b1fa2"></span><strong>Morado</strong><small>Morado / Blanco</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="TURQUOISE" aria-label="Turquesa"><span style="--swatch-a:#083c37;--swatch-b:#00897b"></span><strong>Turquesa</strong><small>Turquesa / Azul</small></button>
+            <button type="button" class="delivery-theme-option" data-theme-key="GRAPHITE" aria-label="Grafito"><span style="--swatch-a:#172127;--swatch-b:#455a64"></span><strong>Grafito</strong><small>Gris / Negro</small></button>
+          </div>
+          <div id="profileDeliveryThemePreview" class="delivery-theme-preview">
+            <div class="delivery-theme-preview-header">Vista previa · <span>DELIVERY</span></div>
+            <div class="delivery-theme-preview-body">
+              <button type="button">Botón principal</button>
+              <span>Categoría seleccionada</span>
+            </div>
+          </div>
+        </div>
+
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="saveDeliveryProfileBtn">Guardar información</button>
           <button class="btn-muted" id="profileGoStorageBtn">Gestionar logo</button>
