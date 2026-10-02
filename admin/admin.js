@@ -1764,6 +1764,41 @@ async function loadMyPlanSummary(){
 }
 
 
+const DELIVERY_THEME_PRESETS = {
+  HTPWEB:{label:"HTPWEB",primary:"#e53935",dark:"#111111",soft:"#fff3f2"},
+  OCEAN:{label:"Océano",primary:"#1565c0",dark:"#0d2340",soft:"#eef6ff"},
+  SKY:{label:"Cielo",primary:"#0288d1",dark:"#0b3550",soft:"#eefaff"},
+  FOREST:{label:"Bosque",primary:"#2e7d32",dark:"#153a20",soft:"#f1f8f2"},
+  SUNSET:{label:"Atardecer",primary:"#ef6c00",dark:"#2f1b0d",soft:"#fff7ed"},
+  PURPLE:{label:"Morado",primary:"#7b1fa2",dark:"#2d1238",soft:"#faf1fd"},
+  TURQUOISE:{label:"Turquesa",primary:"#00897b",dark:"#083c37",soft:"#eefaf8"},
+  GRAPHITE:{label:"Grafito",primary:"#455a64",dark:"#172127",soft:"#f3f6f7"}
+};
+
+function renderDeliveryThemeSelection(themeKey) {
+  const key = DELIVERY_THEME_PRESETS[themeKey] ? themeKey : "HTPWEB";
+  const theme = DELIVERY_THEME_PRESETS[key];
+  if ($("profileDeliveryTheme")) $("profileDeliveryTheme").value = key;
+  if ($("profileDeliveryThemeLabel")) $("profileDeliveryThemeLabel").textContent = theme.label;
+  document.querySelectorAll("#profileDeliveryThemePalette [data-theme-key]").forEach(button => {
+    button.classList.toggle("is-selected", button.dataset.themeKey === key);
+    button.setAttribute("aria-pressed", String(button.dataset.themeKey === key));
+  });
+  const preview = $("profileDeliveryThemePreview");
+  if (preview) {
+    preview.style.setProperty("--preview-primary", theme.primary);
+    preview.style.setProperty("--preview-dark", theme.dark);
+    preview.style.setProperty("--preview-soft", theme.soft);
+    const name = state.deliveryProfileRecord?.name || "DELIVERY";
+    const title = preview.querySelector(".delivery-theme-preview-header span");
+    if (title) title.textContent = name;
+  }
+}
+
+function selectDeliveryTheme(themeKey) {
+  renderDeliveryThemeSelection(themeKey);
+}
+
 async function loadDeliveryProfile() {
   if (state.role !== "DELIVERY_ADMIN") return;
 
@@ -1790,6 +1825,7 @@ async function loadDeliveryProfileRecord() {
     state.deliveryProfileRecord = null;
     ["profileDeliveryName","profileDeliverySlug","profileDeliveryPhone","profileDeliveryWhatsapp","profileDeliveryDescription"]
       .forEach(id => { if ($(id)) $(id).value = ""; });
+    renderDeliveryThemeSelection("HTPWEB");
     $("saveDeliveryProfileBtn").disabled = true;
     return;
   }
@@ -1797,7 +1833,7 @@ async function loadDeliveryProfileRecord() {
   try {
     const { data, error } = await supabaseClient
       .from("deliveries")
-      .select("id,name,slug,description,logo_url,phone,whatsapp,active")
+      .select("id,name,slug,description,logo_url,phone,whatsapp,theme_key,active")
       .eq("id", deliveryId)
       .single();
 
@@ -1809,6 +1845,7 @@ async function loadDeliveryProfileRecord() {
     $("profileDeliveryPhone").value = data.phone || "";
     $("profileDeliveryWhatsapp").value = data.whatsapp || "";
     $("profileDeliveryDescription").value = data.description || "";
+    renderDeliveryThemeSelection(data.theme_key || "HTPWEB");
     $("saveDeliveryProfileBtn").disabled = false;
   } catch (e) {
     state.deliveryProfileRecord = null;
@@ -1830,7 +1867,12 @@ async function saveDeliveryProfile() {
       p_whatsapp: $("profileDeliveryWhatsapp").value.trim() || null
     });
 
-    message("Información del DELIVERY actualizada.");
+    await rpc("update_my_delivery_theme", {
+      p_delivery_id: delivery.id,
+      p_theme_key: $("profileDeliveryTheme")?.value || "HTPWEB"
+    });
+
+    message("Información y colores del DELIVERY actualizados.");
     await loadDeliveryProfileRecord();
   } catch (e) {
     message(e.message || "No se pudo actualizar el DELIVERY.", "error");
@@ -10900,6 +10942,9 @@ function bindEvents() {
   if ($("requestType")) $("requestType").onchange = updateRequestForm;
   if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
   if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  document.querySelectorAll("#profileDeliveryThemePalette [data-theme-key]").forEach(button => {
+    button.onclick = () => selectDeliveryTheme(button.dataset.themeKey);
+  });
   $("saveDeliveryProfileBtn").onclick = saveDeliveryProfile;
   $("profileGoStorageBtn").onclick = openDeliveryStorage;
   if ($("shareDelivery")) $("shareDelivery").onchange = () => { state.shareCategoryFilter="ALL"; showShareBrowse(); loadShareLocals(); };
