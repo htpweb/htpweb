@@ -4,11 +4,11 @@ const fs=require('node:fs');
 
 const index=fs.readFileSync('app/index.html','utf8');
 
-test('public catalog search is accent-insensitive and global',()=>{
+test('public catalog search is accent-insensitive and combines with category',()=>{
   assert.match(index,/function normalizeSearchText/);
   assert.match(index,/normalize\("NFD"\)/);
   assert.match(index,/replace\(\/\[\\u0300-\\u036f\]\/g/);
-  assert.match(index,/return q \? textMatch : categoryMatch/);
+  assert.match(index,/return textMatch && categoryMatch/);
 });
 
 test('product matches keep the matching products visible',()=>{
