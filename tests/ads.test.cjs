@@ -4,24 +4,27 @@ const fs = require("node:fs");
 
 const read = p => fs.readFileSync(p, "utf8");
 
-test("motor de publicidad usa DELIVERY y conserva deep links", () => {
+test("motor de publicidad usa cobertura del DELIVERY y conserva deep links", () => {
   const js = read("config/ads.js");
-  assert.match(js, /from\("advertisements"\)/);
-  assert.match(js, /eq\("delivery_id", delivery\.id\)/);
+  assert.match(js, /rpc\("public_delivery_advertisements"/);
+  assert.match(js, /p_delivery_id:\s*delivery\.id/);
   assert.match(js, /urlDelivery\("local\.html", params\)/);
   assert.match(js, /ROTATE_MS = 5000/);
 });
 
-test("banner aparece en las pantallas principales del CLIENT", () => {
-  for (const file of ["app/index.html", "app/local.html", "app/carrito.html", "app/pedidos.html"]) {
-    assert.match(read(file), /config\/ads\.js/, file);
-  }
+test("publicidad se renderiza solo en el inicio del CLIENT", () => {
+  const js = read("config/ads.js");
+  const index = read("app/index.html");
+  assert.match(js, /function isClientHome\(\)/);
+  assert.match(js, /if \(!isClientHome\(\)\) return/);
+  assert.match(index, /config\/ads\.js/);
 });
 
-test("banner es persistente y deja espacio al contenido", () => {
+test("carrusel reemplaza el banner fijo anterior", () => {
   const css = read("assets/app.css");
-  assert.match(css, /\.htpweb-ad-banner\{position:fixed/);
-  assert.match(css, /bottom:0/);
-  assert.match(css, /body\.has-htpweb-ad\{padding-bottom:/);
-  assert.match(css, /animation:htpwebAdProgress 5s linear forwards/);
+  const js = read("config/ads.js");
+  assert.match(css, /\.client-ad-rail\{[\s\S]*overflow-x:auto/);
+  assert.match(css, /\.client-ad-card\{[\s\S]*scroll-snap-align:start/);
+  assert.match(css, /\.htpweb-ad-banner\{[\s\S]*display:none!important/);
+  assert.match(js, /setInterval\(rotate, ROTATE_MS\)/);
 });
