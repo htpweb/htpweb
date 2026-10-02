@@ -814,9 +814,10 @@
             <h2 style="margin:0">HTPWEB Express Demo</h2>
             <p class="muted" style="margin:.35rem 0 0">Links controlados por MASTER para entregar demos Express de 15 días.</p>
           </div>
-          <a class="btn-muted" href="../express/" target="_blank" rel="noopener">Vista Express</a>
+          <button class="btn-primary" type="button" onclick="createExpressDemoSlot()">+ Generar Express</button>
         </div>
-        <div class="workspace-note" style="margin-top:14px">Cada link puede ser usado por un prospecto. Cuando lo use, quedará marcado como ocupado. Puedes liberarlo desde MASTER sin borrar la demo ya creada.</div>
+        <div class="workspace-note" style="margin-top:14px">Genera tantos accesos Express como necesites. Cada link puede ser usado por un prospecto y queda marcado como ocupado al crear su demo. Puedes liberarlo desde MASTER sin borrar la demo ya creada.</div>
+        <div id="expressDemoSummary" class="muted" style="margin-top:12px">Cargando resumen...</div>
       </div>
       <div id="expressDemoSlots" class="express-demo-grid">
         <div class="muted">Cargando Express...</div>
@@ -2042,7 +2043,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261002-express1"></script>
+<script src="./admin.js?v=20261002-express2"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>

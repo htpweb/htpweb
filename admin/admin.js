@@ -4525,6 +4525,18 @@ function openExpressSlotLink(slotKey){
   window.open(expressSlotUrl(slotKey),"_blank","noopener,noreferrer");
 }
 
+async function createExpressDemoSlot(){
+  if(state.role!=="MASTER")return;
+  try{
+    const slotKey=await rpc("master_create_express_slot");
+    message("Nuevo acceso "+slotKey+" generado.");
+    await loadExpressDemoSlots();
+    if(slotKey){
+      await copyExpressSlotLink(slotKey).catch(()=>{});
+    }
+  }catch(e){message(e.message||"No se pudo generar un nuevo Express.","error");}
+}
+
 async function resetExpressDemoSlot(slotKey){
   if(state.role!=="MASTER")return;
   if(!confirm("¿Liberar "+slotKey+" para asignarlo a otro prospecto? La demo ya creada seguirá activa hasta su vencimiento."))return;
@@ -4542,7 +4554,13 @@ async function loadExpressDemoSlots(){
   box.innerHTML='<div class="muted">Cargando Express...</div>';
   try{
     const rows=await rpc("master_express_slots_snapshot");
-    box.innerHTML=(Array.isArray(rows)?rows:[]).map(row=>{
+    const list=Array.isArray(rows)?rows:[];
+    const available=list.filter(row=>!row.demo_id).length;
+    const inUse=list.filter(row=>row.demo_id&&row.demo_active).length;
+    const used=list.filter(row=>row.demo_id&&!row.demo_active).length;
+    if($("expressDemoSummary")) $("expressDemoSummary").textContent=
+      list.length+" accesos · "+available+" disponibles · "+inUse+" en uso · "+used+" usados/vencidos";
+    box.innerHTML=list.map(row=>{
       const url=expressSlotUrl(row.slot_key);
       const occupied=Boolean(row.demo_id);
       const status=occupied?(row.demo_active?"EN USO":"USADO"):"DISPONIBLE";
