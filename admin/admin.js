@@ -2296,6 +2296,9 @@ async function loadLocalProfileRecord() {
     $("profileLocalTelegram").value = data.telegram_url || "";
     $("profileLocalDescription").value = data.description || "";
     $("saveLocalProfileBtn").disabled = false;
+    await loadLocalCommerce().catch(error => {
+      console.warn("No se pudo cargar la tienda del LOCAL.", error);
+    });
   } catch (e) {
     state.localProfileRecord = null;
     $("saveLocalProfileBtn").disabled = true;
@@ -2327,6 +2330,99 @@ async function saveLocalProfile() {
   } catch (e) {
     message(e.message || "No se pudo actualizar el LOCAL.", "error");
   }
+}
+
+function localStoreUrl(){
+  const local=state.localProfileRecord;
+  if(!local)return "";
+  const key=local.slug||local.id;
+  return "https://htpweb.github.io/htpweb/app/tienda.html?local="+encodeURIComponent(key);
+}
+
+function syncLocalPresetHelp(){
+  const option=$("localStorePreset")?.selectedOptions?.[0];
+  if($("localStorePresetHelp"))$("localStorePresetHelp").textContent=option?.dataset?.help||"";
+}
+
+async function loadLocalCommerce(){
+  if(state.role!=="LOCAL_ADMIN")return;
+  const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
+  if(!localId)return;
+  const [snapshot,presetRes,deliveryOptions]=await Promise.all([
+    rpc("local_commerce_snapshot",{p_local_id:localId}),
+    supabaseClient.from("local_storefront_presets").select("code,name,business_fit,description,default_catalog_mode,default_card_density").eq("active",true).order("display_order"),
+    rpc("my_local_delivery_options",{p_local_id:localId})
+  ]);
+  if(presetRes.error)throw presetRes.error;
+  const settings=snapshot?.settings||{};
+  const presets=presetRes.data||[];
+  $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}">${esc(p.name)}</option>`).join("");
+  $("localStorePreset").value=settings.preset_code||"GENERAL_MODERN";
+  $("localStoreCatalogMode").value=settings.catalog_mode||"CARDS";
+  $("localStoreCardDensity").value=settings.card_density||"PHOTO";
+  $("localStoreOrderMode").value=settings.order_mode||"WHATSAPP_ONLY";
+  $("localStoreSurfaceStyle").value=settings.surface_style||"SOFT";
+  $("localStoreAccent").value=settings.accent_color||"#111827";
+  $("localStoreEnabled").checked=!!settings.storefront_enabled;
+  $("localStorePickup").checked=settings.pickup_enabled!==false;
+  $("localStoreOwnDelivery").checked=!!settings.own_delivery_enabled;
+  $("localStoreHtpDelivery").checked=settings.htpweb_delivery_enabled!==false;
+
+  const options=Array.isArray(deliveryOptions)?deliveryOptions:[];
+  const linked=options.filter(x=>x.linked);
+  $("localStorePrimaryDelivery").innerHTML='<option value="">Sin preferencia</option>'+linked.map(x=>`<option value="${x.delivery_id}">${esc(x.name)}</option>`).join("");
+  $("localStorePrimaryDelivery").value=settings.primary_delivery_id||"";
+  $("localStoreDeliveryOptions").innerHTML='<option value="">Seleccionar…</option>'+options.filter(x=>!x.linked).map(x=>`<option value="${x.delivery_id}">${esc(x.name)}${x.request_status==="PENDING"?" · solicitud pendiente":""}</option>`).join("");
+  $("localCommerceState").textContent=snapshot?.owner_managed
+    ? "LOCAL reclamado · "+(snapshot?.plan?.name||"plan vigente")+" · control del propietario"
+    : snapshot?.claimed
+      ? "LOCAL reclamado · requiere plan vigente para activar la tienda"
+      : "LOCAL todavía no reclamado";
+  syncLocalPresetHelp();
+}
+
+async function saveLocalCommerce(){
+  try{
+    const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
+    if(!localId)throw new Error("Selecciona un LOCAL.");
+    const result=await rpc("save_my_local_commerce_settings",{
+      p_local_id:localId,
+      p_storefront_enabled:$("localStoreEnabled").checked,
+      p_preset_code:$("localStorePreset").value,
+      p_catalog_mode:$("localStoreCatalogMode").value,
+      p_card_density:$("localStoreCardDensity").value,
+      p_order_mode:$("localStoreOrderMode").value,
+      p_pickup_enabled:$("localStorePickup").checked,
+      p_own_delivery_enabled:$("localStoreOwnDelivery").checked,
+      p_htpweb_delivery_enabled:$("localStoreHtpDelivery").checked,
+      p_primary_delivery_id:$("localStorePrimaryDelivery").value||null,
+      p_accent_color:$("localStoreAccent").value||null,
+      p_surface_style:$("localStoreSurfaceStyle").value
+    });
+    message("Configuración de tienda guardada.");
+    await loadLocalCommerce();
+    return result;
+  }catch(e){message(e.message||"No se pudo guardar la tienda.","error");}
+}
+
+async function requestLocalDelivery(){
+  try{
+    const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
+    const deliveryId=$("localStoreDeliveryOptions").value;
+    if(!localId||!deliveryId)throw new Error("Selecciona un DELIVERY.");
+    await rpc("request_local_delivery_partnership",{p_local_id:localId,p_delivery_id:deliveryId,p_note:null});
+    message("Solicitud de vinculación enviada al DELIVERY.");
+    await loadLocalCommerce();
+  }catch(e){message(e.message||"No se pudo solicitar el DELIVERY.","error");}
+}
+
+function showLocalStoreQr(){
+  const url=localStoreUrl();
+  if(!url)return message("Selecciona un LOCAL.","error");
+  if(typeof QRCode==="undefined")return message("No se pudo cargar el generador QR.","error");
+  const box=$("localStoreQr"),panel=$("localStoreQrPanel");
+  box.innerHTML="";panel.classList.remove("hidden");
+  new QRCode(box,{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.H});
 }
 
 function openLocalStorage() {
@@ -11435,6 +11531,20 @@ function bindEvents() {
   $("profileLocalGoStorageBtn").onclick = openLocalStorage;
   $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
   $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
+  if ($("saveLocalCommerceBtn")) $("saveLocalCommerceBtn").onclick = saveLocalCommerce;
+  if ($("requestLocalDeliveryBtn")) $("requestLocalDeliveryBtn").onclick = requestLocalDelivery;
+  if ($("localStorePreset")) $("localStorePreset").onchange = syncLocalPresetHelp;
+  if ($("openLocalStoreBtn")) $("openLocalStoreBtn").onclick = () => {
+    const url=localStoreUrl();
+    if(url)window.open(url,"_blank","noopener");
+  };
+  if ($("copyLocalStoreBtn")) $("copyLocalStoreBtn").onclick = async () => {
+    const url=localStoreUrl();
+    if(!url)return message("Selecciona un LOCAL.","error");
+    try{await navigator.clipboard.writeText(url);message("Link de la tienda copiado.");}
+    catch{message("No se pudo copiar el link.","error");}
+  };
+  if ($("localStoreQrBtn")) $("localStoreQrBtn").onclick = showLocalStoreQr;
   $("userManagerSearch").oninput = renderUserOptions;
   if ($("userManagerUser")) $("userManagerUser").onchange = renderManagedUser;
   $("assignDeliveryUserBtn").onclick = assignDeliveryUser;

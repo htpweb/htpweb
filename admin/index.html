@@ -408,6 +408,90 @@
           <code>local.info.manage</code>.
         </p>
       </div>
+
+      <div class="card" id="localCommerceCard">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Mi tienda HTPWEB</h3>
+            <p class="muted" id="localCommerceState" style="margin:5px 0 0">Cargando configuración comercial…</p>
+          </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <button class="btn-muted" id="openLocalStoreBtn" type="button">Abrir tienda</button>
+            <button class="btn-muted" id="copyLocalStoreBtn" type="button">Copiar link</button>
+            <button class="btn-muted" id="localStoreQrBtn" type="button">QR</button>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:14px">
+          <div>
+            <label>Diseño prediseñado</label>
+            <select id="localStorePreset"></select>
+            <small class="muted" id="localStorePresetHelp"></small>
+          </div>
+          <div>
+            <label>Presentación del catálogo</label>
+            <select id="localStoreCatalogMode">
+              <option value="CARDS">Tarjetas de productos</option>
+              <option value="VISUAL_MENU">Menú visual</option>
+              <option value="HYBRID">Híbrido · menú + tarjetas</option>
+            </select>
+          </div>
+          <div>
+            <label>Densidad de tarjetas</label>
+            <select id="localStoreCardDensity">
+              <option value="PHOTO">Fotográfica</option>
+              <option value="COMPACT">Compacta</option>
+            </select>
+          </div>
+          <div>
+            <label>Estilo de superficies</label>
+            <select id="localStoreSurfaceStyle">
+              <option value="SOFT">Suave</option>
+              <option value="ROUNDED">Redondeado</option>
+              <option value="SQUARE">Recto</option>
+              <option value="EDITORIAL">Editorial</option>
+            </select>
+          </div>
+          <div>
+            <label>Color de identidad</label>
+            <input id="localStoreAccent" type="color" value="#111827">
+          </div>
+          <div>
+            <label>Modo de pedido</label>
+            <select id="localStoreOrderMode">
+              <option value="WHATSAPP_ONLY">WhatsApp directo</option>
+              <option value="HTPWEB_MANAGED">Gestionado por HTPWEB</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:14px">
+          <label class="row"><input id="localStoreEnabled" type="checkbox" style="width:auto"> Tienda pública activa</label>
+          <label class="row"><input id="localStorePickup" type="checkbox" style="width:auto"> Retiro en LOCAL</label>
+          <label class="row"><input id="localStoreOwnDelivery" type="checkbox" style="width:auto"> Entrega propia</label>
+          <label class="row"><input id="localStoreHtpDelivery" type="checkbox" style="width:auto"> DELIVERY HTPWEB</label>
+        </div>
+
+        <div class="form-grid" style="margin-top:14px">
+          <div>
+            <label>DELIVERY principal</label>
+            <select id="localStorePrimaryDelivery"><option value="">Sin preferencia</option></select>
+          </div>
+          <div>
+            <label>Solicitar nuevo DELIVERY</label>
+            <select id="localStoreDeliveryOptions"><option value="">Seleccionar…</option></select>
+            <button class="btn-muted" id="requestLocalDeliveryBtn" type="button" style="margin-top:8px">Solicitar vinculación</button>
+          </div>
+        </div>
+
+        <div id="localStoreQrPanel" class="hidden" style="margin-top:14px">
+          <div id="localStoreQr"></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn-primary" id="saveLocalCommerceBtn" type="button">Guardar tienda</button>
+        </div>
+      </div>
     </section>
 
     <section id="section-orders" class="section">

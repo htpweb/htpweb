@@ -147,12 +147,15 @@ function renderMasterLocalList(){
  '</div>'+
  '<div class="table-wrap"><table><thead><tr>'+
  '<th><input id="selectAllVisibleLocals" type="checkbox" aria-label="Seleccionar todos los locales visibles"></th>'+
- '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+
+ '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Gestión</th><th>Acciones</th></tr></thead><tbody>'+
  items.map(l=>'<tr>'+
-   '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'"></td>'+
+   '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'" '+(l.owner_managed?'disabled':'')+'></td>'+
    '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
    '<td>'+esc(Array.isArray(l.business_category_names)&&l.business_category_names.length?l.business_category_names.join(" · "):(l.business_category_name||"Sin categoría"))+'</td><td>'+esc(l.name)+'</td>'+
-   '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td><td><button data-edit-local="'+esc(l.id)+'">Editar</button></td></tr>').join("")+
+   '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td>'+
+   '<td>'+(l.owner_managed?'<strong>Propietario</strong><small class="muted" style="display:block">'+esc(l.local_plan?.name||"Plan LOCAL vigente")+'</small>':(l.claimed?'Reclamado · sin plan vigente':'HTPWEB'))+'</td>'+
+   '<td>'+(l.owner_managed?'<button disabled title="El propietario controla este LOCAL mientras su plan esté vigente">Bloqueado</button>':'<button data-edit-local="'+esc(l.id)+'">Editar</button>')+
+   (l.claimed?' <button class="btn-muted" data-local-plan="'+esc(l.id)+'">Plan LOCAL</button>':'')+'</td></tr>').join("")+
  '</tbody></table></div>';
 
  const summary=$("masterLocalsSummary");
@@ -174,7 +177,25 @@ function renderMasterLocalList(){
  activateBtn.onclick=()=>bulkSetSelectedLocalsActive(true);
  deactivateBtn.onclick=()=>bulkSetSelectedLocalsActive(false);
  summary.querySelectorAll("[data-edit-local]").forEach(b=>b.onclick=()=>{if(discardLocalChanges()){fillMasterLocalForm(masterLocalsState.items.find(l=>l.id===b.dataset.editLocal));showLocalEditor(true);}});
+ summary.querySelectorAll("[data-local-plan]").forEach(b=>b.onclick=()=>assignMasterLocalPlan(b.dataset.localPlan));
  refreshBulkButtons();
+}
+async function assignMasterLocalPlan(localId){
+ try{
+   const local=masterLocalsState.items.find(x=>x.id===localId);
+   if(!local)throw new Error("LOCAL no encontrado.");
+   const plans=await rpc("master_list_local_plans");
+   const active=(Array.isArray(plans)?plans:[]).filter(p=>p.active);
+   if(!active.length)throw new Error("No existen planes LOCAL activos.");
+   const options=active.map((p,i)=>(i+1)+". "+p.name+" · "+Number(p.price||0).toFixed(2)+" "+(p.currency||"USD")+" · "+p.duration_months+" mes(es)").join("\n");
+   const raw=prompt("Asignar plan a "+local.name+"\n\n"+options+"\n\nEscribe el número del plan:");
+   if(raw===null)return;
+   const index=Number(raw)-1;
+   if(!Number.isInteger(index)||index<0||index>=active.length)throw new Error("Selección de plan inválida.");
+   const result=await rpc("master_assign_local_plan",{p_local_id:localId,p_plan_id:active[index].id,p_starts_at:null});
+   message("Plan "+active[index].name+" asignado hasta "+new Date(result.ends_at).toLocaleDateString("es-EC")+".");
+   await loadMasterLocals();
+ }catch(e){message(e.message||"No se pudo asignar el plan LOCAL.","error");}
 }
 async function bulkSetSelectedLocalsActive(active){
  if(masterLocalsState.busy)return;
