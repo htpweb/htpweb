@@ -56,3 +56,17 @@ test('MASTER usa link corto raíz y abre locales del DELIVERY',()=>{
   assert.match(admin,/Ver locales/);
   assert.match(admin,/Link corto del DELIVERY copiado/);
 });
+
+test('MASTER genera QR personalizado por DELIVERY con nombre y logo',()=>{
+  const html=fs.readFileSync('admin/index.html','utf8');
+  const css=fs.readFileSync('assets/admin.css','utf8');
+  assert.match(admin,/openMasterDeliveryQr/);
+  assert.match(admin,/QRCode\.CorrectLevel\.H/);
+  assert.match(admin,/delivery\.logo_url/);
+  assert.match(admin,/Escanea y pide aquí/);
+  assert.match(admin,/Descargar tarjeta QR|deliveryQrDownloadBranded/);
+  assert.match(admin,/Descargar QR|deliveryQrDownloadPure/);
+  assert.match(html,/id="deliveryQrModal"/);
+  assert.match(html,/qrcodejs\/1\.0\.0\/qrcode\.min\.js/);
+  assert.match(css,/\.delivery-qr-modal\{/);
+});

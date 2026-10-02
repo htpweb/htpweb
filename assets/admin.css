@@ -979,3 +979,106 @@ body.admin-role-error .sidebar-footer{
     grid-template-columns:1fr;
   }
 }
+
+/* MASTER — QR público personalizado por DELIVERY */
+.delivery-qr-modal{
+  position:fixed;
+  inset:0;
+  z-index:2200;
+  display:grid;
+  place-items:center;
+  padding:22px;
+  background:rgba(15,23,42,.72);
+  backdrop-filter:blur(4px);
+}
+.delivery-qr-modal.hidden{display:none!important}
+.delivery-qr-dialog{
+  position:relative;
+  width:min(980px,96vw);
+  max-height:94vh;
+  overflow:auto;
+  padding:22px;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 28px 90px rgba(0,0,0,.35);
+}
+.delivery-qr-close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:999px;
+  background:#111827;
+  color:#fff;
+  font-size:24px;
+  line-height:1;
+  cursor:pointer;
+}
+.delivery-qr-header{padding-right:54px}
+.delivery-qr-layout{
+  display:grid;
+  grid-template-columns:minmax(320px,.9fr) minmax(280px,.6fr);
+  gap:24px;
+  align-items:start;
+  margin-top:18px;
+}
+.delivery-qr-preview-wrap{
+  display:grid;
+  place-items:center;
+}
+.delivery-qr-card-canvas{
+  width:min(100%,520px);
+  height:auto;
+  border:1px solid #e5e7eb;
+  border-radius:18px;
+  background:#fffdf2;
+  box-shadow:0 10px 30px rgba(15,23,42,.12);
+}
+.delivery-qr-raw{
+  position:fixed;
+  left:-10000px;
+  top:-10000px;
+  width:560px;
+  height:560px;
+  pointer-events:none;
+}
+.delivery-qr-info{
+  padding:14px 4px;
+}
+.delivery-qr-logo-wrap{
+  width:92px;
+  height:92px;
+  display:grid;
+  place-items:center;
+  margin-bottom:14px;
+  overflow:hidden;
+  border:1px solid #e5e7eb;
+  border-radius:18px;
+  background:#fff;
+}
+.delivery-qr-logo-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.delivery-qr-info a{
+  display:block;
+  margin-top:14px;
+  color:#2563eb;
+  word-break:break-all;
+}
+body.delivery-qr-open{overflow:hidden}
+@media(max-width:760px){
+  .delivery-qr-modal{padding:0}
+  .delivery-qr-dialog{
+    width:100%;
+    max-height:100dvh;
+    min-height:100dvh;
+    border-radius:0;
+    padding:18px;
+  }
+  .delivery-qr-layout{grid-template-columns:1fr}
+  .delivery-qr-card-canvas{width:min(100%,420px)}
+}

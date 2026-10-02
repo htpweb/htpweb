@@ -4337,6 +4337,176 @@ function openMasterDeliveryPublicUrl(deliveryId) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+let currentMasterDeliveryQrId = null;
+
+function closeMasterDeliveryQr() {
+  $("deliveryQrModal")?.classList.add("hidden");
+  document.body.classList.remove("delivery-qr-open");
+  currentMasterDeliveryQrId = null;
+}
+
+function deliveryQrSafeFilename(name, suffix) {
+  const base = String(name || "delivery")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "delivery";
+  return base + "-" + suffix + ".png";
+}
+
+function downloadCanvasPng(canvas, filename) {
+  if (!canvas) return;
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function loadQrBrandImage(url) {
+  return new Promise(resolve => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function qrCanvasFromNode(node) {
+  const canvas = node?.querySelector("canvas");
+  if (canvas) return canvas;
+  const image = node?.querySelector("img");
+  if (!image) return null;
+  const copy = document.createElement("canvas");
+  copy.width = image.naturalWidth || 480;
+  copy.height = image.naturalHeight || 480;
+  copy.getContext("2d").drawImage(image, 0, 0, copy.width, copy.height);
+  return copy;
+}
+
+async function renderMasterDeliveryQrCard(delivery, url) {
+  const raw = $("deliveryQrRaw");
+  const card = $("deliveryQrCardCanvas");
+  if (!raw || !card) return;
+
+  raw.innerHTML = "";
+  if (typeof QRCode === "undefined") throw new Error("No se pudo cargar el generador QR.");
+
+  new QRCode(raw, {
+    text: url,
+    width: 560,
+    height: 560,
+    colorDark: "#111827",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  const qrCanvas = qrCanvasFromNode(raw);
+  if (!qrCanvas) throw new Error("No se pudo generar el QR.");
+
+  const ctx = card.getContext("2d");
+  ctx.clearRect(0, 0, card.width, card.height);
+  ctx.fillStyle = "#fffdf2";
+  ctx.fillRect(0, 0, card.width, card.height);
+
+  ctx.fillStyle = "#f5e8a8";
+  ctx.fillRect(0, 0, card.width, 18);
+
+  const logo = await loadQrBrandImage(delivery.logo_url);
+  if (logo) {
+    const box = 118;
+    const x = (card.width - box) / 2;
+    const y = 56;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(card.width / 2, y + box / 2, box / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x, y, box, box);
+    const ratio = Math.min(box / logo.naturalWidth, box / logo.naturalHeight);
+    const w = logo.naturalWidth * ratio;
+    const h = logo.naturalHeight * ratio;
+    ctx.drawImage(logo, x + (box - w) / 2, y + (box - h) / 2, w, h);
+    ctx.restore();
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 42px Arial, sans-serif";
+  const name = String(delivery.name || "DELIVERY");
+  const displayName = name.length > 30 ? name.slice(0, 29) + "…" : name;
+  ctx.fillText(displayName, card.width / 2, 230);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "600 25px Arial, sans-serif";
+  ctx.fillText("Escanea y pide aquí", card.width / 2, 276);
+
+  const qrSize = 560;
+  const qrX = (card.width - qrSize) / 2;
+  const qrY = 325;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48);
+  ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+  ctx.fillStyle = "#334155";
+  ctx.font = "600 20px Arial, sans-serif";
+  const shortUrl = url.length > 62 ? url.slice(0, 59) + "…" : url;
+  ctx.fillText(shortUrl, card.width / 2, 950);
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "600 18px Arial, sans-serif";
+  ctx.fillText("Plataforma de HTPWEB", card.width / 2, 1000);
+
+  ctx.fillStyle = "#f5e8a8";
+  ctx.fillRect(0, card.height - 18, card.width, 18);
+}
+
+async function openMasterDeliveryQr(deliveryId) {
+  if (state.role !== "MASTER") return;
+  const delivery = state.deliveries.find(item => item.id === deliveryId);
+  const url = masterDeliveryPublicUrl(delivery);
+  if (!delivery || !url) return message("Este DELIVERY no tiene página pública disponible.", "error");
+
+  currentMasterDeliveryQrId = deliveryId;
+  $("deliveryQrName").textContent = delivery.name || "DELIVERY";
+  $("deliveryQrUrl").textContent = url;
+  $("deliveryQrUrl").href = url;
+
+  const logoWrap = $("deliveryQrLogoWrap");
+  const logo = $("deliveryQrLogo");
+  if (delivery.logo_url) {
+    logo.src = delivery.logo_url;
+    logo.alt = "Logo de " + (delivery.name || "DELIVERY");
+    logoWrap?.classList.remove("hidden");
+  } else {
+    logo.removeAttribute("src");
+    logoWrap?.classList.add("hidden");
+  }
+
+  $("deliveryQrModal")?.classList.remove("hidden");
+  document.body.classList.add("delivery-qr-open");
+
+  try {
+    await renderMasterDeliveryQrCard(delivery, url);
+  } catch (error) {
+    closeMasterDeliveryQr();
+    return message(error.message || "No se pudo generar el código QR.", "error");
+  }
+
+  $("deliveryQrDownloadBranded").onclick = () =>
+    downloadCanvasPng($("deliveryQrCardCanvas"), deliveryQrSafeFilename(delivery.name, "tarjeta-qr"));
+
+  $("deliveryQrDownloadPure").onclick = () => {
+    const qr = qrCanvasFromNode($("deliveryQrRaw"));
+    if (qr) downloadCanvasPng(qr, deliveryQrSafeFilename(delivery.name, "qr"));
+  };
+
+  $("deliveryQrCopy").onclick = () => copyMasterDeliveryPublicUrl(deliveryId);
+  $("deliveryQrOpen").onclick = () => openMasterDeliveryPublicUrl(deliveryId);
+}
+
 async function loadDeliveriesModule() {
   if (state.role !== "MASTER") return;
 
@@ -4372,6 +4542,7 @@ async function loadDeliveriesModule() {
                   ${publicUrl ? '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">'+
                     '<button class="btn-muted" type="button" onclick="copyMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Copiar link</button>'+
                     '<button class="btn-primary" type="button" onclick="shareMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Compartir</button>'+
+                    '<button class="btn-muted" type="button" onclick="openMasterDeliveryQr(\''+esc(d.id)+'\')">QR</button>'+
                     '<button class="btn-muted" type="button" onclick="openMasterDeliveryPublicUrl(\''+esc(d.id)+'\')">Ver locales</button>'+
                     '</div>' : ''}
                 </td>
@@ -11094,6 +11265,15 @@ function bindEvents() {
   if ($("networkGroupCancel")) $("networkGroupCancel").onclick = resetNetworkGroupForm;
   if ($("networkGroupMembersClose")) $("networkGroupMembersClose").onclick = () => $("networkGroupMembersPanel")?.classList.add("hidden");
   if ($("networkGroupMembersSave")) $("networkGroupMembersSave").onclick = saveNetworkGroupMembers;
+  if ($("deliveryQrClose")) $("deliveryQrClose").onclick = closeMasterDeliveryQr;
+  if ($("deliveryQrModal")) $("deliveryQrModal").onclick = event => {
+    if (event.target === $("deliveryQrModal")) closeMasterDeliveryQr();
+  };
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !$("deliveryQrModal")?.classList.contains("hidden")) {
+      closeMasterDeliveryQr();
+    }
+  });
   $("logoutBtn").onclick = async () => {
     try {
       await cerrarSesion();
