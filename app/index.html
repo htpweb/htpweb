@@ -397,7 +397,7 @@ function renderLocals() {
 
 async function loadGlobalVisitCounter() {
   try {
-    if (!negocioActual?.id || !window.supabaseClient?.rpc) return;
+    if (!negocioActual?.id || typeof supabaseClient === "undefined" || !supabaseClient?.rpc) return;
 
     const storageKey = "htpweb:delivery-visit:" + negocioActual.id;
     let alreadyCounted = false;
