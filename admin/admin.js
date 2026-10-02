@@ -47,7 +47,7 @@ const roleSections = {
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
-  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"]
+  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","analytics"]
 };
 
 function completeAdminRoleBoot() {
@@ -7080,16 +7080,7 @@ async function deleteProductImage() {
 
 
 function advertisementScopeOptions() {
-  if (state.role === "MASTER") {
-    return ["HTPWEB","DELIVERY","LOCAL","PRODUCT"];
-  }
-  if (state.role === "DELIVERY_ADMIN") {
-    return ["DELIVERY","LOCAL","PRODUCT"];
-  }
-  if (state.role === "LOCAL_ADMIN") {
-    return ["LOCAL","PRODUCT"];
-  }
-  return [];
+  return state.role === "MASTER" ? ["HTPWEB","DELIVERY","LOCAL","PRODUCT"] : [];
 }
 
 function toDatetimeLocal(value) {
@@ -7107,112 +7098,102 @@ function fromDatetimeLocal(value) {
   return date.toISOString();
 }
 
+function advertisingMoney(value) {
+  return "$" + Number(value || 0).toFixed(2);
+}
+
+function advertisingDeliveryName(id) {
+  return state.deliveries.find(item => item.id === id)?.name || "—";
+}
+
+function advertisingLocalName(id) {
+  return state.locals.find(item => item.id === id)?.name || "—";
+}
+
 async function loadAdvertisingDeliveries() {
-  if (state.role === "LOCAL_ADMIN") {
-    const localIds = state.locals.map(local => local.id);
-    state.advertisementDeliveries = [];
-
-    if (localIds.length) {
-      const rel = await supabaseClient
-        .from("local_deliveries")
-        .select("delivery_id")
-        .in("local_id", localIds)
-        .eq("active", true);
-
-      if (rel.error) throw rel.error;
-
-      const ids = [...new Set((rel.data || []).map(row => row.delivery_id).filter(Boolean))];
-      if (ids.length) {
-        const deliveries = await supabaseClient
-          .from("deliveries")
-          .select("id,name,slug,active")
-          .in("id", ids)
-          .eq("active", true)
-          .order("name");
-
-        if (deliveries.error) throw deliveries.error;
-        state.advertisementDeliveries = deliveries.data || [];
-      }
-    }
-  } else {
-    state.advertisementDeliveries = state.deliveries.filter(delivery => delivery.active !== false);
-  }
-
-  const select = $("advertisementDelivery");
-  const previous = select.value;
-  select.innerHTML = state.advertisementDeliveries.length
+  state.advertisementDeliveries = state.deliveries.filter(delivery => delivery.active !== false);
+  const options = state.advertisementDeliveries.length
     ? state.advertisementDeliveries.map(delivery => `<option value="${delivery.id}">${esc(delivery.name)}</option>`).join("")
     : '<option value="">No hay DELIVERY disponible</option>';
 
-  if (previous && state.advertisementDeliveries.some(delivery => delivery.id === previous)) {
-    select.value = previous;
+  if ($("advertisementDelivery")) {
+    const previous = $("advertisementDelivery").value;
+    $("advertisementDelivery").innerHTML = options;
+    if (previous && state.advertisementDeliveries.some(d => d.id === previous)) $("advertisementDelivery").value = previous;
   }
+
+  if ($("advertisementOriginDelivery")) {
+    const previous = $("advertisementOriginDelivery").value;
+    $("advertisementOriginDelivery").innerHTML =
+      '<option value="">HTPWEB consiguió al anunciante</option>' + options;
+    if (previous && state.advertisementDeliveries.some(d => d.id === previous)) $("advertisementOriginDelivery").value = previous;
+  }
+
+  if ($("advertisingDeliverySelect")) {
+    const previous = $("advertisingDeliverySelect").value;
+    $("advertisingDeliverySelect").innerHTML = options;
+    if (previous && state.advertisementDeliveries.some(d => d.id === previous)) $("advertisingDeliverySelect").value = previous;
+  }
+}
+
+async function loadAdvertisingZones() {
+  const { data, error } = await supabaseClient
+    .from("zones")
+    .select("id,code,name,city,province,active")
+    .eq("active", true)
+    .order("province")
+    .order("city")
+    .order("name");
+  if (error) throw error;
+  state.advertisingZones = data || [];
+  renderAdvertisingZones([]);
+}
+
+function renderAdvertisingZones(selectedIds = []) {
+  const box = $("advertisementZones");
+  if (!box) return;
+  const selected = new Set(selectedIds || []);
+  box.innerHTML = (state.advertisingZones || []).length
+    ? state.advertisingZones.map(zone => `
+        <label class="advertising-zone-option">
+          <input type="checkbox" value="${zone.id}" ${selected.has(zone.id) ? "checked" : ""}>
+          <span><strong>${esc(zone.code || zone.name)}</strong><small>${esc([zone.name,zone.city,zone.province].filter(Boolean).join(" · "))}</small></span>
+        </label>
+      `).join("")
+    : '<div class="muted">No hay zonas activas.</div>';
+}
+
+function selectedAdvertisingZoneIds() {
+  return [...document.querySelectorAll('#advertisementZones input[type="checkbox"]:checked')]
+    .map(input => input.value)
+    .filter(Boolean);
 }
 
 async function loadAdvertisingTargets() {
-  const scope = $("advertisementScope").value;
-  const deliveryId = $("advertisementDelivery").value || null;
+  const scope = $("advertisementScope")?.value || "LOCAL";
+  const internal = $("advertisementInternal")?.checked === true;
 
-  $("advertisementDeliveryField").classList.toggle("hidden", scope === "HTPWEB");
-  $("advertisementLocalField").classList.toggle("hidden", !["LOCAL","PRODUCT"].includes(scope));
-  $("advertisementProductField").classList.toggle("hidden", scope !== "PRODUCT");
+  $("advertisementDeliveryField")?.classList.toggle("hidden", scope !== "DELIVERY");
+  $("advertisementLocalField")?.classList.toggle("hidden", !["LOCAL","PRODUCT"].includes(scope));
+  $("advertisementProductField")?.classList.toggle("hidden", scope !== "PRODUCT");
+  $("advertisementZonesField")?.classList.toggle("hidden", internal);
 
-  state.advertisementLocals = [];
-  state.advertisementProducts = [];
-
-  if (scope === "HTPWEB" || scope === "DELIVERY" || !deliveryId) {
-    $("advertisementLocal").innerHTML = '<option value="">No aplica</option>';
-    $("advertisementProduct").innerHTML = '<option value="">No aplica</option>';
-    return;
+  state.advertisementLocals = state.locals.filter(local => local.active !== false);
+  if ($("advertisementLocal")) {
+    const previous = $("advertisementLocal").value;
+    $("advertisementLocal").innerHTML = state.advertisementLocals.length
+      ? state.advertisementLocals.map(local => `<option value="${local.id}">${esc(local.name)}</option>`).join("")
+      : '<option value="">No hay LOCAL disponible</option>';
+    if (previous && state.advertisementLocals.some(local => local.id === previous)) $("advertisementLocal").value = previous;
   }
 
-  const rel = await supabaseClient
-    .from("local_deliveries")
-    .select("local_id")
-    .eq("delivery_id", deliveryId)
-    .eq("active", true);
-
-  if (rel.error) throw rel.error;
-
-  let ids = [...new Set((rel.data || []).map(row => row.local_id).filter(Boolean))];
-  if (state.role === "LOCAL_ADMIN") {
-    const allowed = new Set(state.locals.map(local => local.id));
-    ids = ids.filter(id => allowed.has(id));
-  }
-
-  if (ids.length) {
-    const localsRes = await supabaseClient
-      .from("locals")
-      .select("id,name,active")
-      .in("id", ids)
-      .eq("active", true)
-      .order("name");
-
-    if (localsRes.error) throw localsRes.error;
-    state.advertisementLocals = localsRes.data || [];
-  }
-
-  const localSelect = $("advertisementLocal");
-  const previousLocal = localSelect.value;
-  localSelect.innerHTML = state.advertisementLocals.length
-    ? state.advertisementLocals.map(local => `<option value="${local.id}">${esc(local.name)}</option>`).join("")
-    : '<option value="">No hay LOCAL disponible</option>';
-
-  if (previousLocal && state.advertisementLocals.some(local => local.id === previousLocal)) {
-    localSelect.value = previousLocal;
-  }
-
-  if (scope === "PRODUCT") {
-    await loadAdvertisingProducts();
-  } else {
-    $("advertisementProduct").innerHTML = '<option value="">No aplica</option>';
-  }
+  if (scope === "PRODUCT") await loadAdvertisingProducts();
+  else if ($("advertisementProduct")) $("advertisementProduct").innerHTML = '<option value="">No aplica</option>';
 }
 
 async function loadAdvertisingProducts() {
-  const localId = $("advertisementLocal").value || null;
+  const localId = $("advertisementLocal")?.value || null;
   state.advertisementProducts = [];
-
   if (localId) {
     const res = await supabaseClient
       .from("products")
@@ -7220,132 +7201,220 @@ async function loadAdvertisingProducts() {
       .eq("local_id", localId)
       .eq("active", true)
       .order("name");
-
     if (res.error) throw res.error;
     state.advertisementProducts = res.data || [];
   }
+  if ($("advertisementProduct")) {
+    const previous = $("advertisementProduct").value;
+    $("advertisementProduct").innerHTML = state.advertisementProducts.length
+      ? state.advertisementProducts.map(product => `<option value="${product.id}">${esc(product.name)}</option>`).join("")
+      : '<option value="">No hay PRODUCTO disponible</option>';
+    if (previous && state.advertisementProducts.some(product => product.id === previous)) $("advertisementProduct").value = previous;
+  }
+}
 
-  const select = $("advertisementProduct");
-  const previous = select.value;
-  select.innerHTML = state.advertisementProducts.length
-    ? state.advertisementProducts.map(product => `<option value="${product.id}">${esc(product.name)}</option>`).join("")
-    : '<option value="">No hay PRODUCTO disponible</option>';
+async function loadAdvertisingPolicy() {
+  const { data, error } = await supabaseClient
+    .from("advertising_settings")
+    .select("htpweb_pct,origin_delivery_pct,traffic_pct")
+    .eq("singleton_id", 1)
+    .single();
+  if (error) throw error;
+  $("advertisingHtpwebPct").value = Number(data.htpweb_pct || 0);
+  $("advertisingOriginPct").value = Number(data.origin_delivery_pct || 0);
+  $("advertisingTrafficPct").value = Number(data.traffic_pct || 0);
+  syncAdvertisingSplitTotal();
+}
 
-  if (previous && state.advertisementProducts.some(product => product.id === previous)) {
-    select.value = previous;
+function syncAdvertisingSplitTotal() {
+  const total = ["advertisingHtpwebPct","advertisingOriginPct","advertisingTrafficPct"]
+    .reduce((sum,id) => sum + Number($(id)?.value || 0), 0);
+  if ($("advertisingSplitTotal")) {
+    $("advertisingSplitTotal").textContent = total.toFixed(2).replace(/\.00$/,"") + "%";
+    $("advertisingSplitTotal").classList.toggle("error", Math.abs(total - 100) > 0.001);
+  }
+  return total;
+}
+
+async function saveAdvertisingSplit() {
+  try {
+    const total = syncAdvertisingSplitTotal();
+    if (Math.abs(total - 100) > 0.001) throw new Error("Los porcentajes deben sumar 100%.");
+    await rpc("save_advertising_split", {
+      p_htpweb_pct: Number($("advertisingHtpwebPct").value || 0),
+      p_origin_delivery_pct: Number($("advertisingOriginPct").value || 0),
+      p_traffic_pct: Number($("advertisingTrafficPct").value || 0)
+    });
+    message("Política de publicidad actualizada.");
+    await loadAdvertisingPolicy();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la política.", "error");
   }
 }
 
 function renderAdvertisements() {
   const list = $("advertisementsList");
-  if (!state.advertisements.length) {
-    list.innerHTML = '<div class="muted">No hay publicidad visible o administrable en este ámbito.</div>';
+  if (!list) return;
+  if (!state.advertisements?.length) {
+    list.innerHTML = '<div class="muted">No hay campañas.</div>';
     return;
   }
 
-  list.innerHTML = state.advertisements.map(ad => `
-    <div class="card" style="margin:0">
-      <div class="row between">
-        <div>
-          <strong>${esc(ad.title)}</strong>
-          <div class="muted">${esc(ad.scope_type)} · prioridad ${Number(ad.priority || 0)}</div>
+  const zonesByAd = new Map();
+  (state.advertisementZoneRows || []).forEach(row => {
+    if (!zonesByAd.has(row.advertisement_id)) zonesByAd.set(row.advertisement_id, []);
+    const zone = (state.advertisingZones || []).find(item => item.id === row.zone_id);
+    zonesByAd.get(row.advertisement_id).push(zone?.code || zone?.name || row.zone_id);
+  });
+
+  list.innerHTML = state.advertisements.map(ad => {
+    const zones = zonesByAd.get(ad.id) || [];
+    const origin = ad.origin_delivery_id ? advertisingDeliveryName(ad.origin_delivery_id) : "HTPWEB";
+    return `
+      <div class="card" style="margin:0">
+        <div class="row between" style="gap:12px;align-items:flex-start">
+          <div>
+            <strong>${esc(ad.title)}</strong>
+            <div class="muted">${esc(ad.scope_type)} · ${ad.is_internal ? "Institucional HTPWEB" : (zones.length ? esc(zones.join(", ")) : "Sin zonas")}</div>
+            ${!ad.is_internal ? `<div class="muted">Precio ${advertisingMoney(ad.campaign_price)} · captador ${esc(origin)} · reparto ${Number(ad.split_htpweb_pct)} / ${Number(ad.split_origin_pct)} / ${Number(ad.split_traffic_pct)}</div>` : ""}
+          </div>
+          <span class="badge">${ad.active ? "ACTIVA" : "INACTIVA"}</span>
         </div>
-        <span class="badge">${ad.active ? "ACTIVA" : "INACTIVA"}</span>
+        ${ad.body ? `<p>${esc(ad.body)}</p>` : ""}
+        ${ad.image_url ? `<img src="${esc(ad.image_url)}" alt="" style="max-width:260px;max-height:130px;object-fit:cover;border-radius:10px">` : ""}
+        <div class="row" style="margin-top:10px">
+          <button class="btn-muted" onclick="editAdvertisement('${ad.id}')">Editar</button>
+        </div>
       </div>
-      ${ad.body ? `<p>${esc(ad.body)}</p>` : ""}
-      ${ad.image_url ? `<img src="${esc(ad.image_url)}" alt="" style="max-width:220px;max-height:100px;object-fit:cover;border-radius:10px">` : ""}
-      <div class="row" style="margin-top:10px">
-        <button class="btn-muted" onclick="editAdvertisement('${ad.id}')">Editar</button>
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 async function loadAdvertisements() {
-  let query = supabaseClient
+  const { data, error } = await supabaseClient
     .from("advertisements")
-    .select("id,scope_type,delivery_id,local_id,product_id,title,body,image_url,target_url,priority,active,starts_at,ends_at,updated_at")
-    .order("priority", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(200);
-
-  if (state.role === "DELIVERY_ADMIN") {
-    const ids = state.advertisementDeliveries.map(delivery => delivery.id);
-    if (!ids.length) {
-      state.advertisements = [];
-      renderAdvertisements();
-      return;
-    }
-    query = query.in("delivery_id", ids);
-  } else if (state.role === "LOCAL_ADMIN") {
-    const ids = state.locals.map(local => local.id);
-    if (!ids.length) {
-      state.advertisements = [];
-      renderAdvertisements();
-      return;
-    }
-    query = query.in("local_id", ids);
-  }
-
-  const { data, error } = await query;
+    .select("id,scope_type,delivery_id,local_id,product_id,title,body,image_url,target_url,priority,active,starts_at,ends_at,campaign_price,origin_delivery_id,is_internal,split_htpweb_pct,split_origin_pct,split_traffic_pct,updated_at")
+    .order("is_internal", { ascending:false })
+    .order("priority", { ascending:false })
+    .order("updated_at", { ascending:false })
+    .limit(300);
   if (error) throw error;
   state.advertisements = data || [];
+
+  const ids = state.advertisements.map(row => row.id);
+  state.advertisementZoneRows = [];
+  if (ids.length) {
+    const zones = await supabaseClient
+      .from("advertisement_zones")
+      .select("advertisement_id,zone_id")
+      .in("advertisement_id", ids);
+    if (zones.error) throw zones.error;
+    state.advertisementZoneRows = zones.data || [];
+  }
   renderAdvertisements();
 }
 
-async function loadAdvertising() {
-  if (!["MASTER","DELIVERY_ADMIN","LOCAL_ADMIN"].includes(state.role)) return;
+async function loadAdvertisingMasterRequests() {
+  const { data, error } = await supabaseClient
+    .from("advertising_requests")
+    .select("id,delivery_id,local_id,title,advertiser_contact,body,requested_days,proposed_budget,status,master_note,created_at")
+    .order("created_at", { ascending:false })
+    .limit(100);
+  if (error) throw error;
+  state.advertisingRequests = data || [];
+  const box = $("advertisingMasterRequests");
+  if (!box) return;
+  box.innerHTML = state.advertisingRequests.length ? state.advertisingRequests.map(row => `
+    <div class="workspace-note">
+      <div class="row between" style="gap:10px;align-items:flex-start">
+        <div>
+          <strong>${esc(row.title)}</strong>
+          <div class="muted">${esc(advertisingDeliveryName(row.delivery_id))}${row.local_id ? " · " + esc(advertisingLocalName(row.local_id)) : ""} · ${row.requested_days} días${row.proposed_budget !== null ? " · " + advertisingMoney(row.proposed_budget) : ""}</div>
+          ${row.advertiser_contact ? `<div>Contacto: ${esc(row.advertiser_contact)}</div>` : ""}
+          ${row.body ? `<div style="margin-top:5px">${esc(row.body)}</div>` : ""}
+        </div>
+        <span class="badge">${esc(row.status)}</span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-muted" type="button" onclick="useAdvertisingRequest('${row.id}')">Usar en campaña</button>
+        ${row.status === "PENDING" ? `
+          <button class="btn-primary" type="button" onclick="reviewAdvertisingRequest('${row.id}','APPROVED')">Aprobar</button>
+          <button class="btn-danger" type="button" onclick="reviewAdvertisingRequest('${row.id}','REJECTED')">Rechazar</button>
+        ` : ""}
+      </div>
+    </div>
+  `).join("") : '<div class="muted">No hay solicitudes.</div>';
+}
 
+async function reviewAdvertisingRequest(id,status) {
   try {
-    const scopeSelect = $("advertisementScope");
-    const previousScope = scopeSelect.value;
-    const options = advertisementScopeOptions();
-    scopeSelect.innerHTML = options.map(scope => `<option value="${scope}">${scope}</option>`).join("");
-    if (previousScope && options.includes(previousScope)) scopeSelect.value = previousScope;
-
-    await loadAdvertisingDeliveries();
-    await loadAdvertisingTargets();
-    await loadAdvertisements();
+    await rpc("review_advertising_request", {
+      p_request_id:id,
+      p_status:status,
+      p_master_note:null
+    });
+    message("Solicitud actualizada.");
+    await loadAdvertisingMasterRequests();
   } catch (e) {
-    $("advertisementsList").innerHTML = `<div class="message error">${esc(e.message || "No se pudo cargar publicidad.")}</div>`;
+    message(e.message || "No se pudo actualizar la solicitud.", "error");
   }
 }
 
+function useAdvertisingRequest(id) {
+  const row = (state.advertisingRequests || []).find(item => item.id === id);
+  if (!row) return;
+  clearAdvertisementForm();
+  $("advertisementScope").value = row.local_id ? "LOCAL" : "DELIVERY";
+  $("advertisementOriginDelivery").value = row.delivery_id || "";
+  $("advertisementTitle").value = row.title || "";
+  $("advertisementBody").value = row.body || "";
+  $("advertisementPrice").value = row.proposed_budget ?? 0;
+  if (!row.local_id && $("advertisementDelivery")) $("advertisementDelivery").value = row.delivery_id || "";
+  loadAdvertisingTargets().then(() => {
+    if (row.local_id && $("advertisementLocal")) $("advertisementLocal").value = row.local_id;
+  });
+  const start = new Date();
+  const end = new Date(start.getTime() + Number(row.requested_days || 15) * 86400000);
+  $("advertisementStartsAt").value = toDatetimeLocal(start);
+  $("advertisementEndsAt").value = toDatetimeLocal(end);
+  document.getElementById("advertisementTitle")?.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
 function clearAdvertisementForm() {
+  if (!$("advertisementId")) return;
   $("advertisementId").value = "";
   $("advertisementTitle").value = "";
   $("advertisementBody").value = "";
   $("advertisementImageUrl").value = "";
   $("advertisementTargetUrl").value = "";
   $("advertisementPriority").value = "0";
+  $("advertisementPrice").value = "0";
   $("advertisementStartsAt").value = "";
   $("advertisementEndsAt").value = "";
   $("advertisementActive").checked = false;
+  $("advertisementInternal").checked = false;
   $("advertisementImageFile").value = "";
+  if ($("advertisementOriginDelivery")) $("advertisementOriginDelivery").value = "";
+  renderAdvertisingZones([]);
   loadAdvertisingTargets();
 }
 
 async function editAdvertisement(id) {
-  const ad = state.advertisements.find(row => row.id === id);
+  const ad = (state.advertisements || []).find(row => row.id === id);
   if (!ad) return;
 
   $("advertisementId").value = ad.id;
   $("advertisementScope").value = ad.scope_type;
-  await loadAdvertisingDeliveries();
-
-  if (ad.delivery_id && state.advertisementDeliveries.some(delivery => delivery.id === ad.delivery_id)) {
-    $("advertisementDelivery").value = ad.delivery_id;
-  }
-
+  $("advertisementDelivery").value = ad.delivery_id || "";
+  $("advertisementOriginDelivery").value = ad.origin_delivery_id || "";
+  $("advertisementPrice").value = Number(ad.campaign_price || 0);
+  $("advertisementInternal").checked = ad.is_internal === true;
   await loadAdvertisingTargets();
 
-  if (ad.local_id && state.advertisementLocals.some(local => local.id === ad.local_id)) {
-    $("advertisementLocal").value = ad.local_id;
-    if (ad.scope_type === "PRODUCT") await loadAdvertisingProducts();
-  }
-
-  if (ad.product_id && state.advertisementProducts.some(product => product.id === ad.product_id)) {
-    $("advertisementProduct").value = ad.product_id;
+  if (ad.local_id) $("advertisementLocal").value = ad.local_id;
+  if (ad.scope_type === "PRODUCT") {
+    await loadAdvertisingProducts();
+    $("advertisementProduct").value = ad.product_id || "";
   }
 
   $("advertisementTitle").value = ad.title || "";
@@ -7357,12 +7426,18 @@ async function editAdvertisement(id) {
   $("advertisementEndsAt").value = toDatetimeLocal(ad.ends_at);
   $("advertisementActive").checked = ad.active === true;
   $("advertisementImageFile").value = "";
-  document.getElementById("section-advertising")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const selectedZones = (state.advertisementZoneRows || [])
+    .filter(row => row.advertisement_id === ad.id)
+    .map(row => row.zone_id);
+  renderAdvertisingZones(selectedZones);
+  $("advertisementZonesField").classList.toggle("hidden", ad.is_internal === true);
+  document.getElementById("section-advertising")?.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function advertisementMediaPath(scope, adId, deliveryId, localId, productId) {
   if (scope === "HTPWEB") return `advertising/htpweb/${adId}/banner`;
-  if (scope === "DELIVERY") return `advertising/delivery/${deliveryId}/${adId}`;
+  if (scope === "DELIVERY") return `advertising/delivery/${deliveryId || "zones"}/${adId}`;
   if (scope === "LOCAL") return `advertising/local/${localId}/${adId}`;
   return `advertising/product/${productId}/${adId}`;
 }
@@ -7370,19 +7445,23 @@ function advertisementMediaPath(scope, adId, deliveryId, localId, productId) {
 async function saveAdvertisement() {
   const button = $("saveAdvertisementBtn");
   let uploaded = null;
-
   try {
+    if (state.role !== "MASTER") throw new Error("Solo MASTER puede publicar campañas.");
+
     const scope = $("advertisementScope").value;
     const title = $("advertisementTitle").value.trim();
     if (!title) throw new Error("Escribe el título del anuncio.");
 
-    const deliveryId = scope === "HTPWEB" ? null : ($("advertisementDelivery").value || null);
+    const internal = $("advertisementInternal").checked === true;
+    const deliveryId = scope === "DELIVERY" ? ($("advertisementDelivery").value || null) : null;
     const localId = ["LOCAL","PRODUCT"].includes(scope) ? ($("advertisementLocal").value || null) : null;
     const productId = scope === "PRODUCT" ? ($("advertisementProduct").value || null) : null;
+    const zoneIds = selectedAdvertisingZoneIds();
 
-    if (scope !== "HTPWEB" && !deliveryId) throw new Error("Selecciona un DELIVERY.");
+    if (scope === "DELIVERY" && !deliveryId) throw new Error("Selecciona el DELIVERY anunciado.");
     if (["LOCAL","PRODUCT"].includes(scope) && !localId) throw new Error("Selecciona un LOCAL.");
     if (scope === "PRODUCT" && !productId) throw new Error("Selecciona un PRODUCTO.");
+    if (!internal && !zoneIds.length) throw new Error("Selecciona al menos una zona.");
 
     const startsAt = fromDatetimeLocal($("advertisementStartsAt").value);
     const endsAt = fromDatetimeLocal($("advertisementEndsAt").value);
@@ -7397,86 +7476,207 @@ async function saveAdvertisement() {
     const args = {
       p_ad_id: currentId,
       p_scope_type: scope,
-      p_delivery_id: deliveryId,
-      p_local_id: localId,
-      p_product_id: productId,
-      p_title: title,
-      p_body: $("advertisementBody").value.trim() || null,
-      p_image_url: oldImageUrl,
-      p_target_url: $("advertisementTargetUrl").value.trim() || null,
-      p_priority: Math.max(0, Number.parseInt($("advertisementPriority").value, 10) || 0),
-      p_active: $("advertisementActive").checked,
-      p_starts_at: startsAt,
-      p_ends_at: endsAt
+      p_delivery_id: internal ? null : deliveryId,
+      p_local_id: internal ? null : localId,
+      p_product_id: internal ? null : productId,
+      p_title:title,
+      p_body:$("advertisementBody").value.trim() || null,
+      p_image_url:oldImageUrl,
+      p_target_url:$("advertisementTargetUrl").value.trim() || null,
+      p_priority:Math.max(0,Number.parseInt($("advertisementPriority").value,10) || 0),
+      p_active:$("advertisementActive").checked,
+      p_starts_at:startsAt,
+      p_ends_at:endsAt
     };
 
     const adId = await rpc("save_advertisement", args);
     const file = $("advertisementImageFile").files?.[0];
 
     if (file) {
-      const path = advertisementMediaPath(scope, adId, deliveryId, localId, productId);
-      uploaded = await subirImagenHTPWEB(path, file);
+      const path = advertisementMediaPath(scope,adId,deliveryId,localId,productId);
+      uploaded = await subirImagenHTPWEB(path,file);
       args.p_ad_id = adId;
       args.p_image_url = uploaded.url;
-      await rpc("save_advertisement", args);
-
+      await rpc("save_advertisement",args);
       const oldPath = pathDesdePublicUrlHTPWEB(oldImageUrl);
-      if (oldPath && oldPath !== uploaded.path) {
-        await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
-      }
+      if (oldPath && oldPath !== uploaded.path) await eliminarObjetoMediaHTPWEB(oldPath).catch(() => {});
     }
 
-    message("Publicidad guardada.");
+    await rpc("save_advertisement_commercial", {
+      p_advertisement_id:adId,
+      p_zone_ids:internal ? [] : zoneIds,
+      p_campaign_price:Number($("advertisementPrice").value || 0),
+      p_origin_delivery_id:$("advertisementOriginDelivery").value || null,
+      p_is_internal:internal
+    });
+
+    message("Campaña guardada.");
     clearAdvertisementForm();
-    await loadAdvertisements();
+    await Promise.all([loadAdvertisements(),loadAdvertisingMasterRequests()]);
   } catch (e) {
-    message(e.message || "No se pudo guardar la publicidad.", "error");
+    message(e.message || "No se pudo guardar la publicidad.","error");
   } finally {
-    button.disabled = false;
+    if (button) button.disabled=false;
   }
 }
 
-function previewAdvertisementDestination() {
-  const scope = $("advertisementScope").value;
-  const deliveryId = $("advertisementDelivery").value || null;
-  const delivery = state.advertisementDeliveries.find(row => row.id === deliveryId);
-  const explicit = $("advertisementTargetUrl").value.trim();
-
-  if (explicit) {
-    try {
-      const url = new URL(explicit, location.href);
-      window.open(url.href, "_blank", "noopener");
+async function previewAdvertisementDestination() {
+  try {
+    const scope=$("advertisementScope").value;
+    const explicit=$("advertisementTargetUrl").value.trim();
+    if (explicit) {
+      const url=new URL(explicit,location.href);
+      window.open(url.href,"_blank","noopener");
       return;
-    } catch {
-      return message("La URL de destino no es válida.", "error");
     }
+
+    if (scope === "HTPWEB") {
+      window.open("../index.html","_blank","noopener");
+      return;
+    }
+
+    let delivery = null;
+    if (scope === "DELIVERY") {
+      delivery=state.advertisementDeliveries.find(row => row.id === $("advertisementDelivery").value);
+      if (!delivery?.slug) throw new Error("Selecciona un DELIVERY.");
+      window.open(urlDelivery ? urlDelivery("index.html") : ("../app/index.html?delivery="+encodeURIComponent(delivery.slug)),"_blank","noopener");
+      return;
+    }
+
+    const localId=$("advertisementLocal").value || "";
+    if (!localId) throw new Error("Selecciona un LOCAL.");
+
+    const rel=await supabaseClient.from("local_deliveries").select("delivery_id").eq("local_id",localId).eq("active",true).limit(1).maybeSingle();
+    if (rel.error || !rel.data) throw new Error("Ese LOCAL no tiene DELIVERY activo.");
+    delivery=state.deliveries.find(row => row.id === rel.data.delivery_id);
+    if (!delivery?.slug) throw new Error("No se encontró el DELIVERY para abrir el destino.");
+
+    const url=new URL("../app/local.html",location.href);
+    url.searchParams.set("delivery",delivery.slug);
+    url.searchParams.set("local",localId);
+    if (scope === "PRODUCT") url.searchParams.set("product",$("advertisementProduct").value || "");
+    window.open(url.href,"_blank","noopener");
+  } catch(e) {
+    message(e.message || "No se pudo abrir el destino.","error");
   }
+}
 
-  if (!delivery?.slug) return message("Selecciona un DELIVERY para abrir el destino.", "error");
-
-  const base = new URL("../app/local.html", location.href);
-  base.searchParams.set("delivery", delivery.slug);
-
-  if (scope === "DELIVERY") {
-    const home = new URL("../app/index.html", location.href);
-    home.searchParams.set("delivery", delivery.slug);
-    window.open(home.href, "_blank", "noopener");
+async function loadAdvertisingDeliveryLocals(deliveryId) {
+  const select=$("advertisingRequestLocal");
+  if (!select) return;
+  if (!deliveryId) {
+    select.innerHTML='<option value="">Sin LOCAL específico</option>';
     return;
   }
-
-  const localId = $("advertisementLocal").value || "";
-  if (!localId) return message("Selecciona un LOCAL.", "error");
-  base.searchParams.set("local", localId);
-
-  if (scope === "PRODUCT") {
-    const productId = $("advertisementProduct").value || "";
-    if (!productId) return message("Selecciona un PRODUCTO.", "error");
-    base.searchParams.set("product", productId);
+  const rel=await supabaseClient.from("local_deliveries").select("local_id").eq("delivery_id",deliveryId).eq("active",true);
+  if (rel.error) throw rel.error;
+  const ids=[...new Set((rel.data||[]).map(row=>row.local_id))];
+  let locals=[];
+  if (ids.length) {
+    const res=await supabaseClient.from("locals").select("id,name,active").in("id",ids).eq("active",true).order("name");
+    if (res.error) throw res.error;
+    locals=res.data||[];
   }
-
-  window.open(base.href, "_blank", "noopener");
+  select.innerHTML='<option value="">Sin LOCAL específico</option>'+
+    locals.map(local=>`<option value="${local.id}">${esc(local.name)}</option>`).join("");
 }
 
+async function loadAdvertisingDeliveryStats(deliveryId) {
+  const box=$("advertisingDeliveryStats");
+  if (!box) return;
+  const rows=await rpc("advertising_delivery_stats",{p_delivery_id:deliveryId}) || [];
+  box.innerHTML=rows.length ? rows.map(row=>`
+    <div class="workspace-note">
+      <div class="row between" style="gap:10px;align-items:flex-start">
+        <div>
+          <strong>${esc(row.title)}</strong>
+          <div class="muted">${Number(row.delivery_impressions||0)} / ${Number(row.total_impressions||0)} impresiones · ${Number(row.traffic_share_pct||0).toFixed(2)}% del tráfico</div>
+          <div class="muted">${Number(row.delivery_clicks||0)} / ${Number(row.total_clicks||0)} clics</div>
+        </div>
+        <strong>${advertisingMoney(row.estimated_total)}</strong>
+      </div>
+      <div class="advertising-income-grid">
+        <span>Captación <strong>${advertisingMoney(row.origin_commission)}</strong></span>
+        <span>Tráfico <strong>${advertisingMoney(row.traffic_commission)}</strong></span>
+        <span>Campaña <strong>${advertisingMoney(row.campaign_price)}</strong></span>
+      </div>
+    </div>
+  `).join("") : '<div class="muted">Todavía no hay campañas con estadísticas para este DELIVERY.</div>';
+}
+
+async function loadAdvertisingDeliveryRequests(deliveryId) {
+  const box=$("advertisingDeliveryRequests");
+  if (!box) return;
+  const rows=await rpc("advertising_delivery_requests",{p_delivery_id:deliveryId}) || [];
+  box.innerHTML=rows.length ? rows.map(row=>`
+    <div class="workspace-note">
+      <div class="row between" style="gap:10px">
+        <div><strong>${esc(row.title)}</strong><div class="muted">${row.requested_days} días${row.proposed_budget!==null ? " · "+advertisingMoney(row.proposed_budget) : ""}</div></div>
+        <span class="badge">${esc(row.status)}</span>
+      </div>
+      ${row.master_note ? `<div style="margin-top:7px">MASTER: ${esc(row.master_note)}</div>` : ""}
+    </div>
+  `).join("") : '<div class="muted">No has enviado solicitudes.</div>';
+}
+
+async function loadAdvertisingDeliveryWorkspace() {
+  const deliveryId=$("advertisingDeliverySelect")?.value || state.deliveries[0]?.id || "";
+  if (!deliveryId) return;
+  await Promise.all([
+    loadAdvertisingDeliveryLocals(deliveryId),
+    loadAdvertisingDeliveryStats(deliveryId),
+    loadAdvertisingDeliveryRequests(deliveryId)
+  ]);
+}
+
+async function submitAdvertisingRequest() {
+  try {
+    const deliveryId=$("advertisingDeliverySelect")?.value || "";
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+    const title=$("advertisingRequestTitle").value.trim();
+    if (!title) throw new Error("Escribe el nombre del anunciante o campaña.");
+    await rpc("submit_advertising_request",{
+      p_delivery_id:deliveryId,
+      p_local_id:$("advertisingRequestLocal").value || null,
+      p_title:title,
+      p_advertiser_contact:$("advertisingRequestContact").value.trim() || null,
+      p_body:$("advertisingRequestBody").value.trim() || null,
+      p_requested_days:Number.parseInt($("advertisingRequestDays").value||"15",10) || 15,
+      p_proposed_budget:$("advertisingRequestBudget").value === "" ? null : Number($("advertisingRequestBudget").value)
+    });
+    $("advertisingRequestTitle").value="";
+    $("advertisingRequestContact").value="";
+    $("advertisingRequestBody").value="";
+    $("advertisingRequestBudget").value="";
+    message("Solicitud enviada a MASTER.");
+    await loadAdvertisingDeliveryRequests(deliveryId);
+  } catch(e) {
+    message(e.message || "No se pudo enviar la solicitud.","error");
+  }
+}
+
+async function loadAdvertising() {
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+  try {
+    const master=state.role==="MASTER";
+    $("advertisingMasterWorkspace")?.classList.toggle("hidden",!master);
+    $("advertisingDeliveryWorkspace")?.classList.toggle("hidden",master);
+
+    await loadAdvertisingDeliveries();
+
+    if (master) {
+      $("advertisementScope").innerHTML=advertisementScopeOptions().map(scope=>`<option value="${scope}">${scope}</option>`).join("");
+      await Promise.all([loadAdvertisingZones(),loadAdvertisingPolicy()]);
+      await loadAdvertisingTargets();
+      await Promise.all([loadAdvertisements(),loadAdvertisingMasterRequests()]);
+    } else {
+      await loadAdvertisingDeliveryWorkspace();
+    }
+  } catch(e) {
+    const target=state.role==="MASTER" ? $("advertisementsList") : $("advertisingDeliveryStats");
+    if (target) target.innerHTML=`<div class="message error">${esc(e.message || "No se pudo cargar publicidad.")}</div>`;
+  }
+}
 
 function menuClone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -10933,9 +11133,16 @@ function bindEvents() {
   if ($("advertisementScope")) $("advertisementScope").onchange = loadAdvertisingTargets;
   if ($("advertisementDelivery")) $("advertisementDelivery").onchange = loadAdvertisingTargets;
   if ($("advertisementLocal")) $("advertisementLocal").onchange = loadAdvertisingProducts;
-  $("saveAdvertisementBtn").onclick = saveAdvertisement;
-  $("clearAdvertisementBtn").onclick = clearAdvertisementForm;
-  $("previewAdvertisementBtn").onclick = previewAdvertisementDestination;
+  if ($("advertisementInternal")) $("advertisementInternal").onchange = loadAdvertisingTargets;
+  if ($("advertisingHtpwebPct")) $("advertisingHtpwebPct").oninput = syncAdvertisingSplitTotal;
+  if ($("advertisingOriginPct")) $("advertisingOriginPct").oninput = syncAdvertisingSplitTotal;
+  if ($("advertisingTrafficPct")) $("advertisingTrafficPct").oninput = syncAdvertisingSplitTotal;
+  if ($("saveAdvertisingSplitBtn")) $("saveAdvertisingSplitBtn").onclick = saveAdvertisingSplit;
+  if ($("advertisingDeliverySelect")) $("advertisingDeliverySelect").onchange = loadAdvertisingDeliveryWorkspace;
+  if ($("submitAdvertisingRequestBtn")) $("submitAdvertisingRequestBtn").onclick = submitAdvertisingRequest;
+  if ($("saveAdvertisementBtn")) $("saveAdvertisementBtn").onclick = saveAdvertisement;
+  if ($("clearAdvertisementBtn")) $("clearAdvertisementBtn").onclick = clearAdvertisementForm;
+  if ($("previewAdvertisementBtn")) $("previewAdvertisementBtn").onclick = previewAdvertisementDestination;
   if ($("catalogLocal")) $("catalogLocal").onchange = loadCatalog;
 
   $("submitRequestBtn").onclick = submitRequest;
