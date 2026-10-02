@@ -4263,9 +4263,11 @@ async function reviewRequest(id, status, type) {
 
 async function applyRequest(id, type) {
   try {
-    const convert = type === "CLAIM_LOCAL"
-      ? confirm("Este CLAIM puede convertir CLIENT → LOCAL_ADMIN y desactivar su CUSTOMER activo. ¿Confirmar conversión?")
-      : false;
+    let convert = false;
+    if (type === "CLAIM_LOCAL") {
+      if (!confirm("Este CLAIM convertirá la cuenta a LOCAL_ADMIN. Su perfil de compra CUSTOMER se conservará activo. ¿Confirmar?")) return;
+      convert = true;
+    }
 
     await rpc("master_apply_local_request", {
       p_request_id: id,

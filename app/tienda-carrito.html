@@ -89,10 +89,15 @@ function renderFulfillment(){
  if(s.own_delivery_enabled)rows.push({value:"OWN_DELIVERY",label:"Entrega propia del LOCAL"});
  if(s.htpweb_delivery_enabled)deliveries.forEach(d=>rows.push({value:"HTP:"+d.delivery_id,label:"DELIVERY HTPWEB · "+d.name}));
  $("fulfillment").innerHTML=rows.length?rows.map((r,i)=>'<label class="delivery-choice"><input type="radio" name="fulfillment" value="'+esc(r.value)+'" '+(i===0?"checked":"")+'> <span>'+esc(r.label)+'</span></label>').join(""):'<div class="error">Este LOCAL no tiene una forma de entrega habilitada.</div>';
- $("fulfillment").querySelectorAll("input").forEach(x=>x.onchange=syncAddress);
- syncAddress();
+ $("fulfillment").querySelectorAll("input").forEach(x=>x.onchange=()=>{syncAddress();syncCheckoutAction();});
+ syncAddress();syncCheckoutAction();
 }
 function syncAddress(){const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"";$("addressBox").classList.toggle("hidden",v==="PICKUP"||!v)}
+function syncCheckoutAction(){
+ const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"";
+ const managed=store?.settings?.order_mode==="HTPWEB_MANAGED"&&v.startsWith("HTP:");
+ $("sendBtn").textContent=managed?"Continuar con DELIVERY HTPWEB":"Enviar pedido por WhatsApp";
+}
 function buildMessage(){
  const name=$("name").value.trim(),delivery=document.querySelector('input[name="fulfillment"]:checked');
  if(!name)throw new Error("Escribe tu nombre.");if(!delivery)throw new Error("Selecciona una forma de entrega.");
@@ -113,9 +118,18 @@ function buildMessage(){
 async function send(){
  try{
   if(!items.length)throw new Error("El carrito está vacío.");
+  const fulfillment=document.querySelector('input[name="fulfillment"]:checked')?.value||"";
+  if(store.settings.order_mode==="HTPWEB_MANAGED"&&fulfillment.startsWith("HTP:")){
+    const delivery=deliveries.find(x=>"HTP:"+x.delivery_id===fulfillment);
+    if(!delivery?.slug)throw new Error("No se pudo resolver el DELIVERY seleccionado.");
+    carritoGuardar(delivery.slug,items);
+    await trackLocal("CHECKOUT_VIEW",{handoff:"HTPWEB_MANAGED",delivery_id:delivery.delivery_id});
+    location.href="carrito.html?delivery="+encodeURIComponent(delivery.slug);
+    return;
+  }
   const to=normalizePhone(store.local.whatsapp);if(!/^\d{8,15}$/.test(to))throw new Error("El LOCAL no tiene un WhatsApp válido.");
   const text=buildMessage();
-  await trackLocal("WHATSAPP_ORDER",{subtotal:subtotal(),fulfillment:document.querySelector('input[name="fulfillment"]:checked')?.value||""});
+  await trackLocal("WHATSAPP_ORDER",{subtotal:subtotal(),fulfillment});
   window.open("https://wa.me/"+to+"?text="+encodeURIComponent(text),"_blank","noopener");
  }catch(e){$("message").textContent=e.message;$("message").className="error"}
 }
