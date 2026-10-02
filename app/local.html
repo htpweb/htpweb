@@ -10,7 +10,7 @@
 <script src="../config/negocio.js?v=20261002-theme3"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261002-mobile1"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-mobilemenu1">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-localstatus1">
 </head>
 <body>
 <header>
@@ -35,6 +35,7 @@
 
 <main>
   <section id="localCard" class="card"></section>
+  <div id="localOrderStatusNotice" class="local-order-status-notice hidden" role="status"></div>
   <section id="promotionsCard" class="card hidden">
     <h2>Promociones</h2>
     <div id="promotionsListPublic" class="promotions-grid"></div>
@@ -211,11 +212,21 @@ function render() {
     ${localActual.banner_url ? `<img src="${esc(localActual.banner_url)}" alt="${esc(localActual.name)}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">` : ""}
     <div class="row between" style="margin-top:12px">
       <h1 style="margin:0">${esc(localActual.name)}</h1>
-      ${currentAvailability ? `<span class="availability-badge ${currentAvailability.className}">${esc(currentAvailability.text)}</span>` : ""}
+      ${currentAvailability ? `<span class="availability-badge ${currentAvailability.className}">${availability?.is_open === true ? "DISPONIBLE" : "CERRADO"}</span>` : ""}
     </div>
     <p class="muted">${esc(localActual.description || "")}</p>
     ${localActual.address ? `<p><strong>Dirección:</strong> ${esc(localActual.address)}</p>` : ""}
+    ${currentAvailability ? `<p class="local-availability-detail ${currentAvailability.className}">${esc(currentAvailability.text)}</p>` : ""}
   `;
+
+  const orderNotice = $("localOrderStatusNotice");
+  if (orderNotice) {
+    const closed = availability && availability.is_open !== true;
+    orderNotice.classList.toggle("hidden", !closed);
+    orderNotice.textContent = closed
+      ? "Este local está CERRADO en este momento. Puedes consultar el menú y los precios, pero no agregar productos hasta que vuelva a estar disponible."
+      : "";
+  }
 
   $("products").innerHTML = products.length ? products.map(product => {
     const vs = variants.filter(v => v.product_id === product.id);
@@ -438,7 +449,7 @@ window.addEventListener("htpweb:cart", () => {
 init();
 </script>
 <script src="../config/media-viewer.js?v=202609271312"></script>
-<script src="../config/menu-viewer.js?v=20261002-mobilemenu1"></script>
+<script src="../config/menu-viewer.js?v=20261002-mobilemenu2"></script>
 <script src="../config/promotions.js?v=20261002-promo-filter1"></script>
 </body>
 </html>

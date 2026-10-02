@@ -285,32 +285,9 @@ function selectCategory(id) {
 function availabilityText(localId) {
   const availability = availabilityByLocal.get(localId);
   if (!availability) return null;
-
-  if (availability.is_open === true) {
-    if (availability.reason === "NO_SCHEDULE_CONFIGURED") {
-      return { text: "Disponible", className: "availability-open" };
-    }
-
-    return {
-      text: availability.closing_time
-        ? `Abierto hasta ${availability.closing_time}`
-        : "Abierto",
-      className: "availability-open"
-    };
-  }
-
-  if (availability.reason === "BEFORE_OPENING" && availability.opening_time) {
-    return {
-      text: `Abre a las ${availability.opening_time}`,
-      className: "availability-closed"
-    };
-  }
-
-  if (availability.reason === "CLOSED_TODAY") {
-    return { text: "Cerrado hoy", className: "availability-closed" };
-  }
-
-  return { text: "Cerrado", className: "availability-closed" };
+  return availability.is_open === true
+    ? { text: "DISPONIBLE", className: "availability-open" }
+    : { text: "CERRADO", className: "availability-closed" };
 }
 
 function normalizeSearchText(value) {

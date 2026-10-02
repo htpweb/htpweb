@@ -2065,3 +2065,137 @@ body.has-htpweb-ad{
     max-height:29vh;
   }
 }
+
+/* CLIENT móvil — menú de media pantalla con navegación por hojas */
+.visual-menu-mobile-pagebar{
+  display:none;
+}
+.local-order-status-notice{
+  margin:10px 0 14px;
+  padding:12px 14px;
+  border:1px solid #fecaca;
+  border-radius:12px;
+  background:#fff1f2;
+  color:#991b1b;
+  font-weight:800;
+  line-height:1.35;
+}
+.local-availability-detail{
+  display:inline-flex;
+  margin:4px 0 0;
+  padding:7px 10px;
+  border-radius:10px;
+  font-weight:800;
+}
+.visual-menu-closed-notice{
+  margin-top:8px;
+  padding:9px 10px;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  background:#fff1f2;
+  color:#991b1b;
+  font-size:.82rem;
+  font-weight:900;
+  line-height:1.3;
+}
+
+@media(max-width:760px){
+  .visual-menu-heading{
+    display:none;
+  }
+  .visual-menu-image-column{
+    position:sticky;
+    top:0;
+    z-index:20;
+    height:50vh;
+    min-height:300px;
+    max-height:50vh;
+    margin:0 -10px 10px;
+    padding:0 10px 8px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    background:#fff;
+    box-shadow:0 8px 18px rgba(15,23,42,.12);
+  }
+  .visual-menu-mobile-pagebar{
+    display:grid;
+    grid-template-columns:38px minmax(0,1fr) 38px auto;
+    align-items:center;
+    gap:6px;
+    min-height:46px;
+    padding:6px 0;
+    background:#fff;
+  }
+  .visual-menu-mobile-pagebar strong{
+    text-align:center;
+    white-space:nowrap;
+    font-size:.9rem;
+  }
+  .visual-menu-mobile-page-btn,
+  .visual-menu-mobile-open{
+    min-height:36px;
+    border:1px solid #d7dbe0;
+    border-radius:10px;
+    background:#fff;
+    color:#111827;
+    font-weight:900;
+  }
+  .visual-menu-mobile-page-btn{
+    width:38px;
+    padding:0;
+    font-size:1.35rem;
+  }
+  .visual-menu-mobile-page-btn:disabled{
+    opacity:.35;
+  }
+  .visual-menu-mobile-open{
+    padding:0 10px;
+    font-size:.78rem;
+    white-space:nowrap;
+  }
+  .visual-menu-image-button{
+    height:100%;
+    min-height:0;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .visual-menu-image{
+    width:100%;
+    height:100%;
+    max-height:none;
+    object-fit:contain;
+  }
+  .visual-menu-products-column{
+    max-height:none;
+    overflow:visible;
+  }
+  .visual-menu-products-header{
+    position:relative;
+    top:auto;
+  }
+  .visual-menu-viewer-panel{
+    height:100dvh;
+    max-height:100dvh;
+  }
+}
+
+@media(max-width:390px){
+  .visual-menu-image-column{
+    height:48vh;
+    min-height:280px;
+    max-height:48vh;
+  }
+  .visual-menu-mobile-pagebar{
+    grid-template-columns:34px minmax(0,1fr) 34px auto;
+    gap:4px;
+  }
+  .visual-menu-mobile-page-btn{
+    width:34px;
+  }
+  .visual-menu-mobile-open{
+    padding:0 8px;
+    font-size:.73rem;
+  }
+}
