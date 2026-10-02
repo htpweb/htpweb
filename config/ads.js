@@ -1,5 +1,5 @@
 (() => {
-  const SCROLL_PX_PER_SECOND = 130;
+  const DEFAULT_SCROLL_PX_PER_SECOND = 91;
   const scriptBase = document.currentScript?.src
     ? new URL(".", document.currentScript.src)
     : new URL("../config/", location.href);
@@ -12,6 +12,7 @@
   let loopStart = 0;
   let loopEnd = 0;
   let carouselPaused = false;
+  let carouselSpeed = DEFAULT_SCROLL_PX_PER_SECOND;
   let delivery = null;
 
   async function ensureAnalytics() {
@@ -217,7 +218,7 @@
       </a>
     `;
 
-    rail.innerHTML = [0, 1, 2]
+    rail.innerHTML = [0, 1, 2, 3, 4]
       .flatMap(copy => ads.map((ad, i) => cardMarkup(ad, i, copy)))
       .join("");
 
@@ -252,34 +253,43 @@
       }
     };
 
+    const pauseCarousel = () => { carouselPaused = true; };
+    const resumeCarousel = () => {
+      carouselPaused = false;
+      lastFrameAt = 0;
+    };
+
     rail.addEventListener("scroll", syncIndexFromScroll, { passive: true });
-    rail.addEventListener("pointerdown", () => { carouselPaused = true; });
-    window.addEventListener("pointerup", () => { carouselPaused = false; lastFrameAt = 0; });
-    window.addEventListener("pointercancel", () => { carouselPaused = false; lastFrameAt = 0; });
+    rail.addEventListener("pointerdown", pauseCarousel);
+    window.addEventListener("pointerup", resumeCarousel);
+    window.addEventListener("pointercancel", resumeCarousel);
+    window.addEventListener("blur", resumeCarousel);
 
     requestAnimationFrame(() => {
-      const first = rail.querySelector('.client-ad-card[data-ad-copy="0"][data-ad-index="0"]');
-      const middle = rail.querySelector('.client-ad-card[data-ad-copy="1"][data-ad-index="0"]');
-      const third = rail.querySelector('.client-ad-card[data-ad-copy="2"][data-ad-index="0"]');
-      if (!first || !middle || !third) return;
-      loopWidth = middle.offsetLeft - first.offsetLeft;
-      loopStart = middle.offsetLeft;
-      loopEnd = third.offsetLeft;
+      const copy1 = rail.querySelector('.client-ad-card[data-ad-copy="1"][data-ad-index="0"]');
+      const copy2 = rail.querySelector('.client-ad-card[data-ad-copy="2"][data-ad-index="0"]');
+      const copy3 = rail.querySelector('.client-ad-card[data-ad-copy="3"][data-ad-index="0"]');
+      if (!copy1 || !copy2 || !copy3) return;
+      loopWidth = copy2.offsetLeft - copy1.offsetLeft;
+      loopStart = copy2.offsetLeft;
+      loopEnd = copy3.offsetLeft;
       rail.scrollLeft = loopStart;
     });
   }
 
   function normalizeLoopPosition(rail) {
     if (!loopWidth) return;
-    if (rail.scrollLeft >= loopEnd) rail.scrollLeft -= loopWidth;
-    else if (rail.scrollLeft < loopStart - loopWidth) rail.scrollLeft += loopWidth;
+    const upper = loopStart + loopWidth * 0.5;
+    const lower = loopStart - loopWidth * 0.5;
+    if (rail.scrollLeft >= upper) rail.scrollLeft -= loopWidth;
+    else if (rail.scrollLeft < lower) rail.scrollLeft += loopWidth;
   }
 
   function goTo(nextIndex, userInitiated = false) {
     if (!ads.length) return;
     index = ((nextIndex % ads.length) + ads.length) % ads.length;
     const rail = document.getElementById("htpwebAdRail");
-    const card = rail?.querySelector('[data-ad-copy="1"][data-ad-index="' + index + '"]');
+    const card = rail?.querySelector('[data-ad-copy="2"][data-ad-index="' + index + '"]');
     if (rail && card) {
       rail.scrollTo({ left: card.offsetLeft, behavior: "smooth" });
     }
@@ -302,7 +312,7 @@
       lastFrameAt = now;
 
       if (!carouselPaused && loopWidth > 0) {
-        rail.scrollLeft += (SCROLL_PX_PER_SECOND * delta) / 1000;
+        rail.scrollLeft += (carouselSpeed * delta) / 1000;
         normalizeLoopPosition(rail);
       }
       animationFrame = requestAnimationFrame(step);
@@ -319,6 +329,14 @@
       await ensureAnalytics();
       delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
       if (!delivery?.id) return;
+
+      const speedResult = await supabaseClient.rpc("advertising_carousel_speed");
+      if (!speedResult.error) {
+        const configuredSpeed = Number(speedResult.data);
+        if (Number.isFinite(configuredSpeed) && configuredSpeed >= 20 && configuredSpeed <= 300) {
+          carouselSpeed = configuredSpeed;
+        }
+      }
 
       const { data, error } = await supabaseClient.rpc("public_delivery_advertisements", {
         p_delivery_id: delivery.id

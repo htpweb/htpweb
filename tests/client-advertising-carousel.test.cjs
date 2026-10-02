@@ -11,21 +11,23 @@ const adminHtml=fs.readFileSync('admin/index.html','utf8');
 test('client home advertising uses continuous infinite horizontal carousel',()=>{
   assert.match(ads,/client_home_carousel/);
   assert.match(ads,/client-ad-rail/);
-  assert.match(ads,/\[0, 1, 2\][\s\S]*flatMap/);
+  assert.match(ads,/\[0, 1, 2, 3, 4\][\s\S]*flatMap/);
   assert.match(ads,/requestAnimationFrame\(step\)/);
-  assert.match(ads,/SCROLL_PX_PER_SECOND/);
+  assert.match(ads,/DEFAULT_SCROLL_PX_PER_SECOND/);
+  assert.match(ads,/advertising_carousel_speed/);
+  assert.doesNotMatch(ads,/mouseenter/);
   assert.match(ads,/normalizeLoopPosition/);
   assert.doesNotMatch(ads,/setInterval\(rotate/);
   assert.match(css,/\.client-ad-rail\{[\s\S]*overflow-x:auto[\s\S]*scroll-snap-type:none/);
   assert.match(css,/\.client-ad-card\{[\s\S]*scroll-snap-align:none/);
-  assert.match(index,/ads\.js\?v=20261002-continuous3/);
+  assert.match(index,/ads\.js\?v=20261002-continuous4/);
 });
 
 test('advertising is limited to client home and old fixed banner is disabled',()=>{
   assert.match(ads,/function isClientHome/);
   assert.match(ads,/if \(!isClientHome\(\)\) return/);
   assert.match(css,/\.htpweb-ad-banner\{[\s\S]*display:none!important/);
-  assert.match(index,/ads\.js\?v=20261002-continuous3/);
+  assert.match(index,/ads\.js\?v=20261002-continuous4/);
 });
 
 test('client requests ads by delivery coverage zones and sends valid impression key',()=>{
@@ -44,6 +46,8 @@ test('MASTER controls campaign splits and zone targeting',()=>{
   assert.match(adminHtml,/id="advertisingHtpwebPct"/);
   assert.match(adminHtml,/id="advertisingOriginPct"/);
   assert.match(adminHtml,/id="advertisingTrafficPct"/);
+  assert.match(adminHtml,/id="advertisingCarouselSpeed"/);
+  assert.match(admin,/save_advertising_carousel_speed/);
   assert.match(adminHtml,/id="advertisementZones"/);
   assert.match(admin,/save_advertising_split/);
   assert.match(admin,/save_advertisement_commercial/);

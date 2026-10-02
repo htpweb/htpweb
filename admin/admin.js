@@ -7208,13 +7208,15 @@ async function loadAdvertisingProducts() {
 async function loadAdvertisingPolicy() {
   const { data, error } = await supabaseClient
     .from("advertising_settings")
-    .select("htpweb_pct,origin_delivery_pct,traffic_pct")
+    .select("htpweb_pct,origin_delivery_pct,traffic_pct,carousel_speed_px_s")
     .eq("singleton_id", 1)
     .single();
   if (error) throw error;
   $("advertisingHtpwebPct").value = Number(data.htpweb_pct || 0);
   $("advertisingOriginPct").value = Number(data.origin_delivery_pct || 0);
   $("advertisingTrafficPct").value = Number(data.traffic_pct || 0);
+  if ($("advertisingCarouselSpeed")) $("advertisingCarouselSpeed").value = Number(data.carousel_speed_px_s || 91);
+  if ($("advertisingCarouselSpeedValue")) $("advertisingCarouselSpeedValue").textContent = String(Number(data.carousel_speed_px_s || 91));
   syncAdvertisingSplitTotal();
 }
 
@@ -7237,7 +7239,10 @@ async function saveAdvertisingSplit() {
       p_origin_delivery_pct: Number($("advertisingOriginPct").value || 0),
       p_traffic_pct: Number($("advertisingTrafficPct").value || 0)
     });
-    message("Política de publicidad actualizada.");
+    await rpc("save_advertising_carousel_speed", {
+      p_speed: Number($("advertisingCarouselSpeed")?.value || 91)
+    });
+    message("Política de publicidad y velocidad actualizadas.");
     await loadAdvertisingPolicy();
   } catch (e) {
     message(e.message || "No se pudo guardar la política.", "error");
@@ -11131,6 +11136,9 @@ function bindEvents() {
   if ($("advertisingHtpwebPct")) $("advertisingHtpwebPct").oninput = syncAdvertisingSplitTotal;
   if ($("advertisingOriginPct")) $("advertisingOriginPct").oninput = syncAdvertisingSplitTotal;
   if ($("advertisingTrafficPct")) $("advertisingTrafficPct").oninput = syncAdvertisingSplitTotal;
+  if ($("advertisingCarouselSpeed")) $("advertisingCarouselSpeed").oninput = () => {
+    if ($("advertisingCarouselSpeedValue")) $("advertisingCarouselSpeedValue").textContent = $("advertisingCarouselSpeed").value;
+  };
   if ($("saveAdvertisingSplitBtn")) $("saveAdvertisingSplitBtn").onclick = saveAdvertisingSplit;
   if ($("advertisingDeliverySelect")) $("advertisingDeliverySelect").onchange = loadAdvertisingDeliveryWorkspace;
   if ($("submitAdvertisingRequestBtn")) $("submitAdvertisingRequestBtn").onclick = submitAdvertisingRequest;
