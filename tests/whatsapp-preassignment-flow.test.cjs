@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const migration=fs.readFileSync(
-  'supabase/migrations/20260930013000_automatic_local_whatsapp_and_preassigned_dispatch.sql',
+  'supabase/migrations/20260930015358_automatic_local_whatsapp_and_preassigned_dispatch.sql',
   'utf8'
 );
 const edge=fs.readFileSync('supabase/functions/whatsapp-notify/index.ts','utf8');
@@ -70,7 +70,7 @@ test('preasignado no avisa y asignado obliga a abrir HTPWEB',()=>{
     admin.match(/if\(plan\?\.status==="PLANNED"\)[\s\S]*?if\(\["CONFIRMED","PREPARING"\]/)?.[0]||'',
     /orderControlNotifyPlannedDriver/
   );
-  assert.match(edge,/"Ver detalles en HTPWEB"/);
+  assert.match(edge,/"Ver detalles en " \+ \(cfg\.verifiedName \|\| "el DELIVERY"\)/);
   assert.match(edge,/driverConsoleUrl\(cfg\.publicUrl\)/);
   assert.doesNotMatch(
     edge.match(/const parameters = kind === "DRIVER_ASSIGNED"[\s\S]*?: \[orderRef\(order\.id\)\];/)?.[0]||'',
