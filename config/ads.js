@@ -1,5 +1,5 @@
 (() => {
-  const SCROLL_PX_PER_SECOND = 42;
+  const SCROLL_PX_PER_SECOND = 65;
   const scriptBase = document.currentScript?.src
     ? new URL(".", document.currentScript.src)
     : new URL("../config/", location.href);
@@ -253,11 +253,9 @@
     };
 
     rail.addEventListener("scroll", syncIndexFromScroll, { passive: true });
-    rail.addEventListener("mouseenter", () => { carouselPaused = true; });
-    rail.addEventListener("mouseleave", () => { carouselPaused = false; lastFrameAt = 0; });
     rail.addEventListener("pointerdown", () => { carouselPaused = true; });
-    rail.addEventListener("pointerup", () => { carouselPaused = false; lastFrameAt = 0; });
-    rail.addEventListener("pointercancel", () => { carouselPaused = false; lastFrameAt = 0; });
+    window.addEventListener("pointerup", () => { carouselPaused = false; lastFrameAt = 0; });
+    window.addEventListener("pointercancel", () => { carouselPaused = false; lastFrameAt = 0; });
 
     requestAnimationFrame(() => {
       const first = rail.querySelector('.client-ad-card[data-ad-copy="0"][data-ad-index="0"]');
