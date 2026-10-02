@@ -2199,3 +2199,48 @@ body.has-htpweb-ad{
     font-size:.73rem;
   }
 }
+
+/* CLIENT — estado de compra para LOCAL cerrado */
+.closed-order-control{
+  width:100%;
+  min-height:42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:9px 12px;
+  border:1px solid #fecaca;
+  border-radius:11px;
+  background:#fff1f2;
+  color:#991b1b;
+  font-size:.84rem;
+  font-weight:900;
+  line-height:1.2;
+  text-align:center;
+}
+.closed-order-lock{
+  flex:0 0 auto;
+  font-size:1rem;
+}
+.visual-menu-variant-row .closed-order-control,
+.visual-menu-product-direct .closed-order-control{
+  width:118px;
+  min-width:118px;
+  padding:8px 9px;
+  font-size:.75rem;
+}
+@media(max-width:520px){
+  .visual-menu-variant-row .closed-order-control,
+  .visual-menu-product-direct .closed-order-control{
+    width:112px;
+    min-width:112px;
+    font-size:.72rem;
+  }
+}
+@media(max-width:380px){
+  .visual-menu-variant-row .closed-order-control,
+  .visual-menu-product-direct .closed-order-control{
+    width:100%;
+    min-width:0;
+  }
+}
