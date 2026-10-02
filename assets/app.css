@@ -1600,8 +1600,8 @@ html[data-delivery-theme] .chip.active{
   border-color:var(--brand-primary);
 }
 html[data-delivery-theme] .media-viewer-close{
-  background:var(--brand-primary);
-  color:var(--brand-on-primary);
+  background:#e53935;
+  color:#fff;
 }
 html[data-delivery-theme] .promotion-mix-row.has-quantity{
   background:var(--brand-soft);
@@ -1609,4 +1609,28 @@ html[data-delivery-theme] .promotion-mix-row.has-quantity{
 }
 html[data-delivery-theme] .shared-product-target{
   outline-color:var(--brand-accent);
+}
+
+
+/* Semantic red stays consistent across DELIVERY themes */
+#cartLink,
+#cartBtn{
+  background:#e53935 !important;
+  color:#fff !important;
+}
+.btn-danger,
+.media-viewer-close{
+  background:#e53935 !important;
+  color:#fff !important;
+}
+.media-viewer-close:hover,
+.media-viewer-close:focus-visible,
+.btn-danger:hover,
+.btn-danger:focus-visible{
+  background:#c62828 !important;
+  color:#fff !important;
+}
+.error,
+.availability-closed{
+  color:#b71c1c;
 }
