@@ -29,14 +29,14 @@ test('DELIVERY_ADMIN se agrupa por áreas de trabajo',()=>{
   assert.match(block,/label:"Operación",sections:\["orders","drivers"\]/);
   assert.match(block,/label:"Mi DELIVERY",sections:\["mydelivery","fees","coverage","security"\]/);
   assert.match(block,/label:"Clientes",sections:\["network","share","requests"\]/);
-  assert.match(block,/label:"Imagen y promoción",sections:\["storage","advertising"\]/);
+  assert.match(block,/label:"Imagen y promoción",sections:\["promotions","storage","advertising"\]/);
   assert.match(block,/label:"Gestión",sections:\["myplan","analytics"\]/);
 });
 
 test('otros roles mantienen roleSections sin cambio de permisos',()=>{
   assert.match(admin,/MASTER: \["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"\]/);
-  assert.match(admin,/DELIVERY_OPERATOR: \["overview","orders","drivers"\]/);
-  assert.match(admin,/LOCAL_ADMIN: \["overview","mylocal","orders","catalog","schedules","storage","advertising","analytics"\]/);
+  assert.match(admin,/DELIVERY_OPERATOR: \["overview","promotions","orders","drivers"\]/);
+  assert.match(admin,/LOCAL_ADMIN: \["overview","mylocal","orders","catalog","schedules","storage","analytics"\]/);
 });
 
 test('el menú agrupado tiene estilos discretos',()=>{

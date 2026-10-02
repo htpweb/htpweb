@@ -4,7 +4,7 @@ const fs=require('node:fs');
 
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
-const migration=fs.readFileSync('supabase/migrations/20260926030315_delivery_admin_operational_overview.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260926030441_delivery_admin_operational_overview.sql','utf8');
 
 test('DELIVERY_ADMIN usa un resumen operativo dedicado',()=>{
   assert.match(admin,/state\.role==="DELIVERY_ADMIN"/);

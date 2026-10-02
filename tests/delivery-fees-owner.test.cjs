@@ -28,11 +28,11 @@ test('las modalidades comerciales viven en el catálogo del plan',()=>{
 });
 
 test('DELIVERY_ADMIN solo ve modalidades incluidas en su plan',()=>{
-  const load=admin.match(/async function loadFeeDelivery\(\)[\s\S]*?async function saveFeeConfig/)?.[0]||'';
-  assert.match(load,/delivery_fee_capability_status/);
-  assert.match(load,/capabilityStatus\?\.fixed/);
-  assert.match(load,/capabilityStatus\?\.distance/);
-  assert.match(load,/allowedModes/);
+  const load=admin.match(/async function loadFeeDelivery\(\)[\s\S]*?function feeReadNonNegative/)?.[0]||'';
+  assert.match(load,/delivery_fee_workspace/);
+  assert.match(load,/workspace\?\.capabilities/);
+  assert.match(load,/state\.feeCapabilities/);
+  assert.match(load,/feeCapabilityForMode/);
   assert.match(hardening,/delivery_fees\.fixed/);
   assert.match(hardening,/delivery_fees\.distance/);
 });

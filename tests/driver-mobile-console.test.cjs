@@ -2,9 +2,9 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const migration=fs.readFileSync('supabase/migrations/20260928141000_driver_mobile_console_common_operations.sql','utf8');
-const terminal=fs.readFileSync('supabase/migrations/20260928144500_driver_mobile_console_terminal_return.sql','utf8');
-const centerMigration=fs.readFileSync('supabase/migrations/20260928150000_order_control_driver_pickup_progress.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260928135622_driver_mobile_console_common_operations.sql','utf8');
+const terminal=fs.readFileSync('supabase/migrations/20260928140624_driver_mobile_console_terminal_return.sql','utf8');
+const centerMigration=fs.readFileSync('supabase/migrations/20260928140952_order_control_driver_pickup_progress.sql','utf8');
 const track=fs.readFileSync('supabase/functions/quick-driver-track/index.ts','utf8');
 const proof=fs.readFileSync('supabase/functions/quick-driver-proof-upload/index.ts','utf8');
 const mobile=fs.readFileSync('app/repartidor-rapido.html','utf8');
@@ -89,7 +89,7 @@ test('centro de control recibe progreso de recogidas',()=>{
   assert.match(centerMigration,/'pickup_status'/);
   assert.match(centerMigration,/'arrived_at'/);
   assert.match(centerMigration,/'picked_up_at'/);
-  assert.match(admin,/Pendiente de recogida/);
+  assert.match(admin,/pickup_status&&ol\.pickup_status!=="PENDING"/);
   assert.match(admin,/Repartidor llegó/);
   assert.match(admin,/Recogido/);
 });

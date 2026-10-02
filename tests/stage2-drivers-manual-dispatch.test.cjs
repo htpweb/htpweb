@@ -86,8 +86,8 @@ test('Mi Plan ya muestra consumo real de repartidores',()=>{
   assert.match(migration,/v_drivers_used/);
   assert.match(migration,/usage_available',true/);
   assert.match(migration,/configuration_section','drivers/);
-  assert.match(admin,/Gestiona cuáles cuentas están activas desde Repartidores/);
-  assert.match(html,/id="myPlanGoDrivers"/);
+  assert.match(admin,/myPlanCapacityCard\("Repartidores regulares"/);
+  assert.doesNotMatch(html,/id="myPlanGoDrivers"/);
 });
 
 test('login y servicio reconocen DELIVERY_DRIVER sin darle Pedidos globales',()=>{

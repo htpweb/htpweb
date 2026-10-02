@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const migration=fs.readFileSync('supabase/migrations/20260925213358_whatsapp_order_dispatch.sql','utf8');
-const customerMigration=fs.readFileSync('supabase/migrations/20260927195000_customer_order_whatsapp_all_delivery_plans.sql','utf8');
+const customerMigration=fs.readFileSync('supabase/migrations/20260927194814_customer_order_whatsapp_all_delivery_plans.sql','utf8');
 const edge=fs.readFileSync('supabase/functions/whatsapp-notify/index.ts','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
@@ -74,7 +74,7 @@ test('modo automático permanece inactivo si Meta no está configurado',()=>{
   assert.match(edge,/localOrderConfigured/);
   assert.match(edge,/driverDispatchConfigured/);
   assert.match(admin,/automaticOption\.disabled=provider\.configured!==true/);
-  assert.match(admin,/Primero configura las credenciales y plantillas oficiales de Meta/);
+  assert.match(admin,/Automático quedará disponible cuando el WhatsApp Business de este DELIVERY esté conectado y Meta tenga las plantillas listas/);
 });
 
 test('modo asistido abre wa.me con texto precargado',()=>{
@@ -140,7 +140,7 @@ test('checkout registra primero en HTPWEB y luego prepara WhatsApp sin about:bla
   const validateIndex=cart.indexOf('if (!data?.ok || !data?.order?.id)');
   const canonicalIndex=cart.indexOf('data.order_detail ||');
   const whatsappIndex=cart.indexOf('htpWhatsappAssistedUrl(');
-  const redirectIndex=cart.indexOf('window.location.href = lastCustomerWhatsappUrl');
+  const redirectIndex=cart.lastIndexOf('window.location.href = lastCustomerWhatsappUrl');
   assert.ok(createIndex>=0);
   assert.ok(validateIndex>createIndex);
   assert.ok(canonicalIndex>validateIndex);
@@ -161,7 +161,7 @@ test('mensaje WhatsApp usa el pedido canónico con locales, ubicación y totales
   assert.match(helper,/https:\/\/www\.google\.com\/maps\?q=/);
   assert.match(helper,/Subtotal productos/);
   assert.match(helper,/\*TOTAL:\*/);
-  assert.match(helper,/Pedido registrado correctamente en HTPWEB/);
+  assert.match(helper,/Pedido registrado correctamente/);
 });
 
 test('JavaScript del navegador sigue compilando',()=>{

@@ -6,7 +6,7 @@ const negocio=fs.readFileSync('config/negocio.js','utf8');
 const appCss=fs.readFileSync('assets/app.css','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const adminHtml=fs.readFileSync('admin/index.html','utf8');
-const migration=fs.readFileSync('supabase/migrations/20261002010200_delivery_public_theme_palette.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261002010245_delivery_public_theme_palette.sql','utf8');
 
 test('public delivery loads and applies saved theme key',()=>{
   assert.match(negocio,/theme_key/);

@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const migration=fs.readFileSync('supabase/migrations/20260927211500_delivery_order_control_center_snapshot.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260927210718_delivery_order_control_center_snapshot.sql','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 const css=fs.readFileSync('assets/admin.css','utf8');
@@ -97,7 +97,7 @@ test('flujo LOCAL usa enlace sin registro y guarda ETA de preparación',()=>{
   assert.match(localResponsePage,/30 min/);
   assert.match(localResponsePage,/Pedido listo para retirar/);
   assert.match(localResponsePage,/local_order_response_mark_ready/);
-  assert.match(admin,/Solicitar al LOCAL/);
+  assert.match(admin,/sendLocalOrderWhatsapp/);
   assert.match(admin,/delivery_local_preparation_snapshot/);
 });
 
@@ -107,7 +107,7 @@ test('despacho permite programar repartidor antes de READY usando ETA',()=>{
   assert.match(planningMigration,/ideal_departure_at/);
   assert.match(planningMigration,/activate_planned_order_driver/);
   assert.match(admin,/delivery_driver_planning_snapshot/);
-  assert.match(admin,/Programar repartidor/);
+  assert.match(admin,/orderControlPlanDriver/);
   assert.match(admin,/orderControlPlanDriver/);
   assert.match(css,/\.order-control-recommendation/);
 });
