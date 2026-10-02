@@ -43,12 +43,6 @@
     <input id="search" class="search" placeholder="Buscar local o producto...">
   </section>
 
-  <div id="globalVisitCounter" class="global-visit-counter hidden" aria-live="polite">
-    <span aria-hidden="true">👁</span>
-    <span>Visitas HTPWEB</span>
-    <strong id="globalVisitCount">0</strong>
-  </div>
-
   <section class="card client-categories-shell" id="clientCategoriesShell">
     <h2>Categorías</h2>
     <div id="categories" class="chips"></div>
@@ -87,7 +81,7 @@ async function init() {
     $("cartLink").href = urlDelivery("carrito.html");
     $("ordersLink").href = urlDelivery("pedidos.html");
     updateCartCount();
-    loadGlobalVisitCounter();
+    registerDeliveryVisit();
 
     const user = await obtenerUsuarioActual();
     const authText = user ? "Mi cuenta" : "Acceder";
@@ -395,7 +389,7 @@ function renderLocals() {
     '</div>';
 }
 
-async function loadGlobalVisitCounter() {
+async function registerDeliveryVisit() {
   try {
     if (!negocioActual?.id || typeof supabaseClient === "undefined" || !supabaseClient?.rpc) return;
 
@@ -405,24 +399,16 @@ async function loadGlobalVisitCounter() {
       alreadyCounted = sessionStorage.getItem(storageKey) === "1";
     } catch (_) {}
 
-    const rpcName = alreadyCounted
-      ? "global_delivery_visit_count"
-      : "register_delivery_visit";
-    const args = alreadyCounted ? {} : { p_delivery_id: negocioActual.id };
-    const { data, error } = await supabaseClient.rpc(rpcName, args);
+    if (alreadyCounted) return;
+
+    const { error } = await supabaseClient.rpc("register_delivery_visit", {
+      p_delivery_id: negocioActual.id
+    });
     if (error) throw error;
 
-    if (!alreadyCounted) {
-      try { sessionStorage.setItem(storageKey, "1"); } catch (_) {}
-    }
-
-    const value = Number(data || 0);
-    $("globalVisitCount").textContent = Number.isFinite(value)
-      ? value.toLocaleString("es-EC")
-      : "0";
-    $("globalVisitCounter").classList.remove("hidden");
+    try { sessionStorage.setItem(storageKey, "1"); } catch (_) {}
   } catch (error) {
-    console.warn("No se pudo cargar el contador global de visitas:", error);
+    console.warn("No se pudo registrar la visita del DELIVERY:", error);
   }
 }
 
