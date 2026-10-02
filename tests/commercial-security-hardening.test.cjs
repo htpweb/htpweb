@@ -4,13 +4,14 @@ const fs=require('node:fs');
 
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const migration=fs.readFileSync('supabase/migrations/20260925114824_commercial_security_hardening.sql','utf8');
+const feeWorkspace=fs.readFileSync('supabase/migrations/20260926040804_delivery_fee_modes_fixed_distance_bands_and_zones.sql','utf8');
 
-test('tarifas usan un snapshot autorizado en lugar del helper interno',()=>{
-  assert.match(admin,/rpc\("delivery_fee_capability_status"/);
+test('tarifas usan un workspace autorizado en lugar del helper interno',()=>{
+  assert.match(admin,/rpc\("delivery_fee_workspace"/);
   assert.doesNotMatch(admin,/rpc\("delivery_has_capability"/);
-  assert.match(migration,/delivery_fee_capability_status/);
-  assert.match(migration,/public\.is_master\(\)/);
-  assert.match(migration,/public\.user_has_delivery\(p_delivery_id\)/);
+  assert.match(feeWorkspace,/delivery_fee_workspace/);
+  assert.match(feeWorkspace,/public\.is_master\(\)/);
+  assert.match(feeWorkspace,/public\.user_has_delivery\(p_delivery_id\)/);
 });
 
 test('helpers internos del plan no quedan expuestos al navegador',()=>{
