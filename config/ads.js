@@ -184,7 +184,13 @@
       <div class="client-ad-rail" id="htpwebAdRail" aria-label="Publicidad"></div>
     `;
 
-    categories.insertAdjacentElement("afterend", section);
+    const mobileFilterActive = window.matchMedia("(max-width: 760px)").matches
+      && document.body.classList.contains("client-filter-active");
+    if (mobileFilterActive) {
+      localsSection.insertAdjacentElement("afterend", section);
+    } else {
+      categories.insertAdjacentElement("afterend", section);
+    }
     return section;
   }
 
