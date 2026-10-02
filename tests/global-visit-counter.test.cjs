@@ -23,3 +23,8 @@ test("una recarga de la misma sesión no infla el contador",()=>{
   assert.match(html,/sessionStorage\.getItem\(storageKey\)/);
   assert.match(html,/sessionStorage\.setItem\(storageKey, "1"\)/);
 });
+
+test("contador usa el cliente Supabase global real en PC y móvil",()=>{
+  assert.match(html,/typeof supabaseClient === "undefined"/);
+  assert.doesNotMatch(html,/!window\.supabaseClient\?\.rpc/);
+});
