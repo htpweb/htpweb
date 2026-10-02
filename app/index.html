@@ -11,7 +11,7 @@
 <script src="../config/auth.js"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-theme3">
+<link rel="stylesheet" href="../assets/app.css?v=20261002-promo-filter1">
 </head>
 <body>
 <header>
@@ -44,26 +44,6 @@
   <section class="card">
     <h2>Categorías</h2>
     <div id="categories" class="chips"></div>
-  </section>
-
-  <section class="promo-strip-section" id="deliveryPromotionsCard">
-    <div class="row between promo-strip-head">
-      <div>
-        <h2>🔥 Promociones para hoy</h2>
-        <p id="deliveryPromotionsDate" class="muted">Cargando promociones...</p>
-      </div>
-      <select id="promotionDayOffset" class="promo-day-select">
-        <option value="0">Hoy</option>
-        <option value="1">Mañana</option>
-        <option value="2">En 2 días</option>
-        <option value="3">En 3 días</option>
-        <option value="4">En 4 días</option>
-        <option value="5">En 5 días</option>
-        <option value="6">En 6 días</option>
-        <option value="7">En 7 días</option>
-      </select>
-    </div>
-    <div id="deliveryPromotionsList" class="promo-strip"></div>
   </section>
 
   <section>
@@ -215,64 +195,23 @@ async function loadCatalog() {
 }
 
 async function loadDeliveryPromotions() {
-  const offset = Math.max(0, Math.min(30, Number.parseInt($("promotionDayOffset")?.value || "0", 10) || 0));
   const { data, error } = await supabaseClient.rpc("public_delivery_promotions", {
     p_delivery_id: negocioActual.id,
-    p_day_offset: offset
+    p_day_offset: 0
   });
   if (error) throw error;
 
   const coveredLocalIds = new Set(locals.map(local => local.id));
   deliveryPromotions = (Array.isArray(data?.promotions) ? data.promotions : [])
     .filter(promotion => coveredLocalIds.has(promotion.local_id));
-  const targetDate = data?.target_date
-    ? new Date(String(data.target_date) + "T12:00:00").toLocaleDateString("es-EC", {
-        weekday: "long", day: "numeric", month: "long"
-      })
-    : "día seleccionado";
+}
 
-  $("deliveryPromotionsDate").textContent =
-    (offset === 0 ? "Hoy · " : offset === 1 ? "Mañana · " : "") + targetDate;
+function promotionCountForLocal(localId) {
+  return deliveryPromotions.filter(promotion => promotion.local_id === localId).length;
+}
 
-  $("deliveryPromotionsList").innerHTML = deliveryPromotions.length
-    ? deliveryPromotions.map(promotion => {
-        const items = Array.isArray(promotion.items) ? promotion.items : [];
-        const isOptions = promotion.promotion_type === "OPTIONS";
-        const itemHtml = "";
-
-        let total = "";
-        if (promotion.promotion_price !== null && promotion.promotion_price !== undefined) {
-          total = '<div class="promotion-total">$' + Number(promotion.promotion_price).toFixed(2) + '</div>';
-        } else if (isOptions) {
-          const prices = items
-            .map(item => Number(item.promo_price))
-            .filter(Number.isFinite);
-          if (prices.length) {
-            total = '<div class="promotion-total">Desde $' + Math.min(...prices).toFixed(2) + '</div>';
-          }
-        }
-
-        const image = promotion.image_url
-          ? '<img src="' + esc(promotion.image_url) + '" alt="' + esc(promotion.title) + '">'
-          : "";
-        const typeLabel = isOptions ? "Opciones" : "Combo";
-        const canBuyNow = offset === 0 && promotion.available_now === true && items.length > 0;
-        const actionLabel = canBuyNow ? "Ver y comprar" : "Ver LOCAL";
-        const extra = canBuyNow
-          ? "{local:'" + esc(promotion.local_id) + "',promotion:'" + esc(promotion.id) + "'}"
-          : "{local:'" + esc(promotion.local_id) + "'}";
-
-        return '<article class="promotion-card promo-strip-card">' + image +
-          '<div class="promotion-card-copy">' +
-            '<span class="promotion-badge">PROMO · ' + esc(typeLabel) + '</span>' +
-            '<strong>' + esc(promotion.title) + '</strong>' +
-            '<div class="muted promo-local-name">' + esc(promotion.local_name || "") + '</div>' +
-            total + itemHtml +
-            '<button class="btn ' + (canBuyNow ? 'btn-primary' : 'btn-dark') + ' promo-action" ' +
-              'onclick="location.href=urlDelivery(\'local.html\',' + extra + ')">' + actionLabel + '</button>' +
-          '</div></article>';
-      }).join("")
-    : '<div class="empty">No hay promociones publicadas para este día.</div>';
+function firstPromotionForLocal(localId) {
+  return deliveryPromotions.find(promotion => promotion.local_id === localId) || null;
 }
 
 function renderCategories() {
@@ -295,6 +234,7 @@ function renderCategories() {
 
   $("categories").innerHTML =
     `<button class="chip ${!categoryId ? "active" : ""}" onclick="selectCategory('')">Todos</button>` +
+    `<button class="chip promo-filter-chip ${categoryId === "__PROMOTIONS__" ? "active" : ""}" onclick="selectCategory('__PROMOTIONS__')">🔥 Promociones</button>` +
     visible.map(c =>
       `<button class="chip ${categoryId === c.id ? "active" : ""}" onclick="selectCategory('${c.id}')">${esc(c.name)}</button>`
     ).join("");
@@ -345,21 +285,18 @@ function normalizeSearchText(value) {
     .trim();
 }
 
-function syncSearchMode() {
-  const searching = Boolean(normalizeSearchText($("search").value));
-  $("deliveryPromotionsCard").classList.toggle("hidden", searching);
-}
-
 function renderLocals() {
   const rawQuery = $("search").value;
   const q = normalizeSearchText(rawQuery);
-  syncSearchMode();
 
   const filtered = locals.filter(local => {
     const ps = products.filter(p => p.local_id === local.id);
-    const categoryMatch = !categoryId || localCategoryAssignments.some(a =>
-      a.local_id === local.id && a.category_id === categoryId
-    );
+    const categoryMatch = !categoryId
+      || (categoryId === "__PROMOTIONS__"
+        ? promotionCountForLocal(local.id) > 0
+        : localCategoryAssignments.some(a =>
+            a.local_id === local.id && a.category_id === categoryId
+          ));
     const textMatch = !q || [
       local.name,
       local.description,
@@ -383,14 +320,24 @@ function renderLocals() {
     }
 
     const availability = availabilityText(local.id);
+    const promoCount = promotionCountForLocal(local.id);
+    const promo = firstPromotionForLocal(local.id);
+    const fromPromotions = categoryId === "__PROMOTIONS__" && promo;
+    const localExtra = fromPromotions
+      ? "{local:'" + local.id + "',promotion:'" + promo.id + "'}"
+      : "{local:'" + local.id + "'}";
+    const localActionLabel = fromPromotions ? "Ver promociones" : "Ver productos";
 
     return `
       <article class="local-card">
         <div class="cover">${local.banner_url ? `<img src="${esc(local.banner_url)}" alt="${esc(local.name)}">` : ""}</div>
         <div class="pad">
-          <div class="row between">
+          <div class="row between local-card-heading">
             <h3>${esc(local.name)}</h3>
-            ${availability ? `<span class="availability-badge ${availability.className}">${esc(availability.text)}</span>` : ""}
+            <div class="local-card-badges">
+              ${promoCount ? `<span class="promo-today-badge">🔥 ${promoCount} promo${promoCount === 1 ? "" : "s"} hoy</span>` : ""}
+              ${availability ? `<span class="availability-badge ${availability.className}">${esc(availability.text)}</span>` : ""}
+            </div>
           </div>
           <p class="muted">${esc(local.description || "")}</p>
           ${ps.slice(0,3).map(p => `
@@ -400,8 +347,8 @@ function renderLocals() {
             </div>
           `).join("")}
           <button class="btn btn-dark" style="width:100%;margin-top:12px"
-            onclick="location.href=urlDelivery('local.html',{local:'${local.id}'})">
-            Ver productos
+            onclick="location.href=urlDelivery('local.html',${localExtra})">
+            ${localActionLabel}
           </button>
         </div>
       </article>
@@ -411,9 +358,11 @@ function renderLocals() {
       ? 'No encontramos resultados para "' + esc(rawQuery.trim()) + '" en la categoría seleccionada.'
       : q
         ? 'No encontramos resultados para "' + esc(rawQuery.trim()) + '".'
-        : categoryId
-          ? 'No encontramos locales en esta categoría.'
-          : 'No encontramos locales disponibles.') +
+        : categoryId === "__PROMOTIONS__"
+          ? 'No hay locales con promociones para hoy.'
+          : categoryId
+            ? 'No encontramos locales en esta categoría.'
+            : 'No encontramos locales disponibles.') +
     '</div>';
 }
 
@@ -422,12 +371,6 @@ function updateCartCount() {
 }
 
 $("search").addEventListener("input", renderLocals);
-$("promotionDayOffset").addEventListener("change", () => {
-  loadDeliveryPromotions().catch(error => {
-    console.error(error);
-    $("deliveryPromotionsList").innerHTML = '<div class="empty">No se pudieron cargar las promociones.</div>';
-  });
-});
 window.addEventListener("htpweb:cart", updateCartCount);
 init();
 </script>
