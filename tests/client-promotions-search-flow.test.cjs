@@ -21,6 +21,7 @@ test('promotion filter shows only locals with promotions today and combines with
 });
 
 test('locals advertise today promotions and open promotion tab from filter',()=>{
+  assert.match(index,/local-promo-line/);
   assert.match(index,/promo-today-badge/);
   assert.match(index,/promo\$\{promoCount === 1 \? "" : "s"\} hoy/);
   assert.match(index,/promotion:'" \+ promo\.id/);
