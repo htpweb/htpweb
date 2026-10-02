@@ -9,7 +9,7 @@ test("motor de publicidad usa cobertura del DELIVERY y conserva deep links", () 
   assert.match(js, /rpc\("public_delivery_advertisements"/);
   assert.match(js, /p_delivery_id:\s*delivery\.id/);
   assert.match(js, /urlDelivery\("local\.html", params\)/);
-  assert.match(js, /ROTATE_MS = 5000/);
+  assert.match(js, /SCROLL_PX_PER_SECOND = 42/);
 });
 
 test("publicidad se renderiza solo en el inicio del CLIENT", () => {
@@ -20,11 +20,12 @@ test("publicidad se renderiza solo en el inicio del CLIENT", () => {
   assert.match(index, /config\/ads\.js/);
 });
 
-test("carrusel reemplaza el banner fijo anterior", () => {
+test("carrusel reemplaza el banner fijo anterior y recorre en bucle continuo", () => {
   const css = read("assets/app.css");
   const js = read("config/ads.js");
-  assert.match(css, /\.client-ad-rail\{[\s\S]*overflow-x:auto/);
-  assert.match(css, /\.client-ad-card\{[\s\S]*scroll-snap-align:start/);
+  assert.match(css, /\.client-ad-rail\{[\s\S]*overflow-x:auto[\s\S]*scroll-snap-type:none/);
+  assert.match(css, /\.client-ad-card\{[\s\S]*scroll-snap-align:none/);
   assert.match(css, /\.htpweb-ad-banner\{[\s\S]*display:none!important/);
-  assert.match(js, /setInterval\(rotate, ROTATE_MS\)/);
+  assert.match(js, /requestAnimationFrame\(step\)/);
+  assert.match(js, /normalizeLoopPosition/);
 });

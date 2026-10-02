@@ -1705,7 +1705,7 @@ html.delivery-theme-pending body{
   display:flex;
   gap:14px;
   overflow-x:auto;
-  scroll-snap-type:x mandatory;
+  scroll-snap-type:none;
   scrollbar-width:none;
   padding:2px 2px 8px;
 }
@@ -1718,7 +1718,7 @@ html.delivery-theme-pending body{
   height:230px;
   overflow:hidden;
   border-radius:18px;
-  scroll-snap-align:start;
+  scroll-snap-align:none;
   background:#111;
   box-shadow:0 8px 24px rgba(15,23,42,.12);
   color:#fff;
