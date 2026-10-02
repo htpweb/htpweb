@@ -346,8 +346,17 @@ function availabilityText(localId) {
   return { text: "Cerrado", className: "availability-closed" };
 }
 
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function renderLocals() {
-  const q = $("search").value.trim().toLowerCase();
+  const rawQuery = $("search").value;
+  const q = normalizeSearchText(rawQuery);
 
   const filtered = locals.filter(local => {
     const ps = products.filter(p => p.local_id === local.id);
@@ -357,18 +366,26 @@ function renderLocals() {
     const textMatch = !q || [
       local.name,
       local.description,
+      local.address,
       ...ps.map(p => p.name),
       ...ps.map(p => p.description)
-    ].some(v => String(v || "").toLowerCase().includes(q));
+    ].some(v => normalizeSearchText(v).includes(q));
 
-    return categoryMatch && textMatch;
+    // Cuando el usuario escribe una búsqueda, esta debe ser global y no quedar
+    // bloqueada por una categoría seleccionada previamente.
+    return q ? textMatch : categoryMatch;
   });
 
   $("locals").innerHTML = filtered.length ? filtered.map(local => {
     let ps = products.filter(p => p.local_id === local.id);
-    if (q) ps = ps.filter(p =>
-      (p.name + " " + (p.description || "")).toLowerCase().includes(q)
-    );
+    if (q) {
+      const matchingProducts = ps.filter(p =>
+        normalizeSearchText(p.name + " " + (p.description || "")).includes(q)
+      );
+      // Si el nombre/descripción del local coincide pero no un producto concreto,
+      // conserva sus productos principales para que la tarjeta no quede vacía.
+      if (matchingProducts.length) ps = matchingProducts;
+    }
 
     const availability = availabilityText(local.id);
 
