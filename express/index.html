@@ -94,6 +94,7 @@
 const SUPABASE_URL="https://hwfloywzqlgqieonuswl.supabase.co";
 const SUPABASE_KEY="sb_publishable_NYoHIme-48fZeXAjF6OZaQ_twFybYI1";
 const $=id=>document.getElementById(id);
+const slotKey=(new URLSearchParams(location.search).get("slot")||"").trim().toLowerCase();
 let topMode="SIMPLE";
 
 function money(v){const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
@@ -157,7 +158,7 @@ async function createDemo(){
     btn.disabled=true;btn.textContent="CREANDO...";
     const res=await fetch(SUPABASE_URL+"/functions/v1/create-express-demo",{
       method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
-      body:JSON.stringify({name,whatsapp,logo_data_url,...fee})
+      body:JSON.stringify({slot_key:slotKey,name,whatsapp,logo_data_url,...fee})
     });
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||"No se pudo crear la demo.");
@@ -181,6 +182,11 @@ function showResult(data){
 }
 $("modeSimple").onclick=()=>setTopMode("SIMPLE");$("modeAdvanced").onclick=()=>setTopMode("ADVANCED");$("advancedType").onchange=syncAdvanced;$("addBand").onclick=()=>addBand();$("createBtn").onclick=createDemo;
 addBand({max_km:3});addBand({max_km:6});
+if(!/^express[1-9][0-9]*$/.test(slotKey)){
+  $("createBtn").disabled=true;
+  $("status").textContent="Este enlace Express no es válido. Solicita un link a HTPWEB.";
+  $("status").className="status error";
+}
 </script>
 </body>
 </html>

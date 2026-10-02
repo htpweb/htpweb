@@ -34,7 +34,7 @@ test('DELIVERY_ADMIN se agrupa por áreas de trabajo',()=>{
 });
 
 test('otros roles mantienen roleSections sin cambio de permisos',()=>{
-  assert.match(admin,/MASTER: \["overview","share","orders","requests","deliveries","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"\]/);
+  assert.match(admin,/MASTER: \["overview","share","orders","requests","deliveries","expressdemo","localsmaster","categoriesmaster","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"\]/);
   assert.match(admin,/DELIVERY_OPERATOR: \["overview","promotions","orders","drivers"\]/);
   assert.match(admin,/LOCAL_ADMIN: \["overview","mylocal","orders","catalog","schedules","storage","analytics"\]/);
 });

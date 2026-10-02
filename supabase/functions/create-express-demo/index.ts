@@ -84,9 +84,11 @@ Deno.serve(async (req: Request) => {
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
 
+  const slotKey = String(body?.slot_key || "").trim().toLowerCase();
   const name = String(body?.name || "").trim().slice(0, 80);
   const whatsapp = cleanWhatsapp(body?.whatsapp);
   const feeMode = String(body?.fee_mode || "").trim().toUpperCase();
+  if (!/^express[1-9][0-9]*$/.test(slotKey)) return json({ error: "Link Express inválido." }, 400);
   if (name.length < 2) return json({ error: "Escribe el nombre del DELIVERY." }, 400);
   if (whatsapp.length < 9) return json({ error: "Ingresa un WhatsApp válido." }, 400);
 
@@ -98,9 +100,18 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const { data: slot, error: slotError } = await admin
+    .from("express_demo_slots")
+    .select("slot_key,active,demo_id")
+    .eq("slot_key", slotKey)
+    .maybeSingle();
+
+  if (slotError || !slot || slot.active !== true) return json({ error: "Este link Express no está disponible." }, 404);
+  if (slot.demo_id) return json({ error: "Este link Express ya fue utilizado. Solicita uno nuevo a HTPWEB." }, 409);
+
   const { data: existing } = await admin
     .from("express_demos")
-    .select("public_code,name,logo_url,expires_at")
+    .select("id,public_code,name,logo_url,expires_at")
     .eq("whatsapp", whatsapp)
     .eq("active", true)
     .gt("expires_at", new Date().toISOString())
@@ -109,6 +120,7 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (existing) {
+    await admin.from("express_demo_slots").update({ demo_id: existing.id, used_at: new Date().toISOString() }).eq("slot_key", slotKey).is("demo_id", null);
     const url = "https://htpweb.github.io/htpweb/express/pedido.html?demo=" + encodeURIComponent(existing.public_code);
     return json({ ...existing, url, reused: true });
   }
@@ -151,6 +163,19 @@ Deno.serve(async (req: Request) => {
       logoUrl = admin.storage.from("htpweb-media").getPublicUrl(path).data.publicUrl;
       await admin.from("express_demos").update({ logo_url: logoUrl }).eq("id", created.id);
     }
+  }
+
+  const { data: claimed, error: claimError } = await admin
+    .from("express_demo_slots")
+    .update({ demo_id: created.id, used_at: new Date().toISOString() })
+    .eq("slot_key", slotKey)
+    .is("demo_id", null)
+    .select("slot_key")
+    .maybeSingle();
+
+  if (claimError || !claimed) {
+    await admin.from("express_demos").delete().eq("id", created.id);
+    return json({ error: "Este link Express acaba de ser utilizado. Solicita uno nuevo a HTPWEB." }, 409);
   }
 
   const url = "https://htpweb.github.io/htpweb/express/pedido.html?demo=" + encodeURIComponent(created.public_code);
