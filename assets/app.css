@@ -1642,36 +1642,41 @@ html.delivery-theme-pending body{
 }
 
 
-/* CLIENT — daily promotion discovery */
-.local-card-heading{
-  align-items:flex-start;
-  gap:10px;
-}
-.local-card-heading h3{
-  margin:0;
-}
-.local-promo-line{
-  margin-top:6px;
-}
-.promo-today-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  white-space:nowrap;
-  border-radius:999px;
-  padding:5px 9px;
-  font-size:11px;
-  font-weight:800;
-  line-height:1.2;
-  background:#fff8dc;
-  color:#805400;
-  border:1px solid #f4d978;
-}
+
+
+
+/* CLIENT — special daily promotions filter */
 .promo-filter-chip{
+  position:relative;
   font-weight:900;
+  border:1px solid #f0b429;
+  background:#fff8dc;
+  color:#7a4b00;
+  box-shadow:0 1px 4px rgba(122,75,0,.08);
 }
-@media(max-width:640px){
-  .local-card-heading{
-    align-items:flex-start;
-  }
+.promo-filter-chip::after{
+  content:"HOY";
+  margin-left:6px;
+  padding:2px 5px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.04em;
+  background:#f0b429;
+  color:#3f2a00;
+}
+.promo-filter-chip:hover,
+.promo-filter-chip:focus-visible{
+  border-color:#d89b00;
+  background:#fff2bf;
+}
+.promo-filter-chip.active{
+  background:var(--brand-primary);
+  border-color:var(--brand-primary);
+  color:var(--brand-on-primary);
+  box-shadow:0 3px 10px rgba(15,23,42,.14);
+}
+.promo-filter-chip.active::after{
+  background:#fff;
+  color:#7a4b00;
 }
