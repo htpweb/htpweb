@@ -932,3 +932,50 @@ body.admin-role-error .sidebar-footer{
   color:#fff;
   font-weight:800;
 }
+
+
+/* Advertising v2 */
+.advertising-zone-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:9px;
+  margin-top:8px;
+}
+.advertising-zone-option{
+  display:flex;
+  gap:9px;
+  align-items:flex-start;
+  padding:10px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  background:#fff;
+}
+.advertising-zone-option input{
+  width:auto;
+  margin-top:3px;
+}
+.advertising-zone-option span{
+  display:grid;
+  gap:2px;
+}
+.advertising-zone-option small{
+  color:#64748b;
+}
+.advertising-income-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.advertising-income-grid span{
+  padding:8px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:9px;
+  background:#fff;
+  font-size:.86rem;
+}
+@media(max-width:720px){
+  .advertising-income-grid{
+    grid-template-columns:1fr;
+  }
+}
