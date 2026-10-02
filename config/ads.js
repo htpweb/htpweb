@@ -259,19 +259,18 @@
       }
     };
 
-    const pauseCarousel = () => { carouselPaused = true; };
+    const pauseCarousel = event => {
+      // En escritorio el mouse nunca debe congelar el carrusel. Solo pausamos
+      // durante un gesto táctil/pen para conservar el desplazamiento manual.
+      if (event?.pointerType === "mouse") return;
+      carouselPaused = true;
+    };
     const resumeCarousel = () => {
       carouselPaused = false;
       lastFrameAt = 0;
     };
 
-    rail.addEventListener("scroll", syncIndexFromScroll, { passive: true });
-    rail.addEventListener("pointerdown", pauseCarousel);
-    window.addEventListener("pointerup", resumeCarousel);
-    window.addEventListener("pointercancel", resumeCarousel);
-    window.addEventListener("blur", resumeCarousel);
-
-    requestAnimationFrame(() => {
+    const measureLoop = () => {
       const copy1 = rail.querySelector('.client-ad-card[data-ad-copy="1"][data-ad-index="0"]');
       const copy2 = rail.querySelector('.client-ad-card[data-ad-copy="2"][data-ad-index="0"]');
       const copy3 = rail.querySelector('.client-ad-card[data-ad-copy="3"][data-ad-index="0"]');
@@ -279,7 +278,27 @@
       loopWidth = copy2.offsetLeft - copy1.offsetLeft;
       loopStart = copy2.offsetLeft;
       loopEnd = copy3.offsetLeft;
-      rail.scrollLeft = loopStart;
+      if (!Number.isFinite(rail.scrollLeft) || rail.scrollLeft < loopStart - loopWidth || rail.scrollLeft > loopEnd + loopWidth) {
+        rail.scrollLeft = loopStart;
+      }
+    };
+
+    rail.addEventListener("scroll", syncIndexFromScroll, { passive: true });
+    rail.addEventListener("pointerdown", pauseCarousel);
+    window.addEventListener("pointerup", resumeCarousel, true);
+    window.addEventListener("pointercancel", resumeCarousel, true);
+    window.addEventListener("blur", resumeCarousel);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        measureLoop();
+        resumeCarousel();
+      }
+    });
+    window.addEventListener("resize", () => requestAnimationFrame(measureLoop), { passive: true });
+
+    requestAnimationFrame(() => {
+      measureLoop();
+      if (loopWidth > 0) rail.scrollLeft = loopStart;
     });
   }
 
