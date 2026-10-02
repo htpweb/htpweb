@@ -731,6 +731,12 @@
 
       publicPromotions = Array.isArray(data) ? data : [];
       tabManaged = useCatalog;
+      const promoTab = document.getElementById("visualPromotionsTab");
+      if (promoTab) {
+        promoTab.textContent = publicPromotions.length
+          ? "PROMOCIONES · " + publicPromotions.length
+          : "PROMOCIONES";
+      }
       renderPublicPromotions();
     } catch (error) {
       console.warn("Promociones no disponibles:", error?.message || error);
