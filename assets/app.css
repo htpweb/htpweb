@@ -1515,3 +1515,66 @@ body.visual-menu-viewer-open{
     font-size:18px;
   }
 }
+
+
+/* Compact promotions strip on public catalog */
+.promo-strip-section{
+  margin:18px 0 22px;
+}
+.promo-strip-head{
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:end;
+  margin-bottom:10px;
+}
+.promo-strip-head h2{
+  margin:0 0 2px;
+}
+.promo-strip-head p{
+  margin:0;
+}
+.promo-day-select{
+  max-width:170px;
+}
+.promo-strip{
+  display:flex;
+  gap:12px;
+  overflow-x:auto;
+  padding:2px 2px 8px;
+  scroll-snap-type:x proximity;
+}
+.promo-strip-card{
+  flex:0 0 250px;
+  scroll-snap-align:start;
+}
+.promo-strip-card img{
+  aspect-ratio:16/8;
+}
+.promo-strip-card .promotion-card-copy{
+  padding:10px 12px 12px;
+}
+.promo-strip-card .promotion-card-copy strong{
+  font-size:.98rem;
+}
+.promo-local-name{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.promo-strip-card .promotion-total{
+  margin-top:6px;
+}
+.promo-action{
+  width:100%;
+  margin-top:8px;
+}
+@media(max-width:760px){
+  .promo-strip-card{
+    flex-basis:78vw;
+    max-width:300px;
+  }
+  .promo-day-select{
+    width:100%;
+    max-width:none;
+  }
+}
