@@ -40,13 +40,18 @@
     <input id="search" class="search" placeholder="Buscar local o producto...">
   </section>
 
-  <section class="card" id="deliveryPromotionsCard">
-    <div class="row between" style="gap:12px;flex-wrap:wrap">
+  <section class="card">
+    <h2>Categorías</h2>
+    <div id="categories" class="chips"></div>
+  </section>
+
+  <section class="promo-strip-section" id="deliveryPromotionsCard">
+    <div class="row between promo-strip-head">
       <div>
-        <h2 style="margin-bottom:4px">Promociones del día</h2>
-        <p id="deliveryPromotionsDate" class="muted" style="margin:0">Cargando promociones...</p>
+        <h2>🔥 Promociones para hoy</h2>
+        <p id="deliveryPromotionsDate" class="muted">Cargando promociones...</p>
       </div>
-      <select id="promotionDayOffset" style="max-width:190px">
+      <select id="promotionDayOffset" class="promo-day-select">
         <option value="0">Hoy</option>
         <option value="1">Mañana</option>
         <option value="2">En 2 días</option>
@@ -57,12 +62,7 @@
         <option value="7">En 7 días</option>
       </select>
     </div>
-    <div id="deliveryPromotionsList" class="promotions-grid" style="margin-top:14px"></div>
-  </section>
-
-  <section class="card">
-    <h2>Categorías</h2>
-    <div id="categories" class="chips"></div>
+    <div id="deliveryPromotionsList" class="promo-strip"></div>
   </section>
 
   <section>
@@ -237,16 +237,7 @@ async function loadDeliveryPromotions() {
     ? deliveryPromotions.map(promotion => {
         const items = Array.isArray(promotion.items) ? promotion.items : [];
         const isOptions = promotion.promotion_type === "OPTIONS";
-        const itemHtml = items.length
-          ? '<div class="promotion-items">' + items.map(item => {
-              const price = item.promo_price !== null && item.promo_price !== undefined
-                ? " · $" + Number(item.promo_price).toFixed(2)
-                : "";
-              const variant = item.variant_name ? " · " + item.variant_name : "";
-              return '<div><strong>' + esc(item.quantity || 1) + '×</strong> ' +
-                esc((item.product_name || "Producto") + variant + price) + '</div>';
-            }).join("") + '</div>'
-          : "";
+        const itemHtml = "";
 
         let total = "";
         if (promotion.promotion_price !== null && promotion.promotion_price !== undefined) {
@@ -270,14 +261,13 @@ async function loadDeliveryPromotions() {
           ? "{local:'" + esc(promotion.local_id) + "',promotion:'" + esc(promotion.id) + "'}"
           : "{local:'" + esc(promotion.local_id) + "'}";
 
-        return '<article class="promotion-card">' + image +
+        return '<article class="promotion-card promo-strip-card">' + image +
           '<div class="promotion-card-copy">' +
-            '<span class="promotion-badge">PROMOCIÓN · ' + esc(typeLabel) + '</span>' +
+            '<span class="promotion-badge">PROMO · ' + esc(typeLabel) + '</span>' +
             '<strong>' + esc(promotion.title) + '</strong>' +
-            '<div class="muted">' + esc(promotion.local_name || "") + '</div>' +
+            '<div class="muted promo-local-name">' + esc(promotion.local_name || "") + '</div>' +
             total + itemHtml +
-            (promotion.body ? '<p>' + esc(promotion.body) + '</p>' : '') +
-            '<button class="btn ' + (canBuyNow ? 'btn-primary' : 'btn-dark') + '" style="width:100%;margin-top:10px" ' +
+            '<button class="btn ' + (canBuyNow ? 'btn-primary' : 'btn-dark') + ' promo-action" ' +
               'onclick="location.href=urlDelivery(\'local.html\',' + extra + ')">' + actionLabel + '</button>' +
           '</div></article>';
       }).join("")
@@ -354,9 +344,15 @@ function normalizeSearchText(value) {
     .trim();
 }
 
+function syncSearchMode() {
+  const searching = Boolean(normalizeSearchText($("search").value));
+  $("deliveryPromotionsCard").classList.toggle("hidden", searching);
+}
+
 function renderLocals() {
   const rawQuery = $("search").value;
   const q = normalizeSearchText(rawQuery);
+  syncSearchMode();
 
   const filtered = locals.filter(local => {
     const ps = products.filter(p => p.local_id === local.id);
