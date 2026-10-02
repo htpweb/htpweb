@@ -1,0 +1,85 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pedido · HTPWEB Express</title>
+<link rel="stylesheet" href="./express.css?v=20261002-1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">HTPWEB EXPRESS</div>
+    <h1 id="heroName">Cargando...</h1>
+    <p>Arma tu pedido y envíalo directamente por WhatsApp.</p>
+  </section>
+  <section id="expired" class="card hidden">
+    <h2>Demo finalizada</h2>
+    <p>Este periodo de prueba ya no está activo.</p>
+  </section>
+  <section id="orderCard" class="card hidden">
+    <div class="brandbar">
+      <img id="logo" class="hidden" alt="">
+      <div><h2 id="deliveryName"></h2><div id="expiry" class="expiry"></div></div>
+    </div>
+    <div class="grid">
+      <label>Tu nombre<input id="customerName" maxlength="80" placeholder="Nombre"></label>
+      <label>Tu WhatsApp<input id="customerPhone" inputmode="tel" maxlength="20" placeholder="09..."></label>
+      <label class="full">Dirección de entrega<input id="address" maxlength="180" placeholder="Sector, calle y referencia"></label>
+      <label class="full">¿Qué deseas pedir?<textarea id="orderText" maxlength="1200" placeholder="Ej. 2 hamburguesas, 1 cola..."></textarea></label>
+    </div>
+    <div id="feeControls" class="fee-box"></div>
+    <div class="summary" style="margin-top:14px">
+      <div class="summary-row"><span>Tarifa de envío</span><strong id="feeValue">$0.00</strong></div>
+      <small id="feeHelp" class="muted"></small>
+    </div>
+    <div class="actions" style="margin-top:16px">
+      <button id="sendBtn" class="btn btn-gold" type="button">Enviar pedido por WhatsApp</button>
+    </div>
+    <div id="status" class="status"></div>
+    <p class="muted" style="font-size:.82rem;margin-top:16px">HTPWEB Express no almacena este pedido. Al continuar, se abre WhatsApp para que lo envíes directamente al DELIVERY.</p>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);let demo=null;let fee=0;
+function isNight(){const h=new Date().getHours();return h>=18||h<6}
+function fmt(v){return "$"+Number(v||0).toFixed(2)}
+function calcFee(){
+  if(!demo)return 0;const night=isNight(),c=demo.fee_config||{};
+  if(demo.fee_mode==="SIMPLE")return Number(night?c.night_fee:c.day_fee)||0;
+  if(demo.fee_mode==="ADVANCED_ZONES"){const other=$("zoneChoice")?.value==="OTHER";return Number(other?(night?c.other_zone_night_fee:c.other_zone_day_fee):(night?c.same_zone_night_fee:c.same_zone_day_fee))||0}
+  if(demo.fee_mode==="ADVANCED_DISTANCE"){
+    const km=Number($("distanceKm")?.value||0);const bands=Array.isArray(c.bands)?c.bands:[];const band=bands.find(b=>km<=Number(b.max_km))||bands[bands.length-1];return Number(band?(night?band.night_fee:band.day_fee):0)||0
+  }return 0
+}
+function refreshFee(){fee=calcFee();$("feeValue").textContent=fmt(fee);$("feeHelp").textContent=(isNight()?"Tarifa nocturna":"Tarifa diurna")+" aplicada."}
+function renderFeeControls(){
+  const box=$("feeControls"),c=demo.fee_config||{};
+  if(demo.fee_mode==="SIMPLE"){box.innerHTML='<strong>Tarifa simple</strong><p class="muted">Día '+fmt(c.day_fee)+' · Noche '+fmt(c.night_fee)+'</p>'}
+  else if(demo.fee_mode==="ADVANCED_ZONES"){box.innerHTML='<label>Zona de entrega<select id="zoneChoice"><option value="SAME">Misma zona</option><option value="OTHER">Otra zona</option></select></label>';$("zoneChoice").onchange=refreshFee}
+  else {box.innerHTML='<label>Distancia aproximada (km)<input id="distanceKm" type="number" min="0" step="0.1" placeholder="Ej. 4.5"></label><p class="muted">La demo Express usa la distancia indicada para seleccionar el rango configurado.</p>';$("distanceKm").oninput=refreshFee}
+  refreshFee();
+}
+async function load(){
+  const code=new URLSearchParams(location.search).get("demo")||"";
+  if(!code)return showExpired();
+  const {data,error}=await supabaseClient.rpc("public_express_demo",{p_code:code});
+  const row=Array.isArray(data)?data[0]:null;if(error||!row)return showExpired();
+  demo=row;$("heroName").textContent=demo.name;$("deliveryName").textContent=demo.name;$("expiry").textContent="Demo activa hasta "+new Date(demo.expires_at).toLocaleDateString("es-EC");
+  if(demo.logo_url){$("logo").src=demo.logo_url;$("logo").classList.remove("hidden")}
+  $("orderCard").classList.remove("hidden");renderFeeControls();
+}
+function showExpired(){$("heroName").textContent="HTPWEB Express";$("expired").classList.remove("hidden")}
+function send(){
+  const status=$("status"),name=$("customerName").value.trim(),phone=$("customerPhone").value.replace(/D/g,""),address=$("address").value.trim(),order=$("orderText").value.trim();
+  if(!name||!address||!order){status.textContent="Completa tu nombre, dirección y pedido.";status.className="status error";return}
+  refreshFee();
+  const lines=["*NUEVO PEDIDO · "+demo.name+"*","", "*Cliente:* "+name, phone?"*Teléfono:* "+phone:"", "*Dirección:* "+address,"","*Pedido:*",order,"","*Envío:* "+fmt(fee),"","Pedido enviado desde HTPWEB Express."].filter(Boolean);
+  location.href="https://wa.me/"+demo.whatsapp+"?text="+encodeURIComponent(lines.join("\n"));
+}
+$("sendBtn").onclick=send;load();
+</script>
+</body>
+</html>

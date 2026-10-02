@@ -1,0 +1,186 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba HTPWEB por 15 días</title>
+<link rel="stylesheet" href="./express.css?v=20261002-1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">HTPWEB EXPRESS</div>
+    <h1>Prueba HTPWEB por 15 días</h1>
+    <p>Crea tu página de pedidos en minutos. Tus clientes usan la web y el pedido llega directo a tu WhatsApp.</p>
+  </section>
+
+  <section id="createCard" class="card">
+    <div class="grid">
+      <label>Nombre del DELIVERY
+        <input id="name" maxlength="80" placeholder="Ej. Delivery Flash">
+      </label>
+      <label>WhatsApp para recibir pedidos
+        <input id="whatsapp" inputmode="tel" maxlength="20" placeholder="Ej. 593981234567">
+      </label>
+      <label class="full">Logo — opcional
+        <input id="logo" type="file" accept="image/png,image/jpeg,image/webp">
+      </label>
+    </div>
+
+    <div class="fee-box">
+      <strong>Tarifa de envío</strong>
+      <p class="muted">Elige la forma en que quieres cobrar durante la demo.</p>
+      <div class="choice">
+        <button id="modeSimple" class="active" type="button">Simple · Día y noche</button>
+        <button id="modeAdvanced" type="button">Avanzada · Distancia o zonas</button>
+      </div>
+
+      <div id="simpleFees" class="grid" style="margin-top:14px">
+        <label>Tarifa día
+          <input id="dayFee" type="number" min="0" step="0.01" placeholder="2.00">
+        </label>
+        <label>Tarifa noche
+          <input id="nightFee" type="number" min="0" step="0.01" placeholder="2.50">
+        </label>
+      </div>
+
+      <div id="advancedFees" class="hidden" style="margin-top:14px">
+        <label>Modalidad avanzada
+          <select id="advancedType">
+            <option value="DISTANCE">Por distancia</option>
+            <option value="ZONES">Por zonas</option>
+          </select>
+        </label>
+
+        <div id="distanceFees" style="margin-top:12px">
+          <div class="note">Define rangos acumulativos. En Express el cliente indicará la distancia aproximada para calcular la tarifa.</div>
+          <div id="bands" class="bands" style="margin-top:10px"></div>
+          <button id="addBand" class="btn btn-light" type="button" style="margin-top:9px">+ Agregar rango</button>
+        </div>
+
+        <div id="zoneFees" class="grid hidden" style="margin-top:12px">
+          <label>Misma zona · día<input id="sameDay" type="number" min="0" step="0.01"></label>
+          <label>Misma zona · noche<input id="sameNight" type="number" min="0" step="0.01"></label>
+          <label>Otra zona · día<input id="otherDay" type="number" min="0" step="0.01"></label>
+          <label>Otra zona · noche<input id="otherNight" type="number" min="0" step="0.01"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:16px">No necesitas cuenta ni panel. La demo solo guarda esta configuración temporal y no registra pedidos ni clientes.</div>
+    <div class="actions" style="margin-top:16px">
+      <button id="createBtn" class="btn btn-gold" type="button">CREAR MI PÁGINA</button>
+    </div>
+    <div id="status" class="status"></div>
+  </section>
+
+  <section id="resultCard" class="card result hidden">
+    <img id="resultLogo" class="result-logo hidden" alt="">
+    <div class="eyebrow" style="color:#8a6a00">HTPWEB EXPRESS</div>
+    <h2>✅ Tu página está lista</h2>
+    <p id="resultName"></p>
+    <div id="qr" class="qrbox"></div>
+    <a id="resultUrl" class="urlbox" target="_blank" rel="noopener"></a>
+    <div id="expires" class="expiry"></div>
+    <div class="actions" style="justify-content:center;margin-top:16px">
+      <a id="openBtn" class="btn btn-primary" target="_blank" rel="noopener">Abrir mi página</a>
+      <button id="copyBtn" class="btn btn-light" type="button">Copiar link</button>
+      <button id="shareBtn" class="btn btn-light" type="button">Compartir por WhatsApp</button>
+    </div>
+  </section>
+</main>
+<script>
+const SUPABASE_URL="https://hwfloywzqlgqieonuswl.supabase.co";
+const SUPABASE_KEY="sb_publishable_NYoHIme-48fZeXAjF6OZaQ_twFybYI1";
+const $=id=>document.getElementById(id);
+let topMode="SIMPLE";
+
+function money(v){const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
+function setTopMode(mode){
+  topMode=mode;
+  $("modeSimple").classList.toggle("active",mode==="SIMPLE");
+  $("modeAdvanced").classList.toggle("active",mode==="ADVANCED");
+  $("simpleFees").classList.toggle("hidden",mode!=="SIMPLE");
+  $("advancedFees").classList.toggle("hidden",mode!=="ADVANCED");
+}
+function syncAdvanced(){
+  const zones=$("advancedType").value==="ZONES";
+  $("zoneFees").classList.toggle("hidden",!zones);
+  $("distanceFees").classList.toggle("hidden",zones);
+}
+function addBand(values={}){
+  const row=document.createElement("div");
+  row.className="band";
+  row.innerHTML='<label>Hasta km<input data-max type="number" min="0.1" step="0.1" value="'+(values.max_km||"")+'"></label>'+
+    '<label>Día<input data-day type="number" min="0" step="0.01" value="'+(values.day_fee||"")+'"></label>'+
+    '<label>Noche<input data-night type="number" min="0" step="0.01" value="'+(values.night_fee||"")+'"></label>'+
+    '<button class="btn btn-light" type="button" aria-label="Quitar">×</button>';
+  row.querySelector("button").onclick=()=>row.remove();
+  $("bands").appendChild(row);
+}
+function fileAsDataUrl(file){
+  if(!file)return Promise.resolve("");
+  if(file.size>900000)throw new Error("El logo debe pesar menos de 900 KB.");
+  return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(new Error("No se pudo leer el logo."));r.readAsDataURL(file)});
+}
+function feePayload(){
+  if(topMode==="SIMPLE"){
+    const day=money($("dayFee").value),night=money($("nightFee").value);
+    if(day===null||night===null)throw new Error("Completa la tarifa de día y noche.");
+    return {fee_mode:"SIMPLE",fee_config:{day_fee:day,night_fee:night}};
+  }
+  if($("advancedType").value==="DISTANCE"){
+    const bands=[...$("bands").querySelectorAll(".band")].map(row=>({
+      max_km:Number(row.querySelector("[data-max]").value),
+      day_fee:Number(row.querySelector("[data-day]").value),
+      night_fee:Number(row.querySelector("[data-night]").value)
+    }));
+    if(!bands.length)throw new Error("Agrega al menos un rango de distancia.");
+    return {fee_mode:"ADVANCED_DISTANCE",fee_config:{bands}};
+  }
+  const ids=["sameDay","sameNight","otherDay","otherNight"]; ids.forEach(id=>{if(money($(id).value)===null)throw new Error("Completa todas las tarifas por zonas.")});
+  return {fee_mode:"ADVANCED_ZONES",fee_config:{
+    same_zone_day_fee:Number($("sameDay").value),same_zone_night_fee:Number($("sameNight").value),
+    other_zone_day_fee:Number($("otherDay").value),other_zone_night_fee:Number($("otherNight").value)
+  }};
+}
+async function createDemo(){
+  const btn=$("createBtn"),status=$("status");
+  try{
+    status.textContent="";status.className="status";
+    const name=$("name").value.trim(),whatsapp=$("whatsapp").value.replace(/D/g,"");
+    if(name.length<2)throw new Error("Escribe el nombre del DELIVERY.");
+    if(whatsapp.length<9)throw new Error("Ingresa un WhatsApp válido.");
+    const fee=feePayload();
+    const logo_data_url=await fileAsDataUrl($("logo").files[0]);
+    btn.disabled=true;btn.textContent="CREANDO...";
+    const res=await fetch(SUPABASE_URL+"/functions/v1/create-express-demo",{
+      method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+      body:JSON.stringify({name,whatsapp,logo_data_url,...fee})
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||"No se pudo crear la demo.");
+    showResult(data);
+    status.textContent=data.reused?"Ya tenías una demo activa; te mostramos el mismo link.":"Demo creada correctamente.";
+    status.className="status ok";
+  }catch(e){status.textContent=e.message||"No se pudo crear la demo.";status.className="status error"}
+  finally{btn.disabled=false;btn.textContent="CREAR MI PÁGINA"}
+}
+function showResult(data){
+  $("resultCard").classList.remove("hidden");
+  $("resultName").textContent=data.name||$("name").value.trim();
+  $("resultUrl").textContent=data.url;$("resultUrl").href=data.url;$("openBtn").href=data.url;
+  const expiry=new Date(data.expires_at);
+  $("expires").textContent="Demo válida hasta: "+expiry.toLocaleDateString("es-EC");
+  if(data.logo_url){$("resultLogo").src=data.logo_url;$("resultLogo").classList.remove("hidden")}
+  $("qr").innerHTML="";new QRCode($("qr"),{text:data.url,width:230,height:230,correctLevel:QRCode.CorrectLevel.H});
+  $("copyBtn").onclick=async()=>{await navigator.clipboard.writeText(data.url);$("copyBtn").textContent="Copiado ✓";setTimeout(()=>$("copyBtn").textContent="Copiar link",1600)};
+  $("shareBtn").onclick=()=>window.open("https://wa.me/?text="+encodeURIComponent("Prueba mi página de pedidos: "+data.url),"_blank","noopener");
+  $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("modeSimple").onclick=()=>setTopMode("SIMPLE");$("modeAdvanced").onclick=()=>setTopMode("ADVANCED");$("advancedType").onchange=syncAdvanced;$("addBand").onclick=()=>addBand();$("createBtn").onclick=createDemo;
+addBand({max_km:3});addBand({max_km:6});
+</script>
+</body>
+</html>

@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.quick-driver-proof-upload]
 verify_jwt = false
+
+[functions.create-express-demo]
+verify_jwt = false
