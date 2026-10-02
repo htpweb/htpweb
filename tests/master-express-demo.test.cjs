@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const html=fs.readFileSync('admin/index.html','utf8');
 const migration=fs.readFileSync('supabase/migrations/20261002191000_master_express_slots.sql','utf8');
+const dynamicMigration=fs.readFileSync('supabase/migrations/20261002192000_dynamic_express_slots.sql','utf8');
 const edge=fs.readFileSync('supabase/functions/create-express-demo/index.ts','utf8');
 const expressHtml=fs.readFileSync('express/index.html','utf8');
 
@@ -15,8 +16,12 @@ test('MASTER incluye modulo Express Demo',()=>{
   assert.match(html,/id="section-expressdemo"/);
 });
 
-test('MASTER genera express1 express2 express3',()=>{
+test('MASTER parte de express1 express2 express3 y puede generar más dinámicamente',()=>{
   assert.match(migration,/\('express1'\),\('express2'\),\('express3'\)/);
+  assert.match(dynamicMigration,/master_create_express_slot/);
+  assert.match(dynamicMigration,/max\(\(regexp_match\(slot_key, '\^express\(\[0-9\]\+\)\$'\)\)\[1\]::integer\)/);
+  assert.match(admin,/createExpressDemoSlot/);
+  assert.match(html,/\+ Generar Express/);
   assert.match(admin,/EXPRESS_DEMO_ROOT/);
   assert.match(admin,/Copiar link/);
   assert.match(admin,/Liberar/);
