@@ -587,7 +587,16 @@ async function internalDriverHandler(req: Request) {
         throw new HttpError(404, orderError?.message || "Pedido no disponible", "ORDER_NOT_AVAILABLE");
       }
 
-      const localGroup = (order.order_locals || []).find((row: any) => row.local_id === localId);
+      type LocalOrderAutoRecord = {
+        id: string;
+        delivery_id: string;
+        notes: string | null;
+        order_items: any[];
+        order_locals: any[];
+      };
+      const orderRecord = order as unknown as LocalOrderAutoRecord;
+
+      const localGroup = (orderRecord.order_locals || []).find((row: any) => row.local_id === localId);
       if (!localGroup) {
         throw new HttpError(404, "El LOCAL no pertenece al pedido", "LOCAL_NOT_IN_ORDER");
       }
@@ -601,7 +610,7 @@ async function internalDriverHandler(req: Request) {
         throw new HttpError(422, "El LOCAL no tiene WhatsApp registrado", "LOCAL_WITHOUT_WHATSAPP");
       }
 
-      const items = (order.order_items || []).filter((item: any) => item.local_id === localId);
+      const items = (orderRecord.order_items || []).filter((item: any) => item.local_id === localId);
       if (!items.length) {
         throw new HttpError(409, "El subpedido no tiene productos", "LOCAL_WITHOUT_ITEMS");
       }
@@ -613,10 +622,10 @@ async function internalDriverHandler(req: Request) {
       }).join("; "), 900);
 
       const sent = await sendTemplate(cfg, local.whatsapp, cfg.localTemplate, [
-        orderRef(order.id),
+        orderRef(orderRecord.id),
         clip(local.name || "LOCAL", 120),
         itemSummary,
-        clip(order.notes || "Sin observaciones", 300),
+        clip(orderRecord.notes || "Sin observaciones", 300),
       ]);
 
       await recordOutbound(admin, sent, {
@@ -722,7 +731,7 @@ async function internalDriverHandler(req: Request) {
       ? (templateName === "htpweb_driver_assignment_v1"
         ? [
           orderRef(order.id),
-          "Ver detalles en " + (cfg.deliveryName || "el DELIVERY"),
+          "Ver detalles en " + (cfg.verifiedName || "el DELIVERY"),
           driverConsoleUrl(cfg.publicUrl),
         ]
         : [
