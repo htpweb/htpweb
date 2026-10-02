@@ -1634,3 +1634,9 @@ html[data-delivery-theme] .shared-product-target{
 .availability-closed{
   color:#b71c1c;
 }
+
+
+/* Prevent flash of default HTPWEB colors before DELIVERY theme is resolved */
+html.delivery-theme-pending body{
+  visibility:hidden;
+}
