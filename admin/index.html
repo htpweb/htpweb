@@ -12,7 +12,7 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261002-theme1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261002-advertising2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1688,78 +1688,182 @@
 
     <section id="section-advertising" class="section">
       <div class="card">
-        <div class="row between">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
             <h2>Publicidad</h2>
-            <p class="muted">Crea anuncios de HTPWEB, DELIVERY, LOCAL o PRODUCTO. El banner público conserva siempre el contexto del DELIVERY.</p>
+            <p class="muted">MASTER administra campañas por zonas. Los DELIVERY solicitan campañas y reciben estadísticas de tráfico e ingresos estimados.</p>
           </div>
-          <button class="btn-muted" id="clearAdvertisementBtn">Nuevo anuncio</button>
+          <button class="btn-muted master-only" id="clearAdvertisementBtn">Nueva campaña</button>
         </div>
       </div>
 
-      <div class="card">
-        <input id="advertisementId" type="hidden">
-        <div class="form-grid">
-          <div>
-            <label>Scope</label>
-            <select id="advertisementScope"></select>
+      <div id="advertisingMasterWorkspace" class="hidden">
+        <div class="card">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Política de reparto</h3>
+              <p class="muted" style="margin:5px 0 0">La política vigente se copia a cada campaña al activarla. Las campañas antiguas conservan sus porcentajes.</p>
+            </div>
+            <span id="advertisingSplitTotal" class="badge">100%</span>
           </div>
-          <div id="advertisementDeliveryField">
-            <label>DELIVERY</label>
-            <select id="advertisementDelivery"></select>
+          <div class="form-grid" style="margin-top:14px">
+            <div><label>HTPWEB %</label><input id="advertisingHtpwebPct" type="number" min="0" max="100" step="0.01" value="60"></div>
+            <div><label>DELIVERY captador %</label><input id="advertisingOriginPct" type="number" min="0" max="100" step="0.01" value="10"></div>
+            <div><label>Bolsa por tráfico %</label><input id="advertisingTrafficPct" type="number" min="0" max="100" step="0.01" value="30"></div>
           </div>
-          <div id="advertisementLocalField">
-            <label>LOCAL</label>
-            <select id="advertisementLocal"></select>
-          </div>
-          <div id="advertisementProductField">
-            <label>PRODUCTO</label>
-            <select id="advertisementProduct"></select>
-          </div>
-          <div>
-            <label>Prioridad</label>
-            <input id="advertisementPriority" type="number" min="0" value="0">
-          </div>
-          <div>
-            <label>Inicio (opcional)</label>
-            <input id="advertisementStartsAt" type="datetime-local">
-          </div>
-          <div>
-            <label>Fin (opcional)</label>
-            <input id="advertisementEndsAt" type="datetime-local">
+          <div class="row" style="margin-top:12px">
+            <button id="saveAdvertisingSplitBtn" class="btn-primary" type="button">Guardar política</button>
           </div>
         </div>
 
-        <label>Título</label>
-        <input id="advertisementTitle" maxlength="160" placeholder="Ej. Combo especial">
-
-        <label>Texto</label>
-        <textarea id="advertisementBody" rows="3" maxlength="800" placeholder="Mensaje breve que verá el cliente"></textarea>
-
-        <label>URL de destino externa/opcional</label>
-        <input id="advertisementTargetUrl" placeholder="Déjalo vacío para usar el deep link automático al LOCAL o PRODUCTO">
-
-        <label>Imagen actual / URL</label>
-        <input id="advertisementImageUrl" placeholder="Se completa automáticamente al subir una imagen">
-
-        <label>Subir imagen</label>
-        <input id="advertisementImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-
-        <label class="row" style="margin-top:14px">
-          <input id="advertisementActive" type="checkbox" style="width:auto">
-          Publicar anuncio
-        </label>
-
-        <div class="row" style="margin-top:14px">
-          <button class="btn-primary" id="saveAdvertisementBtn">Guardar publicidad</button>
-          <button class="btn-muted" id="previewAdvertisementBtn">Abrir destino</button>
+        <div class="card">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Solicitudes de DELIVERY</h3>
+              <p class="muted" style="margin:5px 0 0">Cuando un DELIVERY consigue un anunciante, la solicitud queda aquí y ese DELIVERY puede registrarse como captador.</p>
+            </div>
+          </div>
+          <div id="advertisingMasterRequests" class="stack" style="margin-top:12px"><div class="muted">Cargando...</div></div>
         </div>
-        <small class="muted">La escritura se realiza únicamente mediante la RPC segura <code>save_advertisement</code>; RLS y capabilities siguen controlando el scope.</small>
+
+        <div class="card">
+          <input id="advertisementId" type="hidden">
+          <div class="form-grid">
+            <div>
+              <label>Tipo de campaña</label>
+              <select id="advertisementScope"></select>
+            </div>
+            <div id="advertisementDeliveryField">
+              <label>DELIVERY anunciado</label>
+              <select id="advertisementDelivery"></select>
+            </div>
+            <div id="advertisementLocalField">
+              <label>LOCAL anunciado</label>
+              <select id="advertisementLocal"></select>
+            </div>
+            <div id="advertisementProductField">
+              <label>PRODUCTO anunciado</label>
+              <select id="advertisementProduct"></select>
+            </div>
+            <div>
+              <label>DELIVERY captador</label>
+              <select id="advertisementOriginDelivery"></select>
+              <small class="muted">Recibe el porcentaje de captación si consiguió al anunciante.</small>
+            </div>
+            <div>
+              <label>Precio de campaña ($)</label>
+              <input id="advertisementPrice" type="number" min="0" step="0.01" value="0">
+            </div>
+            <div>
+              <label>Prioridad</label>
+              <input id="advertisementPriority" type="number" min="0" value="0">
+            </div>
+            <div>
+              <label>Inicio</label>
+              <input id="advertisementStartsAt" type="datetime-local">
+            </div>
+            <div>
+              <label>Fin</label>
+              <input id="advertisementEndsAt" type="datetime-local">
+            </div>
+          </div>
+
+          <div id="advertisementZonesField" style="margin-top:14px">
+            <label>Zonas donde se mostrará</label>
+            <div id="advertisementZones" class="advertising-zone-grid"></div>
+            <small class="muted">La campaña aparecerá automáticamente en todos los DELIVERY que tengan activa al menos una de estas zonas.</small>
+          </div>
+
+          <label>Título</label>
+          <input id="advertisementTitle" maxlength="160" placeholder="Ej. Casa Bruma">
+
+          <label>Texto</label>
+          <textarea id="advertisementBody" rows="3" maxlength="800" placeholder="Mensaje breve que verá el cliente"></textarea>
+
+          <label>URL de destino externa/opcional</label>
+          <input id="advertisementTargetUrl" placeholder="Déjalo vacío para abrir automáticamente LOCAL o PRODUCTO">
+
+          <label>Imagen actual / URL</label>
+          <input id="advertisementImageUrl" placeholder="Se completa automáticamente al subir una imagen">
+
+          <label>Subir imagen</label>
+          <input id="advertisementImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+
+          <label class="row" style="margin-top:14px">
+            <input id="advertisementInternal" type="checkbox" style="width:auto">
+            Publicidad institucional HTPWEB permanente
+          </label>
+          <small class="muted">La publicidad institucional no participa del reparto y se muestra en todos los DELIVERY.</small>
+
+          <label class="row" style="margin-top:10px">
+            <input id="advertisementActive" type="checkbox" style="width:auto">
+            Publicar campaña
+          </label>
+
+          <div class="row" style="margin-top:14px">
+            <button class="btn-primary" id="saveAdvertisementBtn">Guardar campaña</button>
+            <button class="btn-muted" id="previewAdvertisementBtn">Abrir destino</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Campañas</h3>
+          <div id="advertisementsList" class="stack"><div class="muted">Cargando...</div></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>Publicidad visible para tu ámbito</h3>
-        <div id="advertisementsList" class="stack"><div class="muted">Cargando...</div></div>
+      <div id="advertisingDeliveryWorkspace" class="hidden">
+        <div class="card">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Publicidad de mi DELIVERY</h3>
+              <p class="muted" style="margin:5px 0 0">Solicita campañas y revisa cuánto tráfico aporta tu DELIVERY.</p>
+            </div>
+            <select id="advertisingDeliverySelect" style="max-width:340px"></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Estadísticas e ingresos estimados</h3>
+          <p class="muted">Ejemplo: 50 / 309 impresiones significa que tu DELIVERY generó 50 de las 309 impresiones válidas de la campaña.</p>
+          <div id="advertisingDeliveryStats" class="stack"><div class="muted">Cargando...</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Solicitar publicidad</h3>
+          <div class="form-grid">
+            <div>
+              <label>LOCAL (opcional)</label>
+              <select id="advertisingRequestLocal"></select>
+            </div>
+            <div>
+              <label>Nombre del anunciante / campaña</label>
+              <input id="advertisingRequestTitle" maxlength="160" placeholder="Ej. Casa Bruma">
+            </div>
+            <div>
+              <label>Contacto del anunciante</label>
+              <input id="advertisingRequestContact" maxlength="200" placeholder="WhatsApp, teléfono o correo">
+            </div>
+            <div>
+              <label>Duración solicitada (días)</label>
+              <input id="advertisingRequestDays" type="number" min="1" max="365" value="15">
+            </div>
+            <div>
+              <label>Presupuesto acordado ($)</label>
+              <input id="advertisingRequestBudget" type="number" min="0" step="0.01" placeholder="Opcional">
+            </div>
+          </div>
+          <label>Observaciones</label>
+          <textarea id="advertisingRequestBody" rows="3" maxlength="1000" placeholder="Qué desea anunciar, zonas sugeridas, etc."></textarea>
+          <div class="row" style="margin-top:12px">
+            <button id="submitAdvertisingRequestBtn" class="btn-primary" type="button">Enviar solicitud a MASTER</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Mis solicitudes</h3>
+          <div id="advertisingDeliveryRequests" class="stack"><div class="muted">Cargando...</div></div>
+        </div>
       </div>
     </section>
 
@@ -1883,7 +1987,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261002-theme1"></script>
+<script src="./admin.js?v=20261002-advertising2"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
