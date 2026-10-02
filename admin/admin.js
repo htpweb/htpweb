@@ -47,7 +47,7 @@ const roleSections = {
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
-  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","analytics"]
+  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","marketing","inventory","analytics"]
 };
 
 function completeAdminRoleBoot() {
@@ -307,6 +307,8 @@ function showSection(name) {
   if (name === "share") loadShareModule();
   if (name === "promotions" && window.loadDeliveryPromotionsPanel) window.loadDeliveryPromotionsPanel();
   if (name === "mylocal") loadLocalProfile();
+  if (name === "marketing") loadLocalMarketing();
+  if (name === "inventory") loadLocalInventory();
   if (name === "orders") loadOrders();
   if (name === "drivers") loadDriverWorkspace();
   if (name === "driverorders") loadDriverOrders();
@@ -2425,6 +2427,128 @@ function showLocalStoreQr(){
   new QRCode(box,{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.H});
 }
 
+function localAdminSelectOptions(){
+  return (state.locals||[]).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join("");
+}
+
+async function loadLocalGrowthAnalytics(localId){
+  if(!$("localGrowthAnalytics")||!localId)return;
+  try{
+    const data=await rpc("analytics_local_growth_summary",{p_local_id:localId,p_from:null,p_to:null})||{};
+    const sources=Object.entries(data.sources||{}).sort((a,b)=>Number(b[1])-Number(a[1]));
+    $("localGrowthAnalytics").innerHTML=
+      '<div class="subscription-kpis">'+
+      '<div><small>Visitas tienda</small><strong>'+esc(data.local_views||0)+'</strong></div>'+
+      '<div><small>Productos vistos</small><strong>'+esc(data.product_views||0)+'</strong></div>'+
+      '<div><small>Checkout</small><strong>'+esc(data.checkout_views||0)+'</strong></div>'+
+      '<div><small>Pedidos WhatsApp</small><strong>'+esc(data.whatsapp_orders||0)+'</strong></div>'+
+      '</div>'+
+      '<h4 style="margin-top:16px">Origen</h4>'+
+      (sources.length?'<div class="table-wrap"><table><thead><tr><th>Fuente</th><th>Eventos</th></tr></thead><tbody>'+
+        sources.map(([s,n])=>'<tr><td>'+esc(s)+'</td><td>'+esc(n)+'</td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Todavía no hay tráfico medido.</div>')+
+      '<h4 style="margin-top:16px">Productos más vistos</h4>'+
+      ((data.top_products||[]).length?'<div class="table-wrap"><table><thead><tr><th>Producto</th><th>Vistas</th></tr></thead><tbody>'+
+        data.top_products.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.views)+'</td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Sin vistas de producto todavía.</div>');
+  }catch(e){$("localGrowthAnalytics").innerHTML='<div class="error">'+esc(e.message||"No se pudo cargar Analytics.")+'</div>';}
+}
+
+async function loadLocalMarketing(){
+  if(state.role!=="LOCAL_ADMIN")return;
+  const select=$("marketingLocal");if(!select)return;
+  const previous=select.value;
+  select.innerHTML=localAdminSelectOptions();
+  if(previous&&(state.locals||[]).some(l=>l.id===previous))select.value=previous;
+  const localId=select.value||state.locals?.[0]?.id;
+  if(!localId){$("marketingResult").innerHTML='<div class="muted">No tienes LOCAL asignados.</div>';return;}
+  select.value=localId;
+  const [productsRes,content]=await Promise.all([
+    supabaseClient.from("products").select("id,name").eq("local_id",localId).eq("active",true).order("name"),
+    rpc("my_local_social_content",{p_local_id:localId})
+  ]);
+  if(productsRes.error)throw productsRes.error;
+  $("marketingProduct").innerHTML='<option value="">Sin producto específico</option>'+(productsRes.data||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  const rows=Array.isArray(content)?content:[];
+  $("marketingResult").innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>Red</th><th>Contenido</th><th>Campaña</th></tr></thead><tbody>'+
+    rows.map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.title||x.external_url||"—")+'</td><td>'+esc(x.campaign_code||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="muted">Aún no has vinculado contenido social.</div>';
+  await loadLocalGrowthAnalytics(localId);
+}
+
+async function saveLocalMarketing(){
+  try{
+    const localId=$("marketingLocal").value;if(!localId)throw new Error("Selecciona un LOCAL.");
+    await rpc("save_my_local_social_content",{
+      p_local_id:localId,p_content_id:null,p_platform:$("marketingPlatform").value,
+      p_external_url:$("marketingExternalUrl").value.trim()||null,p_product_id:$("marketingProduct").value||null,
+      p_promotion_id:null,p_campaign_code:$("marketingCampaign").value.trim()||null,
+      p_title:$("marketingTitle").value.trim()||null,p_active:true
+    });
+    message("Contenido de marketing guardado.");
+    await loadLocalMarketing();
+  }catch(e){message(e.message||"No se pudo guardar Marketing.","error");}
+}
+
+async function localMarketingTrackedUrl(){
+  const localId=$("marketingLocal").value;if(!localId)throw new Error("Selecciona un LOCAL.");
+  const snapshot=await rpc("local_commerce_snapshot",{p_local_id:localId});
+  const key=snapshot?.slug||localId;
+  const url=new URL("https://htpweb.github.io/htpweb/app/tienda.html");
+  url.searchParams.set("local",key);
+  url.searchParams.set("src",String($("marketingPlatform").value||"OTHER").toLowerCase());
+  const campaign=$("marketingCampaign").value.trim();if(campaign)url.searchParams.set("campaign",campaign);
+  const productId=$("marketingProduct").value;if(productId)url.searchParams.set("product",productId);
+  return url.toString();
+}
+
+async function copyLocalMarketingLink(){
+  try{const url=await localMarketingTrackedUrl();await navigator.clipboard.writeText(url);message("Link medible copiado.");}
+  catch(e){message(e.message||"No se pudo copiar el link.","error");}
+}
+
+async function loadLocalInventory(){
+  if(state.role!=="LOCAL_ADMIN")return;
+  const select=$("inventoryLocal");if(!select)return;
+  const previous=select.value;select.innerHTML=localAdminSelectOptions();
+  if(previous&&(state.locals||[]).some(l=>l.id===previous))select.value=previous;
+  const localId=select.value||state.locals?.[0]?.id;
+  if(!localId){$("localInventoryList").innerHTML='<div class="muted">No tienes LOCAL asignados.</div>';return;}
+  select.value=localId;
+  try{
+    const [pRes,vRes,current]=await Promise.all([
+      supabaseClient.from("products").select("id,name,sku").eq("local_id",localId).eq("active",true).order("name"),
+      supabaseClient.from("product_variants").select("id,product_id,name").eq("active",true).order("name"),
+      rpc("my_local_inventory_snapshot",{p_local_id:localId})
+    ]);
+    if(pRes.error)throw pRes.error;if(vRes.error)throw vRes.error;
+    const products=pRes.data||[],ids=new Set(products.map(p=>p.id)),variants=(vRes.data||[]).filter(v=>ids.has(v.product_id)),map=new Map((current||[]).map(x=>[x.product_id+":"+(x.variant_id||""),x]));
+    const rows=[];
+    products.forEach(p=>{
+      const pv=variants.filter(v=>v.product_id===p.id);
+      const targets=pv.length?pv.map(v=>({p,v})): [{p,v:null}];
+      targets.forEach(({p,v})=>{
+        const k=p.id+":"+(v?.id||""),s=map.get(k)||{};
+        rows.push('<tr data-inventory-row data-product="'+p.id+'" data-variant="'+(v?.id||"")+'"><td><strong>'+esc(p.name)+'</strong>'+(v?'<small style="display:block">'+esc(v.name)+'</small>':'')+'</td>'+
+          '<td><input data-track type="checkbox" style="width:auto" '+(s.track_stock?'checked':'')+'></td>'+
+          '<td><input data-qty type="number" min="0" value="'+esc(s.available_qty??0)+'" style="max-width:110px"></td>'+
+          '<td><input data-low type="number" min="0" value="'+esc(s.low_stock_threshold??0)+'" style="max-width:110px"></td>'+
+          '<td><button class="btn-muted" data-save-stock type="button">Guardar</button></td></tr>');
+      });
+    });
+    $("localInventoryList").innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>Producto / variante</th><th>Control</th><th>Disponible</th><th>Alerta</th><th></th></tr></thead><tbody>'+rows.join("")+'</tbody></table></div>':'<div class="muted">No hay productos activos.</div>';
+    $("localInventoryList").querySelectorAll("[data-save-stock]").forEach(b=>b.onclick=()=>saveInventoryRow(localId,b.closest("[data-inventory-row]")));
+  }catch(e){$("localInventoryList").innerHTML='<div class="error">'+esc(e.message||"No se pudo cargar inventario.")+'</div>';}
+}
+
+async function saveInventoryRow(localId,row){
+  try{
+    await rpc("save_my_local_inventory",{
+      p_local_id:localId,p_product_id:row.dataset.product,p_variant_id:row.dataset.variant||null,
+      p_track_stock:row.querySelector("[data-track]").checked,p_available_qty:Number(row.querySelector("[data-qty]").value||0),
+      p_low_stock_threshold:Number(row.querySelector("[data-low]").value||0)
+    });
+    message("Inventario actualizado.");
+  }catch(e){message(e.message||"No se pudo guardar inventario.","error");}
+}
+
 function openLocalStorage() {
   showSection("storage");
 
@@ -3967,6 +4091,34 @@ async function loadRequests() {
   $("requestsList").innerHTML = state.requests.length
     ? state.requests.map(renderRequest).join("")
     : '<div class="muted">No hay solicitudes visibles.</div>';
+  await loadPartnershipRequests();
+}
+
+async function loadPartnershipRequests(){
+  const box=$("localPartnershipRequests");if(!box)return;
+  try{
+    const deliveryId=state.role==="DELIVERY_ADMIN" ? ($("requestDelivery")?.value||state.deliveries?.[0]?.id||null) : null;
+    const rows=await rpc("local_partnership_requests_snapshot",{p_local_id:null,p_delivery_id:deliveryId});
+    const list=(Array.isArray(rows)?rows:[]).filter(x=>x.status==="PENDING");
+    box.innerHTML=list.length?list.map(x=>`
+      <div class="card">
+        <div class="row between"><div><strong>${esc(x.local_name)}</strong><div class="muted">Solicita trabajar con ${esc(x.delivery_name)}</div></div><span class="badge">PENDIENTE</span></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-success" data-partnership-accept="${x.id}">Aceptar</button>
+          <button class="btn-danger" data-partnership-reject="${x.id}">Rechazar</button>
+        </div>
+      </div>`).join(""):'<div class="muted">No hay solicitudes de vinculación pendientes.</div>';
+    box.querySelectorAll("[data-partnership-accept]").forEach(b=>b.onclick=()=>reviewLocalPartnership(b.dataset.partnershipAccept,true));
+    box.querySelectorAll("[data-partnership-reject]").forEach(b=>b.onclick=()=>reviewLocalPartnership(b.dataset.partnershipReject,false));
+  }catch(e){box.innerHTML='<div class="error">'+esc(e.message||"No se pudieron cargar solicitudes de vinculación.")+'</div>';}
+}
+
+async function reviewLocalPartnership(requestId,accept){
+  try{
+    await rpc("delivery_review_local_partnership",{p_request_id:requestId,p_accept:accept,p_note:null});
+    message(accept?"LOCAL vinculado al DELIVERY.":"Solicitud rechazada.");
+    await loadPartnershipRequests();
+  }catch(e){message(e.message||"No se pudo revisar la solicitud.","error");}
 }
 
 function renderRequest(req) {
@@ -11545,6 +11697,10 @@ function bindEvents() {
     catch{message("No se pudo copiar el link.","error");}
   };
   if ($("localStoreQrBtn")) $("localStoreQrBtn").onclick = showLocalStoreQr;
+  if ($("marketingLocal")) $("marketingLocal").onchange = loadLocalMarketing;
+  if ($("marketingSaveBtn")) $("marketingSaveBtn").onclick = saveLocalMarketing;
+  if ($("marketingCopyLinkBtn")) $("marketingCopyLinkBtn").onclick = copyLocalMarketingLink;
+  if ($("inventoryLocal")) $("inventoryLocal").onchange = loadLocalInventory;
   $("userManagerSearch").oninput = renderUserOptions;
   if ($("userManagerUser")) $("userManagerUser").onchange = renderManagedUser;
   $("assignDeliveryUserBtn").onclick = assignDeliveryUser;

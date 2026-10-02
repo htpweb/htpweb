@@ -48,6 +48,8 @@
       <button data-section="catalog">Catálogo</button>
       <button data-section="schedules">Horarios</button>
       <button data-section="storage">Storage</button>
+      <button data-section="marketing">Marketing</button>
+      <button data-section="inventory">Inventario</button>
       <button data-section="advertising">Publicidad</button>
       <button data-section="menuimport">Importar menú</button>
       <button data-section="analytics">Analytics</button>
@@ -864,6 +866,11 @@
       <div class="card">
         <h2>Solicitudes</h2>
         <div id="requestsList"></div>
+      </div>
+      <div class="card" id="localPartnershipRequestsCard">
+        <h2>Solicitudes de LOCAL para trabajar contigo</h2>
+        <p class="muted">Un LOCAL propietario puede solicitar vincularse a un DELIVERY que cubra su ubicación.</p>
+        <div id="localPartnershipRequests"></div>
       </div>
     </section>
 
@@ -1785,6 +1792,41 @@
       </div>
       <div class="card">
         <div id="deliveryPromotionsList" class="stack"><div class="muted">Cargando promociones...</div></div>
+      </div>
+    </section>
+
+    <section id="section-marketing" class="section">
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div><h2>Marketing</h2><p class="muted">Convierte publicaciones de redes en enlaces medibles hacia tu tienda HTPWEB.</p></div>
+          <select id="marketingLocal" style="max-width:340px"></select>
+        </div>
+        <div class="form-grid">
+          <div><label>Red</label><select id="marketingPlatform"><option>INSTAGRAM</option><option>FACEBOOK</option><option>TIKTOK</option><option>WHATSAPP</option><option>OTHER</option></select></div>
+          <div><label>Campaña</label><input id="marketingCampaign" maxlength="80" placeholder="ej. octubre_combo"></div>
+          <div><label>Título</label><input id="marketingTitle" maxlength="160" placeholder="ej. Combo familiar"></div>
+          <div><label>URL de publicación</label><input id="marketingExternalUrl" maxlength="500" placeholder="https://..."></div>
+          <div><label>Producto relacionado</label><select id="marketingProduct"><option value="">Sin producto específico</option></select></div>
+        </div>
+        <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="marketingSaveBtn" type="button">Guardar contenido</button>
+          <button class="btn-muted" id="marketingCopyLinkBtn" type="button">Copiar link medible</button>
+        </div>
+        <div id="marketingResult" style="margin-top:16px"></div>
+      </div>
+      <div class="card">
+        <h3>Resultados · últimos 30 días</h3>
+        <div id="localGrowthAnalytics"></div>
+      </div>
+    </section>
+
+    <section id="section-inventory" class="section">
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div><h2>Inventario</h2><p class="muted">Opcional por producto o variante. Si no lo activas, el producto sigue vendiéndose bajo demanda.</p></div>
+          <select id="inventoryLocal" style="max-width:340px"></select>
+        </div>
+        <div id="localInventoryList" style="margin-top:16px"></div>
       </div>
     </section>
 

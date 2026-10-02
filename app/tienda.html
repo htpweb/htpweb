@@ -48,14 +48,30 @@ body.local-store{background:#f6f7f9;color:#111827}
     <input id="search" type="search" placeholder="Buscar productos">
     <div id="cats" class="local-cats"></div>
   </div>
+  <section id="promotionsSection" class="hidden"><h2>Promociones</h2><div id="promotions" class="local-grid"></div></section>
   <section id="menuSection" class="hidden"><h2>Menú</h2><div id="menuPages" class="visual-menu"></div></section>
   <section id="productsSection"><h2>Productos</h2><div id="products" class="local-grid"></div></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-const key=new URLSearchParams(location.search).get("local")||"";
-let store=null,products=[],variants=[],categories=[],inventory=[],activeCategory="";
+const params=new URLSearchParams(location.search);
+const key=params.get("local")||"";
+const source=(params.get("src")||"direct").toLowerCase();
+const campaign=params.get("campaign")||"";
+const sharedProductId=params.get("product")||"";
+const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
+sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
+let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],activeCategory="";
+async function trackLocal(eventType,productId=null,metadata={}){
+ try{
+  if(!store?.local?.id)return;
+  await supabaseClient.rpc("record_local_storefront_event",{
+   p_event_type:eventType,p_local_id:store.local.id,p_product_id:productId,
+   p_session_id:localAnalyticsSession,p_source:source,p_metadata:{campaign,...metadata}
+  });
+ }catch(e){console.warn("Analytics LOCAL:",e?.message||e);}
+}
 function scope(){return store?.local?.id?"LOCAL:"+store.local.id:"LOCAL:UNKNOWN";}
 function money(v){return "$"+Number(v||0).toFixed(2);}
 function itemMatcher(p,v=null){return{local_id:store.local.id,product_id:p.id,variant_id:v?.id||null};}
@@ -92,13 +108,30 @@ function renderProducts(){
      const st=stockFor(p,v),off=st?.track_stock&&Number(st.available_qty||0)<=0;
      return '<button '+(off?"disabled":"")+' data-add="'+p.id+'" data-var="'+v.id+'">'+esc(v.name)+' · '+money(v.price)+(off?" · AGOTADO":"")+'</button>';
    }).join("")+'</div>':'<button '+(soldOut?"disabled":"")+' data-add="'+p.id+'">'+(soldOut?"AGOTADO":"Agregar · "+money(p.price))+'</button>';
-   return '<article class="product-card">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="'+esc(p.name)+'">':'<div style="aspect-ratio:1/1;background:#eef2f7"></div>')+
+   return '<article class="product-card" id="product-'+esc(p.id)+'">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="'+esc(p.name)+'">':'<div style="aspect-ratio:1/1;background:#eef2f7"></div>')+
      '<div class="body"><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.description||"")+'</p>'+(!vs.length?'<div class="price">'+money(p.price)+'</div>':"")+controls+'</div></article>';
  }).join("");
  $("products").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{
    const p=products.find(x=>x.id===b.dataset.add),v=variants.find(x=>x.id===b.dataset.var);
    carritoAgregar(scope(),{...itemMatcher(p,v),snapshot:{name:p.name,variant_name:v?.name||null,price:Number(v?.price??p.price),image_url:p.image_url||null}},1);
+   trackLocal("CART_VIEW",p.id,{action:"add"});
    updateCount();
+ });
+}
+function renderPromotions(){
+ const available=promotions.filter(p=>p.available_now);
+ $("promotionsSection").classList.toggle("hidden",available.length===0);
+ $("promotions").innerHTML=available.map(p=>{
+   const subtitle=p.body||((p.items||[]).map(i=>i.product_name).join(" · "));
+   const price=p.promotion_price!=null?'<div class="price">'+money(p.promotion_price)+'</div>':"";
+   return '<article class="product-card" data-promo="'+esc(p.id)+'">'+
+    (p.image_url?'<img src="'+esc(p.image_url)+'" alt="'+esc(p.title)+'">':'<div style="aspect-ratio:1/1;background:#eef2f7"></div>')+
+    '<div class="body"><h3>'+esc(p.title)+'</h3><p class="muted">'+esc(subtitle||"")+'</p>'+price+
+    '<button data-promo-view="'+esc(p.id)+'">Ver promoción</button></div></article>';
+ }).join("");
+ $("promotions").querySelectorAll("[data-promo-view]").forEach(b=>b.onclick=()=>{
+   const p=promotions.find(x=>x.id===b.dataset.promoView);trackLocal("PROMOTION_VIEW",null,{promotion_id:p?.id||null,title:p?.title||null});
+   const first=p?.items?.[0]?.product_id;if(first){const t=document.getElementById("product-"+first);if(t)t.scrollIntoView({behavior:"smooth",block:"center"});}
  });
 }
 async function loadMenu(){
@@ -119,17 +152,28 @@ async function init(){
    store=data;document.title=store.local.name+" | HTPWEB";
    document.body.classList.add("preset-"+store.settings.preset_code,"surface-"+store.settings.surface_style);
    if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);
-   const [pRes,vRes,cRes,iRes]=await Promise.all([
+   const [pRes,vRes,cRes,iRes,promoRes]=await Promise.all([
      supabaseClient.from("products").select("id,local_id,category_id,name,description,price,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
      supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",store.local.id).eq("active",true).order("display_order"),
-     supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id})
+     supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id}),
+     supabaseClient.rpc("public_local_promotions_catalog",{p_local_id:store.local.id})
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
-   products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];
-   renderHero();renderCats();renderProducts();await loadMenu();updateCount();
+   products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];
+   renderHero();renderCats();renderPromotions();renderProducts();await loadMenu();updateCount();
+   trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
+   if(sharedProductId){
+     const target=document.getElementById("product-"+sharedProductId);
+     if(target){trackLocal("PRODUCT_VIEW",sharedProductId,{deep_link:true});target.scrollIntoView({behavior:"smooth",block:"center"});}
+   }
    $("search").oninput=renderProducts;
-   $("cartBtn").onclick=()=>location.href="tienda-carrito.html?local="+encodeURIComponent(key);
+   $("cartBtn").onclick=()=>{
+     trackLocal("CART_VIEW",null,{action:"open"});
+     const next=new URL("tienda-carrito.html",location.href);
+     next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
+     location.href=next.toString();
+   };
  }catch(e){$("error").textContent=e.message||"No se pudo abrir la tienda.";$("error").classList.remove("hidden");}
 }
 init();
