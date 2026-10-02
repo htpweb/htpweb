@@ -212,3 +212,9 @@ test("LOCAL cerrado reemplaza los controles de compra por candado y aviso",()=>{
   assert.match(local,/Disponible cuando abra/);
   assert.match(css,/\.closed-order-control\{/);
 });
+
+test("menú móvil se fija debajo de la cabecera y mantiene visible Hoja X de N",()=>{
+  const css=fs.readFileSync("assets/app.css","utf8");
+  assert.match(css,/#visualMenuCard \.visual-menu-image-column\{[\s\S]*top:76px[\s\S]*z-index:29/);
+  assert.match(css,/#visualMenuCard \.visual-menu-mobile-pagebar\{[\s\S]*z-index:2/);
+});
