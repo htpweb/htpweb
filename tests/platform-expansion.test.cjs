@@ -144,3 +144,13 @@ test("authenticated public pages expose a reusable account menu",()=>{
   assert.match(menu,/auth\.getSession/);
   assert.match(menu,/auth\.signOut/);
 });
+
+
+test("public account menu resolves Supabase session on Cómo funciona and account has a home return",()=>{
+  const menu=read("config/public-account-menu.js");
+  const account=read("app/mi-cuenta.html");
+  assert.match(menu,/typeof supabaseClient==="undefined"/);
+  assert.doesNotMatch(menu,/window\.supabaseClient/);
+  assert.match(account,/← Volver a HTPWEB/);
+  assert.match(account,/href="\.\.\/index\.html"/);
+});
