@@ -158,3 +158,16 @@ test("public account menu resolves Supabase session on Cómo funciona and accoun
   assert.match(account,/← Volver a HTPWEB/);
   assert.match(account,/href="\.\.\/index\.html"/);
 });
+
+
+test("authenticated app flows share the persistent HTPWEB navigation shell",()=>{
+  const auth=read("config/auth.js");
+  const css=read("assets/authenticated-shell.css");
+  assert.match(auth,/instalarEncabezadoHTPWEB/);
+  assert.match(auth,/Explorar locales/);
+  assert.match(auth,/Mis negocios/);
+  assert.match(auth,/Mi cuenta/);
+  assert.match(auth,/reclamar-local\.html/);
+  assert.match(css,/\.htp-auth-header/);
+  assert.match(css,/position:sticky/);
+});
