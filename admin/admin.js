@@ -4124,12 +4124,16 @@ async function loadRequests() {
 
   state.requests = data || [];
   if (state.role === "MASTER") {
-    await Promise.all(state.requests.filter(req => req.request_type === "CLAIM_LOCAL").map(async req => {
+    await Promise.all(state.requests.filter(req => ["CLAIM_LOCAL","CREATE_LOCAL"].includes(req.request_type)).map(async req => {
       try {
-        req.claim_verification = await rpc("master_claim_verification_snapshot", { p_request_id: req.id });
-        req.claim_files = await signedClaimEvidence(req.claim_verification?.payload || req.payload || {});
+        if (req.request_type === "CLAIM_LOCAL") {
+          req.claim_verification = await rpc("master_claim_verification_snapshot", { p_request_id: req.id });
+          req.claim_files = await signedClaimEvidence(req.claim_verification?.payload || req.payload || {});
+        } else {
+          req.creation_files = await signedClaimEvidence(req.payload || {});
+        }
       } catch (error) {
-        console.warn("No se pudo cargar la verificación del CLAIM:", error);
+        console.warn("No se pudieron cargar evidencias privadas:", error);
         req.claim_verification = null;
       }
     }));
@@ -4206,6 +4210,21 @@ function renderClaimVerification(req) {
   `;
 }
 
+function renderCreationVerification(req) {
+  if (req.request_type !== "CREATE_LOCAL" || state.role !== "MASTER") return "";
+  const p = req.payload || {}, files = Array.isArray(req.creation_files) ? req.creation_files : [];
+  return `
+    <div class="claim-verification-box" style="margin:12px 0;padding:12px;border:1px solid #dbe4ee;border-radius:12px;background:#f8fafc">
+      <strong>Verificación para crear LOCAL</strong>
+      <div style="margin-top:8px"><strong>Código HTPWEB:</strong> <span style="font-weight:800;letter-spacing:.08em">${esc(p.challenge_code || "—")}</span></div>
+      <div><strong>Ubicación capturada:</strong> ${esc(p.latitude || "—")}, ${esc(p.longitude || "—")}</div>
+      <div><strong>Declaración de veracidad:</strong> ${p.truth_confirmed === true ? "Sí ✓" : "No"}</div>
+      <div><strong>Estado:</strong> ${esc(p.verification_status || "—")}</div>
+      ${files.length ? `<div style="margin-top:10px"><strong>Evidencias privadas:</strong><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">${files.map(file => file.url ? `<a class="btn btn-muted" href="${esc(file.url)}" target="_blank" rel="noopener">${esc(file.label)}</a>` : `<span class="muted">${esc(file.label)} no disponible</span>`).join("")}</div></div>` : ""}
+    </div>
+  `;
+}
+
 function renderRequest(req) {
   const masterActions = state.role === "MASTER" && req.status === "PENDING"
     ? `
@@ -4237,6 +4256,7 @@ function renderRequest(req) {
       <p><strong>Delivery:</strong> ${esc(deliveryLabel(req.delivery_id))}</p>
       ${(req.local_id || payloadName) ? `<p><strong>Local:</strong> ${esc(requestedLocal)}</p>` : ""}
       ${renderClaimVerification(req)}
+      ${renderCreationVerification(req)}
       ${renderRequestPayload(req.payload || {})}
       ${req.review_note ? `<p><strong>Revisión:</strong> ${esc(req.review_note)}</p>` : ""}
       ${req.possible_duplicate_local_id ? `<p><strong>Posible duplicado:</strong> ${esc(localLabel(req.possible_duplicate_local_id))}</p>` : ""}
@@ -4326,13 +4346,13 @@ async function submitRequest() {
 
 async function reviewRequest(id, status, type) {
   try {
-    const promptText = type === "CLAIM_LOCAL" && status === "APPROVED"
-      ? "Describe cómo verificaste que el solicitante administra este LOCAL (por ejemplo: respondió desde el WhatsApp registrado con el código HTP):"
+    const promptText = ["CLAIM_LOCAL","CREATE_LOCAL"].includes(type) && status === "APPROVED"
+      ? "Describe cómo verificaste la propiedad/administración del negocio antes de aprobar:"
       : "Nota de revisión:";
     const noteRaw = prompt(promptText);
     if (noteRaw === null) return;
     const note = noteRaw.trim() || null;
-    if (type === "CLAIM_LOCAL" && status === "APPROVED" && !note) {
+    if (["CLAIM_LOCAL","CREATE_LOCAL"].includes(type) && status === "APPROVED" && !note) {
       throw new Error("Debes documentar cómo verificaste la propiedad antes de aprobar.");
     }
     let duplicateId = null;

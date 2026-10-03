@@ -93,3 +93,25 @@ test("platform cart and direct detail inline scripts compile",()=>{
   for(const script of scripts(file)) new vm.Script(script,{filename:file});
 });
 
+
+test("creating a LOCAL requires private ownership evidence and supports NEEDS_INFO resubmission",()=>{
+ const page=read("app/crear-local.html");
+ const admin=read("admin/admin.js");
+ const sql=read("supabase/migrations/20261003082507_local_creation_evidence_verification.sql");
+ assert.match(page,/RUC \/ RIMPE/);
+ assert.match(page,/identityPdf/);
+ assert.match(page,/Foto exterior/);
+ assert.match(page,/Foto interior/);
+ assert.match(page,/Foto del negocio mostrando el código HTPWEB/);
+ assert.match(page,/prepare_local_creation_challenge/);
+ assert.match(page,/local-claim-evidence/);
+ assert.match(page,/update_my_local_creation_request/);
+ assert.match(sql,/local_creation_challenges/);
+ assert.match(sql,/validate_local_creation_payload/);
+ assert.match(sql,/ruc_pdf_path/);
+ assert.match(sql,/truth_confirmed/);
+ assert.match(sql,/review_deadline=now\(\)\+interval '3 days'/);
+ assert.match(admin,/renderCreationVerification/);
+ assert.match(admin,/creation_files/);
+});
+
