@@ -128,3 +128,19 @@ test("creating a LOCAL requires private ownership evidence and supports NEEDS_IN
  assert.match(admin,/creation_files/);
 });
 
+
+
+test("authenticated public pages expose a reusable account menu",()=>{
+  const home=read("index.html"),how=read("como-funciona.html"),explore=read("explorar-negocios.html");
+  for(const html of [home,how,explore]){
+    assert.match(html,/publicAccountMenu/);
+    assert.match(html,/Mi perfil/);
+    assert.match(html,/Mis negocios/);
+    assert.match(html,/Mis deliverys/);
+    assert.match(html,/Mis pedidos/);
+    assert.match(html,/public-account-menu\.js/);
+  }
+  const menu=read("config/public-account-menu.js");
+  assert.match(menu,/auth\.getSession/);
+  assert.match(menu,/auth\.signOut/);
+});
