@@ -17,15 +17,23 @@
 <div class="form-grid step"><div><label>Nombre comercial *</label><input id="name" maxlength="160"></div><div><label>WhatsApp</label><input id="whatsapp" type="tel"></div></div>
 <div class="form-grid step"><div><label>Teléfono</label><input id="phone" type="tel"></div><div><label>Dirección *</label><input id="address"></div></div>
 <label class="step">Descripción</label><textarea id="description" rows="3"></textarea>
-<div class="form-grid step"><div><label>Latitud</label><input id="latitude" inputmode="decimal"></div><div><label>Longitud</label><input id="longitude" inputmode="decimal"></div></div>
+<div class="form-grid step"><div><label>Latitud *</label><input id="latitude" inputmode="decimal" readonly></div><div><label>Longitud *</label><input id="longitude" inputmode="decimal" readonly></div></div>
 <div class="row" style="margin-top:10px"><button id="locationBtn" class="btn btn-muted" type="button">Usar mi ubicación actual</button><span id="locationState" class="muted"></span></div>
+<hr style="border:0;border-top:1px solid #e5e7eb;margin:18px 0">
+<h3>Verificación de propiedad</h3>
+<p class="muted">Los documentos se guardan de forma privada. Coloca físicamente el código <strong id="challengeCode">Generando…</strong> en una de las fotos del negocio.</p>
+<div class="form-grid step"><div><label>RUC / RIMPE / documento comercial (PDF) *</label><input id="rucPdf" type="file" accept="application/pdf"></div><div><label>Identificación del responsable (PDF) *</label><input id="identityPdf" type="file" accept="application/pdf"></div></div>
+<div class="form-grid step"><div><label>Foto exterior *</label><input id="exteriorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div><div><label>Foto interior *</label><input id="interiorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div></div>
+<div class="step"><label>Foto del negocio mostrando el código HTPWEB *</label><input id="codePhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+<label class="row step"><input id="truthConfirmed" type="checkbox" style="width:auto"> Declaro que la información y evidencias corresponden al negocio que solicito administrar.</label>
+<input id="requestId" type="hidden">
 <button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Enviar solicitud</button>
 </section>
 <section class="card"><h2>Mis solicitudes de creación</h2><div id="requests"><div class="muted">Cargando…</div></div></section>
 </main>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-let filters={sectors:[],categories:[]},user=null;
+let filters={sectors:[],categories:[]},user=null,challengeCode="",creationRequests=[];
 function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function renderCategories(){
  const sector=$("sector").value;const rows=filters.categories.filter(c=>c.sector_id===sector);
@@ -36,29 +44,66 @@ async function loadFilters(){
  $("sector").innerHTML=(filters.sectors||[]).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+'</option>').join("");renderCategories();
 }
 async function loadRequests(){
- const {data,error}=await supabaseClient.rpc("my_local_creation_requests");if(error)throw error;const rows=Array.isArray(data)?data:[];
- $("requests").innerHTML=rows.length?rows.map(r=>'<div class="status-row"><strong>'+esc(r.payload?.name||"LOCAL")+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[r.status]||r.status)+'</span></div><div class="muted">Enviada: '+new Date(r.created_at).toLocaleString("es-EC")+(r.review_deadline?" · respuesta prevista hasta "+new Date(r.review_deadline).toLocaleDateString("es-EC"):"")+'</div>'+(r.review_note?'<div>Comentario HTPWEB: '+esc(r.review_note)+'</div>':'')+'</div>').join(""):'<div class="muted">No tienes solicitudes de creación.</div>';
+ const {data,error}=await supabaseClient.rpc("my_local_creation_requests");if(error)throw error;creationRequests=Array.isArray(data)?data:[];
+ $("requests").innerHTML=creationRequests.length?creationRequests.map(r=>'<div class="status-row"><strong>'+esc(r.payload?.name||"LOCAL")+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[r.status]||r.status)+'</span></div><div class="muted">Enviada: '+new Date(r.created_at).toLocaleString("es-EC")+(r.review_deadline?" · respuesta prevista hasta "+new Date(r.review_deadline).toLocaleDateString("es-EC"):"")+'</div>'+(r.review_note?'<div>Comentario HTPWEB: '+esc(r.review_note)+'</div>':'')+(r.status==="NEEDS_INFO"?'<div class="row" style="margin-top:8px"><button class="btn btn-primary" data-complete-request="'+esc(r.id)+'">Completar información</button></div>':'')+'</div>').join(""):'<div class="muted">No tienes solicitudes de creación.</div>';
+ document.querySelectorAll("[data-complete-request]").forEach(b=>b.onclick=()=>editRequest(b.dataset.completeRequest));
 }
 function captureLocation(){
  if(!navigator.geolocation)return msg("Este navegador no permite obtener la ubicación.","error");$("locationState").textContent="Obteniendo ubicación…";
  navigator.geolocation.getCurrentPosition(p=>{$("latitude").value=p.coords.latitude.toFixed(7);$("longitude").value=p.coords.longitude.toFixed(7);$("locationState").textContent="Ubicación capturada ✓"},e=>{$("locationState").textContent="";msg(e.message||"No se pudo obtener la ubicación.","error")},{enableHighAccuracy:true,timeout:15000});
 }
 
+async function generateChallenge(){
+ const {data,error}=await supabaseClient.rpc("prepare_local_creation_challenge");if(error)throw error;
+ challengeCode=data?.challenge_code||"";$("challengeCode").textContent=challengeCode||"No disponible";
+}
+function validateFile(input,mimes,label){
+ const file=$(input).files?.[0];if(!file)throw new Error("Falta "+label+".");
+ if(file.size>8*1024*1024)throw new Error(label+" supera 8 MB.");
+ if(!mimes.includes(file.type))throw new Error("Formato inválido para "+label+".");
+ return file;
+}
+async function uploadEvidence(file,key){
+ const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase();
+ const path=user.id+"/create-local/"+crypto.randomUUID()+"/"+key+"."+ext;
+ const {error}=await supabaseClient.storage.from("local-claim-evidence").upload(path,file,{upsert:false,contentType:file.type});if(error)throw error;return path;
+}
+function editRequest(id){
+ const r=creationRequests.find(x=>x.id===id);if(!r)return;const p=r.payload||{};
+ $("requestId").value=r.id;$("name").value=p.name||"";$("address").value=p.address||"";$("description").value=p.description||"";$("phone").value=p.phone||"";$("whatsapp").value=p.whatsapp||"";
+ if(p.sector_id){$("sector").value=p.sector_id;renderCategories()}if(p.category_id)$("category").value=p.category_id;
+ $("latitude").value="";$("longitude").value="";$("truthConfirmed").checked=false;$("submitBtn").textContent="Reenviar información";
+ generateChallenge().catch(e=>msg(e.message,"error"));window.scrollTo({top:0,behavior:"smooth"});
+}
+function clearForm(){
+ ["name","address","description","phone","whatsapp","latitude","longitude","requestId"].forEach(id=>$(id).value="");
+ ["rucPdf","identityPdf","exteriorPhoto","interiorPhoto","codePhoto"].forEach(id=>$(id).value="");$("truthConfirmed").checked=false;$("locationState").textContent="";$("submitBtn").textContent="Enviar solicitud";
+}
 async function submit(){
+ $("submitBtn").disabled=true;
  try{
-  const name=$("name").value.trim(),address=$("address").value.trim();if(!name||!address)throw new Error("Nombre y dirección son obligatorios.");
-  const lat=$("latitude").value.trim(),lng=$("longitude").value.trim();
-  if((lat&&!Number.isFinite(Number(lat)))||(lng&&!Number.isFinite(Number(lng))))throw new Error("Coordenadas inválidas.");
-  if((lat&&!lng)||(!lat&&lng))throw new Error("Latitud y longitud deben proporcionarse juntas.");
-  const payload={name,address,description:$("description").value.trim(),phone:$("phone").value.trim(),whatsapp:$("whatsapp").value.trim(),sector_id:$("sector").value,category_id:$("category").value,latitude:lat||null,longitude:lng||null};
-  const {error}=await supabaseClient.rpc("submit_my_local_creation_request",{p_payload:payload});if(error)throw error;
-  msg("Solicitud enviada. HTPWEB revisará duplicados y verificará la propiedad antes de activar el negocio. Respuesta máxima: 3 días.");
-  ["name","address","description","phone","whatsapp","latitude","longitude"].forEach(id=>$(id).value="");$("locationState").textContent="";await loadRequests();
+  const name=$("name").value.trim(),address=$("address").value.trim(),lat=$("latitude").value.trim(),lng=$("longitude").value.trim();
+  if(!name||!address)throw new Error("Nombre y dirección son obligatorios.");
+  if(!lat||!lng)throw new Error("Captura la ubicación actual del negocio.");
+  if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))throw new Error("Coordenadas inválidas.");
+  if(!$("truthConfirmed").checked)throw new Error("Confirma la declaración de veracidad.");
+  const ruc=validateFile("rucPdf",["application/pdf"],"RUC / RIMPE"),identity=validateFile("identityPdf",["application/pdf"],"identificación");
+  const exterior=validateFile("exteriorPhoto",["image/jpeg","image/png","image/webp"],"foto exterior"),interior=validateFile("interiorPhoto",["image/jpeg","image/png","image/webp"],"foto interior"),code=validateFile("codePhoto",["image/jpeg","image/png","image/webp"],"foto con código HTPWEB");
+  if(!challengeCode)await generateChallenge();
+  const [rucPath,identityPath,exteriorPath,interiorPath,codePath]=await Promise.all([uploadEvidence(ruc,"ruc"),uploadEvidence(identity,"identity"),uploadEvidence(exterior,"exterior"),uploadEvidence(interior,"interior"),uploadEvidence(code,"code")]);
+  const payload={name,address,description:$("description").value.trim(),phone:$("phone").value.trim(),whatsapp:$("whatsapp").value.trim(),sector_id:$("sector").value,category_id:$("category").value,latitude:lat,longitude:lng,challenge_code:challengeCode,truth_confirmed:true,ruc_pdf_path:rucPath,identity_pdf_path:identityPath,exterior_photo_path:exteriorPath,interior_photo_path:interiorPath,code_photo_path:codePath};
+  const requestId=$("requestId").value;
+  const rpcName=requestId?"update_my_local_creation_request":"submit_my_local_creation_request";
+  const args=requestId?{p_request_id:requestId,p_payload:payload}:{p_payload:payload};
+  const {error}=await supabaseClient.rpc(rpcName,args);if(error)throw error;
+  msg(requestId?"Información reenviada. El plazo de revisión vuelve a ser máximo 3 días.":"Solicitud enviada. HTPWEB verificará propiedad y duplicados. Respuesta máxima: 3 días.");
+  clearForm();await Promise.all([loadRequests(),generateChallenge()]);
  }catch(e){msg(e.message||"No se pudo enviar la solicitud.","error")}
+ finally{$("submitBtn").disabled=false}
 }
 async function init(){
  user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-local.html");return}
- await Promise.all([loadFilters(),loadRequests()]);$("sector").onchange=renderCategories;$("locationBtn").onclick=captureLocation;$("submitBtn").onclick=submit;
+ await Promise.all([loadFilters(),loadRequests(),generateChallenge()]);$("sector").onchange=renderCategories;$("locationBtn").onclick=captureLocation;$("submitBtn").onclick=submit;
 }
 init().catch(e=>msg(e.message||"No se pudo abrir el formulario.","error"));
 </script></body></html>
