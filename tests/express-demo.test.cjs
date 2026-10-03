@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 
-const migration=fs.readFileSync('supabase/migrations/20261002185500_express_demo.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261002185826_express_demo.sql','utf8');
 const edge=fs.readFileSync('supabase/functions/create-express-demo/index.ts','utf8');
 const signup=fs.readFileSync('express/index.html','utf8');
 const order=fs.readFileSync('express/pedido.html','utf8');

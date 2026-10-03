@@ -9,7 +9,7 @@ function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\
 
 test("document claim uses private PDF/image evidence and captured location",()=>{
  const page=read("app/reclamar-local.html");
- const sql=read("supabase/migrations/20261003042000_local_claim_review_flow.sql");
+ const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
  assert.match(page,/local-claim-evidence/);
  assert.match(page,/application\/pdf/);
  assert.match(page,/navigator\.geolocation/);
@@ -22,7 +22,7 @@ test("document claim uses private PDF/image evidence and captured location",()=>
 
 test("WhatsApp OTP path is prepared and cannot submit without verification",()=>{
  const page=read("app/reclamar-local.html");
- const sql=read("supabase/migrations/20261003042000_local_claim_review_flow.sql");
+ const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
  const fn=read("supabase/functions/local-claim-whatsapp-otp/index.ts");
  assert.match(page,/local-claim-whatsapp-otp/);
  assert.match(page,/Solicitar código/);
@@ -36,7 +36,7 @@ test("CLIENT can track claim progress and MASTER gets private evidence links",()
  const panel=read("app/mis-reclamaciones.html");
  const access=read("app/acceso.html");
  const admin=read("admin/admin.js");
- const sql=read("supabase/migrations/20261003042000_local_claim_review_flow.sql");
+ const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
  assert.match(panel,/my_local_claims/);
  assert.match(panel,/INFORMACIÓN ADICIONAL REQUERIDA/);
  assert.match(panel,/Comentario de HTPWEB/);

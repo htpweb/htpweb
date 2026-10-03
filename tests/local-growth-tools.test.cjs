@@ -11,7 +11,7 @@ function inlineScripts(file){
 }
 
 test("LOCAL growth analytics records source and campaign without DELIVERY dependency",()=>{
-  const sql=read("supabase/migrations/20261002220500_local_growth_analytics.sql");
+  const sql=read("supabase/migrations/20261002215510_local_growth_analytics.sql");
   assert.match(sql,/record_local_storefront_event/);
   assert.match(sql,/WHATSAPP_ORDER/);
   assert.match(sql,/PROMOTION_VIEW/);
@@ -53,7 +53,7 @@ test("LOCAL_ADMIN has Marketing, Analytics attribution and Inventory workspaces"
 test("DELIVERY can accept or reject LOCAL partnership requests",()=>{
   const html=read("admin/index.html");
   const js=read("admin/admin.js");
-  const sql=read("supabase/migrations/20261002220500_local_growth_analytics.sql");
+  const sql=read("supabase/migrations/20261002215510_local_growth_analytics.sql");
   assert.match(html,/Solicitudes de LOCAL para trabajar contigo/);
   assert.match(js,/delivery_review_local_partnership/);
   assert.match(sql,/local_partnership_requests_snapshot/);
