@@ -4358,7 +4358,7 @@ async function applyRequest(id, type) {
   try {
     let convert = false;
     if (type === "CLAIM_LOCAL") {
-      if (!confirm("Este CLAIM agregará acceso de administrador a este LOCAL. La misma cuenta seguirá pudiendo comprar como cliente y conservará otros accesos autorizados. ¿Confirmar?")) return;
+      if (!confirm("Este CLAIM agregará acceso de administrador a este LOCAL. El perfil de compra CUSTOMER se conservará, así que la misma cuenta seguirá pudiendo comprar como cliente y mantener otros accesos autorizados. ¿Confirmar?")) return;
       convert = true;
     }
 
