@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis reclamaciones | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261003-claim3">
+<style>
+.wrap{max-width:900px;margin:auto;padding:24px 16px}.claim-item{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin:14px 0}
+.claim-head{display:flex;align-items:center;gap:12px}.claim-logo{width:54px;height:54px;border-radius:12px;object-fit:cover;background:#eef2f7}
+.timeline{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.timeline span{padding:7px 10px;border-radius:999px;background:#e5e7eb;font-size:.87rem}
+.timeline .done{background:#dcfce7}.timeline .current{background:#dbeafe}.timeline .bad{background:#fee2e2}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.note{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}
+@media(max-width:680px){.meta{grid-template-columns:1fr}.wrap{padding:14px 10px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="row between" style="gap:10px;flex-wrap:wrap">
+    <div><h1>Mis reclamaciones</h1><p class="muted">Consulta el avance de las solicitudes para administrar tus LOCAL.</p></div>
+    <button id="backBtn" class="btn-muted">Volver</button>
+  </div>
+  <div id="message" class="hidden"></div>
+  <div id="list"><div class="muted">Cargando reclamaciones…</div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function label(row){
+  if(row.applied_at)return "APROBADA";
+  return ({PENDING:"EN REVISIÓN",NEEDS_INFO:"INFORMACIÓN ADICIONAL REQUERIDA",APPROVED:"APROBADA",REJECTED:"RECHAZADA"})[row.status]||row.status;
+}
+function timeline(row){
+  const end=label(row),pending=row.status==="PENDING",needs=row.status==="NEEDS_INFO",approved=row.status==="APPROVED"||row.applied_at,rejected=row.status==="REJECTED";
+  return '<div class="timeline"><span class="done">Solicitud enviada ✓</span>'+
+    '<span class="'+(pending?"current":"done")+'">En revisión</span>'+
+    (needs?'<span class="current">Información adicional</span>':'')+
+    (approved?'<span class="current">Aprobada ✓</span>':'')+
+    (rejected?'<span class="bad">Rechazada</span>':'')+
+    ((!pending&&!needs&&!approved&&!rejected)?'<span>'+esc(end)+'</span>':'')+'</div>';
+}
+function render(rows){
+  if(!rows.length){$("list").innerHTML='<div class="claim-item"><h2>Aún no tienes reclamaciones</h2><p class="muted">Cuando reclames un LOCAL, podrás seguir aquí todo el proceso.</p></div>';return}
+  $("list").innerHTML=rows.map(row=>{
+    const p=row.payload||{},status=label(row);
+    const deadline=p.review_deadline?new Date(p.review_deadline).toLocaleString():"—";
+    const method=p.verification_method==="REGISTERED_WHATSAPP"?"WhatsApp registrado":p.verification_method==="DOCUMENT_LOCATION"?"Documentos + ubicación":p.verification_method||"—";
+    const action=row.status==="NEEDS_INFO"&&!row.applied_at
+      ?'<a class="btn btn-primary" href="reclamar-local.html?local='+encodeURIComponent(row.local_id)+(p.source_delivery_slug?'&delivery='+encodeURIComponent(p.source_delivery_slug):'')+'">Completar información</a>':"";
+    return '<section class="claim-item"><div class="claim-head">'+
+      (row.local_logo_url?'<img class="claim-logo" src="'+esc(row.local_logo_url)+'" alt="">':'<div class="claim-logo"></div>')+
+      '<div><h2 style="margin:0">'+esc(row.local_name)+'</h2><div class="muted">'+new Date(row.created_at).toLocaleString()+'</div></div></div>'+
+      timeline(row)+'<div class="meta"><div><strong>Estado:</strong> '+esc(status)+'</div><div><strong>Método:</strong> '+esc(method)+'</div>'+
+      '<div><strong>Plazo informado:</strong> '+esc(deadline)+'</div><div><strong>Código:</strong> '+esc(p.challenge_code||"—")+'</div></div>'+
+      (row.review_note?'<div class="note" style="margin-top:12px"><strong>Comentario de HTPWEB</strong><p style="margin-bottom:0">'+esc(row.review_note)+'</p></div>':'')+
+      (row.status==="PENDING"?'<p class="muted">Tu solicitud está siendo revisada. Si fue enviada por documentos, HTPWEB te dará una respuesta dentro del plazo informado.</p>':'')+
+      (action?'<div style="margin-top:12px">'+action+'</div>':'')+'</section>';
+  }).join("");
+}
+async function init(){
+  const user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return}
+  const {data:role,error:roleError}=await supabaseClient.rpc("current_role_code");if(roleError)throw roleError;
+  if(role!=="CLIENT")throw new Error("Esta sección corresponde a cuentas CLIENT.");
+  const {data,error}=await supabaseClient.rpc("my_local_claims");if(error)throw error;
+  render(Array.isArray(data)?data:[]);
+}
+$("backBtn").onclick=()=>history.length>1?history.back():location.href="../index.html";
+init().catch(e=>{$("message").textContent=e.message||"No se pudieron cargar tus reclamaciones.";$("message").className="error";$("list").innerHTML=""});
+</script>
+</body></html>
