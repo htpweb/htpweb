@@ -26,13 +26,23 @@
 <main class="account-shell">
 <section class="account-card">
 <div class="account-head"><div class="identity"><div id="avatar" class="avatar">U</div><div><div class="muted">Mi cuenta</div><h1 id="welcome" style="margin:2px 0">Cargando…</h1><div id="email" class="muted"></div></div></div>
-<div class="row-actions"><a id="shopLink" class="btn btn-muted" href="../index.html">Volver a comprar</a><button id="logoutBtn" class="btn btn-danger">Cerrar sesión</button></div></div>
+<div class="row-actions"><button id="clientModeBtn" class="btn btn-muted" type="button">Modo cliente</button><a id="shopLink" class="btn btn-muted" href="../index.html">Volver a comprar</a><button id="logoutBtn" class="btn btn-danger">Cerrar sesión</button></div></div>
 <div id="message" class="hidden" style="margin-top:12px"></div>
 </section>
 <section class="account-grid">
 <a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
 <a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
 <a class="account-card nav-card" href="mis-reclamaciones.html"><div class="muted">Reclamaciones de LOCAL</div><div id="claimsCount" class="metric">—</div><div>Consultar avance</div></a>
+
+<section class="account-card full" id="businesses">
+<div class="section-title"><div><h2>Mis negocios</h2><p class="muted">LOCAL que administras con esta misma cuenta HTPWEB.</p></div><div class="row-actions"><a class="btn btn-primary" href="../index.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
+<div id="ownedLocalsList"><div class="muted">Cargando negocios…</div></div>
+</section>
+
+<section class="account-card full" id="managedDeliveries">
+<div class="section-title"><div><h2>DELIVERY que administro</h2><p class="muted">Servicios DELIVERY donde esta cuenta tiene acceso administrativo.</p></div><a class="btn btn-muted" href="crear-delivery.html">+ Crear DELIVERY</a></div>
+<div id="managedDeliveriesList"><div class="muted">Cargando…</div></div>
+</section>
 
 <section class="account-card wide" id="profile">
 <div class="section-title"><div><h2>Mis datos</h2><p class="muted">Información principal de tu cuenta HTPWEB.</p></div></div>
@@ -78,7 +88,7 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
 const statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
-let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[];
+let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[];
 function show(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function initials(name){return String(name||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"U"}
 function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
@@ -107,6 +117,11 @@ async function loadCustomer(){
 }
 async function loadAddresses(){if(!customerId){addresses=[];return}addresses=await listarMisDireccionesCliente({soloActivas:true})}
 async function loadClaims(){const r=await supabaseClient.rpc("my_local_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
+async function loadManagedEntities(){
+ const modes=await supabaseClient.rpc("my_account_modes");if(modes.error)throw modes.error;
+ ownedLocals=Array.isArray(modes.data?.locals)?modes.data.locals:[];
+ managedDeliveries=Array.isArray(modes.data?.deliveries)?modes.data.deliveries:[];
+}
 async function ensureCustomer(){
  if(customerId)return customerId;
  const name=$("fullName").value.trim()||user.user_metadata?.full_name||"";const phone=$("phone").value.trim()||user.user_metadata?.phone||"";
@@ -121,6 +136,20 @@ async function applyReferral(){
  }catch(e){show(e.message||"No se pudo aplicar el código.","error")}
 }
 function renderSummary(){$("ordersCount").textContent=orders.length;$("addressesCount").textContent=addresses.length;$("claimsCount").textContent=claims.length}
+function renderManagedEntities(){
+ $("ownedLocalsList").innerHTML=ownedLocals.length?ownedLocals.map(l=>'<div class="delivery-row"><strong>'+esc(l.name)+'</strong><div class="muted">Administrador de LOCAL</div><div class="row-actions"><button class="btn btn-primary" data-open-local="'+esc(l.id)+'">Administrar</button><a class="btn btn-muted" href="../index.html">Ver en HTPWEB</a></div></div>').join(""):'<div class="empty">Todavía no administras ningún LOCAL.</div>';
+ $("managedDeliveriesList").innerHTML=managedDeliveries.length?managedDeliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.role_code||"Acceso DELIVERY")+'</div><div class="row-actions"><button class="btn btn-primary" data-open-delivery="'+esc(d.id)+'">Administrar</button>'+(d.slug?'<a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Ver página pública</a>':'')+'</div></div>').join(""):'<div class="empty">Todavía no administras ningún DELIVERY.</div>';
+ document.querySelectorAll("[data-open-local]").forEach(b=>b.onclick=()=>openWorkspace("LOCAL",b.dataset.openLocal));
+ document.querySelectorAll("[data-open-delivery]").forEach(b=>b.onclick=()=>openWorkspace("DELIVERY",b.dataset.openDelivery));
+}
+async function openWorkspace(mode,resourceId){
+ try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:mode,p_resource_id:resourceId});if(r.error)throw r.error;location.href="../admin/index.html"}
+ catch(e){show(e.message||"No se pudo abrir el espacio administrativo.","error")}
+}
+async function switchClientMode(){
+ try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:"CLIENT",p_resource_id:null});if(r.error)throw r.error;location.href="../index.html"}
+ catch(e){show(e.message||"No se pudo cambiar al modo cliente.","error")}
+}
 
 function renderDeliveries(){
  $("deliveriesList").innerHTML=deliveries.length?deliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.relation?.relationship_source||"Compra realizada")+'</div>'+(d.slug?'<div class="row-actions"><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Abrir DELIVERY</a></div>':"")+'</div>').join(""):'<div class="empty">Todavía no tienes DELIVERY vinculados.</div>';
@@ -202,13 +231,13 @@ async function init(){
  user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return}
  if(currentDeliverySlug())$("shopLink").href="index.html?delivery="+encodeURIComponent(currentDeliverySlug());
  await loadIdentity();
- await Promise.all([loadCustomer(),loadClaims()]);
+ await Promise.all([loadCustomer(),loadClaims(),loadManagedEntities()]);
  await loadAddresses();
- renderSummary();renderDeliveries();renderOrders();renderAddresses();renderClaims();
+ renderSummary();renderManagedEntities();renderDeliveries();renderOrders();renderAddresses();renderClaims();
 }
 $("deliveryFilter").onchange=renderOrders;$("saveProfileBtn").onclick=saveProfile;$("passwordBtn").onclick=changePassword;$("applyReferralBtn").onclick=applyReferral;
-$("newAddressBtn").onclick=()=>openAddressForm();$("cancelAddressBtn").onclick=closeAddressForm;$("useLocationBtn").onclick=captureAddressLocation;$("saveAddressBtn").onclick=saveAddress;
-$("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.href=currentDeliverySlug()?"acceso.html?delivery="+encodeURIComponent(currentDeliverySlug()):"acceso.html"};
+$("newAddressBtn").onclick=()=>openAddressForm();$("cancelAddressBtn").onclick=closeAddressForm;$("useLocationBtn").onclick=captureAddressLocation;$("saveAddressBtn").onclick=saveAddress;$("clientModeBtn").onclick=switchClientMode;
+$("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.href="acceso.html"};
 init().catch(e=>show(e.message||"No se pudo cargar Mi cuenta.","error"));
 </script>
 </body></html>

@@ -1,0 +1,63 @@
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const vm=require("node:vm");
+const path=require("node:path");
+const root=path.resolve(__dirname,"..");
+const read=p=>fs.readFileSync(path.join(root,p),"utf8");
+function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim())}
+
+test("general HTPWEB index is public directory by sector",()=>{
+ const html=read("index.html");
+ assert.match(html,/public_htpweb_directory_filters/);
+ assert.match(html,/public_htpweb_directory/);
+ assert.match(html,/Puedes explorar HTPWEB sin registrarte/);
+ assert.match(html,/local-general\.html/);
+ assert.match(html,/No reclamado/);
+});
+
+test("MASTER has business sectors above categories",()=>{
+ const js=read("admin/local-categories-master.js");
+ const sql=read("supabase/migrations/20261003064016_platform_business_sectors_directory.sql");
+ assert.match(js,/master_save_business_sector/);
+ assert.match(js,/localBusinessCategorySector/);
+ assert.match(sql,/create table if not exists public\.business_sectors/);
+ assert.match(sql,/sector_id uuid references public\.business_sectors/);
+ assert.match(sql,/RESTAURANTS/);
+});
+test("one account can switch client LOCAL and DELIVERY modes",()=>{
+ const sql=read("supabase/migrations/20261003065902_account_multi_workspace_modes.sql");
+ const account=read("app/mi-cuenta.html");
+ assert.match(sql,/account_delivery_roles/);
+ assert.match(sql,/switch_my_account_mode/);
+ assert.match(sql,/my_account_modes/);
+ assert.match(account,/Modo cliente/);
+ assert.match(account,/data-open-local/);
+ assert.match(account,/data-open-delivery/);
+});
+
+test("account can request LOCAL independent of DELIVERY",()=>{
+ const page=read("app/crear-local.html");
+ const sql=read("supabase/migrations/20261003065044_account_local_creation_flow.sql");
+ assert.match(page,/Crear mi LOCAL/);
+ assert.match(page,/submit_my_local_creation_request/);
+ assert.match(sql,/delivery_id is null/);
+ assert.match(sql,/local_request_duplicates/);
+ assert.match(sql,/user_locals/);
+});
+
+test("account can request DELIVERY and MASTER reviews it",()=>{
+ const page=read("app/crear-delivery.html");
+ const admin=read("admin/admin.js");
+ const sql=read("supabase/migrations/20261003070243_delivery_creation_requests.sql");
+ assert.match(page,/submit_my_delivery_creation_request/);
+ assert.match(admin,/master_list_delivery_creation_requests/);
+ assert.match(admin,/master_review_delivery_creation_request/);
+ assert.match(sql,/account_delivery_roles/);
+ assert.match(sql,/r\.whatsapp,false,now\(\),now\(\)/);
+});
+
+test("new inline scripts compile",()=>{
+ for(const file of ["index.html","app/local-general.html","app/crear-local.html","app/crear-delivery.html","app/mi-cuenta.html"])
+  for(const script of scripts(file)) new vm.Script(script,{filename:file});
+});
