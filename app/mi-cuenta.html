@@ -54,7 +54,6 @@
 <section class="account-card" id="deliveries">
 <h2>Mis DELIVERY</h2><p class="muted">Redes con las que tu perfil de cliente tiene relación.</p>
 <div id="deliveriesList"><div class="muted">Cargando…</div></div>
-<div style="margin-top:14px"><label>Código de referido</label><div class="row" style="gap:8px"><input id="referralCode" maxlength="20" placeholder="Código"><button id="applyReferralBtn" class="btn btn-muted">Aplicar</button></div></div>
 </section>
 
 <section class="account-card full" id="orders">
@@ -128,15 +127,8 @@ async function loadManagedEntities(){
 async function ensureCustomer(){
  if(customerId)return customerId;
  const name=$("fullName").value.trim()||user.user_metadata?.full_name||"";const phone=$("phone").value.trim()||user.user_metadata?.phone||"";
- if(!name||!phone)throw new Error("Completa nombre y teléfono antes de aplicar un referido.");
+ if(!name||!phone)throw new Error("Completa nombre y teléfono para continuar.");
  customerId=await asegurarCustomerActual({name,phone,email:user.email||null});return customerId;
-}
-async function applyReferral(){
- try{
-  const code=$("referralCode").value.trim().toUpperCase();if(!code)throw new Error("Escribe un código de referido.");
-  await ensureCustomer();const r=await supabaseClient.rpc("claim_delivery_referral",{p_code:code,p_source:"REFERRAL_CODE"});if(r.error)throw r.error;
-  await loadCustomer();renderSummary();renderDeliveries();renderOrders();show("Código aplicado. Tu relación con el DELIVERY quedó registrada.");
- }catch(e){show(e.message||"No se pudo aplicar el código.","error")}
 }
 function renderSummary(){$("ordersCount").textContent=orders.length;$("addressesCount").textContent=addresses.length;$("claimsCount").textContent=claims.length}
 function renderManagedEntities(){
@@ -247,7 +239,7 @@ async function init(){
  await loadAddresses();
  renderSummary();renderManagedEntities();renderDeliveries();renderOrders();renderAddresses();renderClaims();
 }
-$("deliveryFilter").onchange=renderOrders;$("saveProfileBtn").onclick=saveProfile;$("passwordBtn").onclick=changePassword;$("applyReferralBtn").onclick=applyReferral;
+$("deliveryFilter").onchange=renderOrders;$("saveProfileBtn").onclick=saveProfile;$("passwordBtn").onclick=changePassword;
 $("newAddressBtn").onclick=()=>openAddressForm();$("cancelAddressBtn").onclick=closeAddressForm;$("useLocationBtn").onclick=captureAddressLocation;$("saveAddressBtn").onclick=saveAddress;$("clientModeBtn").onclick=switchClientMode;
 $("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.href="acceso.html"};
 init().catch(e=>show(e.message||"No se pudo cargar Mi cuenta.","error"));
