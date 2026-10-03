@@ -5,13 +5,14 @@ const fs=require('node:fs');
 const supabase=fs.readFileSync('config/supabase.js','utf8');
 const cart=fs.readFileSync('config/cart.js','utf8');
 
-test('auth storage is isolated per browser tab',()=>{
-  assert.match(supabase,/sessionStorage/);
+test('auth session persists across HTPWEB pages and browser tabs',()=>{
+  assert.match(supabase,/localStorage\.getItem/);
+  assert.match(supabase,/localStorage\.setItem/);
+  assert.match(supabase,/sessionStorage\.getItem/);
   assert.match(supabase,/storage:\s*HTPWEB_AUTH_STORAGE/);
   assert.match(supabase,/persistSession:\s*true/);
   assert.match(supabase,/autoRefreshToken:\s*true/);
   assert.match(supabase,/detectSessionInUrl:\s*true/);
-  assert.doesNotMatch(supabase,/localStorage/);
 });
 
 test('cart remains isolated per tab and per delivery',()=>{
