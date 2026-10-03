@@ -96,7 +96,7 @@ async function instalarEncabezadoHTPWEB() {
   if (!document.querySelector('link[href*="authenticated-shell.css"]')) {
     const link=document.createElement("link");
     link.rel="stylesheet";
-    link.href="../assets/authenticated-shell.css?v=20261003-1";
+    link.href="../assets/authenticated-shell.css?v=20261003-2";
     document.head.appendChild(link);
   }
 
@@ -104,6 +104,8 @@ async function instalarEncabezadoHTPWEB() {
   const header=document.createElement("header");
   header.className="htp-auth-header";
   header.dataset.htpwebAuthHeader="1";
+  const user=session.user;
+  const displayName=user.user_metadata?.full_name||user.user_metadata?.name||"Mi cuenta";
   header.innerHTML=
     '<div class="htp-auth-header-inner">'+
       '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
@@ -112,9 +114,27 @@ async function instalarEncabezadoHTPWEB() {
         '<a href="../explorar-negocios.html">Explorar locales</a>'+
         '<a class="'+(active==="business"?"active":"")+'" href="mi-cuenta.html#businesses">Mis negocios</a>'+
       '</nav>'+
-      '<a class="htp-auth-account '+(active==="account"?"active":"")+'" href="mi-cuenta.html"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span></a>'+
+      '<div class="htp-auth-account-menu">'+
+        '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
+        '<div id="htpAuthAccountDropdown" class="htp-auth-account-dropdown hidden">'+
+          '<div class="htp-auth-account-summary"><strong>'+String(displayName).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</strong><small>'+String(user.email||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</small></div>'+
+          '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
+          '<div class="htp-auth-account-separator"></div>'+
+          '<a href="crear-local.html">Crear negocio</a>'+
+          '<a href="crear-delivery.html">Crear delivery</a>'+
+          '<div class="htp-auth-account-separator"></div>'+
+          '<button id="htpAuthLogout" class="logout" type="button">Cerrar sesión</button>'+
+        '</div>'+
+      '</div>'+
     '</div>';
   document.body.prepend(header);
+  const menu=header.querySelector(".htp-auth-account-menu");
+  const trigger=header.querySelector("#htpAuthAccountTrigger");
+  const dropdown=header.querySelector("#htpAuthAccountDropdown");
+  trigger?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")});
+  document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+  const logout=header.querySelector("#htpAuthLogout");
+  logout?.addEventListener("click",async()=>{await cerrarSesion();location.href="../index.html"});
 }
 
 if (document.readyState === "loading") {

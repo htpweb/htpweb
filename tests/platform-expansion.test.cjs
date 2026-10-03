@@ -171,3 +171,20 @@ test("authenticated app flows share the persistent HTPWEB navigation shell",()=>
   assert.match(css,/\.htp-auth-header/);
   assert.match(css,/position:sticky/);
 });
+
+
+test("Mi cuenta hides referral code and authenticated app header keeps account dropdown",()=>{
+  const account=read("app/mi-cuenta.html");
+  const auth=read("config/auth.js");
+  const css=read("assets/authenticated-shell.css");
+  assert.doesNotMatch(account,/Código de referido/);
+  assert.doesNotMatch(account,/referralCode/);
+  assert.doesNotMatch(account,/applyReferralBtn/);
+  assert.match(auth,/htpAuthAccountTrigger/);
+  assert.match(auth,/htpAuthAccountDropdown/);
+  assert.match(auth,/Abrir mi cuenta/);
+  assert.match(auth,/Crear negocio/);
+  assert.match(auth,/Crear delivery/);
+  assert.match(auth,/Cerrar sesión/);
+  assert.match(css,/htp-auth-account-dropdown/);
+});
