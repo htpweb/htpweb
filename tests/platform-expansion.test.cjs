@@ -7,15 +7,20 @@ const root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim())}
 
-test("general HTPWEB index presents platform value and public businesses",()=>{
- const html=read("index.html");
- assert.match(html,/Haz que tu negocio venda/);
- assert.match(html,/se organice y/);
- assert.match(html,/HTPWEB te da un espacio propio/);
- assert.match(html,/public_htpweb_directory/);
- assert.match(html,/Qué puede hacer HTPWEB con/);
- assert.match(html,/local-general\.html/);
- assert.match(html,/No reclamado/);
+test("HTPWEB home is institutional and business exploration has its own page",()=>{
+ const home=read("index.html");
+ const explore=read("explorar-negocios.html");
+ assert.match(home,/Haz que tu negocio venda/);
+ assert.match(home,/se organice y/);
+ assert.match(home,/HTPWEB te da un espacio propio/);
+ assert.match(home,/\.\/explorar-negocios\.html/);
+ assert.doesNotMatch(home,/Qué puede hacer HTPWEB con/);
+ assert.doesNotMatch(home,/Negocios destacados/);
+ assert.doesNotMatch(home,/public_htpweb_directory/);
+ assert.match(explore,/public_htpweb_directory/);
+ assert.match(explore,/Buscar negocio, producto o servicio/);
+ assert.match(explore,/local-general\.html/);
+ assert.match(explore,/No reclamado/);
 });
 
 test("MASTER has business sectors above categories",()=>{
