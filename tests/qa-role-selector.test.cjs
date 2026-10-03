@@ -8,7 +8,7 @@ const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(Boolean)}
 
 test("QA selector is restricted to one seeded account and never allows MASTER",()=>{
- const sql=read("supabase/migrations/20261002235500_qa_role_selector.sql");
+ const sql=read("supabase/migrations/20261002234147_qa_role_selector.sql");
  assert.match(sql,/private\.qa_role_testers/);
  assert.match(sql,/eb48520e-2634-40a8-9e7e-7babeba02e4f/);
  assert.match(sql,/array\['CLIENT','DELIVERY_ADMIN','DELIVERY_OPERATOR','DELIVERY_DRIVER','LOCAL_ADMIN'\]/);
@@ -17,7 +17,7 @@ test("QA selector is restricted to one seeded account and never allows MASTER",(
 });
 
 test("QA selector uses isolated PRUEBAS delivery and dedicated test LOCAL",()=>{
- const sql=read("supabase/migrations/20261002235500_qa_role_selector.sql");
+ const sql=read("supabase/migrations/20261002234147_qa_role_selector.sql");
  assert.match(sql,/HTPWEB LOCAL PRUEBAS/);
  assert.match(sql,/c0ad0746-5090-4350-9ec2-c1b8019a0a17/);
  assert.match(sql,/f0000000-0000-4000-8000-000000000001/);
@@ -25,7 +25,7 @@ test("QA selector uses isolated PRUEBAS delivery and dedicated test LOCAL",()=>{
 });
 
 test("requested QA phone is updated for profile and customer",()=>{
- const sql=read("supabase/migrations/20261002235500_qa_role_selector.sql");
+ const sql=read("supabase/migrations/20261002234147_qa_role_selector.sql");
  assert.match(sql,/\+593 98 039 0363/);
  assert.match(sql,/update public\.profiles/);
  assert.match(sql,/update public\.customers/);

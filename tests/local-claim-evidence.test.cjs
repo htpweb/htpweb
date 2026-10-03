@@ -30,7 +30,7 @@ test("claim form collects ownership evidence and keeps LOCAL context through aut
 });
 
 test("backend enriches claims with challenge and WhatsApp match",()=>{
- const sql=read("supabase/migrations/20261002232500_local_claim_evidence_flow.sql");
+ const sql=read("supabase/migrations/20261002232256_local_claim_evidence_flow.sql");
  assert.match(sql,/challenge_code/);
  assert.match(sql,/gen_random_bytes/);
  assert.match(sql,/declared_whatsapp_matches_registered/);
@@ -49,14 +49,14 @@ test("MASTER sees canonical evidence and can verify through registered WhatsApp"
 });
 
 test("backend refuses CLAIM approval without a documented verification note",()=>{
- const sql=read("supabase/migrations/20261002234500_claim_approval_guard.sql");
+ const sql=read("supabase/migrations/20261002232636_claim_approval_guard.sql");
  assert.match(sql,/documenta cómo verificaste/);
  assert.match(sql,/r\.request_type='CLAIM_LOCAL'/);
  assert.match(sql,/p_review_note/);
 });
 
 test("NEEDS_INFO claimant can submit additional evidence",()=>{
- const sql=read("supabase/migrations/20261002233500_local_claim_context_followup.sql");
+ const sql=read("supabase/migrations/20261002232422_local_claim_context_followup.sql");
  const html=read("app/reclamar-local.html");
  assert.match(sql,/update_local_claim_evidence/);
  assert.match(sql,/r\.status<>'NEEDS_INFO'/);

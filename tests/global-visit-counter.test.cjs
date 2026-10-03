@@ -4,7 +4,7 @@ const fs=require("node:fs");
 
 const html=fs.readFileSync("app/index.html","utf8");
 const admin=fs.readFileSync("admin/admin.js","utf8");
-const migration=fs.readFileSync("supabase/migrations/20261002112500_global_delivery_visit_counter.sql","utf8");
+const migration=fs.readFileSync("supabase/migrations/20261002112258_global_delivery_visit_counter.sql","utf8");
 
 test("la vista pública registra visitas pero no muestra el contador",()=>{
   assert.match(html,/registerDeliveryVisit/);

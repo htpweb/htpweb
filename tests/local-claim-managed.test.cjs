@@ -8,7 +8,7 @@ const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 function inlineScripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim())}
 
 test("self-service LOCAL claim is authenticated and still MASTER-reviewed",()=>{
- const sql=read("supabase/migrations/20261002222500_local_claim_submit.sql");
+ const sql=read("supabase/migrations/20261002220515_local_claim_submit.sql");
  const page=read("app/reclamar-local.html");
  assert.match(sql,/submit_local_claim/);
  assert.match(sql,/v_role<>'CLIENT'/);
@@ -20,7 +20,7 @@ test("self-service LOCAL claim is authenticated and still MASTER-reviewed",()=>{
 });
 
 test("CLIENT customer context survives conversion to LOCAL_ADMIN",()=>{
- const sql=read("supabase/migrations/20261002222000_local_claim_onboarding.sql");
+ const sql=read("supabase/migrations/20261002220436_local_claim_onboarding.sql");
  assert.match(sql,/CUSTOMER se conserva activo/);
  assert.doesNotMatch(sql,/UPDATE public\.customers[\s\S]*active =\s*false/i);
  assert.doesNotMatch(sql,/UPDATE public\.customer_deliveries[\s\S]*allow_orders =\s*false/i);
@@ -39,7 +39,7 @@ test("claim onboarding starts inside each unclaimed DELIVERY-visible LOCAL",()=>
 
 test("managed LOCAL checkout hands cart to existing DELIVERY checkout",()=>{
  const cart=read("app/tienda-carrito.html");
- const sql=read("supabase/migrations/20261002222000_local_claim_onboarding.sql");
+ const sql=read("supabase/migrations/20261002220436_local_claim_onboarding.sql");
  assert.match(sql,/'slug',d\.slug/);
  assert.match(cart,/HTPWEB_MANAGED/);
  assert.match(cart,/carritoGuardar\(delivery\.slug,items\)/);
