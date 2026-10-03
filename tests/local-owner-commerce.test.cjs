@@ -64,3 +64,21 @@ test("Inventory social content and LOCAL plans are provisioned without changing 
   assert.match(ops,/local_social_content/);
   assert.match(ops,/public_local_delivery_choices/);
 });
+
+
+test("Block 2 LOCAL websites expose conventional sections, vertical templates and theme palettes",()=>{
+  const migration=read("supabase/migrations/20261003212800_local_owner_block2_websites.sql");
+  const html=read("admin/index.html"),js=read("admin/admin.js"),shop=read("app/tienda.html");
+  for(const preset of ["BOOKS_STATIONERY","FLOWERS_GIFTS","HEALTH_SERVICES","ENGINEERING_PRO","BEAUTY_BOOKING"])assert.match(migration,new RegExp(preset));
+  for(const sector of ["HEALTH","PROFESSIONAL","HOME_CONSTRUCTION","EDUCATION","BEAUTY","AUTOMOTIVE","TECHNOLOGY"])assert.match(migration,new RegExp(sector));
+  assert.match(migration,/local_storefront_themes/);
+  assert.match(migration,/save_my_local_storefront_content/);
+  assert.match(html,/Estructura de la página web/);
+  assert.match(html,/localStoreTheme/);
+  assert.match(js,/renderLocalStorePreview/);
+  assert.match(js,/save_my_local_storefront_content/);
+  assert.match(shop,/Quiénes somos/);
+  assert.match(shop,/catalogSection/);
+  assert.match(shop,/contactSection/);
+  assert.match(shop,/applyStoreTheme/);
+});

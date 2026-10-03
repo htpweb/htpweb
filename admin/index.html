@@ -462,6 +462,11 @@
             <input id="localStoreAccent" type="color" value="#111827">
           </div>
           <div>
+            <label>Paleta de colores</label>
+            <select id="localStoreTheme"></select>
+            <small class="muted" id="localStoreThemeHelp"></small>
+          </div>
+          <div>
             <label>Modo de pedido</label>
             <select id="localStoreOrderMode">
               <option value="WHATSAPP_ONLY">WhatsApp directo</option>
@@ -487,6 +492,30 @@
             <select id="localStoreDeliveryOptions"><option value="">Seleccionar…</option></select>
             <button class="btn-muted" id="requestLocalDeliveryBtn" type="button" style="margin-top:8px">Solicitar vinculación</button>
           </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;background:#f8fafc">
+          <div class="row between" style="gap:10px;flex-wrap:wrap">
+            <div>
+              <h4 style="margin:0">Estructura de la página web</h4>
+              <p class="muted" style="margin:4px 0 0">Configura Inicio, Quiénes somos, Productos/Servicios y Contacto. El diseño elegido adapta la presentación al tipo de negocio.</p>
+            </div>
+          </div>
+          <div class="form-grid" style="margin-top:12px">
+            <div><label>Título principal</label><input id="localHeroTitle" maxlength="120" placeholder="Ej. Soluciones para tu hogar"></div>
+            <div><label>Subtítulo principal</label><input id="localHeroSubtitle" maxlength="260" placeholder="Mensaje corto de valor"></div>
+            <div><label>Título Quiénes somos</label><input id="localAboutTitle" maxlength="80" value="Quiénes somos"></div>
+            <div><label>Nombre de Productos / Servicios</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Catálogo…"></div>
+            <div style="grid-column:1/-1"><label>Quiénes somos</label><textarea id="localAboutText" rows="4" maxlength="1600" placeholder="Cuenta brevemente qué hace tu negocio, experiencia y propuesta de valor."></textarea></div>
+            <div><label>Título Contacto</label><input id="localContactTitle" maxlength="80" value="Contacto"></div>
+          </div>
+          <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:10px">
+            <label class="row"><input id="localShowAbout" type="checkbox" style="width:auto" checked> Mostrar Quiénes somos</label>
+            <label class="row"><input id="localShowCatalog" type="checkbox" style="width:auto" checked> Mostrar Productos/Servicios</label>
+            <label class="row"><input id="localShowContact" type="checkbox" style="width:auto" checked> Mostrar Contacto</label>
+            <label class="row"><input id="localShowPromotions" type="checkbox" style="width:auto" checked> Mostrar Promociones</label>
+          </div>
+          <div id="localStorePreview" style="margin-top:14px;border:1px solid #dbe3ee;border-radius:16px;overflow:hidden;background:white"></div>
         </div>
 
         <div id="localStoreQrPanel" class="hidden" style="margin-top:14px">
