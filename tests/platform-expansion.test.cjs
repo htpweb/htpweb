@@ -21,6 +21,12 @@ test("HTPWEB home is institutional and business exploration has its own page",()
  assert.match(explore,/Buscar negocio, producto o servicio/);
  assert.match(explore,/local-general\.html/);
  assert.match(explore,/No reclamado/);
+ assert.doesNotMatch(home,/carrito-general\.html/);
+ const how=read("como-funciona.html");
+ assert.doesNotMatch(how,/carrito-general\.html/);
+ assert.match(explore,/carrito-general\.html/);
+ assert.doesNotMatch(how,/>Para negocios<|>Para deliverys</);
+ assert.doesNotMatch(explore,/>Para negocios<|>Para deliverys</);
 });
 
 test("MASTER has business sectors above categories",()=>{
