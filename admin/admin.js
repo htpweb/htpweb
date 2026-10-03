@@ -1729,7 +1729,8 @@ function renderMyPlan(){
       :Number(current.price).toFixed(2)+" "+esc(current.currency||"USD");
     contract.innerHTML=
       '<strong>'+esc(current.plan_name||current.plan_code||"Plan")+'</strong>'+
-      '<br><span>Estado: '+esc(deliveryServiceStateLabel(plan.state))+
+      '<br><span>Versión contratada: '+esc(current.plan_version||current.version_number||"—")+
+      ' · Estado: '+esc(deliveryServiceStateLabel(plan.state))+
       ' · Inicio: '+esc(formatServiceDate(current.starts_at))+
       ' · Vence: '+esc(formatServiceDate(current.ends_at))+
       ' · Precio contratado: '+price+'</span>'+

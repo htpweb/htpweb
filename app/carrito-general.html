@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carrito HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/cart.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261003-platformcart1">
+<style>
+.shell{max-width:980px;margin:auto;padding:18px 14px 54px}.head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.group{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px;margin-top:14px}.item{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid #eef2f7}.item:first-child{border-top:0}
+.qty{display:flex;align-items:center;gap:7px}.qty button{width:34px;height:34px}.channels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.channel{border:1px solid #e5e7eb;border-radius:14px;padding:14px;background:#fff}
+.notice{padding:14px;border-radius:14px;background:#eff6ff;border:1px solid #bfdbfe}.split{margin-top:12px}.empty{padding:28px;text-align:center}
+@media(max-width:680px){.channels{grid-template-columns:1fr}.item{grid-template-columns:1fr auto}.item .qty{grid-column:1/-1}}
+</style>
+</head>
+<body><main class="shell">
+<div class="head"><div><h1 style="margin:0">Mi carrito HTPWEB</h1><p class="muted">Puedes comprar en uno o varios negocios y elegir el canal al confirmar.</p></div><div class="row"><a class="btn btn-muted" href="../index.html">Seguir comprando</a><a class="btn btn-muted" href="mi-cuenta.html">Mi cuenta</a></div></div>
+<div id="message" class="hidden"></div><div id="cart"></div>
+<section id="routing" class="group hidden"><h2>¿Cómo quieres realizar tu pedido?</h2><div id="routingMessage"></div><div id="commonChannels" class="channels" style="margin-top:12px"></div><div id="splitArea" class="split"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const money=v=>"$"+Number(v||0).toFixed(2),SCOPE="HTPWEB";
+let items=[],products=new Map(),variants=new Map(),locals=new Map(),channels=new Map();
+function info(item){const p=products.get(item.product_id)||item.snapshot||{},v=item.variant_id?variants.get(item.variant_id):null,s=item.snapshot||{};return item.promotion_id?{name:s.promotion_title||"Promoción",detail:s.option_name||"",price:Number(s.price||0)}:{name:p.name||s.name||"Producto",detail:v?.name||s.variant_name||"",price:Number(v?.price??s.price??p.price??0)}}
+function groups(){const m=new Map();items.forEach(i=>{if(!m.has(i.local_id))m.set(i.local_id,[]);m.get(i.local_id).push(i)});return [...m.entries()]}
+function localInfo(id){return channels.get(id)||{local_id:id,name:locals.get(id)?.name||"LOCAL",slug:locals.get(id)?.slug||id,direct_enabled:false,deliveries:[]}}
+function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
+async function loadReferenceData(){
+ const productIds=[...new Set(items.filter(x=>x.product_id).map(x=>x.product_id))],variantIds=[...new Set(items.filter(x=>x.variant_id).map(x=>x.variant_id))],localIds=[...new Set(items.map(x=>x.local_id))];
+ if(productIds.length){const r=await supabaseClient.from("products").select("id,local_id,name,price,image_url,active,catalog_visible").in("id",productIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>products.set(x.id,x))}
+ if(variantIds.length){const r=await supabaseClient.from("product_variants").select("id,product_id,name,price,active").in("id",variantIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>variants.set(x.id,x))}
+ if(localIds.length){const r=await supabaseClient.from("locals").select("id,name,slug,active").in("id",localIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>locals.set(x.id,x));const c=await supabaseClient.rpc("public_htpweb_cart_channels",{p_local_ids:localIds});if(c.error)throw c.error;(c.data?.locals||[]).forEach(x=>channels.set(x.local_id,x))}
+}
+function change(item,delta){const n=Math.max(0,Number(item.quantity||0)+delta);items=n?carritoCambiarCantidad(SCOPE,item,n):carritoEliminar(SCOPE,item);render()}
+function remove(item){items=carritoEliminar(SCOPE,item);render()}
+function renderCart(){
+ if(!items.length){$("cart").innerHTML='<section class="group empty"><h2>Tu carrito está vacío</h2><p class="muted">Explora HTPWEB y agrega productos de cualquier negocio.</p><a class="btn btn-primary" href="../index.html">Explorar negocios</a></section>';$("routing").classList.add("hidden");return}
+ $("cart").innerHTML=groups().map(([localId,rows])=>{const l=localInfo(localId);const total=rows.reduce((s,i)=>s+info(i).price*Number(i.quantity||0),0);return '<section class="group"><div class="row between"><div><h2 style="margin:0">'+esc(l.name)+'</h2><span class="muted">'+rows.length+' producto(s)</span></div><strong>'+money(total)+'</strong></div>'+rows.map((i,idx)=>{const x=info(i);return '<div class="item"><div><strong>'+esc(x.name)+'</strong>'+(x.detail?'<div class="muted">'+esc(x.detail)+'</div>':'')+'<div>'+money(x.price)+'</div></div><strong>'+money(x.price*Number(i.quantity||0))+'</strong><div class="qty"><button data-minus="'+esc(localId)+'|'+idx+'">−</button><strong>'+i.quantity+'</strong><button data-plus="'+esc(localId)+'|'+idx+'">+</button><button data-remove="'+esc(localId)+'|'+idx+'">×</button></div></div>'}).join("")+'</section>'}).join("");
+ document.querySelectorAll("[data-minus],[data-plus],[data-remove]").forEach(b=>b.onclick=()=>{const [localId,idxRaw]=(b.dataset.minus||b.dataset.plus||b.dataset.remove).split("|"),row=groups().find(x=>x[0]===localId)?.[1]?.[Number(idxRaw)];if(!row)return;if(b.dataset.minus)change(row,-1);else if(b.dataset.plus)change(row,1);else remove(row)});
+}
+
+function commonDeliveries(){
+ const gs=groups();if(!gs.length)return[];
+ let common=new Map((localInfo(gs[0][0]).deliveries||[]).map(d=>[d.delivery_id,d]));
+ for(const [localId] of gs.slice(1)){const ids=new Set((localInfo(localId).deliveries||[]).map(d=>d.delivery_id));common=new Map([...common].filter(([id])=>ids.has(id)))}
+ return [...common.values()];
+}
+function groupItems(localId){return items.filter(i=>i.local_id===localId)}
+function removeGroup(localId){items=carritoGuardar(SCOPE,items.filter(i=>i.local_id!==localId));render()}
+function openTarget(url){const w=window.open(url,"_blank","noopener");if(!w)location.href=url}
+function handoffDelivery(delivery,rows=items,removeAll=true){
+ carritoGuardar(delivery.slug,rows);if(removeAll){carritoVaciar(SCOPE);items=[]}else items=carritoGuardar(SCOPE,items.filter(i=>!rows.includes(i)));
+ openTarget("carrito.html?delivery="+encodeURIComponent(delivery.slug));render();
+}
+function handoffDirect(localId){
+ const l=localInfo(localId),rows=groupItems(localId);if(!rows.length)return;
+ carritoGuardar("LOCAL:"+localId,rows);removeGroup(localId);
+ openTarget("tienda-carrito.html?local="+encodeURIComponent(l.slug||localId)+"&src=htpweb&channel=direct");
+}
+function renderSplit(){
+ const host=$("splitArea");host.innerHTML='<h3>Pedidos separados por negocio</h3><p class="muted">Cada negocio se procesa como un pedido independiente. Los negocios no reclamados requieren un DELIVERY.</p>'+groups().map(([localId])=>{const l=localInfo(localId),buttons=[];if(l.direct_enabled)buttons.push('<button class="btn btn-primary" data-direct="'+esc(localId)+'">Directo con '+esc(l.name)+'</button>');(l.deliveries||[]).forEach(d=>buttons.push('<button class="btn btn-muted" data-split-delivery="'+esc(localId)+'|'+esc(d.delivery_id)+'">'+esc(d.name)+'</button>'));return '<div class="channel" style="margin-top:10px"><strong>'+esc(l.name)+'</strong><div class="row" style="margin-top:8px">'+(buttons.join("")||'<span class="error">Sin canal disponible</span>')+'</div></div>'}).join("");
+ host.querySelectorAll("[data-direct]").forEach(b=>b.onclick=()=>handoffDirect(b.dataset.direct));
+ host.querySelectorAll("[data-split-delivery]").forEach(b=>b.onclick=()=>{const [localId,did]=b.dataset.splitDelivery.split("|"),d=(localInfo(localId).deliveries||[]).find(x=>x.delivery_id===did);if(d)handoffDelivery(d,groupItems(localId),false)});
+}
+function renderRouting(){
+ if(!items.length)return;$("routing").classList.remove("hidden");const gs=groups(),common=commonDeliveries(),single=gs.length===1?localInfo(gs[0][0]):null,buttons=[];
+ if(single?.direct_enabled)buttons.push('<button class="btn btn-primary" data-direct-single="'+esc(single.local_id)+'">Comprar directo a '+esc(single.name)+'</button>');
+ (single?single.deliveries:common).forEach(d=>buttons.push('<button class="btn btn-dark" data-common-delivery="'+esc(d.delivery_id)+'">'+esc(d.name)+'</button>'));
+ $("commonChannels").innerHTML=buttons.length?buttons.join(""):'<div class="error">No hay un canal conjunto disponible.</div>';
+ if(gs.length>1){$("routingMessage").innerHTML='<div class="notice"><strong>Tu carrito contiene productos de '+gs.length+' negocios.</strong><br>Para una entrega conjunta selecciona un DELIVERY que atienda a todos. También puedes hacer pedidos separados, uno por cada negocio.</div>';$("splitArea").innerHTML='<button id="showSplitBtn" class="btn btn-muted">Hacer pedidos separados</button>';setTimeout(()=>{$("showSplitBtn").onclick=renderSplit},0)}
+ else{$("routingMessage").innerHTML='<p class="muted">Puedes comprar directo cuando el negocio está administrado o elegir uno de sus DELIVERY vinculados.</p>';$("splitArea").innerHTML=""}
+ document.querySelectorAll("[data-direct-single]").forEach(b=>b.onclick=()=>handoffDirect(b.dataset.directSingle));
+ document.querySelectorAll("[data-common-delivery]").forEach(b=>b.onclick=()=>{const d=(single?single.deliveries:common).find(x=>x.delivery_id===b.dataset.commonDelivery);if(d)handoffDelivery(d)});
+}
+function render(){renderCart();renderRouting()}
+async function init(){try{items=carritoObtener(SCOPE);await loadReferenceData();render()}catch(e){show(e.message||"No se pudo cargar el carrito.")}}
+window.addEventListener("storage",()=>{items=carritoObtener(SCOPE);render()});init();
+</script></body></html>

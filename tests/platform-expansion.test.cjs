@@ -1,4 +1,4 @@
-const test=require("node:test");
+﻿const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const vm=require("node:vm");
@@ -61,3 +61,35 @@ test("new inline scripts compile",()=>{
  for(const file of ["index.html","app/local-general.html","app/crear-local.html","app/crear-delivery.html","app/mi-cuenta.html"])
   for(const script of scripts(file)) new vm.Script(script,{filename:file});
 });
+test("HTPWEB general cart resolves one or many LOCAL at checkout",()=>{
+ const store=read("app/tienda.html");
+ const cart=read("app/carrito-general.html");
+ const resolver=read("supabase/migrations/20261003081618_platform_cart_channel_resolver.sql");
+ assert.match(store,/source==="htpweb"\?"HTPWEB"/);
+ assert.match(store,/carrito-general\.html/);
+ assert.match(cart,/Tu carrito contiene productos de/);
+ assert.match(cart,/Hacer pedidos separados/);
+ assert.match(cart,/commonDeliveries/);
+ assert.match(cart,/carritoGuardar\(delivery\.slug/);
+ assert.match(resolver,/public_htpweb_cart_channels/);
+ assert.match(resolver,/public_local_delivery_choices/);
+ assert.match(resolver,/direct_enabled/);
+});
+
+test("direct LOCAL orders reuse guest customers and appear in account history",()=>{
+ const account=read("app/mi-cuenta.html");
+ const detail=read("app/pedido-directo.html");
+ const reuse=read("supabase/migrations/20261003081623_direct_local_guest_customer_reuse.sql");
+ assert.match(account,/order_channel/);
+ assert.match(account,/Pedidos directos a LOCAL/);
+ assert.match(account,/pedido-directo\.html\?order=/);
+ assert.match(detail,/DIRECT_LOCAL/);
+ assert.match(reuse,/profile_id is null/);
+ assert.match(reuse,/regexp_replace\(coalesce\(c\.phone/);
+});
+
+test("platform cart and direct detail inline scripts compile",()=>{
+ for(const file of ["app/carrito-general.html","app/pedido-directo.html","app/tienda.html"])
+  for(const script of scripts(file)) new vm.Script(script,{filename:file});
+});
+
