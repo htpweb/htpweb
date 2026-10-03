@@ -16,6 +16,9 @@ test("CLIENT has a dedicated Mi cuenta center",()=>{
  assert.match(page,/Mis datos/);
  assert.match(page,/Cambiar contraseña/);
  assert.match(page,/Código de referido/);
+ assert.match(page,/Agregar dirección/);
+ assert.match(page,/Editar dirección/);
+ assert.match(page,/Usar mi ubicación actual/);
 });
 
 test("Mi cuenta aggregates orders across DELIVERY and preserves detail links",()=>{
