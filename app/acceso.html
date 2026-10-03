@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Acceso</title>
+<title>Acceso | HTPWEB</title>
 <script src="../config/theme-bootstrap.js?v=20261002-theme3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
@@ -15,8 +15,8 @@
 <body>
 <main class="auth-wrap">
   <section class="card">
-    <h1 id="brand">DELIVERY</h1>
-    <p class="muted">Inicia sesión o crea tu cuenta para confirmar pedidos.</p>
+    <h1 id="brand">HTPWEB</h1>
+    <p class="muted">Accede o crea tu cuenta. Usa una sola cuenta para explorar locales, comprar, crear o reclamar tu negocio y gestionar tus servicios en HTPWEB.</p>
 
     <div id="sessionBox" class="success hidden"></div>
     <div id="message" class="hidden"></div>
@@ -222,18 +222,7 @@ function showRecoveryForm() {
 }
 
 async function init() {
-  try {
-    const slug = obtenerDeliverySlug();
-    if (slug) {
-      const delivery = await cargarNegocio();
-      $("brand").textContent = delivery.name;
-      document.title = "Acceso | " + delivery.name;
-    }
-  } catch (e) {
-    console.warn(e);
-  }
-
-  const user = await obtenerUsuarioActual();
+const user = await obtenerUsuarioActual();
 
   if (user) {
     let access = { role: "CLIENT", claim: null };
