@@ -15,7 +15,8 @@ test("self-service LOCAL claim is authenticated and still MASTER-reviewed",()=>{
  assert.ok(sql.includes("values('CLAIM_LOCAL',null,p_local_id,auth.uid(),'PENDING'"));
  assert.match(sql,/reclamaci.n en revisi.n/);
  assert.match(page,/submit_local_claim/);
- assert.match(page,/MASTER verific/);
+ assert.match(page,/nuestro equipo revisará/i);
+ assert.match(page,/plazo máximo de <strong>3 días<\/strong>/);
 });
 
 test("CLIENT customer context survives conversion to LOCAL_ADMIN",()=>{

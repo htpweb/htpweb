@@ -20,9 +20,11 @@ test("claim form collects ownership evidence and keeps LOCAL context through aut
  assert.match(html,/responsibleName/);
  assert.match(html,/declaredWhatsapp/);
  assert.match(html,/REGISTERED_WHATSAPP/);
- assert.match(html,/SOCIAL/);
- assert.match(html,/PHYSICAL/);
- assert.match(html,/DOCUMENT/);
+ assert.match(html,/DOCUMENT_LOCATION/);
+ assert.match(html,/RUC \/ RIMPE/);
+ assert.match(html,/application\/pdf/);
+ assert.match(html,/Compartir mi ubicación/);
+ assert.match(html,/Solicitar código/);
  assert.match(html,/irAAcceso\(rutaActualRelativa\(\)\)/);
  assert.match(html,/claim_local_context/);
 });
@@ -39,9 +41,10 @@ test("backend enriches claims with challenge and WhatsApp match",()=>{
 test("MASTER sees canonical evidence and can verify through registered WhatsApp",()=>{
  const admin=read("admin/admin.js");
  assert.match(admin,/master_claim_verification_snapshot/);
- assert.match(admin,/Verificar por WhatsApp registrado/);
- assert.match(admin,/Código de verificación/);
- assert.match(admin,/Coincidencia automática/);
+ assert.match(admin,/OTP por WhatsApp/);
+ assert.match(admin,/Código HTPWEB/);
+ assert.match(admin,/Distancia al punto registrado/);
+ assert.match(admin,/Evidencias privadas/);
  assert.match(admin,/Debes documentar cómo verificaste la propiedad/);
 });
 

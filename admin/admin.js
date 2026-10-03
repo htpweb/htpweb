@@ -4088,6 +4088,22 @@ async function updateRequestForm() {
   }
 }
 
+async function signedClaimEvidence(payload = {}) {
+  const files = [
+    ["RUC / RIMPE", payload.ruc_pdf_path],
+    ["Identificación", payload.identity_pdf_path],
+    ["Foto exterior", payload.exterior_photo_path],
+    ["Foto interior", payload.interior_photo_path],
+    ["Foto con código HTPWEB", payload.code_photo_path]
+  ].filter(row => row[1]);
+  const result = [];
+  for (const [label, path] of files) {
+    const signed = await supabaseClient.storage.from("local-claim-evidence").createSignedUrl(path, 900);
+    result.push({ label, path, url: signed.error ? null : signed.data?.signedUrl || null });
+  }
+  return result;
+}
+
 async function loadRequests() {
   if (!roleSections[state.role]?.includes("requests")) return;
 
@@ -4110,6 +4126,7 @@ async function loadRequests() {
     await Promise.all(state.requests.filter(req => req.request_type === "CLAIM_LOCAL").map(async req => {
       try {
         req.claim_verification = await rpc("master_claim_verification_snapshot", { p_request_id: req.id });
+        req.claim_files = await signedClaimEvidence(req.claim_verification?.payload || req.payload || {});
       } catch (error) {
         console.warn("No se pudo cargar la verificación del CLAIM:", error);
         req.claim_verification = null;
@@ -4154,33 +4171,36 @@ function renderClaimVerification(req) {
   if (req.request_type !== "CLAIM_LOCAL" || state.role !== "MASTER") return "";
   const v = req.claim_verification || {};
   const p = v.payload || req.payload || {};
-  const registeredWhatsapp = String(v.registered_whatsapp || "").replace(/\D/g, "");
-  const whatsappHref = registeredWhatsapp
-    ? "https://wa.me/" + registeredWhatsapp + "?text=" + encodeURIComponent(
-        "HTPWEB · Verificación de propiedad de " + (v.local_name || "LOCAL") +
-        "\n\nCódigo de verificación: " + (p.challenge_code || "SIN CÓDIGO") +
-        "\n\nResponde a este mensaje desde el WhatsApp oficial del negocio para confirmar que administras este LOCAL."
-      )
-    : "";
-  const socialLinks = [
-    ["Instagram", v.instagram_url],
-    ["Facebook", v.facebook_url],
-    ["TikTok", v.tiktok_url]
-  ].filter(row => row[1]);
+  const files = Array.isArray(req.claim_files) ? req.claim_files : [];
+  const method = p.verification_method === "REGISTERED_WHATSAPP"
+    ? "WhatsApp registrado"
+    : p.verification_method === "DOCUMENT_LOCATION"
+      ? "Documentos + ubicación"
+      : (p.verification_method || "—");
+  const verificationStatus = ({
+    AWAITING_WHATSAPP_OTP:"Pendiente de OTP por WhatsApp",
+    PENDING_MASTER_REVIEW:"Pendiente de revisión MASTER"
+  })[p.verification_status] || p.verification_status || "—";
+  const distance = p.location_distance_m == null ? "—" : Number(p.location_distance_m).toLocaleString("es-EC") + " m";
+  const accuracy = p.location_accuracy_m == null ? "—" : Math.round(Number(p.location_accuracy_m)) + " m";
 
   return `
     <div class="claim-verification-box" style="margin:12px 0;padding:12px;border:1px solid #dbe4ee;border-radius:12px;background:#f8fafc">
       <strong>Verificación de propiedad</strong>
       <div style="margin-top:8px"><strong>Responsable:</strong> ${esc(p.responsible_name || "—")} · ${esc(p.responsible_role || "—")}</div>
-      <div><strong>WhatsApp declarado:</strong> ${esc(p.declared_whatsapp || "—")}</div>
-      <div><strong>WhatsApp registrado en HTPWEB:</strong> ${esc(v.registered_whatsapp || "No registrado")}</div>
-      <div><strong>Coincidencia automática:</strong> ${p.declared_whatsapp_matches_registered === true ? "Sí ✓" : p.declared_whatsapp_matches_registered === false ? "No" : "Sin comprobar"}</div>
-      <div><strong>Código:</strong> <span style="font-weight:800;letter-spacing:.08em">${esc(p.challenge_code || "—")}</span></div>
-      <div><strong>Método:</strong> ${esc(p.verification_method || "—")}</div>
-      ${p.evidence_note ? `<div><strong>Detalle:</strong> ${esc(p.evidence_note)}</div>` : ""}
-      ${p.evidence_url ? `<div><a href="${esc(p.evidence_url)}" target="_blank" rel="noopener">Abrir evidencia aportada</a></div>` : ""}
-      ${socialLinks.length ? `<div style="margin-top:6px"><strong>Redes registradas:</strong> ${socialLinks.map(([name,url]) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>`).join(" · ")}</div>` : ""}
-      ${whatsappHref ? `<div style="margin-top:10px"><a class="btn btn-muted" href="${esc(whatsappHref)}" target="_blank" rel="noopener">Verificar por WhatsApp registrado</a></div>` : '<div class="muted" style="margin-top:8px">Este LOCAL no tiene WhatsApp registrado para verificación directa.</div>'}
+      <div><strong>Método:</strong> ${esc(method)}</div>
+      <div><strong>Estado de verificación:</strong> ${esc(verificationStatus)}</div>
+      <div><strong>WhatsApp actual declarado:</strong> ${esc(p.declared_whatsapp || "—")}</div>
+      <div><strong>WhatsApp registrado:</strong> ${esc(v.registered_whatsapp || "No registrado")}</div>
+      <div><strong>Coincidencia:</strong> ${p.declared_whatsapp_matches_registered === true ? "Sí ✓" : p.declared_whatsapp_matches_registered === false ? "No" : "Sin comprobar"}</div>
+      <div><strong>Código HTPWEB:</strong> <span style="font-weight:800;letter-spacing:.08em">${esc(p.challenge_code || "—")}</span></div>
+      ${p.verification_method === "DOCUMENT_LOCATION" ? `
+        <div style="margin-top:8px"><strong>Ubicación capturada:</strong> ${esc(p.location_latitude || "—")}, ${esc(p.location_longitude || "—")}</div>
+        <div><strong>Precisión reportada:</strong> ${esc(accuracy)}</div>
+        <div><strong>Distancia al punto registrado:</strong> ${esc(distance)}</div>
+      ` : ""}
+      ${p.review_deadline ? `<div><strong>Plazo comunicado al cliente:</strong> ${new Date(p.review_deadline).toLocaleString()}</div>` : ""}
+      ${files.length ? `<div style="margin-top:10px"><strong>Evidencias privadas:</strong><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">${files.map(file => file.url ? `<a class="btn btn-muted" href="${esc(file.url)}" target="_blank" rel="noopener">${esc(file.label)}</a>` : `<span class="muted">${esc(file.label)} no disponible</span>`).join("")}</div></div>` : ""}
     </div>
   `;
 }

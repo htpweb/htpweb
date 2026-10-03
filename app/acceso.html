@@ -71,6 +71,7 @@
 
     <div class="stack" style="margin-top:14px">
       <a id="ordersLink" class="btn btn-muted hidden" href="#">Mis pedidos</a>
+      <a id="claimsLink" class="btn btn-muted hidden" href="mis-reclamaciones.html">Mis reclamaciones de LOCAL</a>
       <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
       <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
@@ -270,6 +271,10 @@ async function init() {
         const cleanUrl = new URL(location.href);
         cleanUrl.searchParams.delete("ref");
         history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      }
+
+      if (access.role === "CLIENT") {
+        $("claimsLink").classList.remove("hidden");
       }
 
       const { data: customerId } = await supabaseClient.rpc("current_customer_id");
