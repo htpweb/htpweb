@@ -1,7 +1,7 @@
 (function(){
  const $=id=>document.getElementById(id);
  async function init(){
-  if(!window.supabaseClient)return;
+  if(typeof supabaseClient==="undefined")return;
   const link=$("accountLink"),menu=$("publicAccountMenu"),trigger=$("publicAccountTrigger"),drop=$("publicAccountDropdown");
   if(!link||!menu||!trigger||!drop)return;
   try{
