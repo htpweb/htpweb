@@ -70,8 +70,7 @@
     </div>
 
     <div class="stack" style="margin-top:14px">
-      <a id="ordersLink" class="btn btn-muted hidden" href="#">Mis pedidos</a>
-      <a id="claimsLink" class="btn btn-muted hidden" href="mis-reclamaciones.html">Mis reclamaciones de LOCAL</a>
+      <a id="accountLink" class="btn btn-primary hidden" href="mi-cuenta.html">Mi cuenta</a>
       <button id="continueBtn" class="btn btn-dark hidden">Continuar</button>
       <button id="adminBtn" class="btn btn-muted hidden">Abrir panel administrativo</button>
       <button id="logoutBtn" class="btn btn-danger hidden">Cerrar sesión</button>
@@ -273,20 +272,15 @@ async function init() {
         history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
       }
 
-      if (access.role === "CLIENT") {
-        $("claimsLink").classList.remove("hidden");
-      }
+      const accountParams = obtenerDeliverySlug()
+        ? "?delivery=" + encodeURIComponent(obtenerDeliverySlug())
+        : "";
+      $("accountLink").href = "mi-cuenta.html" + accountParams;
+      $("accountLink").classList.remove("hidden");
 
       const { data: customerId } = await supabaseClient.rpc("current_customer_id");
-      if (customerId) {
-        $("referralCard").classList.remove("hidden");
-        if (referralCodeParam) $("referralCode").value = referralCodeParam;
-        if (obtenerDeliverySlug()) {
-          $("ordersLink").href = urlDelivery("pedidos.html");
-          $("ordersLink").classList.remove("hidden");
-        }
-        $("addressesCard").classList.remove("hidden");
-        await loadAccountAddresses();
+      if (customerId && referralCodeParam) {
+        $("referralCode").value = referralCodeParam;
       }
     } catch (e) {
       console.warn(e);

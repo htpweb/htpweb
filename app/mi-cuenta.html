@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi cuenta | HTPWEB</title>
+<script src="../config/theme-bootstrap.js?v=20261002-theme3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/negocio.js?v=20261002-theme3"></script>
+<script src="../config/auth.js"></script>
+<script src="../config/addresses.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261003-account1">
+<style>
+.account-shell{max-width:1080px;margin:auto;padding:22px 14px 52px}.account-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.identity{display:flex;gap:14px;align-items:center}.avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#111827;color:#fff;font-size:1.4rem;font-weight:800}
+.account-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.account-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px}
+.account-card.wide{grid-column:span 2}.account-card.full{grid-column:1/-1}.metric{font-size:1.7rem;font-weight:800}.nav-card{text-decoration:none;color:inherit;display:block;transition:.15s}.nav-card:hover{transform:translateY(-1px)}
+.order-row,.address-row,.delivery-row,.claim-row{padding:12px 0;border-top:1px solid #eef2f7}.order-row:first-child,.address-row:first-child,.delivery-row:first-child,.claim-row:first-child{border-top:0}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2ff;font-size:.82rem}.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.section-title{display:flex;justify-content:space-between;gap:10px;align-items:center}
+@media(max-width:820px){.account-grid{grid-template-columns:1fr 1fr}.account-card.wide{grid-column:1/-1}}
+@media(max-width:620px){.account-grid{grid-template-columns:1fr}.account-card.wide,.account-card.full{grid-column:1}.profile-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="account-shell">
+<section class="account-card">
+<div class="account-head"><div class="identity"><div id="avatar" class="avatar">U</div><div><div class="muted">Mi cuenta</div><h1 id="welcome" style="margin:2px 0">Cargando…</h1><div id="email" class="muted"></div></div></div>
+<div class="row-actions"><a id="shopLink" class="btn btn-muted" href="../index.html">Volver a comprar</a><button id="logoutBtn" class="btn btn-danger">Cerrar sesión</button></div></div>
+<div id="message" class="hidden" style="margin-top:12px"></div>
+</section>
+<section class="account-grid">
+<a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
+<a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
+<a class="account-card nav-card" href="mis-reclamaciones.html"><div class="muted">Reclamaciones de LOCAL</div><div id="claimsCount" class="metric">—</div><div>Consultar avance</div></a>
+
+<section class="account-card wide" id="profile">
+<div class="section-title"><div><h2>Mis datos</h2><p class="muted">Información principal de tu cuenta HTPWEB.</p></div></div>
+<div class="profile-grid"><div><label>Nombre completo</label><input id="fullName"></div><div><label>Teléfono</label><input id="phone" type="tel"></div></div>
+<div style="margin-top:12px"><label>Correo</label><input id="profileEmail" type="email" disabled></div>
+<div class="row-actions"><button id="saveProfileBtn" class="btn btn-primary">Guardar cambios</button><button id="passwordBtn" class="btn btn-muted">Cambiar contraseña</button></div>
+</section>
+
+<section class="account-card" id="deliveries">
+<h2>Mis DELIVERY</h2><p class="muted">Redes con las que tu perfil de cliente tiene relación.</p>
+<div id="deliveriesList"><div class="muted">Cargando…</div></div>
+<div style="margin-top:14px"><label>Código de referido</label><div class="row" style="gap:8px"><input id="referralCode" maxlength="20" placeholder="Código"><button id="applyReferralBtn" class="btn btn-muted">Aplicar</button></div></div>
+</section>
+
+<section class="account-card full" id="orders">
+<div class="section-title"><div><h2>Mis pedidos</h2><p class="muted">Historial global de tus compras, sin importar desde qué DELIVERY compraste.</p></div><select id="deliveryFilter" style="max-width:230px"><option value="">Todos los DELIVERY</option></select></div>
+<div id="ordersList"><div class="muted">Cargando pedidos…</div></div>
+</section>
+
+<section class="account-card wide" id="addresses">
+<div class="section-title"><div><h2>Mis direcciones</h2><p class="muted">Puedes cambiar la predeterminada o desactivar una dirección guardada.</p></div></div>
+<div id="addressesList"><div class="muted">Cargando direcciones…</div></div>
+</section>
+
+<section class="account-card" id="claims">
+<h2>Mis reclamaciones</h2><p class="muted">Seguimiento de negocios que has solicitado administrar.</p>
+<div id="claimsList"><div class="muted">Cargando…</div></div>
+<div class="row-actions"><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div>
+</section>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const money=v=>"$"+Number(v||0).toFixed(2);
+const statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
+let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[];
+function show(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
+function initials(name){return String(name||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"U"}
+function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
+function currentDeliverySlug(){return obtenerDeliverySlug()||""}
+function orderLink(order){const d=deliveryById(order.delivery_id);return d?.slug?"pedidos.html?delivery="+encodeURIComponent(d.slug)+"&order="+encodeURIComponent(order.id):"#"}
+function formatDate(value){try{return new Date(value).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})}catch{return value||"—"}}
+async function loadIdentity(){
+ const profile=await supabaseClient.from("profiles").select("full_name,phone").eq("id",user.id).maybeSingle();
+ if(profile.error)throw profile.error;
+ const name=profile.data?.full_name||user.user_metadata?.full_name||user.email||"Cliente";
+ $("welcome").textContent="Hola, "+name;$("email").textContent=user.email||"";$("avatar").textContent=initials(name);
+ $("fullName").value=profile.data?.full_name||"";$("phone").value=profile.data?.phone||"";$("profileEmail").value=user.email||"";
+}
+async function loadCustomer(){
+ const current=await supabaseClient.rpc("current_customer_id");if(current.error)throw current.error;customerId=current.data||null;
+ if(!customerId)return;
+ const [delRes,ordRes]=await Promise.all([
+   supabaseClient.from("customer_deliveries").select("delivery_id,active,allow_orders,relationship_source,created_at").eq("customer_id",customerId),
+   supabaseClient.from("orders").select("id,delivery_id,status,total,created_at").eq("customer_id",customerId).order("created_at",{ascending:false}).limit(100)
+ ]);
+ if(delRes.error)throw delRes.error;if(ordRes.error)throw ordRes.error;
+ const ids=[...new Set([...(delRes.data||[]).map(x=>x.delivery_id),...(ordRes.data||[]).map(x=>x.delivery_id)])];
+ let deliveryRows=[];
+ if(ids.length){const d=await supabaseClient.from("deliveries").select("id,name,slug,logo_url,active").in("id",ids);if(d.error)throw d.error;deliveryRows=d.data||[]}
+ deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));orders=ordRes.data||[];
+}
+async function loadAddresses(){if(!customerId){addresses=[];return}addresses=await listarMisDireccionesCliente({soloActivas:true})}
+async function loadClaims(){const r=await supabaseClient.rpc("my_local_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
+async function ensureCustomer(){
+ if(customerId)return customerId;
+ const name=$("fullName").value.trim()||user.user_metadata?.full_name||"";const phone=$("phone").value.trim()||user.user_metadata?.phone||"";
+ if(!name||!phone)throw new Error("Completa nombre y teléfono antes de aplicar un referido.");
+ customerId=await asegurarCustomerActual({name,phone,email:user.email||null});return customerId;
+}
+async function applyReferral(){
+ try{
+  const code=$("referralCode").value.trim().toUpperCase();if(!code)throw new Error("Escribe un código de referido.");
+  await ensureCustomer();const r=await supabaseClient.rpc("claim_delivery_referral",{p_code:code,p_source:"REFERRAL_CODE"});if(r.error)throw r.error;
+  await loadCustomer();renderSummary();renderDeliveries();renderOrders();show("Código aplicado. Tu relación con el DELIVERY quedó registrada.");
+ }catch(e){show(e.message||"No se pudo aplicar el código.","error")}
+}
+function renderSummary(){$("ordersCount").textContent=orders.length;$("addressesCount").textContent=addresses.length;$("claimsCount").textContent=claims.length}
+
+function renderDeliveries(){
+ $("deliveriesList").innerHTML=deliveries.length?deliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.relation?.relationship_source||"Compra realizada")+'</div>'+(d.slug?'<div class="row-actions"><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Abrir DELIVERY</a></div>':"")+'</div>').join(""):'<div class="empty">Todavía no tienes DELIVERY vinculados.</div>';
+ const selected=$("deliveryFilter").value;
+ $("deliveryFilter").innerHTML='<option value="">Todos los DELIVERY</option>'+deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+ $("deliveryFilter").value=selected;
+}
+function renderOrders(){
+ const filter=$("deliveryFilter").value;const rows=filter?orders.filter(o=>o.delivery_id===filter):orders;
+ $("ordersList").innerHTML=rows.length?rows.map(o=>{const d=deliveryById(o.delivery_id);return '<div class="order-row"><div class="section-title"><div><strong>Pedido '+esc(String(o.id).slice(0,8).toUpperCase())+'</strong><div class="muted">'+esc(d?.name||"DELIVERY")+' · '+esc(formatDate(o.created_at))+'</div></div><span class="pill">'+esc(statusNames[o.status]||o.status)+'</span></div><div><strong>Total '+money(o.total)+'</strong></div><div class="row-actions">'+(d?.slug?'<a class="btn btn-muted" href="'+esc(orderLink(o))+'">Ver detalle</a><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Comprar nuevamente</a>':"")+'</div></div>'}).join(""):'<div class="empty">No hay pedidos para mostrar.</div>';
+}
+function renderAddresses(){
+ $("addressesList").innerHTML=addresses.length?addresses.map(a=>'<div class="address-row"><div class="section-title"><div><strong>'+esc(a.label)+'</strong>'+(a.is_default?' <span class="pill">Predeterminada</span>':'')+'<div>'+esc(a.address)+'</div>'+(a.reference?'<div class="muted">'+esc(a.reference)+'</div>':'')+'</div></div><div class="row-actions">'+(a.is_default?'':'<button class="btn btn-muted" data-default="'+esc(a.id)+'">Hacer predeterminada</button>')+'<button class="btn btn-danger" data-disable="'+esc(a.id)+'">Desactivar</button></div></div>').join(""):'<div class="empty">Todavía no tienes direcciones guardadas.</div>';
+ document.querySelectorAll("[data-default]").forEach(b=>b.onclick=()=>setDefaultAddress(b.dataset.default));
+ document.querySelectorAll("[data-disable]").forEach(b=>b.onclick=()=>disableAddress(b.dataset.disable));
+}
+function renderClaims(){
+ const rows=claims.slice(0,3);$("claimsList").innerHTML=rows.length?rows.map(c=>'<div class="claim-row"><strong>'+esc(c.local_name)+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[c.status]||c.status)+'</span></div></div>').join(""):'<div class="empty">No tienes reclamaciones activas.</div>';
+}
+async function setDefaultAddress(id){
+ const a=addresses.find(x=>x.id===id);if(!a)return;
+ try{await guardarMiDireccionCliente({id:a.id,label:a.label,address:a.address,reference:a.reference,latitude:a.latitude,longitude:a.longitude,isDefault:true,active:true});await loadAddresses();renderAddresses();renderSummary();show("Dirección predeterminada actualizada.")}
+ catch(e){show(e.message||"No se pudo actualizar la dirección.","error")}
+}
+async function disableAddress(id){
+ const a=addresses.find(x=>x.id===id);if(!a||!confirm('¿Desactivar la dirección "'+a.label+'"?'))return;
+ try{await desactivarMiDireccionCliente(a);await loadAddresses();renderAddresses();renderSummary();show("Dirección desactivada.")}
+ catch(e){show(e.message||"No se pudo desactivar la dirección.","error")}
+}
+
+async function saveProfile(){
+ try{
+  const fullName=$("fullName").value.trim(),phone=$("phone").value.trim();
+  if(!fullName||!phone)throw new Error("Nombre y teléfono son obligatorios.");
+  const r=await supabaseClient.rpc("update_my_profile",{p_full_name:fullName,p_phone:phone});if(r.error)throw r.error;
+  if(customerId){
+    const current=await supabaseClient.from("customers").select("marketing_consent").eq("id",customerId).maybeSingle();if(current.error)throw current.error;
+    const sync=await supabaseClient.rpc("upsert_my_customer",{p_name:fullName,p_phone:phone,p_email:user.email||null,p_marketing_consent:!!current.data?.marketing_consent});if(sync.error)throw sync.error;
+  }
+  await supabaseClient.auth.updateUser({data:{full_name:fullName,phone}});
+  $("welcome").textContent="Hola, "+fullName;$("avatar").textContent=initials(fullName);show("Datos actualizados.");
+ }catch(e){show(e.message||"No se pudieron guardar tus datos.","error")}
+}
+async function changePassword(){
+ const email=user?.email;if(!email)return show("No hay correo disponible para recuperar la contraseña.","error");
+ try{const redirectTo=new URL("acceso.html?recovery=1",location.href).href;const r=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo});if(r.error)throw r.error;show("Te enviamos un correo para cambiar tu contraseña.")}
+ catch(e){show(e.message||"No se pudo enviar el correo de recuperación.","error")}
+}
+async function init(){
+ user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return}
+ if(currentDeliverySlug())$("shopLink").href="index.html?delivery="+encodeURIComponent(currentDeliverySlug());
+ await loadIdentity();
+ await Promise.all([loadCustomer(),loadClaims()]);
+ await loadAddresses();
+ renderSummary();renderDeliveries();renderOrders();renderAddresses();renderClaims();
+}
+$("deliveryFilter").onchange=renderOrders;$("saveProfileBtn").onclick=saveProfile;$("passwordBtn").onclick=changePassword;$("applyReferralBtn").onclick=applyReferral;
+$("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.href=currentDeliverySlug()?"acceso.html?delivery="+encodeURIComponent(currentDeliverySlug()):"acceso.html"};
+init().catch(e=>show(e.message||"No se pudo cargar Mi cuenta.","error"));
+</script>
+</body></html>
