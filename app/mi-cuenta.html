@@ -88,7 +88,7 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
 const statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
-let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[];
+let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[],directLocals=[];
 function show(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function initials(name){return String(name||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"U"}
 function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
@@ -107,13 +107,16 @@ async function loadCustomer(){
  if(!customerId)return;
  const [delRes,ordRes]=await Promise.all([
    supabaseClient.from("customer_deliveries").select("delivery_id,active,allow_orders,relationship_source,created_at").eq("customer_id",customerId),
-   supabaseClient.from("orders").select("id,delivery_id,status,total,created_at").eq("customer_id",customerId).order("created_at",{ascending:false}).limit(100)
+   supabaseClient.from("orders").select("id,delivery_id,origin_local_id,order_channel,fulfillment_method,status,total,created_at").eq("customer_id",customerId).order("created_at",{ascending:false}).limit(100)
  ]);
  if(delRes.error)throw delRes.error;if(ordRes.error)throw ordRes.error;
- const ids=[...new Set([...(delRes.data||[]).map(x=>x.delivery_id),...(ordRes.data||[]).map(x=>x.delivery_id)])];
- let deliveryRows=[];
+ orders=ordRes.data||[];
+ const ids=[...new Set([...(delRes.data||[]).map(x=>x.delivery_id),...orders.map(x=>x.delivery_id)].filter(Boolean))];
+ const localIds=[...new Set(orders.map(x=>x.origin_local_id).filter(Boolean))];
+ let deliveryRows=[],localRows=[];
  if(ids.length){const d=await supabaseClient.from("deliveries").select("id,name,slug,logo_url,active").in("id",ids);if(d.error)throw d.error;deliveryRows=d.data||[]}
- deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));orders=ordRes.data||[];
+ if(localIds.length){const l=await supabaseClient.from("locals").select("id,name,slug,logo_url,active").in("id",localIds);if(l.error)throw l.error;localRows=l.data||[]}
+ deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));directLocals=localRows;
 }
 async function loadAddresses(){if(!customerId){addresses=[];return}addresses=await listarMisDireccionesCliente({soloActivas:true})}
 async function loadClaims(){const r=await supabaseClient.rpc("my_local_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
@@ -154,12 +157,21 @@ async function switchClientMode(){
 function renderDeliveries(){
  $("deliveriesList").innerHTML=deliveries.length?deliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.relation?.relationship_source||"Compra realizada")+'</div>'+(d.slug?'<div class="row-actions"><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Abrir DELIVERY</a></div>':"")+'</div>').join(""):'<div class="empty">Todavía no tienes DELIVERY vinculados.</div>';
  const selected=$("deliveryFilter").value;
- $("deliveryFilter").innerHTML='<option value="">Todos los DELIVERY</option>'+deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
- $("deliveryFilter").value=selected;
+ $("deliveryFilter").innerHTML='<option value="">Todos los pedidos</option><option value="__DIRECT__">Pedidos directos a LOCAL</option>'+deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+ $("deliveryFilter").value=[...$("deliveryFilter").options].some(o=>o.value===selected)?selected:"";
 }
+function directLocalById(id){return directLocals.find(l=>l.id===id)||null}
 function renderOrders(){
- const filter=$("deliveryFilter").value;const rows=filter?orders.filter(o=>o.delivery_id===filter):orders;
- $("ordersList").innerHTML=rows.length?rows.map(o=>{const d=deliveryById(o.delivery_id);return '<div class="order-row"><div class="section-title"><div><strong>Pedido '+esc(String(o.id).slice(0,8).toUpperCase())+'</strong><div class="muted">'+esc(d?.name||"DELIVERY")+' · '+esc(formatDate(o.created_at))+'</div></div><span class="pill">'+esc(statusNames[o.status]||o.status)+'</span></div><div><strong>Total '+money(o.total)+'</strong></div><div class="row-actions">'+(d?.slug?'<a class="btn btn-muted" href="'+esc(orderLink(o))+'">Ver detalle</a><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Comprar nuevamente</a>':"")+'</div></div>'}).join(""):'<div class="empty">No hay pedidos para mostrar.</div>';
+ const filter=$("deliveryFilter").value;
+ const rows=filter==="__DIRECT__"?orders.filter(o=>o.order_channel==="DIRECT_LOCAL"):(filter?orders.filter(o=>o.delivery_id===filter):orders);
+ $("ordersList").innerHTML=rows.length?rows.map(o=>{
+   const direct=o.order_channel==="DIRECT_LOCAL",d=deliveryById(o.delivery_id),l=directLocalById(o.origin_local_id);
+   const source=direct?(l?.name||"LOCAL"):(d?.name||"DELIVERY");
+   const channel=direct?"Compra directa":"Mediante DELIVERY";
+   const detail=direct?'<a class="btn btn-muted" href="pedido-directo.html?order='+encodeURIComponent(o.id)+'">Ver detalle</a>':(d?.slug?'<a class="btn btn-muted" href="'+esc(orderLink(o))+'">Ver detalle</a>':"");
+   const again=direct&&l?.slug?'<a class="btn btn-muted" href="tienda.html?local='+encodeURIComponent(l.slug)+'&src=htpweb">Comprar nuevamente</a>':(!direct&&d?.slug?'<a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Comprar nuevamente</a>':"");
+   return '<div class="order-row"><div class="section-title"><div><strong>Pedido '+esc(String(o.id).slice(0,8).toUpperCase())+'</strong><div class="muted">'+esc(source)+' · '+esc(channel)+' · '+esc(formatDate(o.created_at))+'</div></div><span class="pill">'+esc(statusNames[o.status]||o.status)+'</span></div><div><strong>Total '+money(o.total)+'</strong></div><div class="row-actions">'+detail+again+'</div></div>';
+ }).join(""):'<div class="empty">No hay pedidos para mostrar.</div>';
 }
 function renderAddresses(){
  $("addressesList").innerHTML=addresses.length?addresses.map(a=>'<div class="address-row"><div class="section-title"><div><strong>'+esc(a.label)+'</strong>'+(a.is_default?' <span class="pill">Predeterminada</span>':'')+'<div>'+esc(a.address)+'</div>'+(a.reference?'<div class="muted">'+esc(a.reference)+'</div>':'')+(a.latitude!=null&&a.longitude!=null?'<div class="muted">Ubicación: '+esc(a.latitude)+', '+esc(a.longitude)+'</div>':'')+'</div></div><div class="row-actions"><button class="btn btn-muted" data-edit="'+esc(a.id)+'">Editar</button>'+(a.is_default?'':'<button class="btn btn-muted" data-default="'+esc(a.id)+'">Hacer predeterminada</button>')+'<button class="btn btn-danger" data-disable="'+esc(a.id)+'">Desactivar</button></div></div>').join(""):'<div class="empty">Todavía no tienes direcciones guardadas. Usa <strong>+ Agregar dirección</strong> para crear la primera.</div>';

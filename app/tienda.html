@@ -73,7 +73,7 @@ async function trackLocal(eventType,productId=null,metadata={}){
   });
  }catch(e){console.warn("Analytics LOCAL:",e?.message||e);}
 }
-function scope(){return store?.local?.id?"LOCAL:"+store.local.id:"LOCAL:UNKNOWN";}
+function scope(){return source==="htpweb"?"HTPWEB":(store?.local?.id?"LOCAL:"+store.local.id:"LOCAL:UNKNOWN");}
 function money(v){return "$"+Number(v||0).toFixed(2);}
 function itemMatcher(p,v=null){return{local_id:store.local.id,product_id:p.id,variant_id:v?.id||null};}
 function stockFor(p,v=null){return inventory.find(x=>x.product_id===p.id&&(x.variant_id||null)===(v?.id||null));}
@@ -226,6 +226,10 @@ async function init(){
    $("search").oninput=renderProducts;
    $("cartBtn").onclick=()=>{
      trackLocal("CART_VIEW",null,{action:"open"});
+     if(source==="htpweb"){
+       location.href="carrito-general.html";
+       return;
+     }
      const next=new URL("tienda-carrito.html",location.href);
      next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
      location.href=next.toString();

@@ -5,7 +5,8 @@
 <title>HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./config/supabase.js"></script>
-<link rel="stylesheet" href="./assets/app.css?v=20261003-platform1">
+<script src="./config/cart.js"></script>
+<link rel="stylesheet" href="./assets/app.css?v=20261003-platform2">
 <style>
 .platform{max-width:1180px;margin:auto;padding:20px 14px 52px}.platform-head{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
 .platform-brand h1{margin:0;font-size:2rem}.platform-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -23,7 +24,7 @@
 <main class="platform">
 <section class="card">
 <div class="platform-head"><div class="platform-brand"><h1>HTPWEB</h1><div class="muted">Negocios, productos y servicios en una sola plataforma.</div></div>
-<div class="platform-actions"><a id="accountLink" class="btn btn-dark" href="./app/acceso.html?return=../index.html">Acceder / Crear cuenta</a><a id="qaProfilesLink" class="btn btn-muted hidden" href="./app/perfiles-prueba.html">Perfiles de prueba</a><a id="adminLink" class="btn btn-muted hidden" href="./admin/index.html">Administrar</a></div></div>
+<div class="platform-actions"><a class="btn btn-primary" href="./app/carrito-general.html">🛒 Carrito <span id="cartCount">0</span></a><a id="accountLink" class="btn btn-dark" href="./app/acceso.html?return=../index.html">Acceder / Crear cuenta</a><a id="qaProfilesLink" class="btn btn-muted hidden" href="./app/perfiles-prueba.html">Perfiles de prueba</a><a id="adminLink" class="btn btn-muted hidden" href="./admin/index.html">Administrar</a></div></div>
 <p class="muted intro-note">Puedes explorar HTPWEB sin registrarte. Al confirmar una compra, HTPWEB te mostrará los canales disponibles: compra directa al negocio cuando esté administrado o uno de sus DELIVERY vinculados.</p>
 <input id="search" class="search directory-search" type="search" placeholder="Buscar negocio o producto...">
 <div id="sectors" class="sector-row"></div><div id="categories" class="category-row"></div>
@@ -73,11 +74,13 @@ function renderDirectory(){
    (Number(local.delivery_count||0)>0?'<span class="badge delivery">'+Number(local.delivery_count)+' DELIVERY disponible(s)</span>':'')+'</div>'+
    products.map(p=>'<div class="product-mini"><span>'+esc(p.name)+'</span><strong>'+money(p.price)+'</strong></div>').join("")+
    '<div class="directory-actions"><a class="btn btn-dark" href="./app/local-general.html?local='+encodeURIComponent(local.id)+'">Ver negocio</a>'+
-   (local.claimed?'<a class="btn btn-muted" href="./app/tienda.html?local='+encodeURIComponent(local.slug||local.id)+'&src=htpweb">Comprar directo</a>':'')+'</div></div></article>';
+   (local.claimed?'<a class="btn btn-muted" href="./app/tienda.html?local='+encodeURIComponent(local.slug||local.id)+'&src=htpweb">Comprar</a>':'')+'</div></div></article>';
  }).join(""):'<div class="card empty-state">No encontramos negocios con estos filtros.</div>';
 }
+function updateCartCount(){$("cartCount").textContent=carritoCantidad("HTPWEB")}
 $("search").oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>loadDirectory().catch(e=>showError(e.message)),300)};
-async function init(){try{await Promise.all([loadSession(),loadFilters()]);await loadDirectory()}catch(e){console.error(e);showError(e.message||"No se pudo cargar HTPWEB.")}}
+window.addEventListener("htpweb:cart",updateCartCount);
+async function init(){try{updateCartCount();await Promise.all([loadSession(),loadFilters()]);await loadDirectory()}catch(e){console.error(e);showError(e.message||"No se pudo cargar HTPWEB.")}}
 init();
 </script>
 </body></html>
