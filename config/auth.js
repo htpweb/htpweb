@@ -68,3 +68,57 @@ async function cerrarSesion() {
   const { error } = await supabaseClient.auth.signOut();
   if (error) throw error;
 }
+
+
+function _htpwebAuthPageName() {
+  return (location.pathname.split("/").pop() || "").toLowerCase();
+}
+
+function _htpwebAuthHeaderAllowed() {
+  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","tienda-carrito.html","carrito.html"]);
+  return !excluded.has(_htpwebAuthPageName());
+}
+
+function _htpwebAuthActiveHref() {
+  const page=_htpwebAuthPageName();
+  if (page==="mi-cuenta.html") return "account";
+  if (["crear-local.html","reclamar-local.html","mis-reclamaciones.html"].includes(page)) return "business";
+  return "";
+}
+
+async function instalarEncabezadoHTPWEB() {
+  if (!_htpwebAuthHeaderAllowed()) return;
+  if (document.querySelector("[data-htpweb-auth-header]")) return;
+  let session=null;
+  try { session=await obtenerSesionActual(); } catch { return; }
+  if (!session?.user) return;
+
+  if (!document.querySelector('link[href*="authenticated-shell.css"]')) {
+    const link=document.createElement("link");
+    link.rel="stylesheet";
+    link.href="../assets/authenticated-shell.css?v=20261003-1";
+    document.head.appendChild(link);
+  }
+
+  const active=_htpwebAuthActiveHref();
+  const header=document.createElement("header");
+  header.className="htp-auth-header";
+  header.dataset.htpwebAuthHeader="1";
+  header.innerHTML=
+    '<div class="htp-auth-header-inner">'+
+      '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
+      '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
+        '<a href="../index.html">Inicio</a>'+
+        '<a href="../explorar-negocios.html">Explorar locales</a>'+
+        '<a class="'+(active==="business"?"active":"")+'" href="mi-cuenta.html#businesses">Mis negocios</a>'+
+      '</nav>'+
+      '<a class="htp-auth-account '+(active==="account"?"active":"")+'" href="mi-cuenta.html"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span></a>'+
+    '</div>';
+  document.body.prepend(header);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", instalarEncabezadoHTPWEB);
+} else {
+  instalarEncabezadoHTPWEB();
+}
