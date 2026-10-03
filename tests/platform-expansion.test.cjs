@@ -7,11 +7,12 @@ const root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim())}
 
-test("general HTPWEB index is public directory by sector",()=>{
+test("general HTPWEB index presents platform value and public businesses",()=>{
  const html=read("index.html");
- assert.match(html,/public_htpweb_directory_filters/);
+ assert.match(html,/Haz que tu negocio venda, se organice y/);
+ assert.match(html,/HTPWEB te da un espacio propio/);
  assert.match(html,/public_htpweb_directory/);
- assert.match(html,/Puedes explorar HTPWEB sin registrarte/);
+ assert.match(html,/Qué puede hacer HTPWEB con/);
  assert.match(html,/local-general\.html/);
  assert.match(html,/No reclamado/);
 });
