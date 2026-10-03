@@ -1006,10 +1006,8 @@
             </select>
           </div>
         </div>
-        <label class="row" style="margin-top:12px">
-          <input id="userManagerDeliveryConvert" type="checkbox" style="width:auto">
-          <span>Convertir la cuenta CLIENT si tiene un CUSTOMER activo</span>
-        </label>
+        <p class="muted" style="margin-top:12px">La cuenta conserva su perfil de cliente. HTPWEB agrega este acceso como un modo administrativo adicional.</p>
+        <input id="userManagerDeliveryConvert" type="checkbox" class="hidden">
         <button class="btn-primary" id="assignDeliveryUserBtn" style="margin-top:12px">Asignar al DELIVERY</button>
       </div>
 
@@ -1021,16 +1019,20 @@
             <select id="userManagerLocal"></select>
           </div>
         </div>
-        <label class="row" style="margin-top:12px">
-          <input id="userManagerLocalConvert" type="checkbox" style="width:auto">
-          <span>Convertir la cuenta CLIENT si tiene un CUSTOMER activo</span>
-        </label>
+        <p class="muted" style="margin-top:12px">La cuenta conserva su perfil de cliente y puede administrar varios LOCAL desde la misma cuenta.</p>
+        <input id="userManagerLocalConvert" type="checkbox" class="hidden">
         <button class="btn-primary" id="assignLocalUserBtn" style="margin-top:12px">Asignar al LOCAL</button>
       </div>
 
       <div class="card">
         <h3>Accesos actuales de la cuenta</h3>
         <div id="userManagerAssignments"></div>
+      </div>
+
+      <div class="card">
+        <h3>Solicitudes para crear DELIVERY</h3>
+        <p class="muted">Revisa las solicitudes enviadas desde cuentas HTPWEB. Al aprobar se crea el DELIVERY en estado de configuración, todavía inactivo.</p>
+        <div id="deliveryCreationRequestRows"><div class="muted">Cargando...</div></div>
       </div>
     </section>
 

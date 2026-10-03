@@ -4358,7 +4358,7 @@ async function applyRequest(id, type) {
   try {
     let convert = false;
     if (type === "CLAIM_LOCAL") {
-      if (!confirm("Este CLAIM convertirá la cuenta a LOCAL_ADMIN. Su perfil de compra CUSTOMER se conservará activo. ¿Confirmar?")) return;
+      if (!confirm("Este CLAIM agregará acceso de administrador a este LOCAL. La misma cuenta seguirá pudiendo comprar como cliente y conservará otros accesos autorizados. ¿Confirmar?")) return;
       convert = true;
     }
 
@@ -4434,8 +4434,8 @@ function renderManagedUser() {
     return;
   }
 
-  const canDelivery = ["CLIENT","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(user.role_code);
-  const canLocal = ["CLIENT","LOCAL_ADMIN"].includes(user.role_code);
+  const canDelivery = user.role_code !== "MASTER";
+  const canLocal = user.role_code !== "MASTER";
 
   summary.innerHTML = `
     <div><strong>Nombre:</strong> ${esc(user.full_name || "—")}</div>
@@ -4497,8 +4497,43 @@ async function loadUsersModule() {
       : '<option value="">No hay LOCAL</option>';
 
     renderUserOptions();
+    await loadDeliveryCreationRequests();
   } catch (e) {
     message(e.message || "No se pudieron cargar los usuarios.", "error");
+  }
+}
+
+async function loadDeliveryCreationRequests() {
+  if (state.role !== "MASTER" || !$("deliveryCreationRequestRows")) return;
+  const rows = await rpc("master_list_delivery_creation_requests");
+  const items = Array.isArray(rows) ? rows : [];
+  $("deliveryCreationRequestRows").innerHTML = items.length ? items.map(item => {
+    const actions = ["PENDING","NEEDS_INFO"].includes(item.status)
+      ? '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+
+        '<button class="btn-primary" data-delivery-request-approve="'+esc(item.id)+'">Aprobar</button>'+
+        '<button class="btn-muted" data-delivery-request-info="'+esc(item.id)+'">Pedir información</button>'+
+        '<button class="btn-danger" data-delivery-request-reject="'+esc(item.id)+'">Rechazar</button></div>'
+      : "";
+    return '<div class="request-card"><div class="row between"><div><strong>'+esc(item.name)+'</strong><div class="muted">'+esc(item.requester_name||item.requested_by)+'</div></div><span class="badge">'+esc(item.status)+'</span></div>'+
+      '<div class="request-details"><div><strong>Ciudad:</strong> '+esc(item.city_name||"—")+'</div><div><strong>Teléfono:</strong> '+esc(item.phone||"—")+'</div><div><strong>WhatsApp:</strong> '+esc(item.whatsapp||"—")+'</div><div><strong>Descripción:</strong> '+esc(item.description||"—")+'</div></div>'+
+      (item.review_note?'<div class="muted">Nota: '+esc(item.review_note)+'</div>':'')+actions+'</div>';
+  }).join("") : '<div class="muted">No hay solicitudes DELIVERY.</div>';
+  $("deliveryCreationRequestRows").querySelectorAll("[data-delivery-request-approve]").forEach(b=>b.onclick=()=>reviewDeliveryCreationRequest(b.dataset.deliveryRequestApprove,"APPROVED"));
+  $("deliveryCreationRequestRows").querySelectorAll("[data-delivery-request-info]").forEach(b=>b.onclick=()=>reviewDeliveryCreationRequest(b.dataset.deliveryRequestInfo,"NEEDS_INFO"));
+  $("deliveryCreationRequestRows").querySelectorAll("[data-delivery-request-reject]").forEach(b=>b.onclick=()=>reviewDeliveryCreationRequest(b.dataset.deliveryRequestReject,"REJECTED"));
+}
+
+async function reviewDeliveryCreationRequest(id,status) {
+  try {
+    const noteRaw = prompt(status==="APPROVED" ? "Documenta la revisión y aprobación:" : "Nota para el solicitante:");
+    if (noteRaw === null) return;
+    const note = noteRaw.trim();
+    if (status==="APPROVED" && !note) throw new Error("La aprobación requiere una nota de revisión.");
+    await rpc("master_review_delivery_creation_request",{p_request_id:id,p_status:status,p_review_note:note||null});
+    message(status==="APPROVED" ? "DELIVERY creado en estado de configuración." : "Solicitud DELIVERY actualizada.");
+    await Promise.all([loadDeliveryCreationRequests(),loadScopes()]);
+  } catch (e) {
+    message(e.message || "No se pudo revisar la solicitud DELIVERY.","error");
   }
 }
 
@@ -4512,15 +4547,6 @@ async function assignDeliveryUser() {
     const convertCustomer = $("userManagerDeliveryConvert").checked;
 
     if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
-
-    if (user.role_code === "CLIENT" && user.active_customer && !convertCustomer) {
-      throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión explícita para continuar.");
-    }
-
-    if (user.role_code === "CLIENT" && user.active_customer && convertCustomer) {
-      const ok = confirm("La conversión desactivará el CUSTOMER activo de esta cuenta para convertirla en usuario del DELIVERY. ¿Continuar?");
-      if (!ok) return;
-    }
 
     await rpc("master_assign_delivery_user", {
       p_user_id: user.user_id,
@@ -4546,15 +4572,6 @@ async function assignLocalUser() {
     const convertCustomer = $("userManagerLocalConvert").checked;
 
     if (!localId) throw new Error("Selecciona un LOCAL.");
-
-    if (user.role_code === "CLIENT" && user.active_customer && !convertCustomer) {
-      throw new Error("Esta cuenta tiene un CUSTOMER activo. Marca la conversión explícita para continuar.");
-    }
-
-    if (user.role_code === "CLIENT" && user.active_customer && convertCustomer) {
-      const ok = confirm("La conversión desactivará el CUSTOMER activo de esta cuenta para convertirla en LOCAL_ADMIN. ¿Continuar?");
-      if (!ok) return;
-    }
 
     await rpc("master_assign_local_admin", {
       p_user_id: user.user_id,

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crear DELIVERY | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script><script src="../config/auth.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261003-platform1">
+<style>.shell{max-width:760px;margin:auto;padding:20px 14px 50px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.status-row{padding:12px 0;border-top:1px solid #e5e7eb}@media(max-width:620px){.grid{grid-template-columns:1fr}}</style>
+</head><body><main class="shell">
+<div class="row between"><div><h1>Crear DELIVERY</h1><p class="muted">Solicita un nuevo servicio DELIVERY usando tu misma cuenta HTPWEB.</p></div><a class="btn btn-muted" href="mi-cuenta.html">← Mi cuenta</a></div>
+<div id="message" class="hidden"></div>
+<section class="card">
+<p class="muted">HTPWEB revisará la solicitud. Al aprobarla se crea el DELIVERY en estado de configuración; MASTER debe asignar plan y completar su activación antes de operar.</p>
+<div class="grid"><div><label>Nombre del DELIVERY *</label><input id="name"></div><div><label>Ciudad / área principal</label><input id="city"></div></div>
+<div class="grid" style="margin-top:12px"><div><label>Teléfono</label><input id="phone" type="tel"></div><div><label>WhatsApp</label><input id="whatsapp" type="tel"></div></div>
+<label style="margin-top:12px">Descripción</label><textarea id="description" rows="3"></textarea>
+<button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Enviar solicitud</button>
+</section>
+<section class="card"><h2>Mis solicitudes DELIVERY</h2><div id="requests"><div class="muted">Cargando…</div></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
+async function loadRequests(){
+ const {data,error}=await supabaseClient.rpc("my_delivery_creation_requests");if(error)throw error;const rows=Array.isArray(data)?data:[];
+ $("requests").innerHTML=rows.length?rows.map(r=>'<div class="status-row"><strong>'+esc(r.name)+'</strong><div>'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[r.status]||r.status)+'</div><div class="muted">Enviada: '+new Date(r.created_at).toLocaleString("es-EC")+(r.review_deadline?" · respuesta prevista hasta "+new Date(r.review_deadline).toLocaleDateString("es-EC"):"")+'</div>'+(r.review_note?'<div>Comentario HTPWEB: '+esc(r.review_note)+'</div>':'')+(r.applied_at?'<div class="success">DELIVERY creado; falta completar configuración y activación.</div>':'')+'</div>').join(""):'<div class="muted">No tienes solicitudes DELIVERY.</div>';
+}
+async function submit(){
+ try{
+  const name=$("name").value.trim();if(!name)throw new Error("Escribe el nombre del DELIVERY.");
+  const {error}=await supabaseClient.rpc("submit_my_delivery_creation_request",{p_name:name,p_description:$("description").value.trim(),p_phone:$("phone").value.trim(),p_whatsapp:$("whatsapp").value.trim(),p_city_name:$("city").value.trim()});if(error)throw error;
+  msg("Solicitud DELIVERY enviada. HTPWEB la revisará antes de habilitar su operación.");
+  ["name","description","phone","whatsapp","city"].forEach(id=>$(id).value="");await loadRequests();
+ }catch(e){msg(e.message||"No se pudo enviar la solicitud.","error")}
+}
+async function init(){const user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-delivery.html");return}await loadRequests();$("submitBtn").onclick=submit}
+init().catch(e=>msg(e.message||"No se pudo abrir el formulario.","error"));
+</script></body></html>
