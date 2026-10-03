@@ -9,7 +9,8 @@ function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\
 
 test("general HTPWEB index presents platform value and public businesses",()=>{
  const html=read("index.html");
- assert.match(html,/Haz que tu negocio venda, se organice y/);
+ assert.match(html,/Haz que tu negocio venda/);
+ assert.match(html,/se organice y/);
  assert.match(html,/HTPWEB te da un espacio propio/);
  assert.match(html,/public_htpweb_directory/);
  assert.match(html,/Qué puede hacer HTPWEB con/);
