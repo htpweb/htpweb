@@ -2351,25 +2351,51 @@ function localStoreUrl(){
   return "https://htpweb.github.io/htpweb/app/tienda.html?local="+encodeURIComponent(key);
 }
 
+function renderLocalStorePreview(){
+  const box=$("localStorePreview");if(!box)return;
+  const preset=$("localStorePreset")?.selectedOptions?.[0];
+  const theme=$("localStoreTheme")?.selectedOptions?.[0];
+  const primary=theme?.dataset?.primary||$("localStoreAccent")?.value||"#1466E8";
+  const secondary=theme?.dataset?.secondary||"#0B1730";
+  const background=theme?.dataset?.background||"#F6F9FF";
+  const surface=theme?.dataset?.surface||"#FFFFFF";
+  const text=theme?.dataset?.text||"#0B1730";
+  const hero=$("localHeroTitle")?.value.trim()||state.localProfileRecord?.name||"Tu negocio";
+  const subtitle=$("localHeroSubtitle")?.value.trim()||"Tu propuesta de valor, clara y profesional.";
+  const catalog=$("localCatalogTitle")?.value.trim()||preset?.dataset?.catalog||"Productos / Servicios";
+  const about=$("localAboutTitle")?.value.trim()||"Quiénes somos";
+  const contact=$("localContactTitle")?.value.trim()||"Contacto";
+  box.innerHTML='<div style="background:'+esc(background)+';color:'+esc(text)+';padding:14px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong>'+esc(state.localProfileRecord?.name||"LOCAL")+'</strong>'+
+    '<small>Inicio · '+($("localShowAbout")?.checked?esc(about)+' · ':"")+($("localShowCatalog")?.checked?esc(catalog)+' · ':"")+($("localShowContact")?.checked?esc(contact):"")+'</small></div>'+
+    '<div style="margin-top:12px;background:'+esc(surface)+';border-radius:12px;padding:16px;border-left:5px solid '+esc(primary)+'"><strong style="font-size:1.15rem">'+esc(hero)+'</strong><div style="color:'+esc(secondary)+';margin-top:4px">'+esc(subtitle)+'</div></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px">'+
+    ['Inicio',catalog,contact].map((x,i)=>'<div style="background:'+esc(surface)+';border-radius:10px;padding:10px;border:1px solid '+esc(primary)+'22"><small>'+esc(x)+'</small><div style="height:'+(i===0?22:34)+'px;background:'+esc(primary)+'18;border-radius:6px;margin-top:6px"></div></div>').join("")+
+    '</div></div>';
+}
 function syncLocalPresetHelp(){
   const option=$("localStorePreset")?.selectedOptions?.[0];
   if($("localStorePresetHelp"))$("localStorePresetHelp").textContent=option?.dataset?.help||"";
+  renderLocalStorePreview();
 }
 
 async function loadLocalCommerce(){
   if(state.role!=="LOCAL_ADMIN")return;
   const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
   if(!localId)return;
-  const [snapshot,presetRes,deliveryOptions]=await Promise.all([
+  const [snapshot,presetRes,themeRes,deliveryOptions]=await Promise.all([
     rpc("local_commerce_snapshot",{p_local_id:localId}),
-    supabaseClient.from("local_storefront_presets").select("code,name,business_fit,description,default_catalog_mode,default_card_density").eq("active",true).order("display_order"),
+    supabaseClient.from("local_storefront_presets").select("code,name,business_fit,description,layout_family,default_catalog_mode,default_card_density,config").eq("active",true).order("display_order"),
+    supabaseClient.from("local_storefront_themes").select("code,name,business_fit,primary_color,secondary_color,background_color,surface_color,text_color").eq("active",true).order("display_order"),
     rpc("my_local_delivery_options",{p_local_id:localId})
   ]);
-  if(presetRes.error)throw presetRes.error;
+  if(presetRes.error)throw presetRes.error;if(themeRes.error)throw themeRes.error;
   const settings=snapshot?.settings||{};
-  const presets=presetRes.data||[];
-  $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}">${esc(p.name)}</option>`).join("");
+  const presets=presetRes.data||[],themes=themeRes.data||[];
+  $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}" data-catalog="${esc(p.config?.catalog_label||"Productos / Servicios")}">${esc(p.name)}</option>`).join("");
   $("localStorePreset").value=settings.preset_code||"GENERAL_MODERN";
+  $("localStoreTheme").innerHTML=themes.map(t=>`<option value="${esc(t.code)}" data-primary="${esc(t.primary_color)}" data-secondary="${esc(t.secondary_color)}" data-background="${esc(t.background_color)}" data-surface="${esc(t.surface_color)}" data-text="${esc(t.text_color)}" data-help="${esc(t.business_fit||"")}">${esc(t.name)}</option>`).join("");
+  $("localStoreTheme").value=settings.theme_code||"HTPWEB_BLUE";
   $("localStoreCatalogMode").value=settings.catalog_mode||"CARDS";
   $("localStoreCardDensity").value=settings.card_density||"PHOTO";
   $("localStoreOrderMode").value=settings.order_mode||"WHATSAPP_ONLY";
@@ -2379,6 +2405,20 @@ async function loadLocalCommerce(){
   $("localStorePickup").checked=settings.pickup_enabled!==false;
   $("localStoreOwnDelivery").checked=!!settings.own_delivery_enabled;
   $("localStoreHtpDelivery").checked=settings.htpweb_delivery_enabled!==false;
+  const content=settings.content_config||{};
+  $("localHeroTitle").value=content.hero_title||"";
+  $("localHeroSubtitle").value=content.hero_subtitle||"";
+  $("localAboutTitle").value=content.about_title||"Quiénes somos";
+  $("localAboutText").value=content.about_text||"";
+  $("localCatalogTitle").value=content.catalog_title||"";
+  $("localContactTitle").value=content.contact_title||"Contacto";
+  $("localShowAbout").checked=content.show_about!==false;
+  $("localShowCatalog").checked=content.show_catalog!==false;
+  $("localShowContact").checked=content.show_contact!==false;
+  $("localShowPromotions").checked=content.show_promotions!==false;
+  const themeOption=$("localStoreTheme").selectedOptions?.[0];
+  $("localStoreThemeHelp").textContent=themeOption?.dataset?.help||"";
+  if(!settings.accent_color&&themeOption?.dataset?.primary)$("localStoreAccent").value=themeOption.dataset.primary;
 
   const options=Array.isArray(deliveryOptions)?deliveryOptions:[];
   const linked=options.filter(x=>x.linked);
@@ -2411,7 +2451,23 @@ async function saveLocalCommerce(){
       p_accent_color:$("localStoreAccent").value||null,
       p_surface_style:$("localStoreSurfaceStyle").value
     });
-    message("Configuración de tienda guardada.");
+    await rpc("save_my_local_storefront_content",{
+      p_local_id:localId,
+      p_theme_code:$("localStoreTheme").value||"HTPWEB_BLUE",
+      p_content_config:{
+        hero_title:$("localHeroTitle").value.trim(),
+        hero_subtitle:$("localHeroSubtitle").value.trim(),
+        about_title:$("localAboutTitle").value.trim()||"Quiénes somos",
+        about_text:$("localAboutText").value.trim(),
+        catalog_title:$("localCatalogTitle").value.trim(),
+        contact_title:$("localContactTitle").value.trim()||"Contacto",
+        show_about:$("localShowAbout").checked,
+        show_catalog:$("localShowCatalog").checked,
+        show_contact:$("localShowContact").checked,
+        show_promotions:$("localShowPromotions").checked
+      }
+    });
+    message("Página web y configuración comercial guardadas.");
     await loadLocalCommerce();
     return result;
   }catch(e){message(e.message||"No se pudo guardar la tienda.","error");}
@@ -11819,6 +11875,15 @@ function bindEvents() {
   if ($("saveLocalCommerceBtn")) $("saveLocalCommerceBtn").onclick = saveLocalCommerce;
   if ($("requestLocalDeliveryBtn")) $("requestLocalDeliveryBtn").onclick = requestLocalDelivery;
   if ($("localStorePreset")) $("localStorePreset").onchange = syncLocalPresetHelp;
+  if ($("localStoreTheme")) $("localStoreTheme").onchange = () => {
+    const o=$("localStoreTheme").selectedOptions?.[0];
+    $("localStoreThemeHelp").textContent=o?.dataset?.help||"";
+    if(o?.dataset?.primary)$("localStoreAccent").value=o.dataset.primary;
+    renderLocalStorePreview();
+  };
+  ["localStoreAccent","localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText","localCatalogTitle","localContactTitle","localShowAbout","localShowCatalog","localShowContact","localShowPromotions"].forEach(id=>{
+    if($(id))$(id).addEventListener(id.startsWith("localShow")?"change":"input",renderLocalStorePreview);
+  });
   if ($("openLocalStoreBtn")) $("openLocalStoreBtn").onclick = () => {
     const url=localStoreUrl();
     if(url)window.open(url,"_blank","noopener");
