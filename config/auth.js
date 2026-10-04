@@ -112,7 +112,7 @@ async function instalarEncabezadoHTPWEB() {
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="../index.html">Inicio</a>'+
         '<a href="../como-funciona.html">Cómo funciona</a>'+
-        '<a href="../explorar-negocios.html">Locales</a>'+
+        '<a href="../explorar-negocios.html">Explorar locales</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
@@ -165,7 +165,7 @@ async function prepararEncabezadoDeliveryAdmin(){
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="../index.html">Inicio</a>'+
         '<a href="../como-funciona.html">Cómo funciona</a>'+
-        '<a href="../explorar-negocios.html">Locales</a>'+
+        '<a href="../explorar-negocios.html">Explorar locales</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="adminHtpAccountTrigger" class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
