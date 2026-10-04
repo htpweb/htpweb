@@ -33,7 +33,6 @@
 <a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
 <a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
 <a class="account-card nav-card" href="#plans"><div class="muted">Planes y suscripciones</div><div id="plansCount" class="metric">—</div><div>Revisar cobertura y límites</div></a>
-<a class="account-card nav-card" href="#settings"><div class="muted">Configuración</div><div class="metric">⚙</div><div>Tema y preferencias</div></a>
 
 <section class="account-card full" id="businesses">
 <div class="section-title"><div><h2>Mis negocios</h2><p class="muted">LOCAL que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
@@ -53,15 +52,6 @@
 <div class="section-title"><div><h2>Planes y suscripciones</h2><p class="muted">Revisa el plan actual de tus DELIVERY, zonas incluidas y opciones para ampliar cobertura.</p></div><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
 <div id="currentPlans"><div class="muted">Cargando suscripciones…</div></div>
 <div id="availablePlans" style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb"></div>
-</section>
-
-<section class="account-card full" id="settings">
-<div class="section-title"><div><h2>Configuración</h2><p class="muted">Personaliza cómo ves HTPWEB. La identidad pública de cada LOCAL o DELIVERY se configura en su propio panel.</p></div></div>
-<div class="profile-grid" style="margin-top:12px">
-  <div><label>Tema de HTPWEB</label><select id="accountTheme"><option value="HTPWEB">HTPWEB</option><option value="OCEAN">Océano</option><option value="SKY">Cielo</option><option value="FOREST">Bosque</option><option value="SUNSET">Atardecer</option><option value="PURPLE">Púrpura</option><option value="TURQUOISE">Turquesa</option><option value="GRAPHITE">Grafito</option></select></div>
-  <div><label>Vista previa</label><div id="themePreview" style="height:44px;border-radius:12px;border:1px solid #dbe3ee"></div></div>
-</div>
-<div class="row-actions"><button id="saveThemeBtn" class="btn btn-primary" type="button">Guardar tema</button></div>
 </section>
 
 <section class="account-card wide" id="profile">
@@ -150,15 +140,6 @@ function renderPlans(){
  $("currentPlans").innerHTML=current.length?current.map(p=>'<div class="delivery-row"><div class="section-title"><div><strong>'+esc(p.delivery_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div><span class="pill">'+esc(p.zones_active||0)+' / '+esc(p.zones_max||0)+' zonas</span></div>'+(p.trial_ends_at?'<div class="muted">Evaluación hasta '+esc(new Date(p.trial_ends_at).toLocaleDateString("es-EC"))+'</div>':'')+'</div>').join(""):'<div class="empty">Todavía no tienes suscripciones DELIVERY activas.</div>';
  $("availablePlans").innerHTML='<h3 style="margin:0 0 10px">Planes disponibles</h3>'+(available.length?'<div class="profile-grid">'+available.map(p=>'<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px"><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div><div style="margin-top:8px"><strong>'+money(p.price)+'</strong> · hasta '+esc(p.zones_max||0)+' zonas</div></div>').join("")+'</div>':'<div class="muted">No hay planes adicionales disponibles.</div>');
 }
-const accountThemes={HTPWEB:"#e53935",OCEAN:"#1565c0",SKY:"#0288d1",FOREST:"#2e7d32",SUNSET:"#ef6c00",PURPLE:"#7b1fa2",TURQUOISE:"#00897b",GRAPHITE:"#455a64"};
-function applyAccountTheme(key){
- const theme=accountThemes[key]?key:"HTPWEB";
- localStorage.setItem("HTPWEB_ACCOUNT_THEME",theme);
- if(window.htpBootstrapApplyTheme)window.htpBootstrapApplyTheme(theme);
- $("accountTheme").value=theme;
- $("themePreview").style.background='linear-gradient(90deg,'+accountThemes[theme]+',#ffffff)';
-}
-function initAccountTheme(){applyAccountTheme(localStorage.getItem("HTPWEB_ACCOUNT_THEME")||"HTPWEB")}
 async function ensureCustomer(){
  if(customerId)return customerId;
  const name=$("fullName").value.trim()||user.user_metadata?.full_name||"";const phone=$("phone").value.trim()||user.user_metadata?.phone||"";
@@ -272,11 +253,10 @@ async function init(){
  await loadIdentity();
  await Promise.all([loadCustomer(),loadClaims(),loadManagedEntities(),loadPlans()]);
  await loadAddresses();
- renderSummary();renderManagedEntities();renderDeliveries();renderOrders();renderAddresses();renderClaims();renderPlans();initAccountTheme();
+ renderSummary();renderManagedEntities();renderDeliveries();renderOrders();renderAddresses();renderClaims();renderPlans();
 }
 $("deliveryFilter").onchange=renderOrders;$("saveProfileBtn").onclick=saveProfile;$("passwordBtn").onclick=changePassword;
 $("newAddressBtn").onclick=()=>openAddressForm();$("cancelAddressBtn").onclick=closeAddressForm;$("useLocationBtn").onclick=captureAddressLocation;$("saveAddressBtn").onclick=saveAddress;$("clientModeBtn").onclick=switchClientMode;
-$("accountTheme").onchange=()=>applyAccountTheme($("accountTheme").value);$("saveThemeBtn").onclick=()=>{applyAccountTheme($("accountTheme").value);show("Tema guardado.")};
 $("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.href="acceso.html"};
 init().catch(e=>show(e.message||"No se pudo cargar Mi cuenta.","error"));
 </script>
