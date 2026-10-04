@@ -338,3 +338,9 @@ test("DELIVERY workspace reuses the HTPWEB account dropdown",()=>{
   assert.match(auth,/Locales/);
   assert.match(auth,/Abrir mi cuenta/);
 });
+
+test("account theme never recolors authenticated HTPWEB header",()=>{
+  const css=read("assets/app.css");
+  assert.match(css,/html\[data-delivery-theme\] body>header:not\(\.htp-auth-header\):not\(\.top\)/);
+  assert.doesNotMatch(css,/html\[data-delivery-theme\] header,/);
+});
