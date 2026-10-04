@@ -141,13 +141,17 @@ function renderPageSections(){
  $("catalogSection").classList.toggle("hidden",cfg.show_catalog===false);$("catalogNav").classList.toggle("hidden",cfg.show_catalog===false);
  $("projectsTitle").textContent=cfg.projects_title||"Proyectos";
  $("projectsText").textContent=cfg.projects_text||"";
- const showProjects=cfg.show_projects!==false&&projects.length>0;
+ const showProjects=cfg.show_projects!==false;
  $("projectsSection").classList.toggle("hidden",!showProjects);$("projectsNav").classList.toggle("hidden",!showProjects);
- $("projectsGrid").innerHTML=projects.map((p,i)=>'<article class="local-project-card"><img src="'+esc(p.image_url||"")+'" alt=""><span>Proyecto '+String(i+1).padStart(2,"0")+'</span></article>').join("");
+ $("projectsGrid").innerHTML=projects.length
+   ? projects.map((p,i)=>'<article class="local-project-card"><img src="'+esc(p.image_url||"")+'" alt=""><span>Proyecto '+String(i+1).padStart(2,"0")+'</span></article>').join("")
+   : '<div class="empty" style="grid-column:1/-1">Muy pronto compartiremos aquí nuestros proyectos, trabajos y experiencias.</div>';
  $("blogTitle").textContent=cfg.blog_title||"Blog";
- const showBlog=cfg.show_blog!==false&&blogPosts.length>0;
+ const showBlog=cfg.show_blog!==false;
  $("blogSection").classList.toggle("hidden",!showBlog);$("blogNav").classList.toggle("hidden",!showBlog);
- $("blogGrid").innerHTML=blogPosts.map(p=>'<article class="local-blog-card">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="">':'')+'<div class="local-blog-card-body"><small>'+esc(new Date(p.published_at).toLocaleDateString("es-EC"))+'</small><h3>'+esc(p.title)+'</h3><p>'+esc(p.excerpt||p.body||"")+'</p></div></article>').join("");
+ $("blogGrid").innerHTML=blogPosts.length
+   ? blogPosts.map(p=>'<article class="local-blog-card">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="">':'')+'<div class="local-blog-card-body"><small>'+esc(new Date(p.published_at).toLocaleDateString("es-EC"))+'</small><h3>'+esc(p.title)+'</h3><p>'+esc(p.excerpt||p.body||"")+'</p></div></article>').join("")
+   : '<div class="empty" style="grid-column:1/-1">Muy pronto compartiremos novedades desde este espacio.</div>';
  $("contactTitle").textContent=cfg.contact_title||"Contacto";$("contactNav").textContent=cfg.contact_title||"Contacto";
  const contacts=[["Dirección",l.address],["Teléfono",l.phone],["WhatsApp",l.whatsapp]].filter(x=>x[1]);
  $("contactGrid").innerHTML=contacts.map(([name,value])=>'<div class="local-contact-item"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join("");
@@ -179,7 +183,7 @@ function renderProducts(){
  const q=$("search").value.trim().toLowerCase();
  const filtered=products.filter(p=>(!activeCategory||p.category_id===activeCategory)&&(!q||[p.name,p.description].some(v=>String(v||"").toLowerCase().includes(q))));
  $("products").className="local-grid "+(store.settings.card_density==="COMPACT"?"compact":"");
- if(!filtered.length){$("products").innerHTML='<div class="empty">No hay productos que coincidan.</div>';return;}
+ if(!filtered.length){$("products").innerHTML='<div class="empty">'+(products.length?'No hay productos que coincidan con la búsqueda.':'Estamos preparando nuestro catálogo de productos y servicios.')+'</div>';return;}
  $("products").innerHTML=filtered.map(p=>{
    const vs=variants.filter(v=>v.product_id===p.id);
    const baseStock=stockFor(p,null);
@@ -243,7 +247,12 @@ function addMixedPromotion(p){
 function renderPromotions(){
  const available=promotions.filter(p=>p.available_now);
  const enabled=$("promotionsSection").dataset.pageEnabled!=="0";
- $("promotionsSection").classList.toggle("hidden",!enabled||available.length===0);
+ $("promotionsSection").classList.toggle("hidden",!enabled);
+ if(!enabled)return;
+ if(!available.length){
+   $("promotions").innerHTML='<div class="empty">Muy pronto tendremos promociones y novedades para ti.</div>';
+   return;
+ }
  $("promotions").innerHTML=available.map(p=>{
    const items=Array.isArray(p.items)?p.items:[],subtitle=p.body||(items.map(i=>i.product_name).join(" · "));
    const price=p.promotion_price!=null?'<div class="price">'+money(p.promotion_price)+'</div>':"";
