@@ -517,9 +517,12 @@ async function refreshAll() {
     await loadDriverOrders();
     return;
   }
+
+  const ordersActive = $("section-orders")?.classList.contains("active");
+
   await Promise.all([
     loadOverview(),
-    loadOrders(),
+    ordersActive ? loadOrders() : Promise.resolve(),
     loadRequests(),
     state.role === "DELIVERY_ADMIN" && $("section-myplan")?.classList.contains("active")
       ? loadMyPlan()
