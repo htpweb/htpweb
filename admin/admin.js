@@ -3891,8 +3891,9 @@ async function loadOrderControlCenter({silent=false}={}){
     void orderControlLoadDriverTrail(selectedOrder);
     startOrderControlAutoRefresh();
   }catch(e){
-    if(!silent)message(e.message||"No se pudo cargar el centro de control.","error");
-    if($("ordersList"))$("ordersList").innerHTML=`<div class="message error">${esc(e.message||"No se pudo cargar el centro de control.")}</div>`;
+    const ordersStillActive=$("section-orders")?.classList.contains("active");
+    if(ordersStillActive&&!silent)message(e.message||"No se pudo cargar el centro de control.","error");
+    if(ordersStillActive&&$("ordersList"))$("ordersList").innerHTML=`<div class="message error">${esc(e.message||"No se pudo cargar el centro de control.")}</div>`;
   }finally{
     orderControlState.loading=false;
   }
@@ -10356,7 +10357,9 @@ async function loadDriverWorkspace(){
       }
     }
   }catch(e){
-    message(e.message||"No se pudo cargar Repartidores y despacho.","error");
+    if($("section-drivers")?.classList.contains("active")){
+      message(e.message||"No se pudo cargar Repartidores y despacho.","error");
+    }
   }
 }
 
