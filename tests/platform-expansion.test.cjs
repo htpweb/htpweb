@@ -166,7 +166,7 @@ test("authenticated app flows share the persistent HTPWEB navigation shell",()=>
   assert.match(auth,/instalarEncabezadoHTPWEB/);
   assert.match(auth,/Inicio/);
   assert.match(auth,/Cómo funciona/);
-  assert.match(auth,/Explorar locales/);
+  assert.match(auth,/>Locales<\\/a>/);
   assert.doesNotMatch(auth,/>Mis negocios</);
   assert.match(auth,/Mi cuenta/);
   assert.match(auth,/reclamar-local\.html/);
@@ -315,4 +315,20 @@ test("HTPWEB landing header stays white while DELIVERY headers can remain dark",
   assert.match(css,/body>header:not\(\.htp-auth-header\):not\(\.top\)/);
   assert.match(home,/app\.css\?v=20261004-headerwhite1/);
   assert.match(home,/<header class="top">/);
+});
+
+
+test("Mi cuenta loads the authenticated shell stylesheet directly",()=>{
+  const account=read("app/mi-cuenta.html");
+  assert.match(account,/authenticated-shell\.css\?v=20261004-shell3/);
+});
+
+test("DELIVERY workspace reuses the HTPWEB account dropdown",()=>{
+  const auth=read("config/auth.js");
+  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);
+  assert.match(auth,/adminHtpAccountTrigger/);
+  assert.match(auth,/Inicio/);
+  assert.match(auth,/Cómo funciona/);
+  assert.match(auth,/Locales/);
+  assert.match(auth,/Abrir mi cuenta/);
 });
