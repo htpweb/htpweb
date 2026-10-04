@@ -1,7 +1,7 @@
 *{box-sizing:border-box}
 :root{font-family:Inter,Arial,sans-serif;color:#202124;background:#f5f6f8;--brand-primary:#e53935;--brand-dark:#111111;--brand-accent:#e53935;--brand-on-primary:#fff;--brand-on-dark:#fff;--brand-soft:#fff3f2}
 body{margin:0;background:#f5f6f8;color:#202124}
-header{background:#111;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:30}
+body>header:not(.htp-auth-header){background:#111;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:30}
 .header-row{max-width:1120px;margin:auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
 .brand{font-weight:800;font-size:21px}
 .header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -1815,7 +1815,7 @@ body.has-htpweb-ad{
 .cart-action .mobile-action-icon{display:inline}
 
 @media(max-width:760px){
-  header{
+  body>header:not(.htp-auth-header){
     padding:8px 10px;
     min-height:60px;
   }
