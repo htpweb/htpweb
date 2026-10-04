@@ -8,6 +8,7 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
 <script src="../config/cart.js"></script>
+<script src="../config/ads.js?v=20261004-localshop1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
 <style>
 :root{--local-accent:#111827;--local-secondary:#475467;--local-bg:#f6f7f9;--local-surface:#fff;--local-text:#111827;--local-radius:18px;--local-gap:18px}
@@ -136,6 +137,15 @@ body[data-page-section]:not([data-page-section="home"]) .local-page-section,
 body[data-page-section]:not([data-page-section="home"]) #catalogSection{margin-top:42px;margin-bottom:70px}
 body[data-page-section="shop"] #catalogSection{padding-top:18px}
 
+
+.local-shop-intro{margin-bottom:22px}.local-shop-intro h2{margin-bottom:7px}.local-shop-intro p{margin:0;color:#64748b;font-size:1rem}
+#localShopAdvertisingMount:empty{display:none}#localShopAdvertisingMount:not(:empty){margin:20px 0 26px}
+.local-shop-promotions{margin:22px 0 28px}.local-shop-promotions>h2{font-size:1.65rem!important;margin-bottom:14px!important}
+.local-shop-toolbar{position:sticky;top:82px;z-index:12;background:rgba(248,250,252,.96);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(15,23,42,.07);margin-bottom:22px}
+.local-shop-results-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:18px 0 14px}.local-shop-results-heading h3{font-size:1.5rem;margin:0}.local-shop-results-heading span{color:#64748b;font-size:.84rem}
+.promo-filter-chip{border-color:#fecaca!important;background:#fff7ed!important;color:#b42318!important}.promo-filter-chip.active{background:#ef4444!important;color:#fff!important;border-color:#ef4444!important}
+@media(max-width:760px){.local-shop-toolbar{top:68px}.local-shop-results-heading{align-items:center}}
+
 </style>
 </head>
 <body class="local-store">
@@ -166,14 +176,22 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
     </div>
   </section>
   <section id="catalogSection" class="local-page-section">
-    <h2 id="catalogTitle">Tienda virtual</h2>
-    <div class="local-toolbar">
-      <input id="search" type="search" placeholder="Buscar productos o servicios">
+    <div class="local-shop-intro">
+      <span class="local-section-kicker">Compra directamente</span>
+      <h2 id="catalogTitle">Tienda virtual</h2>
+      <p>Busca, filtra y agrega al carrito los productos publicados por este LOCAL.</p>
+    </div>
+    <div id="localShopAdvertisingMount"></div>
+    <section id="promotionsSection" class="hidden local-shop-promotions"><h2>Promociones</h2><div id="promotions" class="local-grid"></div></section>
+    <div class="local-toolbar local-shop-toolbar">
+      <input id="search" type="search" placeholder="Buscar productos">
       <div id="cats" class="local-cats"></div>
     </div>
-    <section id="promotionsSection" class="hidden"><h2>Promociones</h2><div id="promotions" class="local-grid"></div></section>
     <section id="menuSection" class="hidden"><h2>Menú</h2><div id="menuPages" class="visual-menu"></div></section>
-    <section id="productsSection"><div id="products" class="local-grid"></div></section>
+    <section id="productsSection">
+      <div class="local-shop-results-heading"><h3 id="shopResultsTitle">Productos</h3><span id="shopResultsCount"></span></div>
+      <div id="products" class="local-grid"></div>
+    </section>
   </section>
   <section id="projectsSection" class="local-page-section hidden">
     <div class="local-page-card"><h2 id="projectsTitle">Proyectos</h2><p id="projectsText" class="local-project-intro"></p><div id="projectsGrid" class="local-project-grid"></div></div>
@@ -478,9 +496,17 @@ function renderHero(){
 }
 function renderCats(){
  const visible=categories.filter(c=>products.some(p=>p.category_id===c.id));
- $("cats").innerHTML='<button data-cat="" class="'+(!activeCategory?"active":"")+'">Todos</button>'+
+ const hasPromotions=promotions.some(p=>p.available_now);
+ $("cats").innerHTML=
+   '<button data-cat="" class="'+(!activeCategory?"active":"")+'">Todos</button>'+
+   (hasPromotions?'<button data-cat="__PROMOTIONS__" class="promo-filter-chip '+(activeCategory==="__PROMOTIONS__"?"active":"")+'">🔥 Promociones</button>':"")+
    visible.map(c=>'<button data-cat="'+esc(c.id)+'" class="'+(activeCategory===c.id?"active":"")+'">'+esc(c.name)+'</button>').join("");
- $("cats").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{activeCategory=b.dataset.cat;renderCats();renderProducts();});
+ $("cats").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{
+   activeCategory=b.dataset.cat;
+   renderCats();
+   renderPromotions();
+   renderProducts();
+ });
 }
 function placeholderServices(){
  const preset=store?.settings?.preset_code||"GENERAL_MODERN";
@@ -500,12 +526,30 @@ function placeholderServices(){
 }
 function renderProducts(){
  const q=$("search").value.trim().toLowerCase();
- const filtered=products.filter(p=>(!activeCategory||p.category_id===activeCategory)&&(!q||[p.name,p.description].some(v=>String(v||"").toLowerCase().includes(q))));
+ const promotedProductIds=new Set(
+   promotions.filter(p=>p.available_now).flatMap(p=>(Array.isArray(p.items)?p.items:[]).map(item=>item.product_id).filter(Boolean))
+ );
+ const filtered=products.filter(p=>{
+   const categoryMatch=!activeCategory
+     || (activeCategory==="__PROMOTIONS__" ? promotedProductIds.has(p.id) : p.category_id===activeCategory);
+   const textMatch=!q||[p.name,p.description].some(v=>String(v||"").toLowerCase().includes(q));
+   return categoryMatch&&textMatch;
+ });
+ const selectedCategory=activeCategory&&activeCategory!=="__PROMOTIONS__"
+   ? categories.find(c=>c.id===activeCategory)
+   : null;
+ if($("shopResultsTitle"))$("shopResultsTitle").textContent=
+   activeCategory==="__PROMOTIONS__"?"Productos en promoción":
+   selectedCategory?selectedCategory.name:
+   q?"Resultados":"Productos";
+ if($("shopResultsCount"))$("shopResultsCount").textContent=filtered.length+" producto"+(filtered.length===1?"":"s");
  $("products").className="local-grid "+(store.settings.card_density==="COMPACT"?"compact":"");
  if(!filtered.length){
-   if(products.length){$("products").innerHTML='<div class="empty">No hay productos que coincidan con la búsqueda.</div>';return;}
-   $("products").className="local-service-placeholders";
-   $("products").innerHTML=placeholderServices().map(([icon,title,copy])=>'<article class="local-service-placeholder"><div class="icon">'+esc(icon)+'</div><h3>'+esc(title)+'</h3><p>'+esc(copy)+'</p></article>').join("");
+   $("products").innerHTML='<div class="empty">'+(
+     products.length
+       ? (activeCategory==="__PROMOTIONS__"?"No hay productos vinculados a promociones activas.":"No hay productos que coincidan con la búsqueda.")
+       : "Este LOCAL todavía no ha publicado productos en su Catálogo."
+   )+'</div>';
    return;
  }
  $("products").innerHTML=filtered.map(p=>{
@@ -571,12 +615,10 @@ function addMixedPromotion(p){
 function renderPromotions(){
  const available=promotions.filter(p=>p.available_now);
  const enabled=$("promotionsSection").dataset.pageEnabled!=="0";
- $("promotionsSection").classList.toggle("hidden",!enabled);
- if(!enabled)return;
- if(!available.length){
-   $("promotions").innerHTML='<div class="empty">Muy pronto tendremos promociones y novedades para ti.</div>';
-   return;
- }
+ const visible=enabled&&available.length>0;
+ $("promotionsSection").classList.toggle("hidden",!visible);
+ if(!visible){$("promotions").innerHTML="";return;}
+
  $("promotions").innerHTML=available.map(p=>{
    const items=Array.isArray(p.items)?p.items:[],subtitle=p.body||(items.map(i=>i.product_name).join(" · "));
    const price=p.promotion_price!=null?'<div class="price">'+money(p.promotion_price)+'</div>':"";
