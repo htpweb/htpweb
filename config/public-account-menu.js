@@ -17,6 +17,15 @@
    }catch{}
    if($("publicAccountName"))$("publicAccountName").textContent=name;
    if($("publicAccountEmail"))$("publicAccountEmail").textContent=user.email||"";
+   if(!drop.querySelector('a[href*="configuracion.html"]')){
+    const accountLink=[...drop.querySelectorAll("a")].find(a=>a.getAttribute("href")?.includes("mi-cuenta.html"));
+    if(accountLink){
+      const configLink=document.createElement("a");
+      configLink.href="./app/configuracion.html";
+      configLink.textContent="Configuración";
+      accountLink.insertAdjacentElement("afterend",configLink);
+    }
+   }
    trigger.onclick=e=>{e.preventDefault();e.stopPropagation();drop.classList.toggle("hidden")};
    document.addEventListener("click",e=>{if(!menu.contains(e.target))drop.classList.add("hidden")});
    const logout=$("publicAccountLogout");
