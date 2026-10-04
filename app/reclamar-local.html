@@ -7,13 +7,14 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261003-claim3">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
 .claim-shell{max-width:900px;margin:auto;padding:24px 16px}.claim-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin-bottom:16px}
 .claim-local{display:flex;gap:14px;align-items:center}.claim-local img{width:72px;height:72px;border-radius:14px;object-fit:cover;background:#eef2f7}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.verify-choice{border:1px solid #dbe4ee;border-radius:14px;padding:16px;cursor:pointer;background:#fff}
 .verify-choice.active{border:2px solid #111827;background:#f8fafc}.verify-box{padding:14px;border-radius:14px;background:#f8fafc;border:1px solid #dbe4ee;margin-top:14px}
 .challenge{font-size:1.35rem;font-weight:800;letter-spacing:.08em}.progress{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.progress span{padding:7px 10px;border-radius:999px;background:#e5e7eb;font-size:.88rem}.progress .done{background:#dcfce7}.progress .current{background:#dbeafe}
-.file-help{font-size:.86rem;color:#64748b;margin-top:4px}.hidden{display:none!important}
+.file-help{font-size:.86rem;color:#64748b;margin-top:4px}.claim-map{height:300px;border:1px solid #dbe4ee;border-radius:14px;overflow:hidden;background:#eef2f7;margin-top:8px}.claim-map-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;font-size:.84rem;color:#64748b}.claim-map-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.claim-map-dot.registered{background:#2563eb}.claim-map-dot.proposed{background:#dc2626}.hidden{display:none!important}
 @media(max-width:680px){.grid2{grid-template-columns:1fr}.claim-shell{padding:14px 10px}}
 </style>
 </head>
@@ -57,12 +58,18 @@
         <div><label>Foto exterior del LOCAL *</label><input id="exteriorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div><label>Foto interior del LOCAL *</label><input id="interiorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div><label>Foto interior mostrando el código HTPWEB *</label><input id="codePhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
-        <div>
+        <div style="grid-column:1/-1">
           <label>Ubicación del LOCAL *</label>
           <div id="registeredLocation" class="file-help">Cargando ubicación registrada…</div>
+          <div id="claimLocationMap" class="claim-map"></div>
+          <div class="claim-map-legend">
+            <span><span class="claim-map-dot registered"></span>Ubicación registrada</span>
+            <span><span class="claim-map-dot proposed"></span>Nueva ubicación propuesta</span>
+          </div>
           <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
             <button id="confirmLocationBtn" class="btn-muted" type="button">Confirmar ubicación registrada</button>
-            <button id="locationBtn" class="btn-muted" type="button">Actualizar con mi ubicación actual</button>
+            <button id="locationBtn" class="btn-muted" type="button">Usar mi ubicación actual</button>
+            <button id="editMapLocationBtn" class="btn-muted" type="button">Elegir nueva ubicación en mapa</button>
           </div>
           <div id="locationState" class="file-help">Aún no confirmada.</div>
         </div>
@@ -74,11 +81,13 @@
     <p class="muted">Si usas verificación documental, nuestro equipo revisará la solicitud y te dará una respuesta en un plazo máximo de <strong>3 días</strong>.</p>
   </section>
 </main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const params=new URLSearchParams(location.search),localId=params.get("local")||"",delivery=params.get("delivery")||"";
 let context=null,currentUser=null,method="REGISTERED_WHATSAPP",otpVerified=false,challengeCode="",locationEvidence=null;
+let claimMap=null,registeredMarker=null,proposedMarker=null,mapEditMode=false;
 function backUrl(){return localId&&delivery?"local.html?delivery="+encodeURIComponent(delivery)+"&local="+encodeURIComponent(localId):"../index.html"}
 function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error";window.scrollTo({top:0,behavior:"smooth"})}
 function setMethod(next){
@@ -88,6 +97,40 @@ function setMethod(next){
   $("whatsappPanel").classList.toggle("hidden",next!=="REGISTERED_WHATSAPP");
   $("documentPanel").classList.toggle("hidden",next!=="DOCUMENT_LOCATION");
   if(next==="DOCUMENT_LOCATION")ensureChallenge().catch(e=>show(e.message));
+}
+function initClaimMap(){
+ if(claimMap)return;
+ claimMap=L.map("claimLocationMap").setView([-1.8312,-78.1834],6);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(claimMap);
+ claimMap.on("click",e=>{
+   if(!mapEditMode)return;
+   setProposedMapLocation(e.latlng.lat,e.latlng.lng,"MAP_SELECTED");
+ });
+}
+function renderRegisteredLocationOnMap(){
+ initClaimMap();
+ const lat=Number(context?.latitude),lng=Number(context?.longitude);
+ if(Number.isFinite(lat)&&Number.isFinite(lng)){
+   if(!registeredMarker){
+     registeredMarker=L.marker([lat,lng]).addTo(claimMap).bindTooltip("Ubicación registrada",{permanent:true,direction:"top"});
+   }else registeredMarker.setLatLng([lat,lng]);
+   claimMap.setView([lat,lng],16);
+ }else{
+   if(registeredMarker){claimMap.removeLayer(registeredMarker);registeredMarker=null}
+ }
+ setTimeout(()=>claimMap.invalidateSize(),60);
+}
+function setProposedMapLocation(lat,lng,source="MAP_SELECTED"){
+ lat=Number(lat);lng=Number(lng);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+ locationEvidence={latitude:lat,longitude:lng,accuracy:null,captured_at:new Date().toISOString(),source};
+ if(!proposedMarker){
+   proposedMarker=L.marker([lat,lng],{draggable:true}).addTo(claimMap).bindTooltip("Nueva ubicación propuesta",{permanent:true,direction:"top"});
+   proposedMarker.on("dragend",()=>{const p=proposedMarker.getLatLng();setProposedMapLocation(p.lat,p.lng,"MAP_DRAGGED")});
+ }else proposedMarker.setLatLng([lat,lng]);
+ claimMap.setView([lat,lng],16);
+ $("locationState").textContent="Nueva ubicación propuesta ✓";
+ mapEditMode=true;
 }
 function renderLocal(){
   $("localCard").innerHTML='<div class="claim-local">'+(context.logo_url?'<img src="'+esc(context.logo_url)+'" alt="">':'<div style="width:72px;height:72px;border-radius:14px;background:#eef2f7"></div>')+
@@ -100,6 +143,7 @@ function renderLocal(){
     ? "Ubicación registrada: "+(context.address||"LOCAL registrado")
     : "Este LOCAL no tiene una ubicación registrada.";
   $("confirmLocationBtn").disabled=!hasRegisteredLocation;
+  renderRegisteredLocationOnMap();
 }
 function statusLabel(req){
   if(req.applied_at)return "APROBADA";
@@ -159,14 +203,23 @@ function confirmRegisteredLocation(){
     captured_at:new Date().toISOString(),
     source:"REGISTERED_CONFIRMED"
   };
+  if(proposedMarker){claimMap.removeLayer(proposedMarker);proposedMarker=null}
+  mapEditMode=false;
+  claimMap.setView([lat,lng],16);
   $("locationState").textContent="Ubicación registrada confirmada ✓";
+}
+function enableMapLocationEdit(){
+  initClaimMap();
+  mapEditMode=true;
+  $("locationState").textContent="Haz clic en el mapa o arrastra el marcador rojo para indicar la nueva ubicación.";
 }
 function getLocation(){
   if(!navigator.geolocation){show("Este navegador no permite obtener ubicación.");return}
   $("locationState").textContent="Obteniendo ubicación…";
   navigator.geolocation.getCurrentPosition(pos=>{
-    locationEvidence={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy,captured_at:new Date().toISOString(),source:"USER_UPDATED"};
-    $("locationState").textContent="Ubicación capturada ✓ · precisión aproximada "+Math.round(pos.coords.accuracy)+" m";
+    setProposedMapLocation(pos.coords.latitude,pos.coords.longitude,"USER_UPDATED");
+    locationEvidence.accuracy=pos.coords.accuracy;
+    $("locationState").textContent="Nueva ubicación capturada ✓ · precisión aproximada "+Math.round(pos.coords.accuracy)+" m";
   },err=>{$("locationState").textContent="No se pudo capturar la ubicación.";show(err.message||"Permite el acceso a ubicación para continuar.")},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 function extFor(file){const map={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png","image/webp":"webp"};return map[file.type]||""}
@@ -222,7 +275,7 @@ async function load(){
 }
 $("backBtn").onclick=()=>location.href=backUrl();
 $("whatsappChoice").onclick=()=>setMethod("REGISTERED_WHATSAPP");$("documentChoice").onclick=()=>setMethod("DOCUMENT_LOCATION");
-$("requestOtpBtn").onclick=requestOtp;$("verifyOtpBtn").onclick=verifyOtp;$("confirmLocationBtn").onclick=confirmRegisteredLocation;$("locationBtn").onclick=getLocation;$("submitBtn").onclick=submit;
+$("requestOtpBtn").onclick=requestOtp;$("verifyOtpBtn").onclick=verifyOtp;$("confirmLocationBtn").onclick=confirmRegisteredLocation;$("locationBtn").onclick=getLocation;$("editMapLocationBtn").onclick=enableMapLocationEdit;$("submitBtn").onclick=submit;
 load().catch(e=>show(e.message||"No se pudo abrir la reclamación."));
 </script>
 </body></html>
