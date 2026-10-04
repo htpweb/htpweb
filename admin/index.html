@@ -12,13 +12,24 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261002-express1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261004-public-delivery1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
 </head>
 <body class="admin-role-loading">
+<header id="adminHtpwebHeader" class="admin-htpweb-header hidden">
+  <div class="admin-htpweb-header-inner">
+    <a class="admin-htpweb-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>
+    <nav class="admin-htpweb-nav" aria-label="Navegación HTPWEB">
+      <a href="../index.html">Inicio</a>
+      <a href="../explorar-negocios.html">Locales</a>
+      <a href="../como-funciona.html">Cómo funciona</a>
+      <a href="../app/mi-cuenta.html">Mi cuenta</a>
+    </nav>
+  </div>
+</header>
 <div class="admin-shell">
   <aside class="sidebar">
     <div class="brand">HTPWEB ADMIN</div>
@@ -57,7 +68,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      <a class="public-link" href="../index.html">Ir al sitio público</a>
+      <a class="public-link" id="deliveryPublicSiteLink" href="../index.html">Ir al sitio público</a>
       <button class="logout" id="logoutBtn">Cerrar sesión</button>
     </div>
   </aside>
@@ -239,6 +250,19 @@
               <button type="button">Botón principal</button>
               <span>Categoría seleccionada</span>
             </div>
+          </div>
+        </div>
+
+        <div class="delivery-public-link-panel">
+          <div>
+            <h3 style="margin:0">Página pública de mi DELIVERY</h3>
+            <p class="muted" style="margin:5px 0 0">Comparte este enlace con tus clientes. El QR abre directamente la página pública de este DELIVERY.</p>
+          </div>
+          <div class="delivery-public-link-row">
+            <input id="profileDeliveryPublicUrl" readonly aria-label="Link público del DELIVERY">
+            <button class="btn-muted" id="profileCopyPublicUrlBtn" type="button">Copiar link</button>
+            <button class="btn-muted" id="profileOpenPublicUrlBtn" type="button">Abrir página</button>
+            <button class="btn-primary" id="profileQrBtn" type="button">Código QR</button>
           </div>
         </div>
 
@@ -2203,7 +2227,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261002-express2"></script>
+<script src="./admin.js?v=20261004-public-delivery1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>

@@ -187,6 +187,7 @@ async function init() {
     if (roleError) throw roleError;
 
     state.role = role;
+    configureHtpwebWorkspaceHeader();
 
     try {
       const qaResult = await supabaseClient.rpc("qa_profile_selector_snapshot");
@@ -240,6 +241,31 @@ async function init() {
     failAdminRoleBoot();
     message(error.message || "No se pudo abrir el panel.", "error");
   }
+}
+
+function configureHtpwebWorkspaceHeader(){
+  const header=$("adminHtpwebHeader");
+  if(!header)return;
+  const visible=["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role);
+  header.classList.toggle("hidden",!visible);
+  document.body.classList.toggle("delivery-workspace-header",visible);
+}
+
+function syncDeliveryPublicAccess(delivery){
+  const url=masterDeliveryPublicUrl(delivery);
+  const input=$("profileDeliveryPublicUrl");
+  const sidebar=$("deliveryPublicSiteLink");
+  if(input)input.value=url||"";
+  if(sidebar&&state.role==="DELIVERY_ADMIN"){
+    sidebar.href=url||"../index.html";
+    sidebar.target=url?"_blank":"";
+    sidebar.rel=url?"noopener noreferrer":"";
+  }
+  return url;
+}
+
+function currentDeliveryProfilePublicUrl(){
+  return syncDeliveryPublicAccess(state.deliveryProfileRecord);
 }
 
 function organizeDeliveryAdminNavigation() {
@@ -1853,6 +1879,7 @@ async function loadDeliveryProfileRecord() {
     ["profileDeliveryName","profileDeliverySlug","profileDeliveryPhone","profileDeliveryWhatsapp","profileDeliveryDescription"]
       .forEach(id => { if ($(id)) $(id).value = ""; });
     renderDeliveryThemeSelection("HTPWEB");
+    syncDeliveryPublicAccess(null);
     $("saveDeliveryProfileBtn").disabled = true;
     return;
   }
@@ -1860,7 +1887,7 @@ async function loadDeliveryProfileRecord() {
   try {
     const { data, error } = await supabaseClient
       .from("deliveries")
-      .select("id,name,slug,description,logo_url,phone,whatsapp,theme_key,active")
+      .select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,theme_key,active")
       .eq("id", deliveryId)
       .single();
 
@@ -1873,9 +1900,11 @@ async function loadDeliveryProfileRecord() {
     $("profileDeliveryWhatsapp").value = data.whatsapp || "";
     $("profileDeliveryDescription").value = data.description || "";
     renderDeliveryThemeSelection(data.theme_key || "HTPWEB");
+    syncDeliveryPublicAccess(data);
     $("saveDeliveryProfileBtn").disabled = false;
   } catch (e) {
     state.deliveryProfileRecord = null;
+    syncDeliveryPublicAccess(null);
     $("saveDeliveryProfileBtn").disabled = true;
     message(e.message || "No se pudo cargar la información del DELIVERY.", "error");
   }
@@ -4902,8 +4931,9 @@ async function renderMasterDeliveryQrCard(delivery, url) {
 }
 
 async function openMasterDeliveryQr(deliveryId) {
-  if (state.role !== "MASTER") return;
-  const delivery = state.deliveries.find(item => item.id === deliveryId);
+  if (!["MASTER","DELIVERY_ADMIN"].includes(state.role)) return;
+  const delivery = (state.deliveryProfileRecord?.id===deliveryId ? state.deliveryProfileRecord : null) ||
+    state.deliveries.find(item => item.id === deliveryId);
   const url = masterDeliveryPublicUrl(delivery);
   if (!delivery || !url) return message("Este DELIVERY no tiene página pública disponible.", "error");
 
@@ -11859,6 +11889,18 @@ function bindEvents() {
   if ($("requestType")) $("requestType").onchange = updateRequestForm;
   if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
   if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  if ($("profileCopyPublicUrlBtn")) $("profileCopyPublicUrlBtn").onclick = async () => {
+    const id=state.deliveryProfileRecord?.id;
+    if(id) await copyMasterDeliveryPublicUrl(id);
+  };
+  if ($("profileOpenPublicUrlBtn")) $("profileOpenPublicUrlBtn").onclick = () => {
+    const id=state.deliveryProfileRecord?.id;
+    if(id) openMasterDeliveryPublicUrl(id);
+  };
+  if ($("profileQrBtn")) $("profileQrBtn").onclick = () => {
+    const id=state.deliveryProfileRecord?.id;
+    if(id) openMasterDeliveryQr(id);
+  };
   document.querySelectorAll("#profileDeliveryThemePalette [data-theme-key]").forEach(button => {
     button.onclick = () => selectDeliveryTheme(button.dataset.themeKey);
   });
