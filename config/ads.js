@@ -14,6 +14,8 @@
   let carouselPaused = false;
   let carouselSpeed = DEFAULT_SCROLL_PX_PER_SECOND;
   let delivery = null;
+  let localStore = null;
+  let contextMode = "delivery";
 
   async function ensureAnalytics() {
     if (window.HTPWEBAnalytics) return;
@@ -89,6 +91,14 @@
       localId = data.local_id;
     }
 
+    if (contextMode === "local") {
+      const target = new URL("tienda.html", location.href);
+      target.searchParams.set("local", localId || localStore?.slug || localStore?.id || "");
+      target.searchParams.set("section", "shop");
+      if (productId) target.searchParams.set("product", productId);
+      return target.href;
+    }
+
     if (localId) {
       const { data: relation, error } = await supabaseClient
         .from("local_deliveries")
@@ -140,35 +150,42 @@
 
   function trackAd(eventType, ad, extra = {}) {
     if (!ad?.id) return;
-    const metadata = { placement: "client_home_carousel" };
+    const metadata = { placement: contextMode === "local" ? "local_store_carousel" : "client_home_carousel" };
     if (eventType === "AD_IMPRESSION") {
       metadata.impression_key = [
         advertisingVisitorKey(),
-        delivery?.id || "delivery",
+        contextMode === "local" ? (localStore?.id || "local") : (delivery?.id || "delivery"),
         ad.id
       ].join(":");
     }
     window.HTPWEBAnalytics?.track(eventType, {
-      delivery_id: delivery?.id,
-      local_id: ad.localId,
+      delivery_id: delivery?.id || null,
+      local_id: ad.localId || localStore?.id || null,
       product_id: ad.productId,
       advertisement_id: ad.id,
       metadata
     }, extra);
   }
 
-  function isClientHome() {
+  function isSupportedPlacement() {
     const page = location.pathname.split("/").pop() || "";
-    return page === "index.html" || page === "";
+    if (page === "index.html" || page === "") {
+      contextMode = "delivery";
+      return true;
+    }
+    if (page === "tienda.html") {
+      const section = (new URLSearchParams(location.search).get("section") || "home").toLowerCase();
+      if (section === "shop" || section === "catalog") {
+        contextMode = "local";
+        return true;
+      }
+    }
+    return false;
   }
 
   function ensureCarousel() {
     let section = document.getElementById("htpwebAdvertising");
     if (section) return section;
-
-    const categories = document.getElementById("categories")?.closest("section");
-    const localsSection = document.getElementById("locals")?.closest("section");
-    if (!categories || !localsSection) return null;
 
     section = document.createElement("section");
     section.id = "htpwebAdvertising";
@@ -177,12 +194,23 @@
       <div class="client-ad-heading">
         <div>
           <h2>Destacados</h2>
-          <p>Locales patrocinados</p>
+          <p>${contextMode === "local" ? "Publicidad y recomendaciones" : "Locales patrocinados"}</p>
         </div>
         <div class="client-ad-dots" id="htpwebAdDots" aria-label="Posición de publicidad"></div>
       </div>
       <div class="client-ad-rail" id="htpwebAdRail" aria-label="Publicidad"></div>
     `;
+
+    if (contextMode === "local") {
+      const mount = document.getElementById("localShopAdvertisingMount");
+      if (!mount) return null;
+      mount.appendChild(section);
+      return section;
+    }
+
+    const categories = document.getElementById("categories")?.closest("section");
+    const localsSection = document.getElementById("locals")?.closest("section");
+    if (!categories || !localsSection) return null;
 
     const mobileFilterActive = window.matchMedia("(max-width: 760px)").matches
       && document.body.classList.contains("client-filter-active");
@@ -193,7 +221,6 @@
     }
     return section;
   }
-
   function renderDots() {
     const box = document.getElementById("htpwebAdDots");
     if (!box) return;
@@ -219,7 +246,7 @@
         <span class="client-ad-copy">
           <strong>${ad.title}</strong>
           ${ad.description ? '<span>' + ad.description + '</span>' : ""}
-          <em>Ver local</em>
+          <em>${contextMode === "local" ? "Ver destacado" : "Ver local"}</em>
         </span>
       </a>
     `;
@@ -349,11 +376,21 @@
 
   async function load() {
     try {
-      if (!isClientHome()) return;
+      if (!isSupportedPlacement()) return;
 
       await ensureAnalytics();
-      delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
-      if (!delivery?.id) return;
+
+      if (contextMode === "delivery") {
+        delivery = typeof cargarNegocio === "function" ? await cargarNegocio() : null;
+        if (!delivery?.id) return;
+      } else {
+        const params = new URLSearchParams(location.search);
+        const key = params.get("local") || "";
+        if (!key) return;
+        const result = await supabaseClient.rpc("public_local_storefront", { p_local_key: key });
+        if (result.error || !result.data?.local?.id) return;
+        localStore = result.data.local;
+      }
 
       const speedResult = await supabaseClient.rpc("advertising_carousel_speed");
       if (!speedResult.error) {
@@ -363,9 +400,9 @@
         }
       }
 
-      const { data, error } = await supabaseClient.rpc("public_delivery_advertisements", {
-        p_delivery_id: delivery.id
-      });
+      const { data, error } = contextMode === "local"
+        ? await supabaseClient.rpc("public_local_advertisements", { p_local_id: localStore.id })
+        : await supabaseClient.rpc("public_delivery_advertisements", { p_delivery_id: delivery.id });
 
       if (error) {
         console.warn("Publicidad no disponible:", error.message || error);
