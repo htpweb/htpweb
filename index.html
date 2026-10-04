@@ -67,4 +67,4 @@ document.querySelectorAll("[data-auth-target]").forEach(link=>{
 async function loadSession(){const {data}=await sessionPromise;const u=data?.session?.user||null;if(!u)return;const [role,qa]=await Promise.all([supabaseClient.rpc("current_role_code"),supabaseClient.rpc("qa_profile_selector_snapshot")]);if(!role.error&&role.data&&role.data!=="CLIENT")$("adminLink").classList.remove("hidden");if(!qa.error&&qa.data?.enabled)$("qaProfilesLink").classList.remove("hidden")}
 
 (async()=>{try{await loadSession()}catch(e){console.error(e)}})();
-</script><script src="./config/public-account-menu.js?v=20261004-menu3"></script></body></html>
+</script><script src="./config/public-account-menu.js?v=20261004-profiles1"></script></body></html>
