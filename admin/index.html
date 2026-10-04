@@ -518,28 +518,97 @@
           </div>
         </div>
 
-        <div class="card" style="margin-top:16px;background:#f8fafc">
-          <div class="row between" style="gap:10px;flex-wrap:wrap">
+        <div class="local-site-builder" style="margin-top:18px">
+          <div class="local-builder-hero">
             <div>
-              <h4 style="margin:0">Estructura de la página web</h4>
-              <p class="muted" style="margin:4px 0 0">Configura Inicio, Quiénes somos, Productos/Servicios y Contacto. El diseño elegido adapta la presentación al tipo de negocio.</p>
+              <span class="local-builder-kicker">DISEÑA TU SITIO</span>
+              <h3>Tu página web, a tu estilo</h3>
+              <p>Elige una plantilla, combina colores y decide qué secciones quieres mostrar. HTPWEB arma el sitio y lo conecta con tu catálogo, WhatsApp y DELIVERY.</p>
             </div>
+            <button class="btn-primary" id="previewLocalStoreBtn" type="button">Ver página completa ↗</button>
           </div>
-          <div class="form-grid" style="margin-top:12px">
-            <div><label>Título principal</label><input id="localHeroTitle" maxlength="120" placeholder="Ej. Soluciones para tu hogar"></div>
-            <div><label>Subtítulo principal</label><input id="localHeroSubtitle" maxlength="260" placeholder="Mensaje corto de valor"></div>
-            <div><label>Título Quiénes somos</label><input id="localAboutTitle" maxlength="80" value="Quiénes somos"></div>
-            <div><label>Nombre de Productos / Servicios</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Catálogo…"></div>
-            <div style="grid-column:1/-1"><label>Quiénes somos</label><textarea id="localAboutText" rows="4" maxlength="1600" placeholder="Cuenta brevemente qué hace tu negocio, experiencia y propuesta de valor."></textarea></div>
-            <div><label>Título Contacto</label><input id="localContactTitle" maxlength="80" value="Contacto"></div>
-          </div>
-          <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:10px">
-            <label class="row"><input id="localShowAbout" type="checkbox" style="width:auto" checked> Mostrar Quiénes somos</label>
-            <label class="row"><input id="localShowCatalog" type="checkbox" style="width:auto" checked> Mostrar Productos/Servicios</label>
-            <label class="row"><input id="localShowContact" type="checkbox" style="width:auto" checked> Mostrar Contacto</label>
-            <label class="row"><input id="localShowPromotions" type="checkbox" style="width:auto" checked> Mostrar Promociones</label>
-          </div>
-          <div id="localStorePreview" style="margin-top:14px;border:1px solid #dbe3ee;border-radius:16px;overflow:hidden;background:white"></div>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>1</span><div><h4>Elige una plantilla</h4><p>La estructura cambia según el tipo de negocio.</p></div></div>
+            </div>
+            <div id="localPresetCards" class="local-template-grid"></div>
+          </section>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>2</span><div><h4>Elige los colores</h4><p>Paletas profesionales listas para usar.</p></div></div>
+            </div>
+            <div id="localThemeCards" class="local-theme-grid"></div>
+            <div class="local-custom-accent">
+              <label>Color personalizado</label>
+              <input id="localBuilderAccentMirror" type="color" value="#111827">
+              <small class="muted">Puedes ajustar el color principal después de elegir una paleta.</small>
+            </div>
+          </section>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>3</span><div><h4>Arma el menú de tu web</h4><p>Activa solo lo que tu negocio necesita.</p></div></div>
+            </div>
+            <div class="local-section-picker">
+              <label class="local-section-chip locked"><input type="checkbox" checked disabled><span>🏠 Inicio</span></label>
+              <label class="local-section-chip"><input id="localShowAbout" type="checkbox" checked><span>👥 Quiénes somos</span></label>
+              <label class="local-section-chip"><input id="localShowCatalog" type="checkbox" checked><span>🛍️ Productos / Servicios</span></label>
+              <label class="local-section-chip"><input id="localShowProjects" type="checkbox" checked><span>🖼️ Proyectos / Portafolio</span></label>
+              <label class="local-section-chip"><input id="localShowPromotions" type="checkbox" checked><span>🔥 Promociones</span></label>
+              <label class="local-section-chip"><input id="localShowBlog" type="checkbox" checked><span>✍️ Blog</span></label>
+              <label class="local-section-chip"><input id="localShowContact" type="checkbox" checked><span>📍 Contacto</span></label>
+            </div>
+          </section>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>4</span><div><h4>Contenido principal</h4><p>Escribe los textos que verá el cliente.</p></div></div>
+            </div>
+            <div class="form-grid">
+              <div><label>Título principal</label><input id="localHeroTitle" maxlength="120" placeholder="Ej. Construimos ideas que perduran"></div>
+              <div><label>Subtítulo principal</label><input id="localHeroSubtitle" maxlength="260" placeholder="Resume en una frase lo mejor de tu negocio"></div>
+              <div><label>Título Quiénes somos</label><input id="localAboutTitle" maxlength="80" value="Quiénes somos"></div>
+              <div><label>Productos / Servicios</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Soluciones…"></div>
+              <div style="grid-column:1/-1"><label>Quiénes somos</label><textarea id="localAboutText" rows="4" maxlength="1600" placeholder="Cuenta tu historia, experiencia y qué hace diferente a tu negocio."></textarea></div>
+              <div><label>Título Proyectos</label><input id="localProjectsTitle" maxlength="80" value="Proyectos"></div>
+              <div><label>Título Blog</label><input id="localBlogTitle" maxlength="80" value="Blog"></div>
+              <div style="grid-column:1/-1"><label>Texto de Proyectos / Portafolio</label><textarea id="localProjectsText" rows="2" maxlength="600" placeholder="Una breve introducción a tus trabajos, obras, casos o galería."></textarea></div>
+              <div><label>Título Contacto</label><input id="localContactTitle" maxlength="80" value="Contacto"></div>
+            </div>
+          </section>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>5</span><div><h4>Vista previa en vivo</h4><p>Así se sentirá tu web antes de guardar.</p></div></div>
+            </div>
+            <div class="local-browser-preview">
+              <div class="local-browser-bar"><i></i><i></i><i></i><span>tu-negocio.htpweb</span></div>
+              <div id="localStorePreview"></div>
+            </div>
+          </section>
+
+          <section class="local-builder-panel">
+            <div class="local-builder-heading">
+              <div><span>6</span><div><h4>Blog del negocio</h4><p>Publica novedades, consejos, proyectos o noticias.</p></div></div>
+            </div>
+            <div class="local-blog-editor">
+              <input id="localBlogPostId" type="hidden">
+              <div class="form-grid">
+                <div><label>Título</label><input id="localBlogPostTitle" maxlength="180" placeholder="Ej. Entregamos nuestro nuevo proyecto"></div>
+                <div><label>Imagen (URL)</label><input id="localBlogPostImage" maxlength="800" placeholder="https://..."></div>
+                <div style="grid-column:1/-1"><label>Resumen</label><input id="localBlogPostExcerpt" maxlength="500" placeholder="Una frase corta para la tarjeta del blog"></div>
+                <div style="grid-column:1/-1"><label>Contenido</label><textarea id="localBlogPostBody" rows="4" maxlength="6000" placeholder="Escribe la publicación…"></textarea></div>
+              </div>
+              <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:10px">
+                <label class="row"><input id="localBlogPostPublished" type="checkbox" style="width:auto" checked> Publicar ahora</label>
+                <button id="saveLocalBlogPostBtn" class="btn-muted" type="button">Publicar entrada</button>
+                <button id="cancelLocalBlogPostBtn" class="btn-muted" type="button">Limpiar</button>
+              </div>
+              <div id="localBlogPostsList" class="local-blog-list"></div>
+            </div>
+          </section>
         </div>
 
         <div id="localStoreQrPanel" class="hidden" style="margin-top:14px">
