@@ -75,12 +75,12 @@ function _htpwebAuthPageName() {
 }
 
 function _htpwebAuthHeaderAllowed() {
-  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","tienda-carrito.html","carrito.html","local-pedido.html","repartidor-rapido.html"]);
+  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","local-pedido.html","repartidor-rapido.html"]);
   return !excluded.has(_htpwebAuthPageName());
 }
 
 function _htpwebCompactProfilePage(){
-  return new Set(["index.html","local.html","tienda.html","tienda-carrito.html","carrito.html"]).has(_htpwebAuthPageName());
+  return new Set(["index.html","local.html","tienda.html"]).has(_htpwebAuthPageName());
 }
 
 function _htpwebAuthActiveHref() {
