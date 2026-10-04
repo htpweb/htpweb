@@ -12,12 +12,23 @@ async function cargarNegocio() {
     throw new Error("No se especificó el delivery.");
   }
 
-  const { data, error } = await supabaseClient
+  let { data, error } = await supabaseClient
     .from("deliveries")
-    .select("id,name,slug,description,logo_url,phone,whatsapp,city_id,theme_key,active")
+    .select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,city_id,theme_key,active")
     .eq("slug", slug)
     .eq("active", true)
-    .single();
+    .maybeSingle();
+
+  if (!data && !error) {
+    const byPublicPath = await supabaseClient
+      .from("deliveries")
+      .select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,city_id,theme_key,active")
+      .ilike("public_share_path", slug)
+      .eq("active", true)
+      .maybeSingle();
+    data = byPublicPath.data;
+    error = byPublicPath.error;
+  }
 
   if (error || !data) {
     throw new Error("Delivery no encontrado o inactivo.");

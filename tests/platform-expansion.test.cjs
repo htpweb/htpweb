@@ -286,3 +286,24 @@ test("DELIVERY panel keeps HTPWEB navigation and exposes its own public link wit
   assert.match(admin,/DELIVERY_ADMIN/);
   assert.match(admin,/openMasterDeliveryQr/);
 });
+
+
+test("authenticated account header is not captured by DELIVERY dark header styling",()=>{
+  const css=read("assets/app.css");
+  const account=read("app/mi-cuenta.html");
+  assert.match(css,/body>header:not\(\.htp-auth-header\)/);
+  assert.doesNotMatch(css,/\nheader\{background:#111/);
+  assert.match(account,/app\.css\?v=20261004-accountheader1/);
+});
+
+test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
+  const sql=read("supabase/migrations/20261004024500_delivery_short_public_path.sql");
+  const negocio=read("config/negocio.js");
+  const admin=read("admin/admin.js");
+  assert.match(sql,/public_share_path/);
+  assert.match(sql,/deliveries_public_share_path_uq/);
+  assert.match(sql,/unique_violation/);
+  assert.match(sql,/insert into public\.deliveries\(id,name,slug,public_share_path/);
+  assert.match(negocio,/\.ilike\("public_share_path", slug\)/);
+  assert.match(admin,/https:\/\/htpweb\.github\.io\/.*public_share_path/);
+});
