@@ -349,6 +349,31 @@ function renderPageSections(){
  $("promotionsSection").dataset.pageEnabled=cfg.show_promotions===false?"0":"1";
  $("search").placeholder="Buscar "+label.toLowerCase();
 }
+function applyMarketingMetadata(){
+ const l=store?.local||{},cfg=pageContent(),visual=templateVisuals();
+ const title=(l.name||"Negocio")+" | Sitio oficial";
+ const description=(cfg.hero_subtitle||l.description||("Conoce "+(l.name||"nuestro negocio")+", nuestros productos, servicios y formas de contacto.")).slice(0,160);
+ document.title=title;
+ let meta=document.querySelector('meta[name="description"]');
+ if(!meta){meta=document.createElement("meta");meta.name="description";document.head.appendChild(meta)}
+ meta.content=description;
+ let theme=document.querySelector('meta[name="theme-color"]');
+ if(!theme){theme=document.createElement("meta");theme.name="theme-color";document.head.appendChild(theme)}
+ theme.content=getComputedStyle(document.documentElement).getPropertyValue("--local-accent").trim()||"#111827";
+ const schema={
+   "@context":"https://schema.org",
+   "@type":"LocalBusiness",
+   "name":l.name||"",
+   "description":description,
+   "url":location.href,
+   "image":l.banner_url||visual.hero,
+   "telephone":l.phone||l.whatsapp||undefined,
+   "address":l.address?{"@type":"PostalAddress","streetAddress":l.address}:undefined
+ };
+ let node=document.getElementById("localBusinessSchema");
+ if(!node){node=document.createElement("script");node.type="application/ld+json";node.id="localBusinessSchema";document.head.appendChild(node)}
+ node.textContent=JSON.stringify(schema);
+}
 function renderHero(){
  const l=store.local,cfg=pageContent(),visual=templateVisuals();
  $("brandName").textContent=l.name;
@@ -517,7 +542,7 @@ async function init(){
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
    products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];
-   renderHero();renderPageSections();renderCats();renderPromotions();renderProducts();await loadMenu();updateCount();
+   renderHero();renderPageSections();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();updateCount();
    trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
    if(sharedProductId){
      const target=document.getElementById("product-"+sharedProductId);
