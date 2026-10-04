@@ -86,6 +86,68 @@ function _htpwebAuthActiveHref() {
   return "";
 }
 
+async function _htpwebAccountModes(){
+  try{
+    const result=await supabaseClient.rpc("my_account_modes");
+    return result.error?null:(result.data||null);
+  }catch{return null}
+}
+
+function _htpwebEsc(value){
+  return String(value||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function _htpwebProfileSwitcherHtml(modes){
+  if(!modes||modes?.active_context?.mode==="MASTER")return "";
+  const active=modes.active_context||{mode:"CLIENT",resource_id:null};
+  const items=[];
+  items.push(
+    '<button type="button" class="htp-profile-option '+(active.mode==="CLIENT"?"active":"")+'" data-htp-profile-mode="CLIENT">'+
+      '<span class="htp-profile-avatar client">👤</span><span><strong>Perfil cliente</strong><small>Comprar y usar HTPWEB</small></span>'+
+      (active.mode==="CLIENT"?'<b class="htp-profile-check">✓</b>':'')+
+    '</button>'
+  );
+  (modes.deliveries||[]).forEach(d=>{
+    const isActive=active.mode==="DELIVERY"&&active.resource_id===d.id;
+    items.push(
+      '<button type="button" class="htp-profile-option '+(isActive?"active":"")+'" data-htp-profile-mode="DELIVERY" data-htp-profile-resource="'+_htpwebEsc(d.id)+'">'+
+        (d.logo_url?'<img class="htp-profile-avatar" src="'+_htpwebEsc(d.logo_url)+'" alt="">':'<span class="htp-profile-avatar delivery">D</span>')+
+        '<span><strong>'+_htpwebEsc(d.name)+'</strong><small>Perfil DELIVERY</small></span>'+
+        (isActive?'<b class="htp-profile-check">✓</b>':'')+
+      '</button>'
+    );
+  });
+  (modes.locals||[]).forEach(l=>{
+    const isActive=active.mode==="LOCAL"&&active.resource_id===l.id;
+    items.push(
+      '<button type="button" class="htp-profile-option '+(isActive?"active":"")+'" data-htp-profile-mode="LOCAL" data-htp-profile-resource="'+_htpwebEsc(l.id)+'">'+
+        (l.logo_url?'<img class="htp-profile-avatar" src="'+_htpwebEsc(l.logo_url)+'" alt="">':'<span class="htp-profile-avatar local">L</span>')+
+        '<span><strong>'+_htpwebEsc(l.name)+'</strong><small>Perfil LOCAL</small></span>'+
+        (isActive?'<b class="htp-profile-check">✓</b>':'')+
+      '</button>'
+    );
+  });
+  return '<div class="htp-profile-switcher"><div class="htp-profile-switcher-title">Cambiar perfil</div>'+items.join("")+'</div><div class="htp-auth-account-separator"></div>';
+}
+
+function _htpwebBindProfileSwitcher(root,{clientHref,workspaceHref}){
+  root.querySelectorAll("[data-htp-profile-mode]").forEach(button=>{
+    button.addEventListener("click",async()=>{
+      const mode=button.dataset.htpProfileMode;
+      const resource=button.dataset.htpProfileResource||null;
+      button.disabled=true;
+      try{
+        const result=await supabaseClient.rpc("switch_my_account_mode",{p_mode:mode,p_resource_id:resource});
+        if(result.error)throw result.error;
+        location.href=mode==="CLIENT"?clientHref:workspaceHref;
+      }catch(error){
+        button.disabled=false;
+        alert(error?.message||"No se pudo cambiar de perfil.");
+      }
+    });
+  });
+}
+
 async function instalarEncabezadoHTPWEB() {
   if (!_htpwebAuthHeaderAllowed()) return;
   if (document.querySelector("[data-htpweb-auth-header]")) return;
@@ -101,9 +163,11 @@ async function instalarEncabezadoHTPWEB() {
   }
 
   let accountRole="";
+  let accountModes=null;
   try{
     const roleResult=await supabaseClient.rpc("current_role_code");
     if(!roleResult.error)accountRole=roleResult.data||"";
+    accountModes=await _htpwebAccountModes();
   }catch{}
   const masterAdminLink=accountRole==="MASTER"
     ? '<a href="../admin/index.html">Administración</a><div class="htp-auth-account-separator"></div>'
@@ -126,7 +190,8 @@ async function instalarEncabezadoHTPWEB() {
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
         '<div id="htpAuthAccountDropdown" class="htp-auth-account-dropdown hidden">'+
-          '<div class="htp-auth-account-summary"><strong>'+String(displayName).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</strong><small>'+String(user.email||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</small></div>'+
+          '<div class="htp-auth-account-summary"><strong>'+_htpwebEsc(displayName)+'</strong><small>'+_htpwebEsc(user.email||"")+'</small></div>'+
+          _htpwebProfileSwitcherHtml(accountModes)+
           '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
           '<a href="configuracion.html">Configuración</a>'+
           masterAdminLink+
@@ -144,6 +209,7 @@ async function instalarEncabezadoHTPWEB() {
   const dropdown=header.querySelector("#htpAuthAccountDropdown");
   trigger?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")});
   document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+  _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
   const logout=header.querySelector("#htpAuthLogout");
   logout?.addEventListener("click",async()=>{await cerrarSesion();location.href="../index.html"});
 }
@@ -157,7 +223,8 @@ async function prepararEncabezadoDeliveryAdmin(){
   if(!session?.user)return;
 
   const roleResult=await supabaseClient.rpc("current_role_code");
-  if(roleResult.error||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(roleResult.data))return;
+  if(roleResult.error||!["DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN"].includes(roleResult.data))return;
+  const accountModes=await _htpwebAccountModes();
 
   if(!document.querySelector('link[href*="authenticated-shell.css"]')){
     const link=document.createElement("link");
@@ -182,6 +249,7 @@ async function prepararEncabezadoDeliveryAdmin(){
         '<button id="adminHtpAccountTrigger" class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
         '<div id="adminHtpAccountDropdown" class="htp-auth-account-dropdown hidden">'+
           '<div class="htp-auth-account-summary"><strong>'+escText(displayName)+'</strong><small>'+escText(user.email)+'</small></div>'+
+          _htpwebProfileSwitcherHtml(accountModes)+
           '<a href="../app/mi-cuenta.html">Abrir mi cuenta</a>'+
           '<a href="../app/configuracion.html">Configuración</a>'+
           '<div class="htp-auth-account-separator"></div>'+
@@ -196,6 +264,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   const dropdown=header.querySelector("#adminHtpAccountDropdown");
   if(trigger)trigger.onclick=e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")};
   document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+  _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"./index.html"});
 }
 
 if (document.readyState === "loading") {
