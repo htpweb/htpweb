@@ -17,7 +17,7 @@
 <div class="row between"><div><h1>Crear mi LOCAL</h1><p class="muted">Crea un nuevo negocio en HTPWEB sin depender de un DELIVERY.</p></div><a class="btn btn-muted" href="mi-cuenta.html">← Mi cuenta</a></div>
 <div id="message" class="hidden"></div>
 <section class="card">
-<p class="muted">Primero registramos la solicitud y verificamos que el negocio no exista ya en HTPWEB. Si encontramos uno equivalente, podrás reclamarlo en lugar de duplicarlo. La revisión tiene un plazo máximo de 3 días.</p>
+<p class="muted">Crea tu LOCAL directamente en HTPWEB. Antes de crearlo, validaremos nombre, teléfono/WhatsApp y ubicación para evitar duplicados. Si ya existe, podrás reclamarlo.</p>
 <div class="form-grid step"><div><label>Sector / tipo de negocio *</label><select id="sector"></select></div><div><label>Categoría *</label><select id="category"></select></div></div>
 
 <div class="form-grid step">
@@ -46,15 +46,13 @@
 </div>
 
 <label class="step">Descripción</label><textarea id="description" rows="3"></textarea>
-<input id="requestId" type="hidden">
-<button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Enviar solicitud</button>
+<button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Crear LOCAL</button>
 </section>
-<section class="card"><h2>Mis solicitudes de creación</h2><div id="requests"><div class="muted">Cargando…</div></div></section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-let filters={sectors:[],categories:[]},user=null,creationRequests=[],duplicateRows=[],duplicateTimer=null,duplicateSearchSeq=0;
+let filters={sectors:[],categories:[]},user=null,duplicateRows=[],duplicateTimer=null,duplicateSearchSeq=0;
 let localMap=null,userMarker=null,matchMarker=null,matchLine=null;
 function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function renderCategories(){
@@ -225,11 +223,6 @@ async function loadFilters(){
  const {data,error}=await supabaseClient.rpc("public_htpweb_directory_filters");if(error)throw error;filters=data||{sectors:[],categories:[]};
  $("sector").innerHTML=(filters.sectors||[]).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+'</option>').join("");renderCategories();
 }
-async function loadRequests(){
- const {data,error}=await supabaseClient.rpc("my_local_creation_requests");if(error)throw error;creationRequests=Array.isArray(data)?data:[];
- $("requests").innerHTML=creationRequests.length?creationRequests.map(r=>'<div class="status-row"><strong>'+esc(r.payload?.name||"LOCAL")+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[r.status]||r.status)+'</span></div><div class="muted">Enviada: '+new Date(r.created_at).toLocaleString("es-EC")+(r.review_deadline?" · respuesta prevista hasta "+new Date(r.review_deadline).toLocaleDateString("es-EC"):"")+'</div>'+(r.review_note?'<div>Comentario HTPWEB: '+esc(r.review_note)+'</div>':'')+(r.status==="NEEDS_INFO"?'<div class="row" style="margin-top:8px"><button class="btn btn-primary" data-complete-request="'+esc(r.id)+'">Completar información</button></div>':'')+'</div>').join(""):'<div class="muted">No tienes solicitudes de creación.</div>';
- document.querySelectorAll("[data-complete-request]").forEach(b=>b.onclick=()=>editRequest(b.dataset.completeRequest));
-}
 function captureLocation(){
  if(!navigator.geolocation)return msg("Este navegador no permite obtener la ubicación.","error");
  $("locationState").textContent="Obteniendo ubicación…";
@@ -241,17 +234,9 @@ function captureLocation(){
 }
 
 
-function editRequest(id){
- const r=creationRequests.find(x=>x.id===id);if(!r)return;const p=r.payload||{};
- $("requestId").value=r.id;$("name").value=p.name||"";$("address").value=p.address||"";$("description").value=p.description||"";$("phone").value=p.phone||"";$("whatsapp").value=p.whatsapp||"";
- if(p.sector_id){$("sector").value=p.sector_id;renderCategories()}if(p.category_id)$("category").value=p.category_id;
- if(p.latitude&&p.longitude)setUserLocation(p.latitude,p.longitude);else{$("latitude").value="";$("longitude").value="";$("locationState").textContent="Selecciona una ubicación en el mapa."}
- $("submitBtn").textContent="Reenviar información";
- window.scrollTo({top:0,behavior:"smooth"});
-}
 function clearForm(){
- ["name","address","description","phone","whatsapp","latitude","longitude","requestId"].forEach(id=>$(id).value="");duplicateRows=[];renderDuplicateResults();clearMatchMap();if(userMarker){localMap.removeLayer(userMarker);userMarker=null}$("locationState").textContent="Selecciona una ubicación en el mapa.";
- $("locationState").textContent="Selecciona una ubicación en el mapa.";$("submitBtn").textContent="Enviar solicitud";
+ ["name","address","description","phone","whatsapp","latitude","longitude"].forEach(id=>$(id).value="");duplicateRows=[];renderDuplicateResults();clearMatchMap();if(userMarker){localMap.removeLayer(userMarker);userMarker=null}$("locationState").textContent="Selecciona una ubicación en el mapa.";
+ $("locationState").textContent="Selecciona una ubicación en el mapa.";$("submitBtn").textContent="Crear LOCAL";
 }
 async function submit(){
  $("submitBtn").disabled=true;
@@ -277,19 +262,19 @@ async function submit(){
     latitude:lat,
     longitude:lng
   };
-  const requestId=$("requestId").value;
-  const rpcName=requestId?"update_my_local_creation_request":"submit_my_local_creation_request";
-  const args=requestId?{p_request_id:requestId,p_payload:payload}:{p_payload:payload};
-  const {error}=await supabaseClient.rpc(rpcName,args);if(error)throw error;
-  msg(requestId?"Información reenviada. HTPWEB volverá a revisar posibles duplicados.":"Solicitud enviada. HTPWEB revisará posibles duplicados; no se requiere verificación de propiedad para un LOCAL nuevo.");
-  clearForm();await loadRequests();
+  payload.confirmed_new_local=!!$("confirmNewLocal")?.checked;
+  const {data,error}=await supabaseClient.rpc("create_my_local",{p_payload:payload});
+  if(error)throw error;
+  const planEnd=data?.plan_ends_at?new Date(data.plan_ends_at).toLocaleDateString("es-EC"):"";
+  msg("LOCAL creado correctamente. Plan BASICO activo por 30 días"+(planEnd?" hasta "+planEnd:"")+".","success");
+  setTimeout(()=>{location.href="mi-cuenta.html#businesses"},900);
  }catch(e){msg(e.message||"No se pudo enviar la solicitud.","error")}
  finally{$("submitBtn").disabled=false}
 }
 async function init(){
  user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-local.html");return}
  initLocalMap();
- await Promise.all([loadFilters(),loadRequests()]);
+ await loadFilters();
  $("sector").onchange=renderCategories;
  $("name").addEventListener("input",scheduleDuplicateSearch);
  $("phone").addEventListener("input",scheduleDuplicateSearch);
