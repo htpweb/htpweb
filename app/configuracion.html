@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configuración | HTPWEB</title>
+<script src="../config/theme-bootstrap.js?v=20261002-theme3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../config/supabase.js"></script>
+<script src="../config/auth.js?v=20261004-settings1"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261004-settings1">
+<link rel="stylesheet" href="../assets/authenticated-shell.css?v=20261004-shell3">
+<style>
+.settings-shell{max-width:820px;margin:auto;padding:24px 14px 56px}
+.settings-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px}
+.settings-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.theme-option{border:1px solid #dbe3ee;border-radius:14px;background:#fff;padding:12px;cursor:pointer;text-align:left}
+.theme-option.active{box-shadow:0 0 0 2px #1466e8;border-color:#1466e8}
+.theme-swatch{height:48px;border-radius:10px;margin-bottom:8px;border:1px solid #e5e7eb}
+.theme-option strong{display:block}
+@media(max-width:680px){.theme-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main class="settings-shell">
+<section class="settings-card">
+  <div class="settings-head">
+    <div><div class="muted">Mi cuenta</div><h1 style="margin:3px 0 6px">Configuración</h1><p class="muted" style="margin:0">Personaliza cómo ves HTPWEB.</p></div>
+    <a class="btn btn-muted" href="mi-cuenta.html">← Volver a Mi cuenta</a>
+  </div>
+  <div id="message" class="hidden"></div>
+  <h2 style="margin:18px 0 4px">Color de HTPWEB</h2>
+  <p class="muted" style="margin:0">Selecciona el color que prefieres para tu experiencia personal.</p>
+  <div id="themeGrid" class="theme-grid"></div>
+</section>
+</main>
+<script>
+const themes={
+  HTPWEB:{label:"HTPWEB",color:"#e53935"},
+  OCEAN:{label:"Océano",color:"#1565c0"},
+  SKY:{label:"Cielo",color:"#0288d1"},
+  FOREST:{label:"Bosque",color:"#2e7d32"},
+  SUNSET:{label:"Atardecer",color:"#ef6c00"},
+  PURPLE:{label:"Púrpura",color:"#7b1fa2"},
+  TURQUOISE:{label:"Turquesa",color:"#00897b"},
+  GRAPHITE:{label:"Grafito",color:"#455a64"}
+};
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function currentTheme(){const key=localStorage.getItem("HTPWEB_ACCOUNT_THEME")||"HTPWEB";return themes[key]?key:"HTPWEB"}
+function applyTheme(key){
+  const theme=themes[key]?key:"HTPWEB";
+  localStorage.setItem("HTPWEB_ACCOUNT_THEME",theme);
+  if(window.htpBootstrapApplyTheme)window.htpBootstrapApplyTheme(theme);
+  renderThemes();
+  const m=document.getElementById("message");
+  m.textContent="Color actualizado.";
+  m.className="success";
+}
+function renderThemes(){
+  const selected=currentTheme();
+  document.getElementById("themeGrid").innerHTML=Object.entries(themes).map(([key,t])=>
+    '<button class="theme-option '+(key===selected?"active":"")+'" type="button" data-theme="'+esc(key)+'">'+
+      '<div class="theme-swatch" style="background:linear-gradient(135deg,'+esc(t.color)+',#ffffff)"></div>'+
+      '<strong>'+esc(t.label)+'</strong>'+
+    '</button>'
+  ).join("");
+  document.querySelectorAll("[data-theme]").forEach(b=>b.onclick=()=>applyTheme(b.dataset.theme));
+}
+async function init(){
+  const user=await obtenerUsuarioActual();
+  if(!user){irAAcceso(rutaActualRelativa());return}
+  if(window.htpBootstrapApplyTheme)window.htpBootstrapApplyTheme(currentTheme());
+  renderThemes();
+}
+init().catch(e=>{
+  const m=document.getElementById("message");
+  m.textContent=e.message||"No se pudo cargar Configuración.";
+  m.className="error";
+});
+</script>
+</body>
+</html>
