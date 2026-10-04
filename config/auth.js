@@ -182,7 +182,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   const menu=header.querySelector(".htp-auth-account-menu");
   const trigger=header.querySelector("#adminHtpAccountTrigger");
   const dropdown=header.querySelector("#adminHtpAccountDropdown");
-  trigger?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")});
+  if(trigger)trigger.onclick=e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")};
   document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
 }
 
