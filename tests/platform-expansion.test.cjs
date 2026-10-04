@@ -230,3 +230,11 @@ test("Mi cuenta exposes plans subscriptions and visual configuration",()=>{
   assert.match(account,/accountTheme/);
   assert.match(account,/HTPWEB_ACCOUNT_THEME/);
 });
+
+
+test("self-service DELIVERY uses an allowed theme key",()=>{
+  const fix=read("supabase/migrations/20261004011600_fix_delivery_trial_theme.sql");
+  assert.match(fix,/theme_key/);
+  assert.match(fix,/'HTPWEB'/);
+  assert.doesNotMatch(fix,/'default'/);
+});
