@@ -2138,6 +2138,7 @@ function renderShareGallery() {
       '<div class="share-gallery-image"><img src="'+esc(image.image_url)+'" alt="Foto '+(index+1)+' de '+esc(local.name)+'" loading="lazy"></div>'+
       '<div class="share-gallery-actions">'+
         '<button type="button" class="btn-primary" data-share-gallery-image="'+esc(image.id)+'">Compartir foto</button>'+
+        '<button type="button" class="btn-muted" data-share-gallery-link="'+esc(image.id)+'">Compartir enlace</button>'+
         '<button type="button" class="btn-muted" data-share-gallery-copy="'+esc(image.id)+'">Copiar Link</button>'+
       '</div>'+
     '</article>'
@@ -2145,6 +2146,9 @@ function renderShareGallery() {
 
   box.querySelectorAll("[data-share-gallery-image]").forEach(button=>{
     button.onclick=()=>shareOriginalGalleryImage(button.dataset.shareGalleryImage);
+  });
+  box.querySelectorAll("[data-share-gallery-link]").forEach(button=>{
+    button.onclick=()=>shareEnrichedLocalLink(button.dataset.shareGalleryLink);
   });
   box.querySelectorAll("[data-share-gallery-copy]").forEach(button=>{
     button.onclick=()=>copyShareLocalOrderLink();
@@ -2154,6 +2158,39 @@ function renderShareGallery() {
 function shareLocalOrderPlainText(url = buildShortSharedLocalUrl()) {
   const delivery=currentShareDelivery();
   return url&&delivery?"PIDE AQUÍ | "+delivery.name+"\n"+url:"";
+}
+
+async function shareEnrichedLocalLink(imageId=null) {
+  const delivery=currentShareDelivery();
+  const local=currentShareLocal();
+  const image=imageId?state.shareGallery.find(item=>item.id===imageId):null;
+  const url=buildShortSharedLocalUrl();
+
+  if(!delivery||!local||!url){
+    return message("No se pudo generar el enlace para compartir.","error");
+  }
+
+  const payload={
+    title:"PIDE AQUÍ | "+delivery.name,
+    text:local.name+" · Pide aquí con "+delivery.name,
+    url
+  };
+
+  if(navigator.share){
+    try{
+      await navigator.share(payload);
+      return;
+    }catch(error){
+      if(error?.name==="AbortError")return;
+    }
+  }
+
+  try{
+    await navigator.clipboard.writeText(url);
+    message("Enlace enriquecido copiado. Al pegarlo en WhatsApp o redes sociales puede mostrar la imagen y descripción del LOCAL.");
+  }catch{
+    message("No se pudo compartir ni copiar el enlace.","error");
+  }
 }
 
 async function copyShareLocalOrderLink() {
