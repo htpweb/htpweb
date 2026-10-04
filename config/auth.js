@@ -96,7 +96,7 @@ async function instalarEncabezadoHTPWEB() {
   if (!document.querySelector('link[href*="authenticated-shell.css"]')) {
     const link=document.createElement("link");
     link.rel="stylesheet";
-    link.href="../assets/authenticated-shell.css?v=20261003-2";
+    link.href="../assets/authenticated-shell.css?v=20261004-shell3";
     document.head.appendChild(link);
   }
 
@@ -112,7 +112,7 @@ async function instalarEncabezadoHTPWEB() {
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="../index.html">Inicio</a>'+
         '<a href="../como-funciona.html">Cómo funciona</a>'+
-        '<a href="../explorar-negocios.html">Explorar locales</a>'+
+        '<a href="../explorar-negocios.html">Locales</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
