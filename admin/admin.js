@@ -2170,11 +2170,7 @@ async function shareEnrichedLocalLink(imageId=null) {
     return message("No se pudo generar el enlace para compartir.","error");
   }
 
-  const payload={
-    title:"PIDE AQUÍ | "+delivery.name,
-    text:local.name+" · Pide aquí con "+delivery.name,
-    url
-  };
+  const payload={url};
 
   if(navigator.share){
     try{
