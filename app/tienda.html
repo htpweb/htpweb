@@ -151,7 +151,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 <body class="local-store">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
 <header class="local-store-header"><div class="local-store-header-inner">
-  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName">LOCAL</strong><small>Sitio oficial · by HTPWEB</small></div></div>
+  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial · by HTPWEB</small></div></div>
   <nav id="siteNav" class="local-site-nav">
     <a id="homeNav" data-site-section="home" href="#">Inicio</a>
     <a id="aboutNav" data-site-section="about" href="#">Quiénes somos</a>
@@ -204,7 +204,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 </main>
 <footer id="siteFooter" class="local-site-footer">
   <div class="local-site-footer-inner">
-    <div><h3 id="footerBrand">LOCAL</h3><p id="footerAbout">Conoce nuestros productos, servicios y novedades.</p></div>
+    <div><h3 id="footerBrand"></h3><p id="footerAbout">Conoce nuestros productos, servicios y novedades.</p></div>
     <div><h4>Explora</h4><a data-site-section="home" href="#">Inicio</a><a data-site-section="about" href="#">Quiénes somos</a><a data-site-section="services" href="#">Nuestros servicios</a><a data-site-section="shop" href="#">Tienda virtual</a><a data-site-section="projects" href="#">Proyectos</a></div>
     <div><h4>Contacto</h4><div id="footerContact"></div></div>
   </div>
@@ -220,7 +220,7 @@ const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const sharedProductId=params.get("product")||"";
 const rawPageSection=(params.get("section")||"home").toLowerCase();
-const pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
+let pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
 let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="";
@@ -240,18 +240,28 @@ function siteSectionUrl(section){
  url.hash="";
  return url.toString();
 }
+function navigateSiteSection(section,{replace=false}={}){
+ pageSection=section==="catalog"?"shop":section;
+ const url=siteSectionUrl(pageSection);
+ if(replace)history.replaceState({section:pageSection},"",url);
+ else history.pushState({section:pageSection},"",url);
+ document.querySelectorAll("[data-site-section]").forEach(a=>{
+   a.classList.toggle("active",(a.dataset.siteSection||"home")===pageSection);
+ });
+ applySinglePageSection();
+ window.scrollTo({top:0,behavior:"instant"});
+}
 function configureSiteNavigation(){
  document.querySelectorAll("[data-site-section]").forEach(a=>{
    const section=a.dataset.siteSection||"home";
-   const url=siteSectionUrl(section);
-   a.href=url;
+   a.href=siteSectionUrl(section);
    a.target="_self";
    a.removeAttribute("rel");
    a.classList.toggle("active",pageSection===section);
    a.onclick=e=>{
      e.preventDefault();
      e.stopPropagation();
-     location.assign(url);
+     navigateSiteSection(section);
      return false;
    };
  });
@@ -488,10 +498,11 @@ function renderHero(){
  const title=cfg.hero_title||l.name,subtitle=cfg.hero_subtitle||l.description||"";
  const image=l.banner_url||visual.hero;
  const wa=whatsappUrl(l);
- const primary=wa?'<a class="local-hero-cta" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">'+esc(visual.cta)+'</a>':'<a class="local-hero-cta" target="_self" href="'+esc(siteSectionUrl("contact"))+'">'+esc(visual.cta)+'</a>';
- const secondary='<a class="local-hero-secondary" target="_self" href="'+esc(siteSectionUrl("services"))+'">'+esc(visual.secondary)+'</a>';
+ const primary=wa?'<a class="local-hero-cta" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">'+esc(visual.cta)+'</a>':'<a class="local-hero-cta" data-site-section="contact" href="'+esc(siteSectionUrl("contact"))+'">'+esc(visual.cta)+'</a>';
+ const secondary='<a class="local-hero-secondary" data-site-section="services" href="'+esc(siteSectionUrl("services"))+'">'+esc(visual.secondary)+'</a>';
  $("hero").innerHTML='<img src="'+esc(image)+'" alt="'+esc(l.name)+'"><div class="local-hero-copy"><span class="hero-eyebrow">'+esc(visual.eyebrow)+'</span><h1>'+esc(title)+'</h1><p>'+esc(subtitle)+'</p><div class="local-hero-actions">'+primary+secondary+'</div></div>';
  $("heroTrust").innerHTML=visual.trust.map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><span>'+esc(copy)+'</span></div>').join("");
+ configureSiteNavigation();
  applySinglePageSection();
 }
 function renderCats(){
@@ -655,6 +666,14 @@ async function loadMenu(){
  const rows=Array.isArray(data)?data:[];
  $("menuPages").innerHTML=rows.length?rows.map(x=>'<article class="menu-page"><strong>'+esc(x.title||"Menú")+'</strong><img src="'+esc(x.image_url||"")+'" alt=""></article>').join(""):'<div class="empty">Este LOCAL todavía no tiene hojas de menú visual.</div>';
 }
+window.addEventListener("popstate",()=>{
+ const nextRaw=(new URLSearchParams(location.search).get("section")||"home").toLowerCase();
+ pageSection=nextRaw==="catalog"?"shop":nextRaw;
+ configureSiteNavigation();
+ applySinglePageSection();
+ window.scrollTo({top:0,behavior:"instant"});
+});
+
 async function init(){
  try{
    if(!key)throw new Error("No se especificó el LOCAL.");
