@@ -249,6 +249,11 @@ function configureHtpwebWorkspaceHeader(){
   const visible=["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role);
   header.classList.toggle("hidden",!visible);
   document.body.classList.toggle("delivery-workspace-header",visible);
+  if(visible){
+    const displayName=state.user?.user_metadata?.full_name||state.user?.user_metadata?.name||"Mi cuenta";
+    if($("adminHtpAccountName"))$("adminHtpAccountName").textContent=displayName;
+    if($("adminHtpAccountEmail"))$("adminHtpAccountEmail").textContent=state.user?.email||"";
+  }
 }
 
 function syncDeliveryPublicAccess(delivery){
@@ -11756,6 +11761,15 @@ async function saveRestrictedArea(){
     if(securityState.points.length<3)throw new Error("Dibuja al menos tres puntos.");const mode=$("restrictedAreaMode").value;const areaId=await rpc("delivery_save_restricted_area",{p_area_id:$("restrictedAreaId").value||null,p_delivery_id:deliveryId,p_zone_id:$("restrictedAreaZone").value,p_name:$("restrictedAreaName").value.trim(),p_reason:$("restrictedAreaReason").value.trim(),p_boundary:securityState.points,p_restriction_mode:mode,p_active:$("restrictedAreaActive").value==="true"});if(mode==="SCHEDULE")await rpc("delivery_replace_restricted_area_rules",{p_area_id:areaId,p_rules:collectRestrictedRules()});message("Área restringida guardada.");clearRestrictedArea();await loadRestrictedAreas();}catch(e){message(e.message||"No se pudo guardar el área restringida.","error");}
 }
 function bindEvents() {
+  if ($("adminHtpAccountTrigger")) $("adminHtpAccountTrigger").onclick = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    $("adminHtpAccountDropdown")?.classList.toggle("hidden");
+  };
+  document.addEventListener("click", event => {
+    const menu = document.querySelector("#adminHtpwebHeader .htp-auth-account-menu");
+    if (menu && !menu.contains(event.target)) $("adminHtpAccountDropdown")?.classList.add("hidden");
+  });
   if ($("driversDelivery")) $("driversDelivery").onchange = () => { resetAdminDriverGps(); loadDriverWorkspace(); };
   if ($("quickDriverCreateBtn")) $("quickDriverCreateBtn").onclick = createQuickDriver;
   if ($("driverLookupBtn")) $("driverLookupBtn").onclick = lookupDriverCandidate;
