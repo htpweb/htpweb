@@ -100,6 +100,15 @@ async function instalarEncabezadoHTPWEB() {
     document.head.appendChild(link);
   }
 
+  let accountRole="";
+  try{
+    const roleResult=await supabaseClient.rpc("current_role_code");
+    if(!roleResult.error)accountRole=roleResult.data||"";
+  }catch{}
+  const masterAdminLink=accountRole==="MASTER"
+    ? '<a href="../admin/index.html">Administración</a><div class="htp-auth-account-separator"></div>'
+    : "";
+
   const active=_htpwebAuthActiveHref();
   const header=document.createElement("header");
   header.className="htp-auth-header";
@@ -120,6 +129,7 @@ async function instalarEncabezadoHTPWEB() {
           '<div class="htp-auth-account-summary"><strong>'+String(displayName).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</strong><small>'+String(user.email||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</small></div>'+
           '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
           '<a href="configuracion.html">Configuración</a>'+
+          masterAdminLink+
           '<div class="htp-auth-account-separator"></div>'+
           '<a href="crear-local.html">Crear negocio</a>'+
           '<a href="crear-delivery.html">Crear delivery</a>'+
