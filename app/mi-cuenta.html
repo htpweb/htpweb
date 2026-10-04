@@ -49,7 +49,7 @@
 </section>
 
 <section class="account-card full" id="plans">
-<div class="section-title"><div><h2>Planes y suscripciones</h2><p class="muted">Revisa el plan actual de tus DELIVERY, zonas incluidas y opciones para ampliar cobertura.</p></div><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
+<div class="section-title"><div><h2>Planes y suscripciones</h2><p class="muted">Revisa los planes de tus DELIVERY y LOCAL, sus capacidades, límites y opciones disponibles.</p></div><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
 <div id="currentPlans"><div class="muted">Cargando suscripciones…</div></div>
 <div id="availablePlans" style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb"></div>
 </section>
@@ -92,7 +92,7 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
 const statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
-let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[],directLocals=[],plansData={deliveries:[],available_delivery_plans:[]};
+let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[],directLocals=[],plansData={deliveries:[],available_delivery_plans:[],locals:[],available_local_plans:[],local_plans_status:"PENDING_DEFINITION"};
 function show(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function initials(name){return String(name||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"U"}
 function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
@@ -133,12 +133,48 @@ async function loadPlans(){
  const r=await supabaseClient.rpc("my_plans_and_subscriptions");if(r.error)throw r.error;
  plansData=r.data||{deliveries:[],available_delivery_plans:[]};
 }
+function planBool(ent,key){return ent?.[key]===true?"Sí":"No"}
+function renderPlanScope(ent={},type="DELIVERY"){
+ const parts=[];
+ if(type==="DELIVERY"){
+   if(ent["zones.active.max"]!=null)parts.push("Zonas: "+esc(ent["zones.active.max"]));
+   if(ent["drivers.active.max"]!=null)parts.push("Repartidores: "+esc(ent["drivers.active.max"]));
+   if(ent["drivers.emergency.max"]!=null)parts.push("Emergencia: "+esc(ent["drivers.emergency.max"]));
+   parts.push("Despacho manual: "+planBool(ent,"dispatch.manual"));
+   parts.push("WhatsApp cliente: "+planBool(ent,"whatsapp.customer_order"));
+   parts.push("Red privada: "+planBool(ent,"customers.private_network"));
+   parts.push("Horarios: "+planBool(ent,"customers.access_schedule"));
+   parts.push("Contactos: "+planBool(ent,"contacts.import"));
+   parts.push("Códigos: "+planBool(ent,"referrals.codes"));
+   parts.push("Enlaces: "+planBool(ent,"referrals.links"));
+ }
+ return parts.join(" · ");
+}
 function renderPlans(){
- const current=Array.isArray(plansData.deliveries)?plansData.deliveries:[];
- const available=Array.isArray(plansData.available_delivery_plans)?plansData.available_delivery_plans:[];
- $("plansCount").textContent=current.length;
- $("currentPlans").innerHTML=current.length?current.map(p=>'<div class="delivery-row"><div class="section-title"><div><strong>'+esc(p.delivery_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div><span class="pill">'+esc(p.zones_active||0)+' / '+esc(p.zones_max||0)+' zonas</span></div>'+(p.trial_ends_at?'<div class="muted">Evaluación hasta '+esc(new Date(p.trial_ends_at).toLocaleDateString("es-EC"))+'</div>':'')+'</div>').join(""):'<div class="empty">Todavía no tienes suscripciones DELIVERY activas.</div>';
- $("availablePlans").innerHTML='<h3 style="margin:0 0 10px">Planes disponibles</h3>'+(available.length?'<div class="profile-grid">'+available.map(p=>'<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px"><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div><div style="margin-top:8px"><strong>'+money(p.price)+'</strong> · hasta '+esc(p.zones_max||0)+' zonas</div></div>').join("")+'</div>':'<div class="muted">No hay planes adicionales disponibles.</div>');
+ const currentDelivery=Array.isArray(plansData.deliveries)?plansData.deliveries:[];
+ const availableDelivery=Array.isArray(plansData.available_delivery_plans)?plansData.available_delivery_plans:[];
+ const currentLocal=Array.isArray(plansData.locals)?plansData.locals:[];
+ $("plansCount").textContent=currentDelivery.length+currentLocal.length;
+
+ const deliveryCurrentHtml=currentDelivery.length
+   ? currentDelivery.map(p=>'<div class="delivery-row"><div class="section-title"><div><strong>'+esc(p.delivery_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div><span class="pill">'+esc(p.zones_active||0)+' / '+esc(p.zones_max||0)+' zonas</span></div><div class="muted" style="margin-top:6px">'+renderPlanScope(p.entitlements||{},"DELIVERY")+'</div>'+(p.ends_at?'<div class="muted" style="margin-top:4px">Vigente hasta '+esc(new Date(p.ends_at).toLocaleDateString("es-EC"))+'</div>':'')+'</div>').join("")
+   : '<div class="empty">Todavía no tienes suscripciones DELIVERY activas.</div>';
+
+ const deliveryAvailableHtml=availableDelivery.length
+   ? '<div class="profile-grid">'+availableDelivery.map(p=>'<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px"><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div><div style="margin-top:8px"><strong>'+money(p.price)+'</strong> · hasta '+esc(p.zones_max||0)+' zonas</div><div class="muted" style="margin-top:8px">'+renderPlanScope(p.entitlements||{},"DELIVERY")+'</div></div>').join("")+'</div>'
+   : '<div class="muted">No hay planes DELIVERY disponibles.</div>';
+
+ const localCurrentHtml=currentLocal.length
+   ? currentLocal.map(p=>'<div class="delivery-row"><strong>'+esc(p.local_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan definido")+(p.status?' · '+esc(p.status):'')+'</div></div>').join("")
+   : '<div class="muted">Tus LOCAL aparecerán aquí cuando definamos sus planes y alcances.</div>';
+
+ $("currentPlans").innerHTML=
+   '<div><h3 style="margin:0 0 10px">Suscripciones DELIVERY</h3>'+deliveryCurrentHtml+'</div>'+
+   '<div style="margin-top:22px;padding-top:18px;border-top:1px solid #e5e7eb"><h3 style="margin:0 0 10px">Suscripciones LOCAL</h3>'+localCurrentHtml+'<div class="workspace-note" style="margin-top:10px"><strong>Planes LOCAL:</strong> pendiente de definición. Todavía no se han fijado precios, límites ni capacidades comerciales.</div></div>';
+
+ $("availablePlans").innerHTML=
+   '<h3 style="margin:0 0 10px">Planes para DELIVERY</h3>'+deliveryAvailableHtml+
+   '<div style="margin-top:22px;padding-top:18px;border-top:1px solid #e5e7eb"><h3 style="margin:0 0 10px">Planes para LOCAL</h3><div class="workspace-note"><strong>Próximamente.</strong> El catálogo de planes LOCAL todavía no está definido.</div></div>';
 }
 async function ensureCustomer(){
  if(customerId)return customerId;
