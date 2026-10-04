@@ -259,3 +259,11 @@ test("self-service DELIVERY activates plan before zone coverage refresh",()=>{
   assert.ok(planPos>=0&&zonePos>planPos);
   assert.match(sql,/delivery_zones refresh trigger now sees an active DELIVERY plan/);
 });
+
+
+test("self-service DELIVERY uses valid NEW change_type for initial plan assignment",()=>{
+  const sql=read("supabase/migrations/20261004013200_fix_delivery_trial_change_type.sql");
+  assert.match(sql,/'NEW'/);
+  assert.doesNotMatch(sql,/'INITIAL'/);
+  assert.match(sql,/insert into public\.plan_assignments/);
+});
