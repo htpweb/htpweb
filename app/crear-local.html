@@ -134,7 +134,8 @@ function renderTopMatchOnMap(){
  if(!localMap)return;
  clearMatchMap();
  if(!hasSelectedLocation())return;
- const candidate=duplicateRows.find(r=>r.match_level==="HIGH"&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude)))
+ const candidate=duplicateRows.find(r=>effectiveMatchLevel(r)==="HIGH"&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude)))
+   ||duplicateRows.find(r=>effectiveMatchLevel(r)==="MEDIUM"&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude)))
    ||duplicateRows.find(r=>Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude)));
  if(!candidate)return;
  const lat=Number(candidate.latitude),lng=Number(candidate.longitude);
@@ -145,14 +146,27 @@ function renderTopMatchOnMap(){
  matchLine=L.polyline([[userLat,userLng],[lat,lng]],{color:"#64748b",dashArray:"6 6"}).addTo(localMap);
  localMap.fitBounds(L.latLngBounds([[userLat,userLng],[lat,lng]]).pad(.25),{maxZoom:17});
 }
+function effectiveMatchLevel(r){
+ const name=Number(r?.name_score||0);
+ const distance=r?.distance_m==null?null:Number(r.distance_m);
+ const phone=!!r?.phone_match;
+ if(name>=0.80)return "HIGH";
+ if(phone&&name>=0.35)return "HIGH";
+ if(phone&&distance!=null&&distance<=150)return "HIGH";
+ if(name>=0.58&&distance!=null&&distance<=200)return "HIGH";
+ if(phone)return "MEDIUM";
+ if(name>=0.50)return "MEDIUM";
+ if(name>=0.38&&distance!=null&&distance<=350)return "MEDIUM";
+ return "LOW";
+}
 function duplicateLevelLabel(level){return ({HIGH:"Muy probable",MEDIUM:"Posible",LOW:"Similar"})[level]||"Similar"}
 function renderDuplicateResults(){
  const box=$("duplicateBox"),results=$("duplicateResults"),confirm=$("duplicateConfirm");
  if(!box||!results||!confirm)return;
  if(!duplicateRows.length){box.classList.add("hidden");results.innerHTML="";confirm.classList.add("hidden");$("confirmNewLocal").checked=false;return}
  box.classList.remove("hidden");
- const hasRisk=duplicateRows.some(r=>r.match_level==="HIGH"||r.match_level==="MEDIUM");
- const topHigh=duplicateRows.find(r=>r.match_level==="HIGH");
+ const hasRisk=duplicateRows.some(r=>["HIGH","MEDIUM"].includes(effectiveMatchLevel(r)));
+ const topHigh=duplicateRows.find(r=>effectiveMatchLevel(r)==="HIGH");
  const head=box.querySelector(".duplicate-head");
  if(head)head.innerHTML=topHigh
    ? '<strong>⚠ LOCAL existente muy probable</strong><div class="muted">HTPWEB detectó un negocio muy similar y cercano. Verifica el mapa antes de crear uno nuevo.</div>'
@@ -166,7 +180,8 @@ function renderDuplicateResults(){
    '<div class="duplicate-body">'+
     '<div><div class="duplicate-name">'+esc(r.name)+'</div>'+
      '<div class="duplicate-meta">'+esc([r.category_name,r.city_name,r.address].filter(Boolean).join(" · "))+'</div>'+
-     '<span class="duplicate-score '+String(r.match_level||"LOW").toLowerCase()+'">'+duplicateLevelLabel(r.match_level)+'</span>'+
+     '<span class="duplicate-score '+effectiveMatchLevel(r).toLowerCase()+'">'+duplicateLevelLabel(effectiveMatchLevel(r))+'</span>'+
+     (r.phone_match?'<span class="duplicate-distance">Coincide contacto</span>':'')+
      ((r.distance_m!=null||hasSelectedLocation())&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?'<span class="duplicate-distance">'+formatDistance(r.distance_m!=null?Number(r.distance_m):distanceMeters(Number($("latitude").value),Number($("longitude").value),Number(r.latitude),Number(r.longitude)))+' de tu ubicación</span>':'')+'</div>'+
     '<a class="btn btn-muted" href="reclamar-local.html?local='+encodeURIComponent(r.id)+'">Reclamar este LOCAL</a>'+
    '</div>'+
@@ -195,6 +210,14 @@ async function searchDuplicatesNow(){
   if(error)throw error;
   if(seq!==duplicateSearchSeq)return;
   duplicateRows=Array.isArray(data)?data:[];
+  const rank={HIGH:0,MEDIUM:1,LOW:2};
+  duplicateRows.sort((a,b)=>{
+    const levelDiff=rank[effectiveMatchLevel(a)]-rank[effectiveMatchLevel(b)];
+    if(levelDiff)return levelDiff;
+    const nameDiff=Number(b.name_score||0)-Number(a.name_score||0);
+    if(Math.abs(nameDiff)>.0001)return nameDiff;
+    return Number(a.distance_m??1e12)-Number(b.distance_m??1e12);
+  });
   renderDuplicateResults();
  }catch(e){
   if(seq!==duplicateSearchSeq)return;
@@ -261,7 +284,7 @@ async function submit(){
   if(!lat||!lng)throw new Error("Selecciona la ubicación exacta del negocio en el mapa.");
   if(!name)throw new Error("El nombre comercial es obligatorio.");
   await searchDuplicatesNow();
-  const riskyDuplicate=duplicateRows.some(r=>r.match_level==="HIGH"||r.match_level==="MEDIUM");
+  const riskyDuplicate=duplicateRows.some(r=>["HIGH","MEDIUM"].includes(effectiveMatchLevel(r)));
   if(riskyDuplicate&&!$("confirmNewLocal").checked)throw new Error("Encontramos LOCAL similares. Revísalos y, si ninguno corresponde, confirma que deseas crear uno nuevo.");
   if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))throw new Error("Coordenadas inválidas.");
   if(!$("truthConfirmed").checked)throw new Error("Confirma la declaración de veracidad.");
