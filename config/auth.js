@@ -81,7 +81,7 @@ function _htpwebAuthHeaderAllowed() {
 
 function _htpwebAuthActiveHref() {
   const page=_htpwebAuthPageName();
-  if (page==="mi-cuenta.html") return "account";
+  if (["mi-cuenta.html","configuracion.html"].includes(page)) return "account";
   if (["crear-local.html","reclamar-local.html","mis-reclamaciones.html"].includes(page)) return "business";
   return "";
 }
@@ -119,6 +119,7 @@ async function instalarEncabezadoHTPWEB() {
         '<div id="htpAuthAccountDropdown" class="htp-auth-account-dropdown hidden">'+
           '<div class="htp-auth-account-summary"><strong>'+String(displayName).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</strong><small>'+String(user.email||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))+'</small></div>'+
           '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
+          '<a href="configuracion.html">Configuración</a>'+
           '<div class="htp-auth-account-separator"></div>'+
           '<a href="crear-local.html">Crear negocio</a>'+
           '<a href="crear-delivery.html">Crear delivery</a>'+
@@ -172,6 +173,7 @@ async function prepararEncabezadoDeliveryAdmin(){
         '<div id="adminHtpAccountDropdown" class="htp-auth-account-dropdown hidden">'+
           '<div class="htp-auth-account-summary"><strong>'+escText(displayName)+'</strong><small>'+escText(user.email)+'</small></div>'+
           '<a href="../app/mi-cuenta.html">Abrir mi cuenta</a>'+
+          '<a href="../app/configuracion.html">Configuración</a>'+
           '<div class="htp-auth-account-separator"></div>'+
           '<a href="../app/crear-local.html">Crear negocio</a>'+
           '<a href="../app/crear-delivery.html">Crear delivery</a>'+
