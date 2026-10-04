@@ -17,6 +17,23 @@
    }catch{}
    if($("publicAccountName"))$("publicAccountName").textContent=name;
    if($("publicAccountEmail"))$("publicAccountEmail").textContent=user.email||"";
+
+   let roleCode="";
+   try{
+    const role=await supabaseClient.rpc("current_role_code");
+    if(!role.error)roleCode=role.data||"";
+   }catch{}
+
+   if(roleCode==="MASTER"&&!drop.querySelector('a[data-master-admin-link]')){
+    const configLink=[...drop.querySelectorAll("a")].find(a=>a.getAttribute("href")?.includes("configuracion.html"));
+    const masterLink=document.createElement("a");
+    masterLink.href="./admin/index.html";
+    masterLink.textContent="Administración";
+    masterLink.dataset.masterAdminLink="1";
+    if(configLink)configLink.insertAdjacentElement("afterend",masterLink);
+    else drop.prepend(masterLink);
+   }
+
    if(!drop.querySelector('a[href*="configuracion.html"]')){
     const accountLink=[...drop.querySelectorAll("a")].find(a=>a.getAttribute("href")?.includes("mi-cuenta.html"));
     if(accountLink){
@@ -24,6 +41,13 @@
       configLink.href="./app/configuracion.html";
       configLink.textContent="Configuración";
       accountLink.insertAdjacentElement("afterend",configLink);
+      if(roleCode==="MASTER"&&!drop.querySelector('a[data-master-admin-link]')){
+        const masterLink=document.createElement("a");
+        masterLink.href="./admin/index.html";
+        masterLink.textContent="Administración";
+        masterLink.dataset.masterAdminLink="1";
+        configLink.insertAdjacentElement("afterend",masterLink);
+      }
     }
    }
    trigger.onclick=e=>{e.preventDefault();e.stopPropagation();drop.classList.toggle("hidden")};
