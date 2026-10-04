@@ -25,8 +25,6 @@
   <div><label>WhatsApp *</label><input id="whatsapp" type="tel" inputmode="tel" placeholder="Ej. 09XXXXXXXX"><div class="contact-hint">Obligatorio para validar duplicados.</div></div>
 </div>
 
-<div class="step"><label>Dirección *</label><input id="address" placeholder="Sector, calle o referencia"></div>
-
 <div class="step">
   <label>Ubicación del negocio *</label>
   <div class="local-map-wrap">
@@ -37,6 +35,8 @@
   </div>
   <input id="latitude" type="hidden"><input id="longitude" type="hidden">
 </div>
+
+<div class="step"><label>Dirección *</label><input id="address" placeholder="Se completará al marcar el punto; puedes corregirla"></div>
 
 <div class="step">
   <label>Nombre comercial *</label>
@@ -167,7 +167,7 @@ function renderDuplicateResults(){
     '<div><div class="duplicate-name">'+esc(r.name)+'</div>'+
      '<div class="duplicate-meta">'+esc([r.category_name,r.city_name,r.address].filter(Boolean).join(" · "))+'</div>'+
      '<span class="duplicate-score '+String(r.match_level||"LOW").toLowerCase()+'">'+duplicateLevelLabel(r.match_level)+'</span>'+
-     (hasSelectedLocation()&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?'<span class="duplicate-distance">'+formatDistance(distanceMeters(Number($("latitude").value),Number($("longitude").value),Number(r.latitude),Number(r.longitude)))+' de tu ubicación</span>':'')+'</div>'+
+     ((r.distance_m!=null||hasSelectedLocation())&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?'<span class="duplicate-distance">'+formatDistance(r.distance_m!=null?Number(r.distance_m):distanceMeters(Number($("latitude").value),Number($("longitude").value),Number(r.latitude),Number(r.longitude)))+' de tu ubicación</span>':'')+'</div>'+
     '<a class="btn btn-muted" href="reclamar-local.html?local='+encodeURIComponent(r.id)+'">Reclamar este LOCAL</a>'+
    '</div>'+
   '</div>'
@@ -188,6 +188,8 @@ async function searchDuplicatesNow(){
    p_query:q,
    p_phone:$("phone")?.value.trim()||null,
    p_whatsapp:$("whatsapp")?.value.trim()||null,
+   p_latitude:Number($("latitude").value),
+   p_longitude:Number($("longitude").value),
    p_limit:8
   });
   if(error)throw error;
