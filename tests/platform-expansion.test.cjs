@@ -295,7 +295,7 @@ test("authenticated account header is not captured by DELIVERY dark header styli
   const account=read("app/mi-cuenta.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\)/);
   assert.doesNotMatch(css,/\nheader\{background:#111/);
-  assert.match(account,/app\.css\?v=20261004-accountheader2/);
+  assert.match(account,/app\.css\?v=20261004-accountheader3/);
 });
 
 test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
