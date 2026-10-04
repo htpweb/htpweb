@@ -75,8 +75,12 @@ function _htpwebAuthPageName() {
 }
 
 function _htpwebAuthHeaderAllowed() {
-  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","tienda-carrito.html","carrito.html"]);
+  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","tienda-carrito.html","carrito.html","local-pedido.html","repartidor-rapido.html"]);
   return !excluded.has(_htpwebAuthPageName());
+}
+
+function _htpwebCompactProfilePage(){
+  return new Set(["index.html","local.html","tienda.html","tienda-carrito.html","carrito.html"]).has(_htpwebAuthPageName());
 }
 
 function _htpwebAuthActiveHref() {
@@ -146,6 +150,58 @@ function _htpwebBindProfileSwitcher(root,{clientHref,workspaceHref}){
       }
     });
   });
+}
+
+async function instalarSelectorPerfilesCompacto(){
+  if(!_htpwebCompactProfilePage())return;
+  if(document.querySelector("[data-htpweb-compact-profiles]"))return;
+
+  let session=null;
+  try{session=await obtenerSesionActual()}catch{return}
+  if(!session?.user)return;
+
+  const modes=await _htpwebAccountModes();
+  if(!modes||modes?.active_context?.mode==="MASTER")return;
+
+  if(!document.querySelector('link[href*="authenticated-shell.css"]')){
+    const link=document.createElement("link");
+    link.rel="stylesheet";
+    link.href="../assets/authenticated-shell.css?v=20261004-profiles2";
+    document.head.appendChild(link);
+  }
+
+  const wrap=document.createElement("div");
+  wrap.className="htp-auth-account-menu htp-compact-profile-menu";
+  wrap.dataset.htpwebCompactProfiles="1";
+  wrap.innerHTML=
+    '<button class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
+    '<div class="htp-auth-account-dropdown hidden">'+
+      '<div class="htp-auth-account-summary"><strong>'+_htpwebEsc(session.user.user_metadata?.full_name||session.user.user_metadata?.name||"Mi cuenta")+'</strong><small>'+_htpwebEsc(session.user.email||"")+'</small></div>'+
+      _htpwebProfileSwitcherHtml(modes)+
+      '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
+      '<a href="configuracion.html">Configuración</a>'+
+      '<div class="htp-auth-account-separator"></div>'+
+      '<a href="crear-local.html">Crear negocio</a>'+
+      '<a href="crear-delivery.html">Crear delivery</a>'+
+      '<div class="htp-auth-account-separator"></div>'+
+      '<button class="logout" type="button">Cerrar sesión</button>'+
+    '</div>';
+
+  const preferred=document.querySelector(".header-actions")
+    ||document.querySelector(".local-store-header-inner")
+    ||document.querySelector("header")
+    ||document.body;
+  preferred.appendChild(wrap);
+
+  const trigger=wrap.querySelector(".htp-auth-account");
+  const dropdown=wrap.querySelector(".htp-auth-account-dropdown");
+  trigger.onclick=e=>{e.preventDefault();e.stopPropagation();dropdown.classList.toggle("hidden")};
+  document.addEventListener("click",e=>{if(!wrap.contains(e.target))dropdown.classList.add("hidden")});
+  _htpwebBindProfileSwitcher(wrap,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
+  wrap.querySelector(".logout").onclick=async()=>{await cerrarSesion();location.href="../index.html"};
+
+  const legacy=document.getElementById("authLink");
+  if(legacy)legacy.classList.add("hidden");
 }
 
 async function instalarEncabezadoHTPWEB() {
@@ -268,8 +324,9 @@ async function prepararEncabezadoDeliveryAdmin(){
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded",()=>{instalarEncabezadoHTPWEB();prepararEncabezadoDeliveryAdmin();});
+  document.addEventListener("DOMContentLoaded",()=>{instalarEncabezadoHTPWEB();instalarSelectorPerfilesCompacto();prepararEncabezadoDeliveryAdmin();});
 } else {
   instalarEncabezadoHTPWEB();
+  instalarSelectorPerfilesCompacto();
   prepararEncabezadoDeliveryAdmin();
 }
