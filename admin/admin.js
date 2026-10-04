@@ -1988,13 +1988,14 @@ function buildShortSharedLocalUrl(localId = null) {
   const local = localId
     ? state.shareLocals.find(item => item.id === localId)
     : currentShareLocal();
+
   if (delivery?.public_share_path && local?.share_public_code) {
     return "https://htpweb.github.io/" +
       encodeURIComponent(delivery.public_share_path) + "/" +
-      encodeURIComponent(local.share_public_code);
+      encodeURIComponent(local.share_public_code) + "/";
   }
-  if (!local?.share_code) return buildSharedLocalUrl(localId);
-  return new URL("../"+encodeURIComponent(local.share_code), publicAppRootUrl()).toString();
+
+  return buildSharedLocalUrl(localId);
 }
 
 function shareLocalCategory(local) {
