@@ -5,35 +5,88 @@
 <title>Crear DELIVERY | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script><script src="../config/auth.js"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261003-platform1">
-<style>.shell{max-width:760px;margin:auto;padding:20px 14px 50px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.status-row{padding:12px 0;border-top:1px solid #e5e7eb}@media(max-width:620px){.grid{grid-template-columns:1fr}}</style>
-</head><body><main class="shell">
-<div class="row between"><div><h1>Crear DELIVERY</h1><p class="muted">Solicita un nuevo servicio DELIVERY usando tu misma cuenta HTPWEB.</p></div><a class="btn btn-muted" href="mi-cuenta.html">← Mi cuenta</a></div>
-<div id="message" class="hidden"></div>
-<section class="card">
-<p class="muted">HTPWEB revisará la solicitud. Al aprobarla se crea el DELIVERY en estado de configuración; MASTER debe asignar plan y completar su activación antes de operar.</p>
-<div class="grid"><div><label>Nombre del DELIVERY *</label><input id="name"></div><div><label>Ciudad / área principal</label><input id="city"></div></div>
-<div class="grid" style="margin-top:12px"><div><label>Teléfono</label><input id="phone" type="tel"></div><div><label>WhatsApp</label><input id="whatsapp" type="tel"></div></div>
-<label style="margin-top:12px">Descripción</label><textarea id="description" rows="3"></textarea>
-<button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Enviar solicitud</button>
+<link rel="stylesheet" href="../assets/app.css?v=20261004-delivery1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+.shell{max-width:1120px;margin:auto;padding:24px 16px 60px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.step{display:flex;gap:10px;align-items:center;margin-bottom:12px}.step-num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#1466e8;color:#fff;font-weight:900}
+#zoneMap{height:430px;border-radius:18px;border:1px solid #dbe3ee;overflow:hidden;background:#eef3f8}.zone-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+.zone-list{display:flex;flex-direction:column;gap:8px;max-height:430px;overflow:auto}.zone-item{border:1px solid #dbe3ee;border-radius:12px;padding:11px 12px;background:#fff;cursor:pointer}.zone-item.active{border-color:#1466e8;box-shadow:0 0 0 2px #1466e822;background:#f5f9ff}.zone-item strong{display:block}.zone-item small{color:#667085}
+.selection-note{margin-top:12px;padding:13px 14px;border-radius:12px;background:#f4f7fb;border:1px solid #dbe3ee}.plan-note{margin-top:12px;padding:14px;border-radius:14px;background:#fff8e8;border:1px solid #f3d38a}.plan-note a{font-weight:800}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.summary div{background:#f7f9fc;border-radius:12px;padding:12px}.summary small{display:block;color:#667085;margin-bottom:4px}
+@media(max-width:820px){.zone-layout{grid-template-columns:1fr}.zone-list{max-height:220px}.grid,.summary{grid-template-columns:1fr}#zoneMap{height:360px}}
+</style>
+</head>
+<body><main class="shell">
+<div class="row between" style="align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h1 style="margin-bottom:6px">Crear DELIVERY</h1><p class="muted" style="margin:0">Crea tu DELIVERY directamente y empieza a evaluar HTPWEB en una zona de operación.</p></div><a class="btn btn-muted" href="mi-cuenta.html">← Mi cuenta</a></div>
+<div id="message" class="hidden" style="margin-top:14px"></div>
+
+<section class="card" style="margin-top:16px">
+<div class="step"><span class="step-num">1</span><div><h2 style="margin:0">Datos del DELIVERY</h2><div class="muted">Información básica para crear tu espacio.</div></div></div>
+<div class="grid"><div><label>Nombre del DELIVERY *</label><input id="name" placeholder="Ej. Sobre Ruedas"></div><div><label>WhatsApp *</label><input id="whatsapp" type="tel" placeholder="0999999999"></div></div>
+<div class="grid" style="margin-top:12px"><div><label>Teléfono</label><input id="phone" type="tel"></div><div><label>Descripción</label><input id="description" placeholder="Describe brevemente tu servicio"></div></div>
 </section>
-<section class="card"><h2>Mis solicitudes DELIVERY</h2><div id="requests"><div class="muted">Cargando…</div></div></section>
+
+<section class="card">
+<div class="step"><span class="step-num">2</span><div><h2 style="margin:0">Elige tu zona de operación</h2><div class="muted">Puedes ver todas las zonas disponibles. Tu evaluación inicial permite seleccionar una.</div></div></div>
+<div class="zone-layout">
+  <div id="zoneMap"></div>
+  <div><div id="zoneList" class="zone-list"><div class="muted">Cargando zonas…</div></div>
+    <div class="selection-note"><strong id="zoneCounter">0 de 1 zona seleccionada</strong><div id="selectedZoneText" class="muted" style="margin-top:4px">Selecciona una zona en el mapa o en la lista.</div></div>
+  </div>
+</div>
+<div class="plan-note"><strong>¿Necesitas operar en más zonas?</strong><div style="margin-top:4px">Tu plan de evaluación incluye 1 zona. Puedes cambiar la selección antes de crear el DELIVERY. Para ampliar cobertura, revisa los planes disponibles.</div><a href="mi-cuenta.html#plans">Ver planes y suscripciones →</a></div>
+</section>
+
+<section class="card">
+<div class="step"><span class="step-num">3</span><div><h2 style="margin:0">Crear y empezar</h2><div class="muted">No necesitas esperar aprobación del MASTER para comenzar la evaluación.</div></div></div>
+<div class="summary"><div><small>Plan inicial</small><strong>Prueba 1 zona</strong></div><div><small>Cobertura</small><strong id="summaryZone">Sin seleccionar</strong></div><div><small>Duración</small><strong>15 días</strong></div></div>
+<button id="submitBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Crear mi DELIVERY</button>
+<p class="muted" style="margin:10px 0 0;text-align:center">Después podrás completar tarifas, horarios, repartidores y demás configuración desde tu panel.</p>
+</section>
 </main>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
-async function loadRequests(){
- const {data,error}=await supabaseClient.rpc("my_delivery_creation_requests");if(error)throw error;const rows=Array.isArray(data)?data:[];
- $("requests").innerHTML=rows.length?rows.map(r=>'<div class="status-row"><strong>'+esc(r.name)+'</strong><div>'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[r.status]||r.status)+'</div><div class="muted">Enviada: '+new Date(r.created_at).toLocaleString("es-EC")+(r.review_deadline?" · respuesta prevista hasta "+new Date(r.review_deadline).toLocaleDateString("es-EC"):"")+'</div>'+(r.review_note?'<div>Comentario HTPWEB: '+esc(r.review_note)+'</div>':'')+(r.applied_at?'<div class="success">DELIVERY creado; falta completar configuración y activación.</div>':'')+'</div>').join(""):'<div class="muted">No tienes solicitudes DELIVERY.</div>';
+let zones=[],selectedZoneId=null,map=null,layers=new Map();
+function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error";$("message").scrollIntoView({behavior:"smooth",block:"center"})}
+function selectedZone(){return zones.find(z=>z.id===selectedZoneId)||null}
+function normalizeBoundary(boundary){if(!Array.isArray(boundary))return[];return boundary.map(p=>Array.isArray(p)&&p.length>=2?[Number(p[0]),Number(p[1])]:null).filter(Boolean)}
+function selectZone(id){
+ selectedZoneId=id;const z=selectedZone();
+ document.querySelectorAll(".zone-item").forEach(el=>el.classList.toggle("active",el.dataset.id===id));
+ layers.forEach((layer,zoneId)=>{const row=zones.find(x=>x.id===zoneId);layer.setStyle({weight:zoneId===id?4:2,fillOpacity:(zoneId===id?0.45:0.18),color:row?.color||"#1466e8"})});
+ $("zoneCounter").textContent="1 de 1 zona seleccionada";
+ $("selectedZoneText").textContent=z?z.name+" · "+[z.city,z.province].filter(Boolean).join(", "):"";
+ $("summaryZone").textContent=z?.name||"Sin seleccionar";
+}
+function renderZones(){
+ $("zoneList").innerHTML=zones.length?zones.map(z=>'<button type="button" class="zone-item" data-id="'+esc(z.id)+'"><strong>'+esc(z.name)+'</strong><small>'+esc([z.city,z.province].filter(Boolean).join(" · "))+'</small></button>').join(""):'<div class="muted">No hay zonas habilitadas por MASTER.</div>';
+ document.querySelectorAll(".zone-item").forEach(el=>el.onclick=()=>{selectZone(el.dataset.id);layers.get(el.dataset.id)?.getBounds&&map.fitBounds(layers.get(el.dataset.id).getBounds(),{padding:[30,30]})});
+}
+function renderMap(){
+ map=L.map("zoneMap",{scrollWheelZoom:true}).setView([0.96,-79.67],12);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(map);
+ const bounds=[];
+ zones.forEach(z=>{const pts=normalizeBoundary(z.boundary);if(pts.length<3)return;const layer=L.polygon(pts,{color:z.color||"#1466e8",weight:2,fillOpacity:.18}).addTo(map);layer.bindTooltip(z.name,{sticky:true});layer.on("click",()=>selectZone(z.id));layers.set(z.id,layer);pts.forEach(p=>bounds.push(p))});
+ if(bounds.length)map.fitBounds(bounds,{padding:[24,24]});
+}
+async function loadZones(){
+ const {data,error}=await supabaseClient.rpc("available_delivery_zones");if(error)throw error;zones=Array.isArray(data)?data:[];renderZones();renderMap();
 }
 async function submit(){
  try{
-  const name=$("name").value.trim();if(!name)throw new Error("Escribe el nombre del DELIVERY.");
-  const {error}=await supabaseClient.rpc("submit_my_delivery_creation_request",{p_name:name,p_description:$("description").value.trim(),p_phone:$("phone").value.trim(),p_whatsapp:$("whatsapp").value.trim(),p_city_name:$("city").value.trim()});if(error)throw error;
-  msg("Solicitud DELIVERY enviada. HTPWEB la revisará antes de habilitar su operación.");
-  ["name","description","phone","whatsapp","city"].forEach(id=>$(id).value="");await loadRequests();
- }catch(e){msg(e.message||"No se pudo enviar la solicitud.","error")}
+  const name=$("name").value.trim(),whatsapp=$("whatsapp").value.trim();
+  if(!name)throw new Error("Escribe el nombre del DELIVERY.");
+  if(!whatsapp)throw new Error("Escribe el WhatsApp operativo.");
+  if(!selectedZoneId)throw new Error("Selecciona una zona de operación.");
+  $("submitBtn").disabled=true;$("submitBtn").textContent="Creando DELIVERY…";
+  const {data,error}=await supabaseClient.rpc("create_my_delivery",{p_name:name,p_description:$("description").value.trim(),p_phone:$("phone").value.trim(),p_whatsapp:whatsapp,p_zone_id:selectedZoneId});
+  if(error)throw error;
+  const sw=await supabaseClient.rpc("switch_my_account_mode",{p_mode:"DELIVERY",p_resource_id:data});if(sw.error)throw sw.error;
+  msg("DELIVERY creado. Abriendo tu panel…");setTimeout(()=>location.href="../admin/index.html",500);
+ }catch(e){msg(e.message||"No se pudo crear el DELIVERY.","error");$("submitBtn").disabled=false;$("submitBtn").textContent="Crear mi DELIVERY"}
 }
-async function init(){const user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-delivery.html");return}await loadRequests();$("submitBtn").onclick=submit}
+async function init(){const user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-delivery.html");return}await loadZones();$("submitBtn").onclick=submit}
 init().catch(e=>msg(e.message||"No se pudo abrir el formulario.","error"));
 </script></body></html>

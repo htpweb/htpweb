@@ -59,15 +59,15 @@ test("account can request LOCAL independent of DELIVERY",()=>{
  assert.match(sql,/user_locals/);
 });
 
-test("account can request DELIVERY and MASTER reviews it",()=>{
+test("account can create DELIVERY directly with one evaluation zone",()=>{
  const page=read("app/crear-delivery.html");
- const admin=read("admin/admin.js");
- const sql=read("supabase/migrations/20261003070243_delivery_creation_requests.sql");
- assert.match(page,/submit_my_delivery_creation_request/);
- assert.match(admin,/master_list_delivery_creation_requests/);
- assert.match(admin,/master_review_delivery_creation_request/);
+ const sql=read("supabase/migrations/20261004003100_delivery_self_service_one_zone.sql");
+ assert.match(page,/create_my_delivery/);
+ assert.match(page,/available_delivery_zones/);
+ assert.doesNotMatch(page,/submit_my_delivery_creation_request/);
  assert.match(sql,/account_delivery_roles/);
- assert.match(sql,/r\.whatsapp,false,now\(\),now\(\)/);
+ assert.match(sql,/delivery_zones/);
+ assert.match(sql,/DELIVERY_TRIAL/);
 });
 
 test("new inline scripts compile",()=>{
@@ -202,4 +202,31 @@ test("Mi cuenta groups LOCAL claims inside Mis negocios",()=>{
   assert.match(businessBlock,/claimsList/);
   assert.match(businessBlock,/claimsCount/);
   assert.doesNotMatch(account,/Reclamaciones de LOCAL<\/div><div id="claimsCount"/);
+});
+
+
+test("DELIVERY self-service uses one selectable MASTER zone and links plans",()=>{
+  const page=read("app/crear-delivery.html");
+  const migration=read("supabase/migrations/20261004003100_delivery_self_service_one_zone.sql");
+  assert.match(page,/available_delivery_zones/);
+  assert.match(page,/selectedZoneId/);
+  assert.match(page,/1 de 1 zona seleccionada/);
+  assert.match(page,/Ver planes y suscripciones/);
+  assert.match(page,/create_my_delivery/);
+  assert.doesNotMatch(page,/Enviar solicitud/);
+  assert.match(migration,/DELIVERY_TRIAL/);
+  assert.match(migration,/zones\.active\.max/);
+  assert.match(migration,/create_my_delivery/);
+  assert.match(migration,/15 days/);
+});
+
+test("Mi cuenta exposes plans subscriptions and visual configuration",()=>{
+  const account=read("app/mi-cuenta.html");
+  assert.match(account,/id="plans"/);
+  assert.match(account,/Planes y suscripciones/);
+  assert.match(account,/my_plans_and_subscriptions/);
+  assert.match(account,/id="settings"/);
+  assert.match(account,/Configuración/);
+  assert.match(account,/accountTheme/);
+  assert.match(account,/HTPWEB_ACCOUNT_THEME/);
 });
