@@ -166,7 +166,7 @@ test("authenticated app flows share the persistent HTPWEB navigation shell",()=>
   assert.match(auth,/instalarEncabezadoHTPWEB/);
   assert.match(auth,/Inicio/);
   assert.match(auth,/Cómo funciona/);
-  assert.match(auth,/>Locales<\\/a>/);
+  assert.match(auth,/>Locales<\/a>/);
   assert.doesNotMatch(auth,/>Mis negocios</);
   assert.match(auth,/Mi cuenta/);
   assert.match(auth,/reclamar-local\.html/);
