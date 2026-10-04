@@ -1,3 +1,5 @@
+[Reading 338 lines from start (total: 338 lines, 0 remaining)]
+
 ﻿const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
@@ -166,7 +168,7 @@ test("authenticated app flows share the persistent HTPWEB navigation shell",()=>
   assert.match(auth,/instalarEncabezadoHTPWEB/);
   assert.match(auth,/Inicio/);
   assert.match(auth,/Cómo funciona/);
-  assert.match(auth,/Explorar locales/);
+  assert.match(auth,/>Locales<\/a>/);
   assert.doesNotMatch(auth,/>Mis negocios</);
   assert.match(auth,/Mi cuenta/);
   assert.match(auth,/reclamar-local\.html/);
@@ -276,7 +278,9 @@ test("DELIVERY panel keeps HTPWEB navigation and exposes its own public link wit
   assert.match(html,/>Inicio<\/a>/);
   assert.match(html,/>Locales<\/a>/);
   assert.match(html,/>Cómo funciona<\/a>/);
-  assert.match(html,/>Mi cuenta<\/a>/);
+  const auth=read("config/auth.js");
+  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);
+  assert.match(auth,/adminHtpAccountDropdown/);
   assert.match(html,/id="deliveryPublicSiteLink"/);
   assert.match(html,/id="profileDeliveryPublicUrl"/);
   assert.match(html,/id="profileQrBtn"/);
@@ -293,7 +297,7 @@ test("authenticated account header is not captured by DELIVERY dark header styli
   const account=read("app/mi-cuenta.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\)/);
   assert.doesNotMatch(css,/\nheader\{background:#111/);
-  assert.match(account,/app\.css\?v=20261004-accountheader1/);
+  assert.match(account,/app\.css\?v=20261004-accountheader2/);
 });
 
 test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
@@ -313,6 +317,24 @@ test("HTPWEB landing header stays white while DELIVERY headers can remain dark",
   const css=read("assets/app.css");
   const home=read("index.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\):not\(\.top\)/);
-  assert.match(home,/app\.css\?v=20261004-headerwhite1/);
+  assert.match(home,/app\.css\?v=20261004-headermenu3/);
+  assert.match(home,/\.top\{height:92px;position:relative;z-index:300/);
+  assert.match(home,/header-actions\{position:absolute;z-index:320/);
   assert.match(home,/<header class="top">/);
+});
+
+
+test("Mi cuenta loads the authenticated shell stylesheet directly",()=>{
+  const account=read("app/mi-cuenta.html");
+  assert.match(account,/authenticated-shell\.css\?v=20261004-shell3/);
+});
+
+test("DELIVERY workspace reuses the HTPWEB account dropdown",()=>{
+  const auth=read("config/auth.js");
+  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);
+  assert.match(auth,/adminHtpAccountTrigger/);
+  assert.match(auth,/Inicio/);
+  assert.match(auth,/Cómo funciona/);
+  assert.match(auth,/Locales/);
+  assert.match(auth,/Abrir mi cuenta/);
 });
