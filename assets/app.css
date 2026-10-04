@@ -1581,7 +1581,7 @@ body.visual-menu-viewer-open{
 
 
 /* DELIVERY public theme variables — activated only when negocio.js loads a delivery */
-html[data-delivery-theme] header,
+html[data-delivery-theme] body>header:not(.htp-auth-header):not(.top),
 html[data-delivery-theme] .hero{
   background:var(--brand-dark);
   color:var(--brand-on-dark);

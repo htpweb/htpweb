@@ -1,5 +1,3 @@
-[Reading 338 lines from start (total: 338 lines, 0 remaining)]
-
 ﻿const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
@@ -297,7 +295,7 @@ test("authenticated account header is not captured by DELIVERY dark header styli
   const account=read("app/mi-cuenta.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\)/);
   assert.doesNotMatch(css,/\nheader\{background:#111/);
-  assert.match(account,/app\.css\?v=20261004-accountheader2/);
+  assert.match(account,/app\.css\?v=20261004-accountheader3/);
 });
 
 test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
@@ -337,4 +335,10 @@ test("DELIVERY workspace reuses the HTPWEB account dropdown",()=>{
   assert.match(auth,/Cómo funciona/);
   assert.match(auth,/Locales/);
   assert.match(auth,/Abrir mi cuenta/);
+});
+
+test("account theme never recolors authenticated HTPWEB header",()=>{
+  const css=read("assets/app.css");
+  assert.match(css,/html\[data-delivery-theme\] body>header:not\(\.htp-auth-header\):not\(\.top\)/);
+  assert.doesNotMatch(css,/html\[data-delivery-theme\] header,/);
 });
