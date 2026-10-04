@@ -268,7 +268,7 @@ async function submit(){
   const planEnd=data?.plan_ends_at?new Date(data.plan_ends_at).toLocaleDateString("es-EC"):"";
   msg("LOCAL creado correctamente. Plan BASICO activo por 30 días"+(planEnd?" hasta "+planEnd:"")+".","success");
   setTimeout(()=>{location.href="mi-cuenta.html#businesses"},900);
- }catch(e){msg(e.message||"No se pudo enviar la solicitud.","error")}
+ }catch(e){msg(e.message||"No se pudo crear el LOCAL.","error")}
  finally{$("submitBtn").disabled=false}
 }
 async function init(){
