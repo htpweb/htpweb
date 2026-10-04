@@ -267,3 +267,22 @@ test("self-service DELIVERY uses valid NEW change_type for initial plan assignme
   assert.doesNotMatch(sql,/'INITIAL'/);
   assert.match(sql,/insert into public\.plan_assignments/);
 });
+
+
+test("DELIVERY panel keeps HTPWEB navigation and exposes its own public link with QR",()=>{
+  const html=read("admin/index.html");
+  const admin=read("admin/admin.js");
+  assert.match(html,/id="adminHtpwebHeader"/);
+  assert.match(html,/>Inicio<\/a>/);
+  assert.match(html,/>Locales<\/a>/);
+  assert.match(html,/>Cómo funciona<\/a>/);
+  assert.match(html,/>Mi cuenta<\/a>/);
+  assert.match(html,/id="deliveryPublicSiteLink"/);
+  assert.match(html,/id="profileDeliveryPublicUrl"/);
+  assert.match(html,/id="profileQrBtn"/);
+  assert.match(admin,/function syncDeliveryPublicAccess/);
+  assert.match(admin,/public_share_path/);
+  assert.match(admin,/masterDeliveryPublicUrl/);
+  assert.match(admin,/DELIVERY_ADMIN/);
+  assert.match(admin,/openMasterDeliveryQr/);
+});
