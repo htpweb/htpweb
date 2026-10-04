@@ -2444,6 +2444,16 @@ function syncLocalPublicAccess(){
     sidebar.rel=url?"noopener noreferrer":"";
     sidebar.textContent="Ir al sitio público";
   }
+  const shopLink=$("openCatalogVirtualStoreBtn");
+  if(shopLink){
+    if(url){
+      const shopUrl=new URL(url);
+      shopUrl.searchParams.set("section","shop");
+      shopLink.href=shopUrl.toString();
+    }else{
+      shopLink.href="#";
+    }
+  }
   return url;
 }
 
