@@ -216,8 +216,8 @@ function configureSiteNavigation(){
  document.querySelectorAll("[data-site-section]").forEach(a=>{
    const section=a.dataset.siteSection||"home";
    a.href=siteSectionUrl(section);
-   a.target="_blank";
-   a.rel="noopener noreferrer";
+   a.removeAttribute("target");
+   a.removeAttribute("rel");
    a.classList.toggle("active",pageSection===section);
  });
 }
@@ -442,8 +442,8 @@ function renderHero(){
  const title=cfg.hero_title||l.name,subtitle=cfg.hero_subtitle||l.description||"";
  const image=l.banner_url||visual.hero;
  const wa=whatsappUrl(l);
- const primary=wa?'<a class="local-hero-cta" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">'+esc(visual.cta)+'</a>':'<a class="local-hero-cta" href="'+esc(siteSectionUrl("contact"))+'" target="_blank" rel="noopener noreferrer">'+esc(visual.cta)+'</a>';
- const secondary='<a class="local-hero-secondary" href="#catalogSection">'+esc(visual.secondary)+'</a>';
+ const primary=wa?'<a class="local-hero-cta" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">'+esc(visual.cta)+'</a>':'<a class="local-hero-cta" href="'+esc(siteSectionUrl("contact"))+'">'+esc(visual.cta)+'</a>';
+ const secondary='<a class="local-hero-secondary" href="'+esc(siteSectionUrl("catalog"))+'">'+esc(visual.secondary)+'</a>';
  $("hero").innerHTML='<img src="'+esc(image)+'" alt="'+esc(l.name)+'"><div class="local-hero-copy"><span class="hero-eyebrow">'+esc(visual.eyebrow)+'</span><h1>'+esc(title)+'</h1><p>'+esc(subtitle)+'</p><div class="local-hero-actions">'+primary+secondary+'</div></div>';
  $("heroTrust").innerHTML=visual.trust.map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><span>'+esc(copy)+'</span></div>').join("");
  applySinglePageSection();
