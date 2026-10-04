@@ -57,7 +57,15 @@
         <div><label>Foto exterior del LOCAL *</label><input id="exteriorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div><label>Foto interior del LOCAL *</label><input id="interiorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div><label>Foto interior mostrando el código HTPWEB *</label><input id="codePhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
-        <div><label>Ubicación desde el establecimiento *</label><button id="locationBtn" class="btn-muted" type="button">Compartir mi ubicación</button><div id="locationState" class="file-help">Aún no capturada.</div></div>
+        <div>
+          <label>Ubicación del LOCAL *</label>
+          <div id="registeredLocation" class="file-help">Cargando ubicación registrada…</div>
+          <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button id="confirmLocationBtn" class="btn-muted" type="button">Confirmar ubicación registrada</button>
+            <button id="locationBtn" class="btn-muted" type="button">Actualizar con mi ubicación actual</button>
+          </div>
+          <div id="locationState" class="file-help">Aún no confirmada.</div>
+        </div>
       </div>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px"><input id="truthCheck" type="checkbox" style="width:auto;margin-top:3px">Declaro que la información y los documentos enviados corresponden al negocio que estoy reclamando.</label>
     </div>
@@ -87,6 +95,11 @@ function renderLocal(){
   (context.whatsapp_masked?'<small>WhatsApp registrado: '+esc(context.whatsapp_masked)+'</small>':'<small>Sin WhatsApp registrado</small>')+'</div></div>';
   $("maskedWhatsapp").textContent=context.whatsapp_masked||"No disponible";
   $("requestOtpBtn").disabled=!context.whatsapp_masked;
+  const hasRegisteredLocation=Number.isFinite(Number(context.latitude))&&Number.isFinite(Number(context.longitude));
+  $("registeredLocation").textContent=hasRegisteredLocation
+    ? "Ubicación registrada: "+(context.address||"LOCAL registrado")
+    : "Este LOCAL no tiene una ubicación registrada.";
+  $("confirmLocationBtn").disabled=!hasRegisteredLocation;
 }
 function statusLabel(req){
   if(req.applied_at)return "APROBADA";
@@ -133,11 +146,26 @@ async function verifyOtp(){
   try{const code=$("otpCode").value.trim();if(!/^\d{6}$/.test(code))throw new Error("Escribe el código de 6 dígitos.");const data=await invokeOtp("verify",code);otpVerified=!!data.verified;$("otpState").textContent="WhatsApp verificado ✓";show("WhatsApp registrado verificado correctamente.","success")}
   catch(e){otpVerified=false;show(e.message)}
 }
+function confirmRegisteredLocation(){
+  const lat=Number(context?.latitude),lng=Number(context?.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)){
+    show("Este LOCAL no tiene una ubicación registrada para confirmar.");
+    return;
+  }
+  locationEvidence={
+    latitude:lat,
+    longitude:lng,
+    accuracy:null,
+    captured_at:new Date().toISOString(),
+    source:"REGISTERED_CONFIRMED"
+  };
+  $("locationState").textContent="Ubicación registrada confirmada ✓";
+}
 function getLocation(){
   if(!navigator.geolocation){show("Este navegador no permite obtener ubicación.");return}
   $("locationState").textContent="Obteniendo ubicación…";
   navigator.geolocation.getCurrentPosition(pos=>{
-    locationEvidence={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy,captured_at:new Date().toISOString()};
+    locationEvidence={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy,captured_at:new Date().toISOString(),source:"USER_UPDATED"};
     $("locationState").textContent="Ubicación capturada ✓ · precisión aproximada "+Math.round(pos.coords.accuracy)+" m";
   },err=>{$("locationState").textContent="No se pudo capturar la ubicación.";show(err.message||"Permite el acceso a ubicación para continuar.")},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
@@ -167,7 +195,7 @@ async function buildDocumentPayload(){
     uploadEvidence($("codePhoto").files[0],"CODIGO-HTPWEB","image")
   ]);
   return{...basePayload(),ruc_pdf_path:ruc,identity_pdf_path:identity,exterior_photo_path:exterior,interior_photo_path:interior,code_photo_path:codePhoto,
-    location_latitude:locationEvidence.latitude,location_longitude:locationEvidence.longitude,location_accuracy_m:locationEvidence.accuracy,location_captured_at:locationEvidence.captured_at};
+    location_latitude:locationEvidence.latitude,location_longitude:locationEvidence.longitude,location_accuracy_m:locationEvidence.accuracy,location_captured_at:locationEvidence.captured_at,location_source:locationEvidence.source||null};
 }
 async function submit(){
   try{
@@ -194,7 +222,7 @@ async function load(){
 }
 $("backBtn").onclick=()=>location.href=backUrl();
 $("whatsappChoice").onclick=()=>setMethod("REGISTERED_WHATSAPP");$("documentChoice").onclick=()=>setMethod("DOCUMENT_LOCATION");
-$("requestOtpBtn").onclick=requestOtp;$("verifyOtpBtn").onclick=verifyOtp;$("locationBtn").onclick=getLocation;$("submitBtn").onclick=submit;
+$("requestOtpBtn").onclick=requestOtp;$("verifyOtpBtn").onclick=verifyOtp;$("confirmLocationBtn").onclick=confirmRegisteredLocation;$("locationBtn").onclick=getLocation;$("submitBtn").onclick=submit;
 load().catch(e=>show(e.message||"No se pudo abrir la reclamación."));
 </script>
 </body></html>
