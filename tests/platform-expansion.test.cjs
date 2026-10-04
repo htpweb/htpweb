@@ -250,3 +250,12 @@ test("multi-role CLIENT accounts can own DELIVERY through account_delivery_roles
   assert.ok(sql.indexOf("insert into public.account_delivery_roles") < sql.indexOf("insert into public.user_deliveries"));
   assert.doesNotMatch(sql,/el rol % no puede pertenecer a user_deliveries/);
 });
+
+
+test("self-service DELIVERY activates plan before zone coverage refresh",()=>{
+  const sql=read("supabase/migrations/20261004012400_fix_delivery_coverage_order.sql");
+  const planPos=sql.indexOf("insert into public.plan_assignments");
+  const zonePos=sql.indexOf("insert into public.delivery_zones");
+  assert.ok(planPos>=0&&zonePos>planPos);
+  assert.match(sql,/delivery_zones refresh trigger now sees an active DELIVERY plan/);
+});
