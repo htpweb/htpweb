@@ -276,7 +276,7 @@ test("DELIVERY panel keeps HTPWEB navigation and exposes its own public link wit
   assert.match(html,/>Inicio<\/a>/);
   assert.match(html,/>Locales<\/a>/);
   assert.match(html,/>Cómo funciona<\/a>/);
-  assert.match(html,/>Mi cuenta<\/a>/);
+  const auth=read("config/auth.js");\n  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);\n  assert.match(auth,/adminHtpAccountDropdown/);
   assert.match(html,/id="deliveryPublicSiteLink"/);
   assert.match(html,/id="profileDeliveryPublicUrl"/);
   assert.match(html,/id="profileQrBtn"/);
@@ -313,7 +313,7 @@ test("HTPWEB landing header stays white while DELIVERY headers can remain dark",
   const css=read("assets/app.css");
   const home=read("index.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\):not\(\.top\)/);
-  assert.match(home,/app\.css\?v=20261004-headerwhite1/);
+  assert.match(home,/app\.css\?v=20261004-headermenu3/);\n  assert.match(home,/\.top\{height:92px;position:relative;z-index:300/);\n  assert.match(home,/header-actions\{position:absolute;z-index:320/);
   assert.match(home,/<header class="top">/);
 });
 
