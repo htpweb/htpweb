@@ -265,7 +265,7 @@ function syncDeliveryPublicAccess(delivery){
   const sidebar=$("deliveryPublicSiteLink");
   if(input)input.value=url||"";
   if(sidebar&&state.role==="DELIVERY_ADMIN"){
-    sidebar.href=url||"../index.html";
+    sidebar.href=url||"#";
     sidebar.target=url?"_blank":"";
     sidebar.rel=url?"noopener noreferrer":"";
   }
@@ -438,7 +438,7 @@ async function loadScopes() {
     if (ids.length) {
       const lRes = await supabaseClient
         .from("locals")
-        .select("id,name,active")
+        .select("id,name,slug,active")
         .in("id", ids)
         .order("name");
 
@@ -493,6 +493,8 @@ function renderScopeSelectors() {
         state.locals.map(l => `<option value="LOCAL:${l.id}">${esc(l.name)}</option>`).join("");
     }
   }
+
+  if(state.role==="LOCAL_ADMIN")syncLocalPublicAccess();
 
   if ($("scopeInfo")) {
     const deliveryCount = state.deliveries.length;
@@ -2365,7 +2367,7 @@ async function loadLocalProfileRecord() {
   try {
     const { data, error } = await supabaseClient
       .from("locals")
-      .select("id,name,address,description,banner_url,logo_url,phone,whatsapp,website_url,instagram_url,facebook_url,tiktok_url,telegram_url,active")
+      .select("id,name,slug,address,description,banner_url,logo_url,phone,whatsapp,website_url,instagram_url,facebook_url,tiktok_url,telegram_url,active")
       .eq("id", localId)
       .single();
 
@@ -2384,8 +2386,9 @@ async function loadLocalProfileRecord() {
     $("profileLocalDescription").value = data.description || "";
     $("saveLocalProfileBtn").disabled = false;
     await loadLocalCommerce().catch(error => {
-      console.warn("No se pudo cargar la tienda del LOCAL.", error);
+      console.warn("No se pudo cargar la página del LOCAL.", error);
     });
+    syncLocalPublicAccess();
   } catch (e) {
     state.localProfileRecord = null;
     $("saveLocalProfileBtn").disabled = true;
@@ -2420,10 +2423,28 @@ async function saveLocalProfile() {
 }
 
 function localStoreUrl(){
-  const local=state.localProfileRecord;
-  if(!local)return "";
+  const selectedId=$("profileLocal")?.value||state.localProfileRecord?.id||state.locals?.[0]?.id||"";
+  const local=(state.localProfileRecord?.id===selectedId?state.localProfileRecord:null)
+    ||(state.locals||[]).find(item=>item.id===selectedId)
+    ||state.localProfileRecord
+    ||state.locals?.[0]
+    ||null;
+  if(!local?.id)return "";
   const key=local.slug||local.id;
   return "https://htpweb.github.io/htpweb/app/tienda.html?local="+encodeURIComponent(key);
+}
+
+function syncLocalPublicAccess(){
+  if(state.role!=="LOCAL_ADMIN")return "";
+  const url=localStoreUrl();
+  const sidebar=$("deliveryPublicSiteLink");
+  if(sidebar){
+    sidebar.href=url||"#";
+    sidebar.target=url?"_blank":"";
+    sidebar.rel=url?"noopener noreferrer":"";
+    sidebar.textContent="Ir al sitio público";
+  }
+  return url;
 }
 
 function renderLocalStorePreview(){
@@ -12145,11 +12166,11 @@ function bindEvents() {
   if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").oninput=()=>{
     $("localStoreAccent").value=$("localBuilderAccentMirror").value;renderLocalStorePreview();
   };
-  if($("previewLocalStoreBtn"))$("previewLocalStoreBtn").onclick=()=>{const url=localStoreUrl();if(url)window.open(url,"_blank","noopener")};
+  if($("previewLocalStoreBtn"))$("previewLocalStoreBtn").onclick=()=>{const url=syncLocalPublicAccess();if(url)window.open(url,"_blank","noopener")};
   if($("saveLocalBlogPostBtn"))$("saveLocalBlogPostBtn").onclick=saveLocalBlogPost;
   if($("cancelLocalBlogPostBtn"))$("cancelLocalBlogPostBtn").onclick=clearLocalBlogEditor;
   if ($("openLocalStoreBtn")) $("openLocalStoreBtn").onclick = () => {
-    const url=localStoreUrl();
+    const url=syncLocalPublicAccess();
     if(url)window.open(url,"_blank","noopener");
   };
   if ($("copyLocalStoreBtn")) $("copyLocalStoreBtn").onclick = async () => {
