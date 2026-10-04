@@ -2450,8 +2450,9 @@ function renderLocalStorePreview(){
   if($("localShowContact")?.checked)nav.push(contact);
   const banner=state.localProfileRecord?.banner_url;
   const layout=preset?.dataset?.family||"GENERAL";
+  const bannerCss=banner?String(banner).replace(/["'()\\]/g,ch=>encodeURIComponent(ch)):"";
   const heroStyle=banner
-    ? 'background:linear-gradient(90deg,rgba(11,23,48,.88),rgba(11,23,48,.2)),url('+JSON.stringify(banner)+') center/cover;'
+    ? 'background:linear-gradient(90deg,rgba(11,23,48,.88),rgba(11,23,48,.2)),url('+bannerCss+') center/cover;'
     : 'background:linear-gradient(135deg,'+esc(primary)+','+esc(secondary)+');';
   box.innerHTML=
     '<div style="background:'+esc(background)+';color:'+esc(text)+';min-height:430px">'+
@@ -2575,7 +2576,7 @@ async function loadLocalCommerce(){
   const presets=presetRes.data||[],themes=themeRes.data||[];
   state.localStorePresets=presets;
   state.localStoreThemes=themes;
-  $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}" data-catalog="${esc(p.config?.catalog_label||"Productos / Servicios")}">${esc(p.name)}</option>`).join("");
+  $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}" data-family="${esc(p.layout_family||"GENERAL")}" data-catalog="${esc(p.config?.catalog_label||"Productos / Servicios")}">${esc(p.name)}</option>`).join("");
   $("localStorePreset").value=settings.preset_code||"GENERAL_MODERN";
   $("localStoreTheme").innerHTML=themes.map(t=>`<option value="${esc(t.code)}" data-primary="${esc(t.primary_color)}" data-secondary="${esc(t.secondary_color)}" data-background="${esc(t.background_color)}" data-surface="${esc(t.surface_color)}" data-text="${esc(t.text_color)}" data-help="${esc(t.business_fit||"")}">${esc(t.name)}</option>`).join("");
   $("localStoreTheme").value=settings.theme_code||"HTPWEB_BLUE";
