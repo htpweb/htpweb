@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
 .shell{max-width:820px;margin:auto;padding:20px 14px 50px}.step{margin-top:14px}.status-row{padding:12px 0;border-top:1px solid #e5e7eb}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.local-map-wrap{margin-top:10px}.local-map{height:330px;border:1px solid #dbe4ee;border-radius:14px;overflow:hidden;background:#eef2f7}.map-help{font-size:.88rem;color:#64748b;margin-top:7px}.map-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.86rem;color:#475467}.map-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.map-dot.you{background:#2563eb}.map-dot.match{background:#dc2626}.contact-hint{font-size:.82rem;color:#64748b;margin-top:4px}.duplicate-distance{display:inline-block;margin-left:6px;margin-top:7px;font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 8px;background:#ecfdf3;color:#166534}.duplicate-box{margin-top:8px;border:1px solid #dbe4ee;border-radius:14px;background:#f8fafc;overflow:hidden}.duplicate-head{padding:11px 12px;border-bottom:1px solid #e5e7eb}.duplicate-results{display:grid;gap:12px;padding:12px}.duplicate-item{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff}.duplicate-visual{position:relative;height:138px;background:#e5e7eb;overflow:hidden}.duplicate-banner{width:100%;height:100%;object-fit:cover;display:block}.duplicate-logo{position:absolute;left:12px;bottom:10px;width:58px;height:58px;border-radius:12px;object-fit:cover;background:#fff;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}.duplicate-fallback{width:100%;height:100%;display:grid;place-items:center;color:#64748b;font-weight:700}.duplicate-body{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:12px}.duplicate-name{font-weight:800;font-size:1rem}.duplicate-meta{font-size:.88rem;color:#64748b;margin-top:3px}.duplicate-score{display:inline-block;margin-top:7px;font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 8px;white-space:nowrap}.duplicate-score.high{background:#fee2e2;color:#991b1b}.duplicate-score.medium{background:#fef3c7;color:#92400e}.duplicate-score.low{background:#e0f2fe;color:#075985}.duplicate-confirm{padding:10px 12px;border-top:1px solid #e5e7eb;background:#fff}.hidden{display:none!important}
+.local-map-wrap{margin-top:10px}.local-map{height:330px;border:1px solid #dbe4ee;border-radius:14px;overflow:hidden;background:#eef2f7}.map-help{font-size:.88rem;color:#64748b;margin-top:7px}.map-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.86rem;color:#475467}.map-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.map-dot.you{background:#2563eb}.map-dot.match{background:#dc2626}.existing-local-pulse{width:22px;height:22px;border-radius:50%;background:#dc2626;border:3px solid #fff;box-shadow:0 0 0 0 rgba(220,38,38,.65);animation:existingLocalPulse 1.35s infinite}.existing-local-label{background:#fff;border:1px solid #dc2626;border-radius:8px;padding:4px 7px;font-weight:800;color:#991b1b;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}.existing-local-label:before{border-right-color:#dc2626!important}@keyframes existingLocalPulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.65)}70%{box-shadow:0 0 0 16px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}.contact-hint{font-size:.82rem;color:#64748b;margin-top:4px}.duplicate-distance{display:inline-block;margin-left:6px;margin-top:7px;font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 8px;background:#ecfdf3;color:#166534}.duplicate-box{margin-top:8px;border:1px solid #dbe4ee;border-radius:14px;background:#f8fafc;overflow:hidden}.duplicate-head{padding:11px 12px;border-bottom:1px solid #e5e7eb}.duplicate-results{display:grid;gap:12px;padding:12px}.duplicate-item{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff}.duplicate-visual{position:relative;height:138px;background:#e5e7eb;overflow:hidden}.duplicate-banner{width:100%;height:100%;object-fit:cover;display:block}.duplicate-logo{position:absolute;left:12px;bottom:10px;width:58px;height:58px;border-radius:12px;object-fit:cover;background:#fff;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}.duplicate-fallback{width:100%;height:100%;display:grid;place-items:center;color:#64748b;font-weight:700}.duplicate-body{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:12px}.duplicate-name{font-weight:800;font-size:1rem}.duplicate-meta{font-size:.88rem;color:#64748b;margin-top:3px}.duplicate-score{display:inline-block;margin-top:7px;font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 8px;white-space:nowrap}.duplicate-score.high{background:#fee2e2;color:#991b1b}.duplicate-score.medium{background:#fef3c7;color:#92400e}.duplicate-score.low{background:#e0f2fe;color:#075985}.duplicate-confirm{padding:10px 12px;border-top:1px solid #e5e7eb;background:#fff}.hidden{display:none!important}
 @media(max-width:620px){.form-grid{grid-template-columns:1fr}.duplicate-body{grid-template-columns:1fr}.duplicate-body .btn{width:100%}.duplicate-visual{height:120px}.duplicate-logo{width:52px;height:52px}}
 </style>
 </head>
@@ -78,6 +78,35 @@ function distanceMeters(lat1,lon1,lat2,lon2){
  return 2*R*Math.asin(Math.sqrt(a));
 }
 function formatDistance(m){if(!Number.isFinite(m))return "";return m<1000?Math.round(m)+" m":(m/1000).toFixed(m<10000?1:0)+" km"}
+let reverseGeocodeTimer=null,reverseGeocodeSeq=0;
+function formatReverseAddress(data){
+ const a=data?.address||{};
+ const parts=[
+   a.road||a.pedestrian||a.footway||a.cycleway,
+   a.neighbourhood||a.suburb||a.quarter,
+   a.city||a.town||a.village||a.municipality,
+   a.state
+ ].filter(Boolean);
+ return [...new Set(parts)].join(", ") || data?.display_name || "";
+}
+function scheduleReverseGeocode(lat,lng){
+ clearTimeout(reverseGeocodeTimer);
+ reverseGeocodeTimer=setTimeout(()=>reverseGeocode(lat,lng),350);
+}
+async function reverseGeocode(lat,lng){
+ const seq=++reverseGeocodeSeq;
+ try{
+  const url="https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lng)+"&zoom=18&addressdetails=1";
+  const response=await fetch(url,{headers:{"Accept":"application/json"}});
+  if(!response.ok)throw new Error("No se pudo consultar la dirección.");
+  const data=await response.json();
+  if(seq!==reverseGeocodeSeq)return;
+  const address=formatReverseAddress(data);
+  if(address)$("address").value=address;
+ }catch(e){
+  console.warn("HTPWEB reverse geocode:",e?.message||e);
+ }
+}
 function setUserLocation(lat,lng,{center=true}={}){
  lat=Number(lat);lng=Number(lng);
  if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
@@ -88,6 +117,7 @@ function setUserLocation(lat,lng,{center=true}={}){
    userMarker.on("dragend",()=>{const p=userMarker.getLatLng();setUserLocation(p.lat,p.lng,{center:false});renderDuplicateResults();});
  }else userMarker.setLatLng([lat,lng]);
  if(center)localMap.setView([lat,lng],16);
+ scheduleReverseGeocode(lat,lng);
  renderDuplicateResults();
  scheduleDuplicateSearch();
 }
@@ -108,7 +138,9 @@ function renderTopMatchOnMap(){
    ||duplicateRows.find(r=>Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude)));
  if(!candidate)return;
  const lat=Number(candidate.latitude),lng=Number(candidate.longitude);
- matchMarker=L.circleMarker([lat,lng],{radius:9,color:"#dc2626",fillColor:"#dc2626",fillOpacity:.9}).addTo(localMap).bindTooltip(candidate.name);
+ const pulseIcon=L.divIcon({className:"",html:'<div class="existing-local-pulse"></div>',iconSize:[22,22],iconAnchor:[11,11]});
+ matchMarker=L.marker([lat,lng],{icon:pulseIcon,interactive:true}).addTo(localMap);
+ matchMarker.bindTooltip("LOCAL existente: "+candidate.name,{permanent:true,direction:"top",offset:[0,-14],className:"existing-local-label"}).openTooltip();
  const userLat=Number($("latitude").value),userLng=Number($("longitude").value);
  matchLine=L.polyline([[userLat,userLng],[lat,lng]],{color:"#64748b",dashArray:"6 6"}).addTo(localMap);
  localMap.fitBounds(L.latLngBounds([[userLat,userLng],[lat,lng]]).pad(.25),{maxZoom:17});
@@ -120,6 +152,11 @@ function renderDuplicateResults(){
  if(!duplicateRows.length){box.classList.add("hidden");results.innerHTML="";confirm.classList.add("hidden");$("confirmNewLocal").checked=false;return}
  box.classList.remove("hidden");
  const hasRisk=duplicateRows.some(r=>r.match_level==="HIGH"||r.match_level==="MEDIUM");
+ const topHigh=duplicateRows.find(r=>r.match_level==="HIGH");
+ const head=box.querySelector(".duplicate-head");
+ if(head)head.innerHTML=topHigh
+   ? '<strong>⚠ LOCAL existente muy probable</strong><div class="muted">HTPWEB detectó un negocio muy similar y cercano. Verifica el mapa antes de crear uno nuevo.</div>'
+   : '<strong>LOCAL similares encontrados</strong><div class="muted">Revisa si alguno corresponde a tu negocio.</div>';
  results.innerHTML=duplicateRows.map(r=>
   '<div class="duplicate-item">'+
    '<div class="duplicate-visual">'+
