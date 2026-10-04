@@ -137,8 +137,58 @@ async function instalarEncabezadoHTPWEB() {
   logout?.addEventListener("click",async()=>{await cerrarSesion();location.href="../index.html"});
 }
 
+async function prepararEncabezadoDeliveryAdmin(){
+  const header=document.getElementById("adminHtpwebHeader");
+  if(!header)return;
+
+  let session=null;
+  try{session=await obtenerSesionActual()}catch{return}
+  if(!session?.user)return;
+
+  const roleResult=await supabaseClient.rpc("current_role_code");
+  if(roleResult.error||!["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(roleResult.data))return;
+
+  if(!document.querySelector('link[href*="authenticated-shell.css"]')){
+    const link=document.createElement("link");
+    link.rel="stylesheet";
+    link.href="../assets/authenticated-shell.css?v=20261004-shell4";
+    document.head.appendChild(link);
+  }
+
+  const user=session.user;
+  const displayName=user.user_metadata?.full_name||user.user_metadata?.name||"Mi cuenta";
+  const escText=value=>String(value||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  header.className="htp-auth-header";
+  header.innerHTML=
+    '<div class="htp-auth-header-inner">'+
+      '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
+      '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
+        '<a href="../index.html">Inicio</a>'+
+        '<a href="../como-funciona.html">Cómo funciona</a>'+
+        '<a href="../explorar-negocios.html">Locales</a>'+
+      '</nav>'+
+      '<div class="htp-auth-account-menu">'+
+        '<button id="adminHtpAccountTrigger" class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
+        '<div id="adminHtpAccountDropdown" class="htp-auth-account-dropdown hidden">'+
+          '<div class="htp-auth-account-summary"><strong>'+escText(displayName)+'</strong><small>'+escText(user.email)+'</small></div>'+
+          '<a href="../app/mi-cuenta.html">Abrir mi cuenta</a>'+
+          '<div class="htp-auth-account-separator"></div>'+
+          '<a href="../app/crear-local.html">Crear negocio</a>'+
+          '<a href="../app/crear-delivery.html">Crear delivery</a>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  const menu=header.querySelector(".htp-auth-account-menu");
+  const trigger=header.querySelector("#adminHtpAccountTrigger");
+  const dropdown=header.querySelector("#adminHtpAccountDropdown");
+  trigger?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")});
+  document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", instalarEncabezadoHTPWEB);
+  document.addEventListener("DOMContentLoaded",()=>{instalarEncabezadoHTPWEB();prepararEncabezadoDeliveryAdmin();});
 } else {
   instalarEncabezadoHTPWEB();
+  prepararEncabezadoDeliveryAdmin();
 }
