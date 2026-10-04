@@ -1,3 +1,5 @@
+[Reading 338 lines from start (total: 338 lines, 0 remaining)]
+
 ﻿const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
@@ -276,7 +278,9 @@ test("DELIVERY panel keeps HTPWEB navigation and exposes its own public link wit
   assert.match(html,/>Inicio<\/a>/);
   assert.match(html,/>Locales<\/a>/);
   assert.match(html,/>Cómo funciona<\/a>/);
-  const auth=read("config/auth.js");\n  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);\n  assert.match(auth,/adminHtpAccountDropdown/);
+  const auth=read("config/auth.js");
+  assert.match(auth,/prepararEncabezadoDeliveryAdmin/);
+  assert.match(auth,/adminHtpAccountDropdown/);
   assert.match(html,/id="deliveryPublicSiteLink"/);
   assert.match(html,/id="profileDeliveryPublicUrl"/);
   assert.match(html,/id="profileQrBtn"/);
@@ -293,7 +297,7 @@ test("authenticated account header is not captured by DELIVERY dark header styli
   const account=read("app/mi-cuenta.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\)/);
   assert.doesNotMatch(css,/\nheader\{background:#111/);
-  assert.match(account,/app\.css\?v=20261004-accountheader1/);
+  assert.match(account,/app\.css\?v=20261004-accountheader2/);
 });
 
 test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
@@ -313,7 +317,9 @@ test("HTPWEB landing header stays white while DELIVERY headers can remain dark",
   const css=read("assets/app.css");
   const home=read("index.html");
   assert.match(css,/body>header:not\(\.htp-auth-header\):not\(\.top\)/);
-  assert.match(home,/app\.css\?v=20261004-headermenu3/);\n  assert.match(home,/\.top\{height:92px;position:relative;z-index:300/);\n  assert.match(home,/header-actions\{position:absolute;z-index:320/);
+  assert.match(home,/app\.css\?v=20261004-headermenu3/);
+  assert.match(home,/\.top\{height:92px;position:relative;z-index:300/);
+  assert.match(home,/header-actions\{position:absolute;z-index:320/);
   assert.match(home,/<header class="top">/);
 });
 
