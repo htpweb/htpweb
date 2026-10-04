@@ -164,8 +164,10 @@ test("authenticated app flows share the persistent HTPWEB navigation shell",()=>
   const auth=read("config/auth.js");
   const css=read("assets/authenticated-shell.css");
   assert.match(auth,/instalarEncabezadoHTPWEB/);
+  assert.match(auth,/Inicio/);
+  assert.match(auth,/Cómo funciona/);
   assert.match(auth,/Explorar locales/);
-  assert.match(auth,/Mis negocios/);
+  assert.doesNotMatch(auth,/>Mis negocios</);
   assert.match(auth,/Mi cuenta/);
   assert.match(auth,/reclamar-local\.html/);
   assert.match(css,/\.htp-auth-header/);
@@ -187,4 +189,17 @@ test("Mi cuenta hides referral code and authenticated app header keeps account d
   assert.match(auth,/Crear delivery/);
   assert.match(auth,/Cerrar sesión/);
   assert.match(css,/htp-auth-account-dropdown/);
+});
+
+
+test("Mi cuenta groups LOCAL claims inside Mis negocios",()=>{
+  const account=read("app/mi-cuenta.html");
+  const businessStart=account.indexOf('id="businesses"');
+  const deliveryStart=account.indexOf('id="managedDeliveries"');
+  const businessBlock=account.slice(businessStart,deliveryStart);
+  assert.ok(businessStart>=0&&deliveryStart>businessStart);
+  assert.match(businessBlock,/Mis reclamaciones/);
+  assert.match(businessBlock,/claimsList/);
+  assert.match(businessBlock,/claimsCount/);
+  assert.doesNotMatch(account,/Reclamaciones de LOCAL<\/div><div id="claimsCount"/);
 });
