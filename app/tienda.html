@@ -134,7 +134,7 @@ body.local-store{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMa
 body[data-page-section]:not([data-page-section="home"]) main.local-store-shell{padding-top:26px}
 body[data-page-section]:not([data-page-section="home"]) .local-page-section,
 body[data-page-section]:not([data-page-section="home"]) #catalogSection{margin-top:42px;margin-bottom:70px}
-body[data-page-section="catalog"] #catalogSection{padding-top:18px}
+body[data-page-section="shop"] #catalogSection{padding-top:18px}
 
 </style>
 </head>
@@ -145,19 +145,28 @@ body[data-page-section="catalog"] #catalogSection{padding-top:18px}
   <nav id="siteNav" class="local-site-nav">
     <a id="homeNav" data-site-section="home" href="#">Inicio</a>
     <a id="aboutNav" data-site-section="about" href="#">Quiénes somos</a>
-    <a id="catalogNav" data-site-section="catalog" href="#">Productos</a>
+    <a id="catalogNav" data-site-section="services" href="#">Nuestros servicios</a>
+    <a id="shopNav" data-site-section="shop" href="#">Tienda virtual</a>
     <a id="projectsNav" data-site-section="projects" href="#">Proyectos</a>
     <a id="blogNav" data-site-section="blog" href="#">Blog</a>
     <a id="contactNav" data-site-section="contact" href="#">Contacto</a>
   </nav>
-  <button id="cartBtn" class="local-cart-btn">🛒 <span id="cartCount">0</span></button>
+  <button id="cartBtn" class="local-cart-btn hidden">🛒 <span id="cartCount">0</span></button>
 </div></header>
 <main class="local-store-shell">
   <div id="error" class="error hidden"></div>
   <section id="inicio" class="local-page-section" style="margin-top:0"><div id="hero" class="local-hero"></div><div id="heroTrust" class="local-hero-trust"></div></section>
   <section id="aboutSection" class="local-page-section hidden"><div class="local-page-card"><h2 id="aboutTitle">Quiénes somos</h2><p id="aboutText"></p></div></section>
+  <section id="servicesSection" class="local-page-section hidden">
+    <div class="local-page-card">
+      <span class="local-section-kicker">Lo que hacemos</span>
+      <h2 id="servicesTitle">Nuestros servicios</h2>
+      <p id="servicesIntro" class="local-project-intro"></p>
+      <div id="servicesGrid" class="local-service-placeholders"></div>
+    </div>
+  </section>
   <section id="catalogSection" class="local-page-section">
-    <h2 id="catalogTitle">Productos</h2>
+    <h2 id="catalogTitle">Tienda virtual</h2>
     <div class="local-toolbar">
       <input id="search" type="search" placeholder="Buscar productos o servicios">
       <div id="cats" class="local-cats"></div>
@@ -178,7 +187,7 @@ body[data-page-section="catalog"] #catalogSection{padding-top:18px}
 <footer id="siteFooter" class="local-site-footer">
   <div class="local-site-footer-inner">
     <div><h3 id="footerBrand">LOCAL</h3><p id="footerAbout">Conoce nuestros productos, servicios y novedades.</p></div>
-    <div><h4>Explora</h4><a data-site-section="home" href="#">Inicio</a><a data-site-section="about" href="#">Quiénes somos</a><a data-site-section="catalog" href="#">Productos / Servicios</a><a data-site-section="projects" href="#">Proyectos</a></div>
+    <div><h4>Explora</h4><a data-site-section="home" href="#">Inicio</a><a data-site-section="about" href="#">Quiénes somos</a><a data-site-section="services" href="#">Nuestros servicios</a><a data-site-section="shop" href="#">Tienda virtual</a><a data-site-section="projects" href="#">Proyectos</a></div>
     <div><h4>Contacto</h4><div id="footerContact"></div></div>
   </div>
   <div class="local-site-footer-bottom"><span id="footerLegal">Todos los derechos reservados.</span><span>Creado con HTPWEB</span></div>
@@ -192,7 +201,8 @@ const key=params.get("local")||"";
 const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const sharedProductId=params.get("product")||"";
-const pageSection=(params.get("section")||"home").toLowerCase();
+const rawPageSection=(params.get("section")||"home").toLowerCase();
+const pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
 let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="";
@@ -232,18 +242,21 @@ function applySinglePageSection(){
  const map={
    home:["inicio"],
    about:["aboutSection"],
-   catalog:["catalogSection"],
+   services:["servicesSection"],
+   shop:["catalogSection"],
    projects:["projectsSection"],
    blog:["blogSection"],
    contact:["contactSection","finalCta"]
  };
  const allowed=new Set(map[pageSection]||map.home);
- ["inicio","aboutSection","catalogSection","projectsSection","blogSection","contactSection","finalCta"].forEach(id=>{
+ ["inicio","aboutSection","servicesSection","catalogSection","projectsSection","blogSection","contactSection","finalCta"].forEach(id=>{
    const el=$(id);if(!el)return;
    if(allowed.has(id)) el.classList.remove("section-page-hidden");
    else el.classList.add("section-page-hidden");
  });
  document.body.dataset.pageSection=pageSection;
+ const cart=$("cartBtn");
+ if(cart)cart.classList.toggle("hidden",pageSection!=="shop");
 }
 function scope(){return source==="htpweb"?"HTPWEB":(store?.local?.id?"LOCAL:"+store.local.id:"LOCAL:UNKNOWN");}
 function money(v){return "$"+Number(v||0).toFixed(2);}
@@ -382,8 +395,15 @@ function renderPageSections(){
  if(aboutCard&&aboutVisible){
    aboutCard.innerHTML='<div class="local-about-copy"><span class="local-section-kicker">Nuestra historia</span><h2 id="aboutTitle">'+esc(cfg.about_title||"Quiénes somos")+'</h2><p id="aboutText">'+esc(cfg.about_text||l.description||"")+'</p></div><div class="local-about-image" style="background-image:url(\''+esc(visual.about)+'\')"></div>';
  }
- $("catalogTitle").textContent=label;$("catalogNav").textContent=label;
- $("catalogSection").classList.toggle("hidden",cfg.show_catalog===false);$("catalogNav").classList.toggle("hidden",cfg.show_catalog===false);
+ $("servicesTitle").textContent=label;
+ $("catalogNav").textContent=label;
+ $("servicesIntro").textContent=cfg.hero_subtitle||l.description||"";
+ $("servicesGrid").innerHTML=placeholderServices().map(([icon,title,copy])=>'<article class="local-service-placeholder"><div class="icon">'+esc(icon)+'</div><h3>'+esc(title)+'</h3><p>'+esc(copy)+'</p></article>').join("");
+ $("servicesSection").classList.toggle("hidden",cfg.show_catalog===false);
+ $("catalogNav").classList.toggle("hidden",cfg.show_catalog===false);
+ $("catalogTitle").textContent="Tienda virtual";
+ $("shopNav").textContent="Tienda virtual";
+ $("catalogSection").classList.remove("hidden");
 
  $("projectsTitle").textContent=cfg.projects_title||"Proyectos";
  $("projectsText").textContent=cfg.projects_text||"";
@@ -411,10 +431,11 @@ function renderPageSections(){
  const waFloat=$("waFloat");
  if(waFloat){
    waFloat.classList.toggle("hidden",!waUrl);
+   waFloat.style.display=waUrl?"grid":"none";
    if(waUrl)waFloat.href=waUrl;
  }
  $("promotionsSection").dataset.pageEnabled=cfg.show_promotions===false?"0":"1";
- $("search").placeholder="Buscar "+label.toLowerCase();
+ $("search").placeholder="Buscar en la tienda virtual";
  applySinglePageSection();
 }
 function applyMarketingMetadata(){
@@ -450,7 +471,7 @@ function renderHero(){
  const image=l.banner_url||visual.hero;
  const wa=whatsappUrl(l);
  const primary=wa?'<a class="local-hero-cta" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">'+esc(visual.cta)+'</a>':'<a class="local-hero-cta" target="_self" href="'+esc(siteSectionUrl("contact"))+'">'+esc(visual.cta)+'</a>';
- const secondary='<a class="local-hero-secondary" target="_self" href="'+esc(siteSectionUrl("catalog"))+'">'+esc(visual.secondary)+'</a>';
+ const secondary='<a class="local-hero-secondary" target="_self" href="'+esc(siteSectionUrl("services"))+'">'+esc(visual.secondary)+'</a>';
  $("hero").innerHTML='<img src="'+esc(image)+'" alt="'+esc(l.name)+'"><div class="local-hero-copy"><span class="hero-eyebrow">'+esc(visual.eyebrow)+'</span><h1>'+esc(title)+'</h1><p>'+esc(subtitle)+'</p><div class="local-hero-actions">'+primary+secondary+'</div></div>';
  $("heroTrust").innerHTML=visual.trust.map(([title,copy])=>'<div><strong>'+esc(title)+'</strong><span>'+esc(copy)+'</span></div>').join("");
  applySinglePageSection();
