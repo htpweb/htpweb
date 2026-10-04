@@ -108,11 +108,20 @@ body.local-store{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMa
  .local-project-grid,.local-blog-grid{grid-template-columns:1fr}.local-project-card,.local-project-card img{min-height:260px}
 }
 
+
+.local-topbar{background:#0b1020;color:#e5e7eb;font-size:.78rem}.local-topbar-inner{max-width:1320px;margin:auto;padding:8px 28px;display:flex;justify-content:flex-end;gap:20px;align-items:center}.local-topbar a{color:#fff;text-decoration:none;font-weight:800}.local-topbar .sep{opacity:.35}
+.local-service-placeholders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:18px}.local-service-placeholder{padding:24px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.05)}.local-service-placeholder .icon{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--local-accent) 12%,white);color:var(--local-accent);font-weight:900;margin-bottom:14px}.local-service-placeholder h3{margin:0 0 8px}.local-service-placeholder p{margin:0;color:#64748b;line-height:1.55}
+.local-site-footer{background:#0b1020;color:#e5e7eb;margin-top:0}.local-site-footer-inner{max-width:1180px;margin:auto;padding:46px 18px 28px;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:36px}.local-site-footer h3,.local-site-footer h4{color:#fff;margin:0 0 12px}.local-site-footer p,.local-site-footer a{color:#cbd5e1}.local-site-footer a{text-decoration:none;display:block;margin:7px 0}.local-site-footer-bottom{max-width:1180px;margin:auto;border-top:1px solid rgba(255,255,255,.12);padding:16px 18px 22px;color:#94a3b8;font-size:.8rem;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.local-wa-float{position:fixed;right:20px;bottom:20px;z-index:30;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#25D366;color:#fff;text-decoration:none;font-size:1.45rem;box-shadow:0 14px 30px rgba(0,0,0,.22)}
+@media(max-width:820px){.local-service-placeholders{grid-template-columns:1fr}.local-site-footer-inner{grid-template-columns:1fr 1fr}.local-topbar-inner{padding:7px 14px}}
+@media(max-width:520px){.local-site-footer-inner{grid-template-columns:1fr}.local-topbar-inner{justify-content:center;gap:10px;font-size:.7rem}}
+
 </style>
 </head>
 <body class="local-store">
+<div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
 <header class="local-store-header"><div class="local-store-header-inner">
-  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName">LOCAL</strong><small>Plataforma de HTPWEB</small></div></div>
+  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName">LOCAL</strong><small>Sitio oficial · by HTPWEB</small></div></div>
   <nav id="siteNav" class="local-site-nav">
     <a href="#inicio">Inicio</a>
     <a id="aboutNav" href="#aboutSection">Quiénes somos</a>
@@ -146,6 +155,15 @@ body.local-store{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMa
   <section id="contactSection" class="local-page-section hidden"><div class="local-page-card"><h2 id="contactTitle">Contacto</h2><div id="contactGrid" class="local-contact-grid"></div><div id="contactSocials"></div></div></section>
   <section id="finalCta" class="local-footer-cta hidden"><div><h2>¿Hablamos?</h2><div>Estamos listos para atenderte.</div></div><a id="finalCtaLink" href="#">Contactar por WhatsApp</a></section>
 </main>
+<footer id="siteFooter" class="local-site-footer">
+  <div class="local-site-footer-inner">
+    <div><h3 id="footerBrand">LOCAL</h3><p id="footerAbout">Conoce nuestros productos, servicios y novedades.</p></div>
+    <div><h4>Explora</h4><a href="#inicio">Inicio</a><a href="#aboutSection">Quiénes somos</a><a href="#catalogSection">Productos / Servicios</a><a href="#projectsSection">Proyectos</a></div>
+    <div><h4>Contacto</h4><div id="footerContact"></div></div>
+  </div>
+  <div class="local-site-footer-bottom"><span id="footerLegal">Todos los derechos reservados.</span><span>Creado con HTPWEB</span></div>
+</footer>
+<a id="waFloat" class="local-wa-float hidden" target="_blank" rel="noopener" aria-label="WhatsApp">✆</a>
 <script>
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
@@ -337,11 +355,32 @@ function renderCats(){
    visible.map(c=>'<button data-cat="'+esc(c.id)+'" class="'+(activeCategory===c.id?"active":"")+'">'+esc(c.name)+'</button>').join("");
  $("cats").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{activeCategory=b.dataset.cat;renderCats();renderProducts();});
 }
+function placeholderServices(){
+ const preset=store?.settings?.preset_code||"GENERAL_MODERN";
+ const map={
+  ENGINEERING_PRO:[["01","Diseño y planificación","Convertimos necesidades en soluciones técnicas claras, viables y bien estructuradas."],["02","Ejecución y supervisión","Acompañamos cada etapa para asegurar calidad, control y cumplimiento."],["03","Asesoría técnica","Analizamos tu requerimiento y proponemos el camino más adecuado para tu proyecto."]],
+  FOOD_VISUAL:[["01","Especialidades","Una selección pensada para representar lo mejor de nuestra propuesta gastronómica."],["02","Pedidos y reservas","Coordina tu pedido o reserva directamente con nuestro equipo."],["03","Experiencia","Buena comida, atención cercana y momentos que invitan a volver."]],
+  BOOKS_STATIONERY:[["01","Textos especializados","Encuentra opciones para estudio, consulta y crecimiento profesional."],["02","Papelería y útiles","Soluciones prácticas para estudiantes, profesionales y oficinas."],["03","Novedades","Descubre nuevos títulos, materiales y productos destacados."]],
+  BEAUTY_BOOKING:[["01","Cuidado personal","Servicios pensados para resaltar tu estilo y bienestar."],["02","Citas personalizadas","Agenda directamente según el servicio que necesites."],["03","Resultados","Atención al detalle para que cada experiencia se sienta especial."]],
+  HEALTH_SERVICES:[["01","Atención profesional","Servicios orientados al bienestar y la confianza de cada paciente."],["02","Información clara","Conoce nuestros servicios y consulta directamente con el equipo."],["03","Acompañamiento","Una experiencia cercana desde el primer contacto."]],
+  HARDWARE_CATALOG:[["01","Productos y materiales","Opciones para construcción, reparación y mantenimiento."],["02","Asesoría","Te ayudamos a identificar la solución adecuada para tu proyecto."],["03","Cotización rápida","Consulta disponibilidad y precios directamente por WhatsApp."]],
+  FASHION_EDITORIAL:[["01","Colecciones","Estilo y selección para diferentes ocasiones."],["02","Novedades","Descubre piezas y tendencias recién llegadas."],["03","Compra directa","Consulta tallas, disponibilidad y compra por WhatsApp."]],
+  SERVICES_SHOWCASE:[["01","Atención especializada","Soluciones adaptadas a cada necesidad."],["02","Experiencia","Trabajo profesional con enfoque en resultados."],["03","Contacto directo","Habla con nuestro equipo y cuéntanos qué necesitas."]],
+  GROCERY_DENSE:[["01","Variedad","Productos para diferentes necesidades y momentos."],["02","Disponibilidad","Consulta opciones y novedades directamente."],["03","Compra fácil","Haz tu consulta o pedido por WhatsApp."]],
+  GENERAL_MODERN:[["01","Productos y servicios","Conoce todo lo que tenemos para ofrecerte."],["02","Atención cercana","Estamos disponibles para ayudarte y responder tus preguntas."],["03","Contacto directo","Escríbenos y recibe atención personalizada."]]
+ };
+ return map[preset]||map.GENERAL_MODERN;
+}
 function renderProducts(){
  const q=$("search").value.trim().toLowerCase();
  const filtered=products.filter(p=>(!activeCategory||p.category_id===activeCategory)&&(!q||[p.name,p.description].some(v=>String(v||"").toLowerCase().includes(q))));
  $("products").className="local-grid "+(store.settings.card_density==="COMPACT"?"compact":"");
- if(!filtered.length){$("products").innerHTML='<div class="empty">'+(products.length?'No hay productos que coincidan con la búsqueda.':'Estamos preparando nuestro catálogo de productos y servicios.')+'</div>';return;}
+ if(!filtered.length){
+   if(products.length){$("products").innerHTML='<div class="empty">No hay productos que coincidan con la búsqueda.</div>';return;}
+   $("products").className="local-service-placeholders";
+   $("products").innerHTML=placeholderServices().map(([icon,title,copy])=>'<article class="local-service-placeholder"><div class="icon">'+esc(icon)+'</div><h3>'+esc(title)+'</h3><p>'+esc(copy)+'</p></article>').join("");
+   return;
+ }
  $("products").innerHTML=filtered.map(p=>{
    const vs=variants.filter(v=>v.product_id===p.id);
    const baseStock=stockFor(p,null);
