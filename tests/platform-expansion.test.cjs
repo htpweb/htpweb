@@ -307,3 +307,12 @@ test("self-service DELIVERY gets a unique short public path and public loader re
   assert.match(negocio,/\.ilike\("public_share_path", slug\)/);
   assert.match(admin,/https:\/\/htpweb\.github\.io\/.*public_share_path/);
 });
+
+
+test("HTPWEB landing header stays white while DELIVERY headers can remain dark",()=>{
+  const css=read("assets/app.css");
+  const home=read("index.html");
+  assert.match(css,/body>header:not\(\.htp-auth-header\):not\(\.top\)/);
+  assert.match(home,/app\.css\?v=20261004-headerwhite1/);
+  assert.match(home,/<header class="top">/);
+});
