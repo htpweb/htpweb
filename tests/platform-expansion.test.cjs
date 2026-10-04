@@ -1,5 +1,3 @@
-[Reading 338 lines from start (total: 338 lines, 0 remaining)]
-
 ﻿const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
