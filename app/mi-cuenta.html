@@ -11,81 +11,162 @@
 <script src="../config/addresses.js"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261004-accountheader3"><link rel="stylesheet" href="../assets/authenticated-shell.css?v=20261004-shell3">
 <style>
-.account-shell{max-width:1080px;margin:auto;padding:22px 14px 52px}.account-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.identity{display:flex;gap:14px;align-items:center}.avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#111827;color:#fff;font-size:1.4rem;font-weight:800}
-.account-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.account-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px}
-.account-card.wide{grid-column:span 2}.account-card.full{grid-column:1/-1}.metric{font-size:1.7rem;font-weight:800}.nav-card{text-decoration:none;color:inherit;display:block;transition:.15s}.nav-card:hover{transform:translateY(-1px)}
-.order-row,.address-row,.delivery-row,.claim-row{padding:12px 0;border-top:1px solid #eef2f7}.order-row:first-child,.address-row:first-child,.delivery-row:first-child,.claim-row:first-child{border-top:0}
-.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2ff;font-size:.82rem}.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
-.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.section-title{display:flex;justify-content:space-between;gap:10px;align-items:center}
-@media(max-width:820px){.account-grid{grid-template-columns:1fr 1fr}.account-card.wide{grid-column:1/-1}}
-@media(max-width:620px){.account-grid{grid-template-columns:1fr}.account-card.wide,.account-card.full{grid-column:1}.profile-grid{grid-template-columns:1fr}}
+.account-shell{max-width:1420px;margin:0 auto;padding:18px 28px 52px}
+.account-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);gap:22px;align-items:start}
+.account-side{position:sticky;top:108px;padding:8px 0}
+.account-side-title{font-size:12px;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em;padding:0 14px 10px}
+.account-side-nav{display:flex;flex-direction:column;gap:4px}
+.account-side-nav button{width:100%;border:0;background:transparent;color:#172033;text-align:left;padding:11px 14px;border-radius:0 22px 22px 0;font:inherit;font-weight:650;cursor:pointer}
+.account-side-nav button:hover{background:#f1f4f8}
+.account-side-nav button.active{background:#e8f0fe;color:#0b57d0;font-weight:800}
+.account-main{min-width:0}
+.account-pane{display:none}
+.account-pane.active{display:block}
+.account-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px}
+.account-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.identity{display:flex;gap:14px;align-items:center}
+.avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#111827;color:#fff;font-size:1.4rem;font-weight:800}
+.account-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.account-overview-grid .account-card{min-height:112px}
+.metric{font-size:1.7rem;font-weight:800}
+.nav-card{text-decoration:none;color:inherit;display:block;transition:.15s}
+.nav-card:hover{transform:translateY(-1px)}
+.order-row,.address-row,.delivery-row,.claim-row{padding:12px 0;border-top:1px solid #eef2f7}
+.order-row:first-child,.address-row:first-child,.delivery-row:first-child,.claim-row:first-child{border-top:0}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2ff;font-size:.82rem}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.section-title{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.account-page-title{margin:0 0 14px}
+.account-page-title h1{margin:0 0 4px;font-size:28px}
+.account-page-title p{margin:0;color:#667085}
+@media(max-width:900px){
+ .account-shell{padding:12px 14px 40px}
+ .account-workspace{grid-template-columns:1fr;gap:12px}
+ .account-side{position:static;overflow-x:auto;padding:0 0 4px}
+ .account-side-title{display:none}
+ .account-side-nav{flex-direction:row;gap:6px;min-width:max-content}
+ .account-side-nav button{width:auto;border-radius:999px;background:#f3f5f8;padding:9px 13px;white-space:nowrap}
+ .account-side-nav button.active{background:#e8f0fe}
+}
+@media(max-width:620px){
+ .account-overview-grid,.profile-grid{grid-template-columns:1fr}
+ .account-card{padding:14px}
+}
 </style>
 </head>
 <body>
 <main class="account-shell">
-<section class="account-card">
-<div class="account-head"><div class="identity"><div id="avatar" class="avatar">U</div><div><div class="muted">Mi cuenta</div><h1 id="welcome" style="margin:2px 0">Cargando…</h1><div id="email" class="muted"></div></div></div>
-<div class="row-actions"><a class="btn btn-muted" href="../index.html">← Volver a HTPWEB</a><button id="clientModeBtn" class="btn btn-muted" type="button">Modo cliente</button><a id="shopLink" class="btn btn-muted" href="../index.html">Volver a comprar</a><button id="logoutBtn" class="btn btn-danger">Cerrar sesión</button></div></div>
-<div id="message" class="hidden" style="margin-top:12px"></div>
-</section>
-<section class="account-grid">
-<a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
-<a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
-<a class="account-card nav-card" href="#plans"><div class="muted">Planes y suscripciones</div><div id="plansCount" class="metric">—</div><div>Revisar cobertura y límites</div></a>
+<div class="account-workspace">
+  <aside class="account-side" aria-label="Secciones de Mi cuenta">
+    <div class="account-side-title">Mi cuenta</div>
+    <nav class="account-side-nav" id="accountSideNav">
+      <button type="button" data-account-view="overview" class="active">Resumen</button>
+      <button type="button" data-account-view="businesses">Mis negocios</button>
+      <button type="button" data-account-view="managedDeliveries">DELIVERY que administro</button>
+      <button type="button" data-account-view="plans">Planes y suscripciones</button>
+      <button type="button" data-account-view="profile">Mis datos</button>
+      <button type="button" data-account-view="deliveries">DELIVERY vinculados</button>
+      <button type="button" data-account-view="orders">Mis pedidos</button>
+      <button type="button" data-account-view="addresses">Mis direcciones</button>
+    </nav>
+  </aside>
 
-<section class="account-card full" id="businesses">
-<div class="section-title"><div><h2>Mis negocios</h2><p class="muted">LOCAL que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
-<div id="ownedLocalsList"><div class="muted">Cargando negocios…</div></div>
-<div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">
-  <div class="section-title"><div><h3 style="margin:0">Mis reclamaciones</h3><p class="muted">Seguimiento de negocios que has solicitado administrar.</p></div><div class="row-actions"><span class="pill">Activas: <strong id="claimsCount">—</strong></span><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div></div>
-  <div id="claimsList"><div class="muted">Cargando…</div></div>
+  <div class="account-main">
+    <div id="message" class="hidden" style="margin-bottom:12px"></div>
+
+    <section class="account-pane active" data-account-pane="overview">
+      <section class="account-card">
+        <div class="account-head">
+          <div class="identity">
+            <div id="avatar" class="avatar">U</div>
+            <div><div class="muted">Mi cuenta</div><h1 id="welcome" style="margin:2px 0">Cargando…</h1><div id="email" class="muted"></div></div>
+          </div>
+          <div class="row-actions">
+            <a class="btn btn-muted" href="../index.html">← Volver a HTPWEB</a>
+            <button id="clientModeBtn" class="btn btn-muted" type="button">Modo cliente</button>
+            <a id="shopLink" class="btn btn-muted" href="../index.html">Volver a comprar</a>
+            <button id="logoutBtn" class="btn btn-danger">Cerrar sesión</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="account-overview-grid">
+        <a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
+        <a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
+        <a class="account-card nav-card" href="#plans"><div class="muted">Planes y suscripciones</div><div id="plansCount" class="metric">—</div><div>Revisar cobertura y límites</div></a>
+      </div>
+    </section>
+
+    <section class="account-pane" data-account-pane="businesses" id="businesses">
+      <div class="account-page-title"><h1>Mis negocios</h1><p>LOCAL que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div>
+      <section class="account-card">
+        <div class="section-title"><div><h2 style="margin:0">LOCAL que administro</h2></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
+        <div id="ownedLocalsList"><div class="muted">Cargando negocios…</div></div>
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">
+          <div class="section-title"><div><h3 style="margin:0">Mis reclamaciones</h3><p class="muted">Seguimiento de negocios que has solicitado administrar.</p></div><div class="row-actions"><span class="pill">Activas: <strong id="claimsCount">—</strong></span><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div></div>
+          <div id="claimsList"><div class="muted">Cargando…</div></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="account-pane" data-account-pane="managedDeliveries" id="managedDeliveries">
+      <div class="account-page-title"><h1>DELIVERY que administro</h1><p>Servicios DELIVERY donde esta cuenta tiene acceso administrativo.</p></div>
+      <section class="account-card">
+        <div class="section-title"><div><h2 style="margin:0">Mis DELIVERY administrados</h2></div><a class="btn btn-muted" href="crear-delivery.html">+ Crear DELIVERY</a></div>
+        <div id="managedDeliveriesList"><div class="muted">Cargando…</div></div>
+      </section>
+    </section>
+
+    <section class="account-pane" data-account-pane="plans" id="plans">
+      <div class="account-page-title"><h1>Planes y suscripciones</h1><p>Revisa los planes de tus DELIVERY y LOCAL, sus capacidades, límites y opciones disponibles.</p></div>
+      <section class="account-card">
+        <div class="section-title"><h2 style="margin:0">Planes actuales</h2><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
+        <div id="currentPlans"><div class="muted">Cargando suscripciones…</div></div>
+        <div id="availablePlans" style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb"></div>
+      </section>
+    </section>
+
+    <section class="account-pane" data-account-pane="profile" id="profile">
+      <div class="account-page-title"><h1>Mis datos</h1><p>Información principal de tu cuenta HTPWEB.</p></div>
+      <section class="account-card">
+        <div class="profile-grid"><div><label>Nombre completo</label><input id="fullName"></div><div><label>Teléfono</label><input id="phone" type="tel"></div></div>
+        <div style="margin-top:12px"><label>Correo</label><input id="profileEmail" type="email" disabled></div>
+        <div class="row-actions"><button id="saveProfileBtn" class="btn btn-primary">Guardar cambios</button><button id="passwordBtn" class="btn btn-muted">Cambiar contraseña</button></div>
+      </section>
+    </section>
+
+    <section class="account-pane" data-account-pane="deliveries" id="deliveries">
+      <div class="account-page-title"><h1>DELIVERY vinculados</h1><p>Redes con las que tu perfil de cliente tiene relación.</p></div>
+      <section class="account-card"><div id="deliveriesList"><div class="muted">Cargando…</div></div></section>
+    </section>
+
+    <section class="account-pane" data-account-pane="orders" id="orders">
+      <div class="account-page-title"><h1>Mis pedidos</h1><p>Historial global de tus compras, sin importar desde qué DELIVERY compraste.</p></div>
+      <section class="account-card">
+        <div class="section-title"><h2 style="margin:0">Historial</h2><select id="deliveryFilter" style="max-width:230px"><option value="">Todos los DELIVERY</option></select></div>
+        <div id="ordersList"><div class="muted">Cargando pedidos…</div></div>
+      </section>
+    </section>
+
+    <section class="account-pane" data-account-pane="addresses" id="addresses">
+      <div class="account-page-title"><h1>Mis direcciones</h1><p>Agrega, edita, cambia la predeterminada o desactiva una dirección guardada.</p></div>
+      <section class="account-card">
+        <div class="section-title"><h2 style="margin:0">Direcciones guardadas</h2><button id="newAddressBtn" class="btn btn-primary">+ Agregar dirección</button></div>
+        <div id="addressForm" class="hidden" style="margin:14px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc">
+          <h3 id="addressFormTitle" style="margin-top:0">Nueva dirección</h3>
+          <input id="addressId" type="hidden">
+          <div class="profile-grid"><div><label>Nombre de la dirección *</label><input id="addressLabel" placeholder="Casa, Trabajo..."></div><div><label>Dirección *</label><input id="addressText" placeholder="Calle, sector, referencia principal"></div></div>
+          <div class="profile-grid" style="margin-top:10px"><div><label>Referencia</label><input id="addressReference" placeholder="Frente a..., junto a..."></div><div><label>Ubicación</label><div class="row" style="gap:8px"><input id="addressLat" placeholder="Latitud" inputmode="decimal"><input id="addressLng" placeholder="Longitud" inputmode="decimal"></div></div></div>
+          <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="addressDefault" type="checkbox" style="width:auto">Usar como dirección predeterminada</label>
+          <div class="row-actions"><button id="useLocationBtn" class="btn btn-muted" type="button">Usar mi ubicación actual</button><button id="saveAddressBtn" class="btn btn-primary" type="button">Guardar dirección</button><button id="cancelAddressBtn" class="btn btn-muted" type="button">Cancelar</button></div>
+          <div id="addressLocationState" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div id="addressesList"><div class="muted">Cargando direcciones…</div></div>
+      </section>
+    </section>
+  </div>
 </div>
-</section>
-
-<section class="account-card full" id="managedDeliveries">
-<div class="section-title"><div><h2>DELIVERY que administro</h2><p class="muted">Servicios DELIVERY donde esta cuenta tiene acceso administrativo.</p></div><a class="btn btn-muted" href="crear-delivery.html">+ Crear DELIVERY</a></div>
-<div id="managedDeliveriesList"><div class="muted">Cargando…</div></div>
-</section>
-
-<section class="account-card full" id="plans">
-<div class="section-title"><div><h2>Planes y suscripciones</h2><p class="muted">Revisa los planes de tus DELIVERY y LOCAL, sus capacidades, límites y opciones disponibles.</p></div><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
-<div id="currentPlans"><div class="muted">Cargando suscripciones…</div></div>
-<div id="availablePlans" style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb"></div>
-</section>
-
-<section class="account-card wide" id="profile">
-<div class="section-title"><div><h2>Mis datos</h2><p class="muted">Información principal de tu cuenta HTPWEB.</p></div></div>
-<div class="profile-grid"><div><label>Nombre completo</label><input id="fullName"></div><div><label>Teléfono</label><input id="phone" type="tel"></div></div>
-<div style="margin-top:12px"><label>Correo</label><input id="profileEmail" type="email" disabled></div>
-<div class="row-actions"><button id="saveProfileBtn" class="btn btn-primary">Guardar cambios</button><button id="passwordBtn" class="btn btn-muted">Cambiar contraseña</button></div>
-</section>
-
-<section class="account-card" id="deliveries">
-<h2>Mis DELIVERY</h2><p class="muted">Redes con las que tu perfil de cliente tiene relación.</p>
-<div id="deliveriesList"><div class="muted">Cargando…</div></div>
-</section>
-
-<section class="account-card full" id="orders">
-<div class="section-title"><div><h2>Mis pedidos</h2><p class="muted">Historial global de tus compras, sin importar desde qué DELIVERY compraste.</p></div><select id="deliveryFilter" style="max-width:230px"><option value="">Todos los DELIVERY</option></select></div>
-<div id="ordersList"><div class="muted">Cargando pedidos…</div></div>
-</section>
-
-<section class="account-card wide" id="addresses">
-<div class="section-title"><div><h2>Mis direcciones</h2><p class="muted">Agrega, edita, cambia la predeterminada o desactiva una dirección guardada.</p></div><button id="newAddressBtn" class="btn btn-primary">+ Agregar dirección</button></div>
-<div id="addressForm" class="hidden" style="margin:14px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc">
-  <h3 id="addressFormTitle" style="margin-top:0">Nueva dirección</h3>
-  <input id="addressId" type="hidden">
-  <div class="profile-grid"><div><label>Nombre de la dirección *</label><input id="addressLabel" placeholder="Casa, Trabajo..."></div><div><label>Dirección *</label><input id="addressText" placeholder="Calle, sector, referencia principal"></div></div>
-  <div class="profile-grid" style="margin-top:10px"><div><label>Referencia</label><input id="addressReference" placeholder="Frente a..., junto a..."></div><div><label>Ubicación</label><div class="row" style="gap:8px"><input id="addressLat" placeholder="Latitud" inputmode="decimal"><input id="addressLng" placeholder="Longitud" inputmode="decimal"></div></div></div>
-  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="addressDefault" type="checkbox" style="width:auto">Usar como dirección predeterminada</label>
-  <div class="row-actions"><button id="useLocationBtn" class="btn btn-muted" type="button">Usar mi ubicación actual</button><button id="saveAddressBtn" class="btn btn-primary" type="button">Guardar dirección</button><button id="cancelAddressBtn" class="btn btn-muted" type="button">Cancelar</button></div>
-  <div id="addressLocationState" class="muted" style="margin-top:8px"></div>
-</div>
-<div id="addressesList"><div class="muted">Cargando direcciones…</div></div>
-</section>
-
-</section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -99,6 +180,28 @@ function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
 function currentDeliverySlug(){return obtenerDeliverySlug()||""}
 function orderLink(order){const d=deliveryById(order.delivery_id);return d?.slug?"pedidos.html?delivery="+encodeURIComponent(d.slug)+"&order="+encodeURIComponent(order.id):"#"}
 function formatDate(value){try{return new Date(value).toLocaleString("es-EC",{timeZone:"America/Guayaquil"})}catch{return value||"—"}}
+function accountViewFromHash(){
+ const raw=(location.hash||"").replace("#","");
+ if(raw==="availablePlans")return "plans";
+ return ["overview","businesses","managedDeliveries","plans","profile","deliveries","orders","addresses"].includes(raw)?raw:"overview";
+}
+function showAccountView(view,{updateHash=false}={}){
+ const target=["overview","businesses","managedDeliveries","plans","profile","deliveries","orders","addresses"].includes(view)?view:"overview";
+ document.querySelectorAll("[data-account-pane]").forEach(p=>p.classList.toggle("active",p.dataset.accountPane===target));
+ document.querySelectorAll("[data-account-view]").forEach(b=>b.classList.toggle("active",b.dataset.accountView===target));
+ if(updateHash){
+   const next=target==="overview"?"#overview":"#"+target;
+   if(location.hash!==next)history.replaceState(null,"",next);
+ }
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function bindAccountNavigation(){
+ document.querySelectorAll("[data-account-view]").forEach(button=>{
+   button.onclick=()=>showAccountView(button.dataset.accountView,{updateHash:true});
+ });
+ window.addEventListener("hashchange",()=>showAccountView(accountViewFromHash()));
+ showAccountView(accountViewFromHash());
+}
 async function loadIdentity(){
  const profile=await supabaseClient.from("profiles").select("full_name,phone").eq("id",user.id).maybeSingle();
  if(profile.error)throw profile.error;
@@ -285,6 +388,7 @@ async function changePassword(){
 }
 async function init(){
  user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return}
+ bindAccountNavigation();
  if(currentDeliverySlug())$("shopLink").href="index.html?delivery="+encodeURIComponent(currentDeliverySlug());
  await loadIdentity();
  await Promise.all([loadCustomer(),loadClaims(),loadManagedEntities(),loadPlans()]);
