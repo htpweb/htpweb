@@ -238,3 +238,15 @@ test("self-service DELIVERY uses an allowed theme key",()=>{
   assert.match(fix,/'HTPWEB'/);
   assert.doesNotMatch(fix,/'default'/);
 });
+
+
+test("multi-role CLIENT accounts can own DELIVERY through account_delivery_roles",()=>{
+  const sql=read("supabase/migrations/20261004012000_multirole_user_deliveries.sql");
+  assert.match(sql,/account_delivery_roles/);
+  assert.match(sql,/v_has_delivery_role/);
+  assert.match(sql,/DELIVERY_ADMIN/);
+  assert.match(sql,/insert into public\.account_delivery_roles/);
+  assert.match(sql,/insert into public\.user_deliveries/);
+  assert.ok(sql.indexOf("insert into public.account_delivery_roles") < sql.indexOf("insert into public.user_deliveries"));
+  assert.doesNotMatch(sql,/el rol % no puede pertenecer a user_deliveries/);
+});
