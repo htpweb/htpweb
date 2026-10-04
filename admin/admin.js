@@ -332,6 +332,7 @@ function configureNavigation() {
 }
 
 function showSection(name) {
+  clearMessage();
   if(name!=="orders"&&typeof stopOrderControlAutoRefresh==="function") stopOrderControlAutoRefresh();
   if(name!=="orders"&&typeof stopOrderControlRealtime==="function") stopOrderControlRealtime();
   if (typeof restoreLocalPanels === "function") restoreLocalPanels();
@@ -3807,6 +3808,33 @@ async function loadOrderControlCenter({silent=false}={}){
       orderControlState.lastSync=new Date().toISOString();
       renderOrderControl();
       return;
+    }
+
+    if(state.role!=="MASTER"){
+      const plans=await Promise.all(ids.map(deliveryId=>
+        rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId})
+      ));
+      const unavailable=plans.find(plan=>plan?.current?.entitlements?.["orders.manage"]!==true);
+      if(unavailable){
+        const current=unavailable?.current||{};
+        const ent=current.entitlements||{};
+        state.orders=[];
+        orderControlState.drivers.clear();
+        orderControlState.dispatches.clear();
+        orderControlState.lastSync=new Date().toISOString();
+        stopOrderControlAutoRefresh();
+        stopOrderControlRealtime();
+        if($("ordersList")){
+          $("ordersList").innerHTML=
+            '<div class="workspace-note"><strong>Plan: '+esc(current.plan_name||"Sin plan")+'</strong>'+
+            ' · Centro de pedidos: '+(ent["orders.manage"]===true?"Sí":"No")+
+            ' · Despacho manual: '+(ent["dispatch.manual"]===true?"Sí":"No")+
+            ' · WhatsApp cliente: '+(ent["whatsapp.customer_order"]===true?"Sí":"No")+
+            '</div>'+
+            '<div class="muted" style="margin-top:10px">El Centro de pedidos no está incluido en el plan vigente.</div>';
+        }
+        return;
+      }
     }
 
     const bundles=await Promise.all(ids.map(async deliveryId=>{
@@ -10271,15 +10299,24 @@ async function loadDriverWorkspace(){
   if(!deliveryId)return;
 
   try{
+    const plan=await rpc("delivery_plan_snapshot",{p_delivery_id:deliveryId});
+    const currentPlan=plan?.current||{};
+    const ent=currentPlan.entitlements||{};
+    const whatsappManage=ent["whatsapp.manage"]===true;
+
     const [drivers,dispatch,proofSettings,sos,deviation,whatsappSettings,whatsappConnection,whatsappProvider]=await Promise.all([
       rpc("delivery_drivers_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_dispatch_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_proof_settings_snapshot",{p_delivery_id:deliveryId}),
       rpc("delivery_sos_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
       rpc("delivery_route_deviation_snapshot",{p_delivery_id:deliveryId,p_limit:50}),
-      rpc("delivery_whatsapp_settings_snapshot",{p_delivery_id:deliveryId}),
-      rpc("delivery_whatsapp_connection_snapshot",{p_delivery_id:deliveryId}),
-      typeof htpWhatsappProviderStatus==="function"
+      whatsappManage
+        ? rpc("delivery_whatsapp_settings_snapshot",{p_delivery_id:deliveryId})
+        : Promise.resolve({mode:"ASSISTED",local_orders:false,driver_dispatch:false,customer_orders:ent["whatsapp.customer_order"]===true,customer_order_available:ent["whatsapp.customer_order"]===true}),
+      whatsappManage
+        ? rpc("delivery_whatsapp_connection_snapshot",{p_delivery_id:deliveryId})
+        : Promise.resolve({configured:false,status:"NOT_INCLUDED"}),
+      whatsappManage&&typeof htpWhatsappProviderStatus==="function"
         ? htpWhatsappProviderStatus(deliveryId)
         : Promise.resolve({configured:false})
     ]);
@@ -10288,17 +10325,17 @@ async function loadDriverWorkspace(){
     driverWorkspaceState.proofSettings=proofSettings||{};
     driverWorkspaceState.sos=sos||{};
     driverWorkspaceState.deviation=deviation||{};
-    driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:true,driver_dispatch:true,customer_orders:true,customer_order_available:true};
-    driverWorkspaceState.whatsappConnection=whatsappConnection||{configured:false,status:"DISCONNECTED"};
+    driverWorkspaceState.whatsappSettings=whatsappSettings||{mode:"ASSISTED",local_orders:false,driver_dispatch:false,customer_orders:false,customer_order_available:false};
+    driverWorkspaceState.whatsappConnection=whatsappConnection||{configured:false,status:"NOT_INCLUDED"};
     driverWorkspaceState.whatsappProvider=whatsappProvider||{configured:false};
     const notice=$("driversPlanNotice");
-    if(notice)notice.innerHTML='<strong>Capacidad del plan:</strong> repartidores '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
-      ' · modo '+esc(dispatch?.mode||"NONE")+
-      ' · multipedido '+(dispatch?.multi_order?'Sí':'No')+
-      ' · simultáneos efectivos '+esc(dispatch?.concurrent_per_driver??0)+
-      (dispatch?.base_concurrent_per_driver!==dispatch?.concurrent_per_driver
-        ? ' (límite contratado '+esc(dispatch?.base_concurrent_per_driver??0)+')'
-        : '');
+    if(notice)notice.innerHTML='<strong>Plan: '+esc(currentPlan.plan_name||"Sin plan")+'</strong>'+
+      ' · Repartidores: '+esc(drivers?.used||0)+' / '+esc(drivers?.limit??0)+
+      ' · Despacho manual: '+(ent["dispatch.manual"]===true?"Sí":"No")+
+      ' · WhatsApp automático: '+(whatsappManage?"Sí":"No")+
+      ' · WhatsApp cliente: '+(ent["whatsapp.customer_order"]===true?"Sí":"No")+
+      ' · Multipedido: '+(dispatch?.multi_order?'Sí':'No')+
+      ' · Simultáneos: '+esc(dispatch?.concurrent_per_driver??0);
     if($("driverAdminTools"))$("driverAdminTools").classList.toggle("hidden",state.role!=="DELIVERY_ADMIN");
     renderDispatchModeControls();
     renderWhatsappConnectionControls();
