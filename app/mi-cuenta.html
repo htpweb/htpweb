@@ -32,11 +32,14 @@
 <section class="account-grid">
 <a class="account-card nav-card" href="#orders"><div class="muted">Pedidos</div><div id="ordersCount" class="metric">—</div><div>Ver historial completo</div></a>
 <a class="account-card nav-card" href="#addresses"><div class="muted">Direcciones</div><div id="addressesCount" class="metric">—</div><div>Gestionar entregas</div></a>
-<a class="account-card nav-card" href="mis-reclamaciones.html"><div class="muted">Reclamaciones de LOCAL</div><div id="claimsCount" class="metric">—</div><div>Consultar avance</div></a>
 
 <section class="account-card full" id="businesses">
-<div class="section-title"><div><h2>Mis negocios</h2><p class="muted">LOCAL que administras con esta misma cuenta HTPWEB.</p></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
+<div class="section-title"><div><h2>Mis negocios</h2><p class="muted">LOCAL que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
 <div id="ownedLocalsList"><div class="muted">Cargando negocios…</div></div>
+<div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">
+  <div class="section-title"><div><h3 style="margin:0">Mis reclamaciones</h3><p class="muted">Seguimiento de negocios que has solicitado administrar.</p></div><div class="row-actions"><span class="pill">Activas: <strong id="claimsCount">—</strong></span><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div></div>
+  <div id="claimsList"><div class="muted">Cargando…</div></div>
+</div>
 </section>
 
 <section class="account-card full" id="managedDeliveries">
@@ -75,11 +78,6 @@
 <div id="addressesList"><div class="muted">Cargando direcciones…</div></div>
 </section>
 
-<section class="account-card" id="claims">
-<h2>Mis reclamaciones</h2><p class="muted">Seguimiento de negocios que has solicitado administrar.</p>
-<div id="claimsList"><div class="muted">Cargando…</div></div>
-<div class="row-actions"><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div>
-</section>
 </section>
 </main>
 <script>

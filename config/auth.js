@@ -111,8 +111,8 @@ async function instalarEncabezadoHTPWEB() {
       '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="../index.html">Inicio</a>'+
+        '<a href="../como-funciona.html">Cómo funciona</a>'+
         '<a href="../explorar-negocios.html">Explorar locales</a>'+
-        '<a class="'+(active==="business"?"active":"")+'" href="mi-cuenta.html#businesses">Mis negocios</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
