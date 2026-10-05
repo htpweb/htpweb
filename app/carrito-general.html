@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Carrito HTPWEB</title>
+<title>Mi carrito</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
@@ -17,8 +17,17 @@
 </style>
 </head>
 <body><main class="shell">
-<div class="head"><div><h1 style="margin:0">Mi carrito HTPWEB</h1><p class="muted">Puedes comprar en uno o varios negocios y elegir el canal al confirmar.</p></div><div class="row"><a class="btn btn-muted" href="../index.html">Seguir comprando</a><a class="btn btn-muted" href="mi-cuenta.html">Mi cuenta</a></div></div>
-<div id="message" class="hidden"></div><div id="cart"></div>
+<div class="head"><div><h1 style="margin:0">Mi carrito</h1><p class="muted">Puedes comprar en uno o varios negocios y elegir el canal al confirmar.</p></div><div class="row"><a class="btn btn-muted" href="../index.html">Seguir comprando</a></div></div>
+<div id="message" class="hidden"></div>
+<section id="guestAccountEntry" class="group hidden" style="background:#f8fafc">
+  <strong style="display:block;margin-bottom:5px">¿Quieres guardar tus datos para próximas compras?</strong>
+  <p class="muted" style="margin:0 0 12px">Puedes guardar direcciones y consultar tus pedidos cuando quieras.</p>
+  <div class="row">
+    <a id="guestSaveAddressLink" class="btn btn-muted" href="#">Guardar dirección</a>
+    <a id="guestOrdersLink" class="btn btn-muted" href="#">Consultar pedidos</a>
+  </div>
+</section>
+<div id="cart"></div>
 <section id="routing" class="group hidden"><h2>¿Cómo quieres realizar tu pedido?</h2><div id="routingMessage"></div><div id="commonChannels" class="channels" style="margin-top:12px"></div><div id="splitArea" class="split"></div></section>
 </main>
 <script>
@@ -26,6 +35,22 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2),SCOPE="HTPWEB";
 let items=[],products=new Map(),variants=new Map(),locals=new Map(),channels=new Map();
+function accountAccessUrl(section){
+  const target="/htpweb/app/mi-cuenta.html#"+section;
+  return "/htpweb/app/acceso.html?return="+encodeURIComponent(target);
+}
+async function renderGuestAccountEntry(){
+  try{
+    const user=await obtenerUsuarioActual();
+    const box=$("guestAccountEntry");
+    if(!box)return;
+    box.classList.toggle("hidden",Boolean(user));
+    if(!user){
+      $("guestSaveAddressLink").href=accountAccessUrl("addresses");
+      $("guestOrdersLink").href=accountAccessUrl("orders");
+    }
+  }catch{}
+}
 function info(item){const p=products.get(item.product_id)||item.snapshot||{},v=item.variant_id?variants.get(item.variant_id):null,s=item.snapshot||{};return item.promotion_id?{name:s.promotion_title||"Promoción",detail:s.option_name||"",price:Number(s.price||0)}:{name:p.name||s.name||"Producto",detail:v?.name||s.variant_name||"",price:Number(v?.price??s.price??p.price??0)}}
 function groups(){const m=new Map();items.forEach(i=>{if(!m.has(i.local_id))m.set(i.local_id,[]);m.get(i.local_id).push(i)});return [...m.entries()]}
 function localInfo(id){return channels.get(id)||{local_id:id,name:locals.get(id)?.name||"LOCAL",slug:locals.get(id)?.slug||id,direct_enabled:false,deliveries:[]}}
@@ -78,6 +103,6 @@ function renderRouting(){
  document.querySelectorAll("[data-common-delivery]").forEach(b=>b.onclick=()=>{const d=(single?single.deliveries:common).find(x=>x.delivery_id===b.dataset.commonDelivery);if(d)handoffDelivery(d)});
 }
 function render(){renderCart();renderRouting()}
-async function init(){try{items=carritoObtener(SCOPE);await loadReferenceData();render()}catch(e){show(e.message||"No se pudo cargar el carrito.")}}
+async function init(){try{await renderGuestAccountEntry();items=carritoObtener(SCOPE);await loadReferenceData();render()}catch(e){show(e.message||"No se pudo cargar el carrito.")}}
 window.addEventListener("storage",()=>{items=carritoObtener(SCOPE);render()});init();
 </script></body></html>
