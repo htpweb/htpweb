@@ -401,11 +401,11 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const params=new URLSearchParams(location.search);
-const key=params.get("local")||"";
+const key=params.get("local")||document.documentElement.dataset.localSlug||"";
 const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const sharedProductId=params.get("product")||"";
-const rawPageSection=(params.get("section")||"home").toLowerCase();
+const rawPageSection=(params.get("section")||document.documentElement.dataset.initialSection||"home").toLowerCase();
 let pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
@@ -431,7 +431,8 @@ const SECTION_PATHS={
 };
 const PATH_SECTIONS=Object.fromEntries(Object.entries(SECTION_PATHS).map(([k,v])=>[v,k]));
 function storefrontBasePath(){
- return "/";
+ const parts=location.pathname.split("/").filter(Boolean);
+ return parts[0]==="htpweb"?"/htpweb/":"/";
 }
 function sectionFromLocation(){
  const querySection=(new URLSearchParams(location.search).get("section")||"").toLowerCase();
@@ -740,15 +741,27 @@ function applyMarketingMetadata(){
  let theme=document.querySelector('meta[name="theme-color"]');
  if(!theme){theme=document.createElement("meta");theme.name="theme-color";document.head.appendChild(theme)}
  theme.content=getComputedStyle(document.documentElement).getPropertyValue("--local-accent").trim()||"#111827";
+ const canonical=siteSectionUrl(pageSection);
+ let canonicalLink=document.querySelector('link[rel="canonical"]');
+ if(!canonicalLink){canonicalLink=document.createElement("link");canonicalLink.rel="canonical";document.head.appendChild(canonicalLink)}
+ canonicalLink.href=canonical;
+ let robots=document.querySelector('meta[name="robots"]');
+ if(!robots){robots=document.createElement("meta");robots.name="robots";document.head.appendChild(robots)}
+ robots.content="index,follow,max-image-preview:large";
  const schema={
    "@context":"https://schema.org",
    "@type":"LocalBusiness",
    "name":l.name||"",
    "description":description,
-   "url":location.href,
+   "url":canonical,
    "image":l.banner_url||visual.hero,
    "telephone":l.phone||l.whatsapp||undefined,
-   "address":l.address?{"@type":"PostalAddress","streetAddress":l.address}:undefined
+   "address":l.address?{"@type":"PostalAddress","streetAddress":l.address}:undefined,
+   "geo":Number.isFinite(Number(l.latitude))&&Number.isFinite(Number(l.longitude))?{
+     "@type":"GeoCoordinates",
+     "latitude":Number(l.latitude),
+     "longitude":Number(l.longitude)
+   }:undefined
  };
  let node=document.getElementById("localBusinessSchema");
  if(!node){node=document.createElement("script");node.type="application/ld+json";node.id="localBusinessSchema";document.head.appendChild(node)}
