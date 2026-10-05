@@ -60,6 +60,7 @@ const sharedProductId = params.get("product") || "";
 
 let negocioActual = null;
 let localActual = null;
+let viewerUser = null;
 let availability = null;
 let claimState = null;
 let products = [];
@@ -70,6 +71,7 @@ async function init() {
     if (!localId) throw new Error("No se especificó el local.");
 
     negocioActual = await cargarNegocio();
+    viewerUser = await obtenerUsuarioActual();
     htpApplyDeliveryBrand(negocioActual);
     $("backBtn").onclick = () => location.href = urlDelivery("index.html");
     $("cartBtn").onclick = () => location.href = urlDelivery("carrito.html");
@@ -216,6 +218,14 @@ function availabilityMessage() {
   };
 }
 
+function claimEntryUrl(){
+  const claimPath="/htpweb/app/reclamar-local.html?local="+encodeURIComponent(localActual?.id||"")+
+    "&delivery="+encodeURIComponent(negocioActual?.slug||"");
+  return viewerUser
+    ? claimPath
+    : "/htpweb/app/acceso.html?return="+encodeURIComponent(claimPath);
+}
+
 function render() {
   document.title = `${localActual.name} | ${negocioActual.name}`;
   $("localName").textContent = localActual.name;
@@ -242,8 +252,8 @@ function render() {
     ` : `
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
         <strong style="display:block;margin-bottom:4px">¿Administras este negocio?</strong>
-        <span class="muted" style="display:block;margin-bottom:10px">Verifica tu propiedad para actualizar productos, promociones, horarios y administrar tu tienda en HTPWEB.</span>
-        <a class="btn btn-muted" href="reclamar-local.html?local=${encodeURIComponent(localActual.id)}&delivery=${encodeURIComponent(negocioActual.slug || "")}">Reclamar este LOCAL</a>
+        <span class="muted" style="display:block;margin-bottom:10px">Verifica tu propiedad para actualizar productos, promociones, horarios y administrar este negocio.</span>
+        <a class="btn btn-muted" href="${claimEntryUrl()}">Reclamar este LOCAL</a>
       </div>
     `}
   `;
