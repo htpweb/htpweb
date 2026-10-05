@@ -27,3 +27,18 @@ test("LOCAL template keeps its own branded header",()=>{
   assert.match(html,/id="brandName"/);
   assert.doesNotMatch(html,/class="htp-auth-header"/);
 });
+
+
+test("LOCAL resolves the visible section before remote storefront loading",()=>{
+  const html=read("app/tienda.html");
+  const resolveIndex=html.indexOf("pageSection=sectionFromLocation();");
+  const initIndex=html.indexOf("async function init()");
+  assert.ok(resolveIndex>0&&resolveIndex<initIndex);
+  assert.match(html,/body\.local-store:not\(\[data-page-section\]\).*visibility:hidden/);
+  assert.match(html,/history\.scrollRestoration="manual"/);
+});
+
+test("LOCAL clean route parser supports GitHub Pages base path",()=>{
+  const html=read("app/tienda.html");
+  assert.match(html,/rest\[0\]==="htpweb"\?\(rest\[2\]\|\|""\):\(rest\[1\]\|\|""\)/);
+});
