@@ -2431,7 +2431,7 @@ function localStoreUrl(){
     ||null;
   if(!local?.id)return "";
   const key=local.slug||local.id;
-  return "https://htpweb.github.io/htpweb/app/tienda.html?local="+encodeURIComponent(key);
+  return "https://htpweb.github.io/htpweb/"+encodeURIComponent(key)+"/";
 }
 
 function syncLocalPublicAccess(){
@@ -2447,9 +2447,7 @@ function syncLocalPublicAccess(){
   const shopLink=$("openCatalogVirtualStoreBtn");
   if(shopLink){
     if(url){
-      const shopUrl=new URL(url);
-      shopUrl.searchParams.set("section","shop");
-      shopLink.href=shopUrl.toString();
+      shopLink.href=url.replace(/\/?$/,"/")+"tienda/";
     }else{
       shopLink.href="#";
     }
