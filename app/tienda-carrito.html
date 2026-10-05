@@ -119,6 +119,12 @@ function money(v){return "$"+Number(v||0).toFixed(2)}
 function normalizePhone(v){let d=String(v||"").replace(/\D/g,"");if(/^0\d{9}$/.test(d))d="593"+d.slice(1);else if(/^9\d{8}$/.test(d))d="593"+d;return d}
 async function loadCart(){
  items=carritoObtener(scope());
+ // Compatibilidad: si el usuario llega desde HTPWEB y este carrito LOCAL aún está vacío,
+ // recupera únicamente los productos de este LOCAL desde el carrito general.
+ if(!items.length&&store?.local?.id){
+   const generalItems=carritoObtener("HTPWEB").filter(x=>x.local_id===store.local.id);
+   if(generalItems.length){items=carritoGuardar(scope(),generalItems);}
+ }
  const productIds=[...new Set(items.filter(x=>x.product_id).map(x=>x.product_id))];
  const variantIds=[...new Set(items.filter(x=>x.variant_id).map(x=>x.variant_id))];
  if(productIds.length){const {data,error}=await supabaseClient.from("products").select("id,name,price,image_url,active,catalog_visible").in("id",productIds);if(error)throw error;(data||[]).forEach(x=>products.set(x.id,x));}
