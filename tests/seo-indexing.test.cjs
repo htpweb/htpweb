@@ -32,7 +32,7 @@ test('active LOCAL SEO pages are generated with server-visible metadata',()=>{
 test('storefront accepts generated LOCAL pages without query parameters',()=>{
   assert.match(tienda,/document\.documentElement\.dataset\.localSlug/);
   assert.match(tienda,/document\.documentElement\.dataset\.initialSection/);
-  assert.match(tienda,/parts\[0\]==="htpweb"\?"\/htpweb\/"\:"\/" /);
+  assert.match(tienda,/return parts\[0\]==="htpweb"\?"\/htpweb\/"\:"\/"/);
 });
 
 test('SEO generator refreshes active locals and excludes internal test local',()=>{
