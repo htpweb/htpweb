@@ -64,6 +64,7 @@ let trackingChannel = null;
 let trackingOrderId = '';
 let trackingMap = null;
 let trackingMarker = null;
+const GUEST_ORDER_TRACKING_KEY = 'HTPWEB_GUEST_ORDER_TRACKING_V1';
 
 function message(text, success = false) {
   $('message').textContent = text;
@@ -344,11 +345,30 @@ async function cancelSelected() {
   const reloadError = $('message').textContent;
   message(reloadError ? `${outcome} ${reloadError}` : outcome, success && !reloadError);
 }
+async function claimPendingGuestOrder(){
+  let pending=null;
+  try{pending=JSON.parse(sessionStorage.getItem(GUEST_ORDER_TRACKING_KEY)||'null')}catch{}
+  if(!pending?.order_id||!pending?.phone)return;
+  if(pending.delivery_id&&pending.delivery_id!==delivery?.id)return;
+  if(selectedId&&pending.order_id!==selectedId)return;
+
+  const {data,error}=await supabaseClient.rpc('claim_my_guest_order',{
+    p_order_id:pending.order_id,
+    p_phone:pending.phone
+  });
+  if(error)throw error;
+  if(data===true){
+    sessionStorage.removeItem(GUEST_ORDER_TRACKING_KEY);
+    message('Pedido vinculado a tu cuenta. Ya puedes consultar su estado y seguimiento.',true);
+  }
+}
+
 async function init() {
   try {
     if (!await obtenerUsuarioActual()) { irAAcceso(rutaActualRelativa()); return; }
     delivery = await cargarNegocio();
     htpApplyDeliveryBrand(delivery, { titlePrefix: "Mis pedidos" });
+    await claimPendingGuestOrder();
     $('shopLink').href = urlDelivery('index.html');
     $('cartLink').href = urlDelivery('carrito.html');
     $('cartLink').classList.remove('hidden');

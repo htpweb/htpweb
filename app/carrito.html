@@ -44,21 +44,11 @@
     <div id="summary"></div>
   </section>
 
-  <section id="guestAccountEntry" class="card hidden" style="border:1px solid #dbe4ee;background:#f8fafc">
-    <strong style="display:block;margin-bottom:5px">¿Quieres guardar tus datos para próximas compras?</strong>
-    <p class="muted" style="margin:0 0 12px">Puedes guardar direcciones y consultar tus pedidos cuando quieras.</p>
-    <div class="row" style="gap:8px;flex-wrap:wrap">
-      <a id="guestSaveAddressLink" class="btn btn-muted" href="#">Guardar dirección</a>
-      <a id="guestOrdersLink" class="btn btn-muted" href="#">Consultar pedidos</a>
-    </div>
-  </section>
-
   <section id="checkoutCard" class="card hidden">
     <h2>Datos de entrega</h2>
 
     <div id="guestCheckoutNote" class="note hidden" style="margin-bottom:14px">
-      Puedes comprar sin crear una cuenta. El registro es opcional y sirve para guardar direcciones y gestionar futuras compras.
-      <button class="btn btn-muted" id="guestAccountBtn" type="button" style="margin-top:8px">Iniciar sesión / Crear cuenta (opcional)</button>
+      Puedes comprar sin crear una cuenta. Si luego quieres guardar esta dirección, podrás registrarte sin perder el carrito.
     </div>
 
     <label>Nombre</label>
@@ -108,6 +98,12 @@
       <small class="note">La dirección guardada conservará el punto exacto del mapa para calcular el delivery.</small>
     </div>
 
+    <div class="save-address-panel hidden" id="guestSaveAfterLocation" style="border:1px solid #dbe4ee;background:#f8fafc">
+      <h3>¿Quieres guardar esta dirección?</h3>
+      <p class="muted" style="margin:0 0 10px">Regístrate o inicia sesión y volverás a este carrito con la ubicación que acabas de ingresar.</p>
+      <button class="btn btn-muted" id="guestSaveAfterLocationBtn" type="button">Registrarme para guardar dirección</button>
+    </div>
+
     <label>Observaciones</label>
     <textarea id="notes" rows="3"></textarea>
 
@@ -154,21 +150,72 @@ let variantMap = new Map();
 let localMap = new Map();
 let promotionMap = new Map();
 let savedAddresses = [];
-function accountAccessUrl(section){
-  const target="/htpweb/app/mi-cuenta.html#"+section;
-  return "/htpweb/app/acceso.html?return="+encodeURIComponent(target);
+let checkoutUser = null;
+const GUEST_CHECKOUT_DRAFT_KEY = "HTPWEB_GUEST_CHECKOUT_DRAFT_V1";
+const GUEST_ORDER_TRACKING_KEY = "HTPWEB_GUEST_ORDER_TRACKING_V1";
+
+function saveGuestCheckoutDraft(){
+  if(!negocioActual)return;
+  sessionStorage.setItem(GUEST_CHECKOUT_DRAFT_KEY,JSON.stringify({
+    delivery_id:negocioActual.id,
+    delivery_slug:negocioActual.slug,
+    name:$("name").value.trim(),
+    phone:$("phone").value.trim(),
+    address:$("address").value.trim(),
+    reference:$("reference").value.trim(),
+    latitude,longitude,
+    locationAccepted:Boolean(locationAccepted),
+    notes:$("notes").value,
+    created_at:Date.now()
+  }));
 }
-async function renderGuestAccountEntry(){
+function readGuestCheckoutDraft(){
   try{
-    const user=await obtenerUsuarioActual();
-    const box=$("guestAccountEntry");
-    if(!box)return;
-    box.classList.toggle("hidden",Boolean(user));
-    if(!user){
-      $("guestSaveAddressLink").href=accountAccessUrl("addresses");
-      $("guestOrdersLink").href=accountAccessUrl("orders");
+    const draft=JSON.parse(sessionStorage.getItem(GUEST_CHECKOUT_DRAFT_KEY)||"null");
+    if(!draft||draft.delivery_id!==negocioActual?.id)return null;
+    return draft;
+  }catch{return null}
+}
+function syncGuestSavePrompt(){
+  const box=$("guestSaveAfterLocation");
+  if(!box)return;
+  const ready=!checkoutUser&&locationAccepted&&latitude!==null&&longitude!==null&&Boolean($("address").value.trim());
+  box.classList.toggle("hidden",!ready);
+}
+async function restoreGuestCheckoutDraft(){
+  const draft=readGuestCheckoutDraft();
+  if(!draft)return;
+  await openCheckout();
+  $("name").value=draft.name||$("name").value;
+  $("phone").value=draft.phone||$("phone").value;
+  $("address").value=draft.address||"";
+  $("reference").value=draft.reference||"";
+  $("notes").value=draft.notes||"";
+  if(Number.isFinite(Number(draft.latitude))&&Number.isFinite(Number(draft.longitude))){
+    setLocation(Number(draft.latitude),Number(draft.longitude));
+    locationAccepted=Boolean(draft.locationAccepted);
+    if(locationAccepted){
+      $("locationInfo").textContent=`✓ Ubicación recuperada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      $("acceptLocation").classList.add("hidden");
     }
-  }catch{}
+  }
+  sessionStorage.removeItem(GUEST_CHECKOUT_DRAFT_KEY);
+  syncGuestSavePrompt();
+}
+function beginGuestAddressRegistration(){
+  saveGuestCheckoutDraft();
+  irAAcceso(rutaActualRelativa());
+}
+function beginGuestOrderTracking(orderId,name,phone){
+  sessionStorage.setItem(GUEST_ORDER_TRACKING_KEY,JSON.stringify({
+    order_id:orderId,
+    delivery_id:negocioActual?.id||null,
+    delivery_slug:negocioActual?.slug||null,
+    name:String(name||"").trim(),
+    phone:String(phone||"").trim(),
+    created_at:Date.now()
+  }));
+  irAAcceso(urlDelivery("pedidos.html",{order:orderId}));
 }
 let customerWhatsappSetting = { enabled: false };
 let lastCustomerWhatsappUrl = "";
@@ -180,7 +227,6 @@ let longitude = null;
 let locationAccepted = false;
 
 async function init() {
-  await renderGuestAccountEntry();
   try {
     negocioActual = await cargarNegocio();
     htpApplyDeliveryBrand(negocioActual, { titlePrefix: "Mi carrito" });
@@ -198,11 +244,10 @@ async function init() {
     }
 
     const user = await obtenerUsuarioActual();
+    checkoutUser = user;
     $("guestCheckoutNote")?.classList.toggle("hidden", Boolean(user));
     $("saveAddressPanel")?.classList.toggle("hidden", !user);
-    if ($("guestAccountBtn")) {
-      $("guestAccountBtn").onclick = () => irAAcceso(rutaActualRelativa());
-    }
+    syncGuestSavePrompt();
 
     if (user) {
       $("invoiceEmail").value = user.email || "";
@@ -227,6 +272,7 @@ async function init() {
       } catch (addressError) {
         console.warn("No se pudieron cargar las direcciones guardadas.", addressError);
       }
+      await restoreGuestCheckoutDraft();
     }
   } catch (e) {
     showMessage(e.message || "No se pudo cargar el carrito.");
@@ -748,6 +794,7 @@ function setLocation(lat, lng) {
   map.setView([latitude, longitude], 17);
   $("locationInfo").textContent = `Ubicación seleccionada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   $("acceptLocation").classList.remove("hidden");
+  syncGuestSavePrompt();
 }
 
 function resetCheckoutAddress() {
@@ -768,6 +815,7 @@ function resetCheckoutAddress() {
   $("locationInfo").textContent = "Selecciona un punto en el mapa y confírmalo.";
   $("acceptLocation").classList.add("hidden");
   syncSavedAddressButtons();
+  syncGuestSavePrompt();
 }
 
 $("savedAddressSelect").onchange = () => {
@@ -778,6 +826,8 @@ $("savedAddressSelect").onchange = () => {
 
 $("saveAddressBtn").onclick = saveCurrentAddress;
 $("deactivateAddressBtn").onclick = deactivateSelectedAddress;
+$("guestSaveAfterLocationBtn").onclick = beginGuestAddressRegistration;
+$("address").addEventListener("input",syncGuestSavePrompt);
 
 $("geoBtn").onclick = () => {
   if (!navigator.geolocation) {
@@ -816,6 +866,7 @@ $("acceptLocation").onclick = async () => {
   } catch (e) {
     console.warn(e);
   }
+  syncGuestSavePrompt();
 };
 
 $("requiresInvoice").onchange = () => {
@@ -827,7 +878,9 @@ $("confirmBtn").onclick = confirmOrder;
 function openCustomerOrderWhatsapp() {
   if (!lastCustomerWhatsappUrl) return;
   const popup = window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer");
-  if (!popup) window.location.href = lastCustomerWhatsappUrl;
+  if (!popup) {
+    showMessage("El navegador bloqueó la ventana de WhatsApp. Permite ventanas emergentes y vuelve a intentarlo.");
+  }
 }
 
 async function confirmOrder() {
@@ -962,11 +1015,9 @@ async function confirmOrder() {
         );
         whatsappPrepared = true;
 
-        // No usamos un popup previo. En iPhone/Chrome/Safari un about:blank
-        // puede tomar el foco y suspender esta página antes de terminar el pedido.
-        // La navegación a WhatsApp se hace en esta misma pestaña, solo después
-        // de que el pedido quede confirmado.
-        whatsappOpened = true;
+        // El pedido ya quedó confirmado. Intentamos abrir WhatsApp en una pestaña
+        // separada para conservar visible esta pantalla con el ID, total y seguimiento.
+        whatsappOpened = Boolean(window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer"));
       }
     } catch (whatsappError) {
       console.warn("El pedido se creó, pero no se pudo preparar WhatsApp.", whatsappError);
@@ -984,8 +1035,8 @@ async function confirmOrder() {
         <div class="success" style="margin-top:12px">
           <strong>📲 Pedido por WhatsApp</strong>
           <p>${whatsappOpened
-            ? "WhatsApp se abrió con tu pedido listo para enviar al DELIVERY."
-            : "Tu pedido está listo para enviarse al DELIVERY por WhatsApp."}</p>
+            ? "WhatsApp se abrió aparte. Esta página seguirá disponible con los datos y seguimiento del pedido."
+            : "Tu pedido está listo. Si WhatsApp no se abrió automáticamente, usa el botón de abajo."}</p>
         </div>
         <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="openCustomerOrderWhatsapp()">
           Enviar pedido por WhatsApp
@@ -994,9 +1045,9 @@ async function confirmOrder() {
       : "";
 
     const accountAction = user
-      ? `<a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>`
-      : `<button class="btn btn-muted" type="button" onclick="irAAcceso(urlDelivery('index.html'))">Crear cuenta / Iniciar sesión</button>
-         <small class="note" style="display:block;margin:8px 0">Tu compra ya fue registrada. Puedes crear una cuenta para guardar direcciones y consultar tus pedidos.</small>`;
+      ? `<a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver y seguir mi pedido</a>`
+      : `<button class="btn btn-primary" type="button" onclick="beginGuestOrderTracking('${esc(data.order.id)}','${esc(name)}','${esc(phone)}')">Ver y seguir mi pedido</button>
+         <small class="note" style="display:block;margin:8px 0">Te llevaremos a HTPWEB para registrarte o iniciar sesión y luego volverás directamente al seguimiento de este pedido.</small>`;
 
     $("successCard").innerHTML = `
       <div class="success">
@@ -1018,10 +1069,8 @@ async function confirmOrder() {
       "success"
     );
 
-    if (whatsappPrepared && lastCustomerWhatsappUrl) {
-      window.location.href = lastCustomerWhatsappUrl;
-      return;
-    }
+    // No abandonamos esta página: el cliente conserva aquí los datos del pedido
+    // y puede entrar al seguimiento aunque WhatsApp se haya abierto aparte.
   } catch (e) {
     console.error(e);
     const message = checkoutMessageText(e?.message || "No se pudo confirmar el pedido.");
