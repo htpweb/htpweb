@@ -12,6 +12,16 @@
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261002-desktopfix1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-visits1">
+<style>
+.business-entry-inline{margin-top:10px;font-size:.82rem;color:#667085}
+.business-entry-inline a{font-weight:800;color:inherit;text-decoration:underline;text-underline-offset:3px}
+.business-entry-empty{margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:.9rem;color:#667085}
+.business-entry-footer{margin-top:34px;border-top:1px solid #e5e7eb;background:#fff}
+.business-entry-footer-inner{max-width:1180px;margin:auto;padding:24px 18px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+.business-entry-footer strong{display:block;margin-bottom:4px}.business-entry-footer p{margin:0;color:#667085}
+.business-entry-footer a{font-weight:850;color:#111827}
+@media(max-width:620px){.business-entry-footer-inner{align-items:flex-start;flex-direction:column}}
+</style>
 </head>
 <body>
 <header>
@@ -41,6 +51,7 @@
       <p id="subtitle">Explora locales y productos.</p>
     </div>
     <input id="search" class="search" placeholder="Buscar local o producto...">
+    <div class="business-entry-inline">¿Tienes un negocio y quieres aparecer aquí? <a id="businessRegisterInline" href="#">Regístrate aquí</a>.</div>
   </section>
 
   <section class="card client-categories-shell" id="clientCategoriesShell">
@@ -55,6 +66,12 @@
 
   <div id="error" class="error hidden"></div>
 </main>
+<footer class="business-entry-footer">
+  <div class="business-entry-footer-inner">
+    <div><strong>¿Tienes un negocio?</strong><p>Publica tu local y empieza a ofrecer tus productos.</p></div>
+    <a id="businessRegisterFooter" href="#">Regístrate aquí →</a>
+  </div>
+</footer>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -70,6 +87,10 @@ let products = [];
 let deliveryPromotions = [];
 let availabilityByLocal = new Map();
 let categoryId = "";
+function businessRegistrationUrl(){
+  const next="/htpweb/app/crear-local.html";
+  return "/htpweb/app/acceso.html?return="+encodeURIComponent(next);
+}
 
 async function init() {
   try {
@@ -82,6 +103,9 @@ async function init() {
     $("ordersLink").href = urlDelivery("pedidos.html");
     updateCartCount();
     registerDeliveryVisit();
+    const businessUrl=businessRegistrationUrl();
+    if($("businessRegisterInline"))$("businessRegisterInline").href=businessUrl;
+    if($("businessRegisterFooter"))$("businessRegisterFooter").href=businessUrl;
 
     const user = await obtenerUsuarioActual();
     const authText = user ? "Mi cuenta" : "Acceder";
@@ -388,7 +412,7 @@ function renderLocals() {
           : categoryId
             ? 'No encontramos locales en esta categoría.'
             : 'No encontramos locales disponibles.') +
-    '</div>';
+    '<div class="business-entry-empty">¿Tienes un negocio que todavía no aparece? <a href="'+esc(businessRegistrationUrl())+'"><strong>Regístrate aquí</strong></a>.</div></div>';
 }
 
 async function registerDeliveryVisit() {
