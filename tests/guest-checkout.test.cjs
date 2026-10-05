@@ -59,24 +59,29 @@ test('checkout invitado puede leer la configuración pública de WhatsApp',()=>{
 });
 
 
-test('checkout no abre about:blank antes de crear el pedido',()=>{
+test('checkout reserva la pestaña de WhatsApp dentro del clic del usuario',()=>{
   const start=cart.indexOf('async function confirmOrder()');
   const end=cart.indexOf('\ninit();',start);
   const block=cart.slice(start,end);
-  assert.doesNotMatch(block,/window\.open\("", "_blank"\)/);
-  assert.doesNotMatch(block,/Preparando WhatsApp/);
+  const reserveIndex=block.indexOf('reservedWhatsappWindow = reserveWhatsappWindow()');
+  const userAwaitIndex=block.indexOf('const user = await obtenerUsuarioActual()');
+  const invokeIndex=block.indexOf('functions.invoke("crear-pedido"');
+  assert.ok(reserveIndex>=0);
+  assert.ok(userAwaitIndex>reserveIndex);
+  assert.ok(invokeIndex>reserveIndex);
+  assert.match(cart,/window\.open\("\/htpweb\/app\/whatsapp-espera\.html", "_blank"\)/);
 });
 
-test('WhatsApp se abre aparte y la confirmación permanece visible',()=>{
+test('WhatsApp reutiliza la pestaña reservada y la confirmación permanece visible',()=>{
   const start=cart.indexOf('async function confirmOrder()');
   const end=cart.indexOf('\ninit();',start);
   const block=cart.slice(start,end);
   const invokeIndex=block.indexOf('functions.invoke("crear-pedido"');
-  const popupIndex=block.indexOf('window.open(lastCustomerWhatsappUrl, "_blank"');
+  const redirectIndex=block.indexOf('reservedWhatsappWindow.location.replace(lastCustomerWhatsappUrl)');
   assert.ok(invokeIndex>=0);
-  assert.ok(popupIndex>invokeIndex);
+  assert.ok(redirectIndex>invokeIndex);
   assert.doesNotMatch(block,/window\.location\.href = lastCustomerWhatsappUrl/);
-  assert.match(block,/Esta página seguirá disponible/);
+  assert.match(block,/Esta página conserva la confirmación/);
 });
 
 test('crear-pedido reintenta fallas transitorias de OpenRouteService',()=>{
@@ -87,12 +92,12 @@ test('crear-pedido reintenta fallas transitorias de OpenRouteService',()=>{
 });
 
 
-test('error de checkout no usa popup eliminado y se muestra junto al botón',()=>{
+test('error de checkout cierra la pestaña reservada y se muestra junto al botón',()=>{
   const start=cart.indexOf('async function confirmOrder()');
   const end=cart.indexOf('\ninit();',start);
   const block=cart.slice(start,end);
   assert.ok(start>=0&&end>start);
-  assert.doesNotMatch(block,/whatsappPopup/);
+  assert.match(block,/closeReservedWhatsappWindow\(reservedWhatsappWindow\)/);
   assert.match(cart,/id="checkoutMessage"/);
   assert.match(block,/showCheckoutMessage\(message\)/);
   assert.match(block,/button\.textContent = "Confirmar pedido"/);
