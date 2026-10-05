@@ -21,6 +21,9 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 .delivery-choice{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #e5e7eb;border-radius:12px;margin:8px 0}.delivery-choice input{width:auto;margin-top:3px}
 .local-store-header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.97);border-bottom:1px solid #e5e7eb;box-shadow:0 3px 18px rgba(15,23,42,.04)}
 .local-store-header-inner{max-width:1180px;height:82px;margin:auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-sizing:border-box}.local-brand{display:flex;gap:12px;align-items:center;min-width:0}.local-brand img{width:58px;height:58px;border-radius:10px;object-fit:cover;border:1px solid #e5e7eb;background:#fff}.local-brand strong{display:block;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.local-brand small{display:block;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}.local-cart-nav{display:flex;gap:14px;align-items:center}.local-cart-nav a{color:#111827;text-decoration:none;font-weight:800;font-size:.86rem}.local-cart-nav a:hover{color:var(--local-accent)}
+.preset-ENGINEERING_PRO .local-store-header,.preset-FOOD_VISUAL .local-store-header{background:rgba(12,16,22,.96);border-bottom-color:rgba(255,255,255,.12)}
+.preset-ENGINEERING_PRO .local-brand strong,.preset-ENGINEERING_PRO .local-brand small,.preset-ENGINEERING_PRO .local-cart-nav a,.preset-FOOD_VISUAL .local-brand strong,.preset-FOOD_VISUAL .local-brand small,.preset-FOOD_VISUAL .local-cart-nav a{color:#fff}
+.preset-ENGINEERING_PRO .local-cart-nav a:hover,.preset-FOOD_VISUAL .local-cart-nav a:hover{color:var(--local-accent)}
 #map{height:320px;border-radius:14px;margin:10px 0;border:1px solid #dbe2ea;overflow:hidden}.address-actions{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.invoice-box{margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb}.save-address-panel{padding:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;margin:12px 0}
 @media(max-width:700px){.local-store-header-inner{height:auto;min-height:72px;padding:10px 12px}.local-brand img{width:48px;height:48px}.local-cart-nav a:not(.keep-mobile){display:none}}
 @media(max-width:560px){.shell{padding:10px}.cart-row{grid-template-columns:54px 1fr}.cart-row img{width:54px;height:54px}.cart-row>div:last-child{grid-column:2}#map{height:270px}}
@@ -266,7 +269,7 @@ async function init(){
  try{
   checkoutUser=await renderGuestAccountEntry();
   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});if(error)throw error;if(!data)throw new Error("Tienda no disponible.");
-  store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);applyLocalHeader();
+  store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);if(store.settings.preset_code)document.body.classList.add("preset-"+store.settings.preset_code);applyLocalHeader();
   if(checkoutUser){$("saveAddressPanel").classList.remove("hidden");$("invoiceEmail").value=checkoutUser.email||"";}
   const inv=await supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id});
   if(inv.error)throw inv.error;
