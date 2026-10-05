@@ -274,6 +274,22 @@ function planScopeItems(ent={}){
 function renderPlanScopeList(ent={}){
  return '<ul class="plan-scope">'+planScopeItems(ent).map(([label,value])=>'<li><strong>'+esc(label)+':</strong> '+esc(value)+'</li>').join("")+'</ul>';
 }
+function localPlanScopeItems(ent={}){
+ const items=[];
+ if(ent.max_products!=null)items.push(["Productos",ent.max_products]);
+ if(ent["storefront.manage"]===true)items.push(["Página web y tienda","Sí"]);
+ if(ent["promotions.manage"]===true)items.push(["Promociones","Sí"]);
+ if(ent["inventory.manage"]===true)items.push(["Inventario","Sí"]);
+ if(ent["marketing.manage"]===true)items.push(["Marketing","Sí"]);
+ if(ent["analytics.view"]===true)items.push(["Analítica","Sí"]);
+ if(ent["delivery.multiple"]===true)items.push(["Múltiples DELIVERY","Sí"]);
+ if(ent["domain.custom.included"]===true)items.push(["Dominio propio","1 incluido"]);
+ return items;
+}
+function renderLocalPlanScopeList(ent={}){
+ const rows=localPlanScopeItems(ent);
+ return rows.length?'<ul class="plan-scope">'+rows.map(([label,value])=>'<li><strong>'+esc(label)+':</strong> '+esc(value)+'</li>').join("")+'</ul>':"";
+}
 function renderPlans(){
  const currentDelivery=Array.isArray(plansData.deliveries)?plansData.deliveries:[];
  const availableDelivery=Array.isArray(plansData.available_delivery_plans)?plansData.available_delivery_plans:[];
@@ -301,6 +317,30 @@ function renderPlans(){
      ).join("")+'</div>'
    : '<div class="plan-local-empty">No hay planes DELIVERY disponibles.</div>';
 
+ const availableLocal=Array.isArray(plansData.available_local_plans)?plansData.available_local_plans:[];
+ const currentLocalHtml=currentLocal.length
+   ? currentLocal.map(p=>{
+      const domain=p.domain||{};
+      const request=domain.request||null;
+      return '<div class="plan-current-card">'+
+        '<div class="plan-title-row"><div><strong>'+esc(p.local_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div>'+
+        (domain.included_in_plan?'<span class="pill">Dominio incluido</span>':'')+'</div>'+
+        renderLocalPlanScopeList(p.entitlements||{})+
+        (request?'<div class="muted" style="margin-top:10px">Dominio: '+esc(request.domain)+' · '+esc(request.status||"")+'</div>':'')+
+        (p.ends_at?'<div class="muted" style="margin-top:8px">Vigente hasta '+esc(new Date(p.ends_at).toLocaleDateString("es-EC"))+'</div>':'')+
+      '</div>';
+    }).join("")
+   : '<div class="plan-local-empty">Todavía no tienes suscripciones LOCAL activas.</div>';
+
+ const availableLocalHtml=availableLocal.length
+   ? '<div class="plan-option-grid">'+availableLocal.map(p=>
+      '<div class="plan-option-card">'+
+        '<div class="plan-title-row"><div><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div></div><strong>'+money(p.price)+'</strong></div>'+
+        renderLocalPlanScopeList(p.entitlements||{})+
+      '</div>'
+     ).join("")+'</div>'
+   : '<div class="plan-local-empty">No hay planes LOCAL disponibles para contratación.</div>';
+
  $("currentPlans").innerHTML=
    '<div class="plan-section">'+
      '<section class="plan-group">'+
@@ -312,8 +352,12 @@ function renderPlans(){
        '</div>'+
      '</section>'+
      '<section class="plan-group">'+
-       '<div class="plan-group-head"><div><h3>LOCAL</h3><p>Planes y alcance para negocios LOCAL.</p></div></div>'+
-       '<div class="plan-local-empty"><strong>Sin información por ahora.</strong><div style="margin-top:4px">Los planes LOCAL todavía no han sido definidos.</div></div>'+
+       '<div class="plan-group-head"><div><h3>LOCAL</h3><p>Planes y alcance para negocios LOCAL. LOCAL Pro incluye 1 dominio propio administrado por HTPWEB.</p></div></div>'+
+       currentLocalHtml+
+       '<div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">'+
+         '<h4 style="margin:0 0 12px">Planes LOCAL disponibles</h4>'+
+         availableLocalHtml+
+       '</div>'+
      '</section>'+
    '</div>';
 

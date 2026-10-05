@@ -444,6 +444,38 @@
         </p>
       </div>
 
+      <div class="card" id="localDomainCard">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Dominio propio</h3>
+            <p class="muted" id="localDomainPlanNote" style="margin:5px 0 0">Consulta si tu plan incluye un dominio personalizado.</p>
+          </div>
+          <span id="localDomainStatusBadge" class="badge">Sin solicitud</span>
+        </div>
+        <div id="localDomainCurrent" class="workspace-note" style="margin-top:14px"></div>
+        <div id="localDomainRequestForm" style="margin-top:14px">
+          <div class="form-grid">
+            <div>
+              <label>Dominio que deseas</label>
+              <input id="localDomainName" maxlength="253" placeholder="Ej. minegocio.com" autocomplete="off">
+              <small class="muted">No escribas https://. HTPWEB verificará disponibilidad antes de comprarlo o conectarlo.</small>
+            </div>
+            <div>
+              <label>¿Qué deseas hacer?</label>
+              <select id="localDomainRequestType">
+                <option value="BUY_NEW">Comprar un dominio nuevo</option>
+                <option value="CONNECT_EXISTING">Conectar un dominio que ya tengo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" id="requestLocalDomainBtn" type="button">Solicitar dominio</button>
+            <button class="btn-muted hidden" id="cancelLocalDomainBtn" type="button">Cancelar solicitud</button>
+          </div>
+          <p class="muted" id="localDomainHelp" style="margin:10px 0 0"></p>
+        </div>
+      </div>
+
       <div class="card" id="localCommerceCard">
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
@@ -2302,10 +2334,10 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261005-social1"></script>
+<script src="./admin.js?v=20261005-domain1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
-<script src="./locales-master.js?v=20260925-1300"></script>
+<script src="./locales-master.js?v=20261005-domain1"></script>
 <script src="./local-categories-master.js"></script>
 <script src="./zones-master.js"></script>
 <script src="./product-tools.js"></script>

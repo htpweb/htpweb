@@ -2627,15 +2627,98 @@ function syncLocalPresetHelp(){
   renderLocalStorePreview();
 }
 
+function localDomainStatusLabel(status){
+  return ({
+    REQUESTED:"Solicitud enviada",
+    CHECKING:"Verificando disponibilidad",
+    AVAILABLE:"Dominio disponible",
+    PAYMENT_PENDING:"Pago pendiente",
+    PURCHASING:"Compra en proceso",
+    DNS_PENDING:"Configurando DNS",
+    ACTIVE:"Dominio activo",
+    UNAVAILABLE:"No disponible",
+    NEEDS_INFO:"Falta información",
+    CANCELLED:"Cancelado"
+  })[status]||"Sin solicitud";
+}
+
+function renderLocalDomain(snapshot){
+  const current=$("localDomainCurrent"),badge=$("localDomainStatusBadge"),help=$("localDomainHelp");
+  if(!current||!badge||!help)return;
+  state.localDomainSnapshot=snapshot||null;
+  const req=snapshot?.request||null;
+  const included=!!snapshot?.included_in_plan;
+  const publicPath=snapshot?.public_path||"";
+  $("localDomainPlanNote").textContent=included
+    ? "Incluido en tu Plan LOCAL Pro: 1 dominio propio administrado por HTPWEB."
+    : "Puedes solicitar un dominio como adicional. El Plan LOCAL Pro incluye 1 dominio propio.";
+  help.textContent=included
+    ? "Si el dominio está disponible, HTPWEB lo registra y conecta a tu página actual sin reconstruirla."
+    : "HTPWEB verificará disponibilidad y te mostrará el valor del dominio antes de comprarlo.";
+  if(!req){
+    badge.textContent="Sin solicitud";
+    current.innerHTML='<strong>Tu página actual:</strong> <span class="muted">'+esc(publicPath)+'</span><div class="muted" style="margin-top:5px">Solicita un dominio como minegocio.com cuando quieras.</div>';
+    $("requestLocalDomainBtn").classList.remove("hidden");
+    $("cancelLocalDomainBtn").classList.add("hidden");
+    return;
+  }
+  badge.textContent=localDomainStatusLabel(req.status);
+  const price=req.quoted_price!=null
+    ? '<div><strong>Cotización:</strong> '+esc(req.currency||"USD")+' '+Number(req.quoted_price).toFixed(2)+'</div>'
+    : "";
+  const active=req.status==="ACTIVE";
+  current.innerHTML=
+    '<div><strong>Dominio:</strong> '+esc(req.domain)+'</div>'+
+    '<div><strong>Modalidad:</strong> '+esc(req.purchase_basis==="PLAN_INCLUDED"?"Incluido en Plan Pro":"Adicional")+'</div>'+
+    '<div><strong>Estado:</strong> '+esc(localDomainStatusLabel(req.status))+'</div>'+
+    price+
+    (req.registrar?'<div><strong>Registrador:</strong> '+esc(req.registrar)+'</div>':"")+
+    (active?'<div style="margin-top:8px"><a class="btn btn-muted" href="https://'+esc(req.domain)+'" target="_blank" rel="noopener">Abrir dominio</a></div>':"")+
+    (req.master_note?'<div class="muted" style="margin-top:8px">'+esc(req.master_note)+'</div>':"");
+  const openStatuses=new Set(["REQUESTED","CHECKING","AVAILABLE","PAYMENT_PENDING","PURCHASING","DNS_PENDING","NEEDS_INFO"]);
+  $("requestLocalDomainBtn").classList.toggle("hidden",openStatuses.has(req.status)||active);
+  $("cancelLocalDomainBtn").classList.toggle("hidden",!new Set(["REQUESTED","CHECKING","AVAILABLE","PAYMENT_PENDING","NEEDS_INFO"]).has(req.status));
+  if($("localDomainName"))$("localDomainName").value=req.domain||"";
+}
+
+async function requestLocalDomain(){
+  try{
+    const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
+    if(!localId)throw new Error("Selecciona un LOCAL.");
+    const domain=$("localDomainName").value.trim();
+    if(!domain)throw new Error("Escribe el dominio que deseas.");
+    const result=await rpc("request_my_local_domain",{
+      p_local_id:localId,
+      p_domain:domain,
+      p_request_type:$("localDomainRequestType").value
+    });
+    renderLocalDomain(result);
+    message(result?.included_in_plan
+      ?"Solicitud enviada. Este dominio está incluido en tu Plan LOCAL Pro."
+      :"Solicitud enviada. HTPWEB verificará disponibilidad y precio.");
+  }catch(e){message(e.message||"No se pudo solicitar el dominio.","error");}
+}
+
+async function cancelLocalDomain(){
+  try{
+    const requestId=state.localDomainSnapshot?.request?.id;
+    if(!requestId)throw new Error("No hay una solicitud pendiente.");
+    const result=await rpc("cancel_my_local_domain_request",{p_request_id:requestId});
+    renderLocalDomain(result);
+    message("Solicitud de dominio cancelada.");
+  }catch(e){message(e.message||"No se pudo cancelar la solicitud.","error");}
+}
+
 async function loadLocalCommerce(){
   if(state.role!=="LOCAL_ADMIN")return;
   const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
   if(!localId)return;
-  const [snapshot,presetRes,themeRes,deliveryOptions]=await Promise.all([
+  const [snapshot,presetRes,themeRes,deliveryOptions,domainSnapshot]=await Promise.all([
     rpc("local_commerce_snapshot",{p_local_id:localId}),
     supabaseClient.from("local_storefront_presets").select("code,name,business_fit,description,layout_family,default_catalog_mode,default_card_density,config").eq("active",true).order("display_order"),
     supabaseClient.from("local_storefront_themes").select("code,name,business_fit,primary_color,secondary_color,background_color,surface_color,text_color").eq("active",true).order("display_order"),
-    rpc("my_local_delivery_options",{p_local_id:localId})
+    rpc("my_local_delivery_options",{p_local_id:localId}),
+    rpc("my_local_domain_snapshot",{p_local_id:localId})
   ]);
   if(presetRes.error)throw presetRes.error;if(themeRes.error)throw themeRes.error;
   const settings=snapshot?.settings||{};
@@ -2680,6 +2763,7 @@ async function loadLocalCommerce(){
   $("localStorePrimaryDelivery").innerHTML='<option value="">Sin preferencia</option>'+linked.map(x=>`<option value="${x.delivery_id}">${esc(x.name)}</option>`).join("");
   $("localStorePrimaryDelivery").value=settings.primary_delivery_id||"";
   $("localStoreDeliveryOptions").innerHTML='<option value="">Seleccionar…</option>'+options.filter(x=>!x.linked).map(x=>`<option value="${x.delivery_id}">${esc(x.name)}${x.request_status==="PENDING"?" · solicitud pendiente":""}</option>`).join("");
+  renderLocalDomain(domainSnapshot);
   $("localCommerceState").textContent=snapshot?.owner_managed
     ? "LOCAL reclamado · "+(snapshot?.plan?.name||"plan vigente")+" · control del propietario"
     : snapshot?.claimed
@@ -12228,6 +12312,8 @@ function bindEvents() {
     catch{message("No se pudo copiar el link.","error");}
   };
   if ($("localStoreQrBtn")) $("localStoreQrBtn").onclick = showLocalStoreQr;
+  if ($("requestLocalDomainBtn")) $("requestLocalDomainBtn").onclick = requestLocalDomain;
+  if ($("cancelLocalDomainBtn")) $("cancelLocalDomainBtn").onclick = cancelLocalDomain;
   if ($("marketingLocal")) $("marketingLocal").onchange = loadLocalMarketing;
   if ($("marketingSaveBtn")) $("marketingSaveBtn").onclick = saveLocalMarketing;
   if ($("marketingCopyLinkBtn")) $("marketingCopyLinkBtn").onclick = copyLocalMarketingLink;

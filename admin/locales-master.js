@@ -57,7 +57,14 @@ function bindMasterLocals(){
  <p class="muted">Guarda primero el local para configurar horarios, imágenes y productos.</p>
  <div class="row"><button id="masterLocalSaveBtn" class="btn-primary">Guardar local</button>
  <button id="masterLocalToggleBtn" class="btn-warn" disabled>Activar / inactivar</button><button id="masterLocalDeleteBtn" class="btn-danger" disabled>Eliminar</button></div>
- </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>`;
+ </div><div id="localRelatedPane" class="workspace-host hidden"></div></div>
+ <div id="masterLocalDomains" class="card">
+   <div class="row between" style="gap:12px;flex-wrap:wrap">
+     <div><h3 style="margin:0">Dominios propios</h3><p class="muted" style="margin:5px 0 0">Solicitudes de compra o conexión de dominios para LOCAL. LOCAL Pro incluye 1 dominio.</p></div>
+     <button id="refreshLocalDomainsBtn" class="btn-muted" type="button">Actualizar</button>
+   </div>
+   <div id="masterLocalDomainRows" style="margin-top:14px"><div class="muted">Cargando solicitudes...</div></div>
+ </div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
  $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");renderBulkLocalPreview();}};
@@ -77,6 +84,7 @@ function bindMasterLocals(){
  $("localApplyCoordinates").onclick=()=>{try{const a=nullableNumber("masterLocalLatitude"),b=nullableNumber("masterLocalLongitude");
    if(a===null||b===null)throw new Error("Completa ambas coordenadas.");setLocalPoint(a,b,true);}catch(e){message(e.message,"error");}};
  if(typeof bindMasterLocalBulk==="function")bindMasterLocalBulk();
+ if($("refreshLocalDomainsBtn"))$("refreshLocalDomainsBtn").onclick=loadMasterLocalDomains;
  window.addEventListener("beforeunload",e=>{if(masterLocalsState.dirty){e.preventDefault();e.returnValue="";}});
 }
 function discardLocalChanges(){return !masterLocalsState.dirty||confirm("Hay cambios sin guardar. ¿Deseas descartarlos?");}
@@ -220,6 +228,47 @@ async function bulkSetSelectedLocalsActive(active){
    masterLocalsState.busy=false;
  }
 }
+function masterDomainStatusLabel(status){
+ return ({REQUESTED:"Solicitud enviada",CHECKING:"Verificando",AVAILABLE:"Disponible",PAYMENT_PENDING:"Pago pendiente",PURCHASING:"Comprando",DNS_PENDING:"Configurando DNS",ACTIVE:"Activo",UNAVAILABLE:"No disponible",NEEDS_INFO:"Falta información",CANCELLED:"Cancelado"})[status]||status||"—";
+}
+async function loadMasterLocalDomains(){
+ if(state.role!=="MASTER"||!$("masterLocalDomainRows"))return;
+ try{
+   const rows=await rpc("master_list_local_domain_requests");
+   const list=Array.isArray(rows)?rows:[];
+   if(!list.length){$("masterLocalDomainRows").innerHTML='<div class="muted">No hay solicitudes de dominio.</div>';return;}
+   $("masterLocalDomainRows").innerHTML='<div class="table-wrap"><table><thead><tr><th>LOCAL</th><th>Dominio</th><th>Modalidad</th><th>Estado</th><th>Cotización</th><th>Registrador</th><th>DNS / SSL</th><th>Acción</th></tr></thead><tbody>'+
+     list.map(r=>'<tr>'+
+       '<td><strong>'+esc(r.local_name)+'</strong><small class="muted" style="display:block">'+esc(r.requester_email||"")+'</small></td>'+
+       '<td>'+esc(r.domain)+'</td>'+
+       '<td>'+esc(r.purchase_basis==="PLAN_INCLUDED"?"Plan Pro":"Adicional")+' · '+esc(r.request_type==="BUY_NEW"?"Comprar":"Conectar")+'</td>'+
+       '<td><select data-domain-status="'+esc(r.id)+'">'+["REQUESTED","CHECKING","AVAILABLE","PAYMENT_PENDING","PURCHASING","DNS_PENDING","ACTIVE","UNAVAILABLE","NEEDS_INFO","CANCELLED"].map(s=>'<option value="'+s+'" '+(s===r.status?'selected':'')+'>'+esc(masterDomainStatusLabel(s))+'</option>').join("")+'</select></td>'+
+       '<td><input data-domain-price="'+esc(r.id)+'" type="number" min="0" step="0.01" value="'+esc(r.quoted_price??"")+'" style="min-width:100px"></td>'+
+       '<td><input data-domain-registrar="'+esc(r.id)+'" value="'+esc(r.registrar||"")+'" placeholder="Cloudflare, Namecheap..." style="min-width:150px"></td>'+
+       '<td><label><input data-domain-dns="'+esc(r.id)+'" type="checkbox" '+(r.dns_verified_at?'checked':'')+'> DNS</label><br><label><input data-domain-ssl="'+esc(r.id)+'" type="checkbox" '+(r.ssl_verified_at?'checked':'')+'> SSL</label></td>'+
+       '<td><button class="btn-primary" data-save-domain="'+esc(r.id)+'">Guardar</button></td>'+
+     '</tr>').join("")+'</tbody></table></div>';
+   $("masterLocalDomainRows").querySelectorAll("[data-save-domain]").forEach(button=>button.onclick=async()=>{
+     const id=button.dataset.saveDomain;
+     try{
+       button.disabled=true;
+       const raw=$("masterLocalDomainRows").querySelector('[data-domain-price="'+CSS.escape(id)+'"]').value.trim();
+       await rpc("master_update_local_domain_request",{
+         p_request_id:id,
+         p_status:$("masterLocalDomainRows").querySelector('[data-domain-status="'+CSS.escape(id)+'"]').value,
+         p_quoted_price:raw===""?null:Number(raw),
+         p_registrar:$("masterLocalDomainRows").querySelector('[data-domain-registrar="'+CSS.escape(id)+'"]').value.trim()||null,
+         p_expires_at:null,
+         p_dns_verified:$("masterLocalDomainRows").querySelector('[data-domain-dns="'+CSS.escape(id)+'"]').checked,
+         p_ssl_verified:$("masterLocalDomainRows").querySelector('[data-domain-ssl="'+CSS.escape(id)+'"]').checked,
+         p_master_note:null
+       });
+       message("Solicitud de dominio actualizada.");
+       await loadMasterLocalDomains();
+     }catch(e){message(e.message||"No se pudo actualizar el dominio.","error");button.disabled=false;}
+   });
+ }catch(e){$("masterLocalDomainRows").innerHTML='<div class="error">'+esc(e.message||"No se pudieron cargar las solicitudes.")+'</div>';}
+}
 async function loadMasterLocals(){
  if(state.role!=="MASTER")return;bindMasterLocals();
  try{
@@ -230,6 +279,7 @@ async function loadMasterLocals(){
      const value=$(id).value;$(id).innerHTML='<option value="">Todos</option>'+localOptions(data,label,value).replace('<option value="">Seleccionar…</option>',"");
    }
    renderMasterLocalList();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
+   await loadMasterLocalDomains();
  }catch(e){message(e.message||"No se pudieron cargar los locales.","error");}
 }
 function nullableNumber(id){const raw=$(id).value.trim();if(raw==="")return null;const value=Number(raw);if(!Number.isFinite(value))throw new Error("Coordenada inválida.");return value;}
