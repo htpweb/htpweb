@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /app/acceso.html
+Disallow: /app/mi-cuenta.html
+Disallow: /app/configuracion.html
+Sitemap: https://htpweb.github.io/htpweb/sitemap.xml
