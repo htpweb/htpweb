@@ -42,6 +42,7 @@
   <label>Nombre comercial *</label>
   <input id="name" maxlength="160" autocomplete="organization" placeholder="Escribe el nombre del negocio">
   <div class="contact-hint">Al escribir el nombre, HTPWEB comparará nombre, teléfono/WhatsApp y ubicación.</div>
+  <div id="publicPathState" class="contact-hint" style="margin-top:6px"></div>
   <div id="duplicateBox" class="duplicate-box hidden"><div class="duplicate-head"><strong>LOCAL similares encontrados</strong><div class="muted">Revisa si alguno corresponde a tu negocio.</div></div><div id="duplicateResults" class="duplicate-results"></div><div id="duplicateConfirm" class="duplicate-confirm hidden"><label class="row" style="gap:8px"><input id="confirmNewLocal" type="checkbox" style="width:auto"> Ninguno de estos corresponde a mi negocio; quiero crear un LOCAL nuevo.</label></div></div>
 </div>
 
@@ -52,12 +53,30 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-let filters={sectors:[],categories:[]},user=null,duplicateRows=[],duplicateTimer=null,duplicateSearchSeq=0;
+let filters={sectors:[],categories:[]},user=null,duplicateRows=[],duplicateTimer=null,duplicateSearchSeq=0,publicPathTimer=null;
 let localMap=null,userMarker=null,matchMarker=null,matchLine=null;
 function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function renderCategories(){
  const sector=$("sector").value;const rows=filters.categories.filter(c=>c.sector_id===sector);
  $("category").innerHTML=rows.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join("");
+}
+function schedulePublicPathCheck(){
+ clearTimeout(publicPathTimer);
+ const name=$("name").value.trim();
+ if(!name){$("publicPathState").textContent="";return}
+ $("publicPathState").textContent="Comprobando dirección pública…";
+ publicPathTimer=setTimeout(checkPublicPath,320);
+}
+async function checkPublicPath(){
+ const name=$("name").value.trim();
+ if(!name)return null;
+ const {data,error}=await supabaseClient.rpc("check_public_path_availability",{p_name:name,p_entity:"LOCAL"});
+ if(error){$("publicPathState").textContent="No se pudo validar la dirección pública.";return null}
+ $("publicPathState").innerHTML=data?.available
+   ? '✓ Dirección disponible: <strong>'+esc(data.url||"")+'</strong>'
+   : '⚠ '+esc(data?.message||"Esta dirección no está disponible.");
+ $("publicPathState").style.color=data?.available?"#067647":"#b42318";
+ return data;
 }
 function digits(value){return String(value||"").replace(/\D/g,"")}
 function validPhone(value){const d=digits(value);return d.length>=7&&d.length<=15}
@@ -247,6 +266,8 @@ async function submit(){
   if(!validPhone($("whatsapp").value))throw new Error("Ingresa un WhatsApp válido.");
   if(!lat||!lng)throw new Error("Selecciona la ubicación exacta del negocio en el mapa.");
   if(!name)throw new Error("El nombre comercial es obligatorio.");
+  const pathCheck=await checkPublicPath();
+  if(!pathCheck?.available)throw new Error(pathCheck?.message||"La dirección pública no está disponible.");
   await searchDuplicatesNow();
   const riskyDuplicate=duplicateRows.some(r=>["HIGH","MEDIUM"].includes(effectiveMatchLevel(r)));
   if(riskyDuplicate&&!$("confirmNewLocal").checked)throw new Error("Encontramos LOCAL similares. Revísalos y, si ninguno corresponde, confirma que deseas crear uno nuevo.");
@@ -276,7 +297,7 @@ async function init(){
  initLocalMap();
  await loadFilters();
  $("sector").onchange=renderCategories;
- $("name").addEventListener("input",scheduleDuplicateSearch);
+ $("name").addEventListener("input",()=>{scheduleDuplicateSearch();schedulePublicPathCheck();});
  $("phone").addEventListener("input",scheduleDuplicateSearch);
  $("whatsapp").addEventListener("input",scheduleDuplicateSearch);
  $("locationBtn").onclick=captureLocation;$("submitBtn").onclick=submit;
