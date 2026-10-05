@@ -108,15 +108,17 @@ async function init() {
     if($("businessRegisterFooter"))$("businessRegisterFooter").href=businessUrl;
 
     const user = await obtenerUsuarioActual();
-    const authText = user ? "Mi cuenta" : "Acceder";
     const authLabel = $("authLink")?.querySelector(".mobile-action-label");
-    if (authLabel) authLabel.textContent = authText;
-    if ($("authLink")) $("authLink").setAttribute("aria-label", authText);
-    $("authLink").href = user
-      ? urlDelivery("mi-cuenta.html")
-      : urlDelivery("acceso.html", {
-          return: "index.html?delivery=" + encodeURIComponent(negocioActual.slug)
-        });
+    if(user){
+      if($("ordersLink"))$("ordersLink").classList.remove("hidden");
+      if($("authLink"))$("authLink").classList.remove("hidden");
+      if(authLabel)authLabel.textContent="Mi cuenta";
+      $("authLink").setAttribute("aria-label","Mi cuenta");
+      $("authLink").href=urlDelivery("mi-cuenta.html");
+    }else{
+      if($("ordersLink"))$("ordersLink").classList.add("hidden");
+      if($("authLink"))$("authLink").classList.add("hidden");
+    }
 
     await loadCatalog();
     await loadDeliveryPromotions();
