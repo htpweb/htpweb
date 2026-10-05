@@ -2431,7 +2431,7 @@ function localStoreUrl(){
     ||null;
   if(!local?.id)return "";
   const key=local.slug||local.id;
-  return "https://htpweb.github.io/htpweb/"+encodeURIComponent(key)+"/";
+  return "https://htpweb.github.io/"+encodeURIComponent(key)+"/";
 }
 
 function syncLocalPublicAccess(){
