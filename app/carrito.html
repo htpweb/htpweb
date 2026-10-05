@@ -44,6 +44,15 @@
     <div id="summary"></div>
   </section>
 
+  <section id="guestAccountEntry" class="card hidden" style="border:1px solid #dbe4ee;background:#f8fafc">
+    <strong style="display:block;margin-bottom:5px">¿Quieres guardar tus datos para próximas compras?</strong>
+    <p class="muted" style="margin:0 0 12px">Puedes guardar direcciones y consultar tus pedidos cuando quieras.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <a id="guestSaveAddressLink" class="btn btn-muted" href="#">Guardar dirección</a>
+      <a id="guestOrdersLink" class="btn btn-muted" href="#">Consultar pedidos</a>
+    </div>
+  </section>
+
   <section id="checkoutCard" class="card hidden">
     <h2>Datos de entrega</h2>
 
@@ -145,6 +154,22 @@ let variantMap = new Map();
 let localMap = new Map();
 let promotionMap = new Map();
 let savedAddresses = [];
+function accountAccessUrl(section){
+  const target="/htpweb/app/mi-cuenta.html#"+section;
+  return "/htpweb/app/acceso.html?return="+encodeURIComponent(target);
+}
+async function renderGuestAccountEntry(){
+  try{
+    const user=await obtenerUsuarioActual();
+    const box=$("guestAccountEntry");
+    if(!box)return;
+    box.classList.toggle("hidden",Boolean(user));
+    if(!user){
+      $("guestSaveAddressLink").href=accountAccessUrl("addresses");
+      $("guestOrdersLink").href=accountAccessUrl("orders");
+    }
+  }catch{}
+}
 let customerWhatsappSetting = { enabled: false };
 let lastCustomerWhatsappUrl = "";
 
@@ -155,6 +180,7 @@ let longitude = null;
 let locationAccepted = false;
 
 async function init() {
+  await renderGuestAccountEntry();
   try {
     negocioActual = await cargarNegocio();
     htpApplyDeliveryBrand(negocioActual, { titlePrefix: "Mi carrito" });
@@ -969,8 +995,8 @@ async function confirmOrder() {
 
     const accountAction = user
       ? `<a class="btn btn-primary" href="${esc(urlDelivery('pedidos.html', {order:data.order.id}))}">Ver mi pedido</a>`
-      : `<button class="btn btn-muted" type="button" onclick="irAAcceso(urlDelivery('index.html'))">Crear cuenta / Iniciar sesión (opcional)</button>
-         <small class="note" style="display:block;margin:8px 0">Tu compra ya fue registrada. Crear una cuenta no es necesario para completar este pedido.</small>`;
+      : `<button class="btn btn-muted" type="button" onclick="irAAcceso(urlDelivery('index.html'))">Crear cuenta / Iniciar sesión</button>
+         <small class="note" style="display:block;margin:8px 0">Tu compra ya fue registrada. Puedes crear una cuenta para guardar direcciones y consultar tus pedidos.</small>`;
 
     $("successCard").innerHTML = `
       <div class="success">
