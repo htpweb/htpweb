@@ -833,10 +833,10 @@ async function init(){
    $("cartBtn").onclick=()=>{
      trackLocal("CART_VIEW",null,{action:"open"});
      if(source==="htpweb"){
-       location.href="carrito-general.html";
+       location.href="/htpweb/app/carrito-general.html";
        return;
      }
-     const next=new URL("tienda-carrito.html",location.href);
+     const next=new URL("/htpweb/app/tienda-carrito.html",location.origin);
      next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
      location.href=next.toString();
    };
