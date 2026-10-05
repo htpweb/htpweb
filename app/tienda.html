@@ -201,6 +201,8 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 }
 .local-store-header-inner>.htp-auth-account-menu,
 .local-store-header-inner>.htp-compact-profile-menu{
+  grid-column:3;
+  grid-row:1;
   justify-self:end;
 }
 .local-cart-btn{
@@ -236,6 +238,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 @media(max-width:820px){
   .local-store-header-inner{
     display:flex!important;
+    height:auto;
     min-height:auto;
     flex-wrap:wrap;
     gap:10px 14px;
