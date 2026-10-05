@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- sitemap.xml robots.txt .seo-generated-locals.json ':/*/index.html'; then
+          if git diff --quiet; then
             echo "No SEO changes to publish."
             exit 0
           fi
