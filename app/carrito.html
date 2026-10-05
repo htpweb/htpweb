@@ -877,20 +877,35 @@ $("confirmBtn").onclick = confirmOrder;
 
 function openCustomerOrderWhatsapp() {
   if (!lastCustomerWhatsappUrl) return;
-  const popup = window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer");
+  const popup = window.open(lastCustomerWhatsappUrl, "_blank");
   if (!popup) {
     showMessage("El navegador bloqueó la ventana de WhatsApp. Permite ventanas emergentes y vuelve a intentarlo.");
+    return;
   }
+  try { popup.opener = null; } catch {}
+}
+
+function reserveWhatsappWindow() {
+  const popup = window.open("/htpweb/app/whatsapp-espera.html", "_blank");
+  if (!popup) return null;
+  try { popup.opener = null; } catch {}
+  return popup;
+}
+
+function closeReservedWhatsappWindow(popup) {
+  if (!popup) return;
+  try {
+    if (!popup.closed) popup.close();
+  } catch {}
 }
 
 async function confirmOrder() {
   const button = $("confirmBtn");
+  let reservedWhatsappWindow = null;
 
   try {
     showCheckoutMessage("");
     if (!items.length) throw new Error("El carrito está vacío.");
-
-    const user = await obtenerUsuarioActual();
 
     const name = $("name").value.trim();
     const phone = $("phone").value.trim();
@@ -911,6 +926,14 @@ async function confirmOrder() {
     if (requiresInvoice && (!documentType || !documentNumber || !invoiceEmail)) {
       throw new Error("Completa los datos de facturación.");
     }
+
+    // Reservar la segunda pestaña dentro del clic original evita el bloqueo
+    // de popups tardíos. El carrito queda abierto en esta pestaña.
+    if (customerWhatsappSetting?.enabled && customerWhatsappSetting?.whatsapp) {
+      reservedWhatsappWindow = reserveWhatsappWindow();
+    }
+
+    const user = await obtenerUsuarioActual();
 
     button.disabled = true;
     button.textContent = "Confirmando pedido...";
@@ -1015,12 +1038,23 @@ async function confirmOrder() {
         );
         whatsappPrepared = true;
 
-        // El pedido ya quedó confirmado. Intentamos abrir WhatsApp en una pestaña
-        // separada para conservar visible esta pantalla con el ID, total y seguimiento.
-        whatsappOpened = Boolean(window.open(lastCustomerWhatsappUrl, "_blank", "noopener,noreferrer"));
+        // Reutilizamos la pestaña reservada en el clic original.
+        // Esta página conserva la confirmación, ID, total y seguimiento.
+        if (reservedWhatsappWindow && !reservedWhatsappWindow.closed) {
+          reservedWhatsappWindow.location.replace(lastCustomerWhatsappUrl);
+          whatsappOpened = true;
+          reservedWhatsappWindow = null;
+        } else {
+          whatsappOpened = false;
+        }
+      } else {
+        closeReservedWhatsappWindow(reservedWhatsappWindow);
+        reservedWhatsappWindow = null;
       }
     } catch (whatsappError) {
       console.warn("El pedido se creó, pero no se pudo preparar WhatsApp.", whatsappError);
+      closeReservedWhatsappWindow(reservedWhatsappWindow);
+      reservedWhatsappWindow = null;
       lastCustomerWhatsappUrl = "";
     }
 
@@ -1072,6 +1106,8 @@ async function confirmOrder() {
     // No abandonamos esta página: el cliente conserva aquí los datos del pedido
     // y puede entrar al seguimiento aunque WhatsApp se haya abierto aparte.
   } catch (e) {
+    closeReservedWhatsappWindow(reservedWhatsappWindow);
+    reservedWhatsappWindow = null;
     console.error(e);
     const message = checkoutMessageText(e?.message || "No se pudo confirmar el pedido.");
     showMessage(message);
