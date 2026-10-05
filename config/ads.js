@@ -92,9 +92,8 @@
     }
 
     if (contextMode === "local") {
-      const target = new URL("tienda.html", location.href);
-      target.searchParams.set("local", localId || localStore?.slug || localStore?.id || "");
-      target.searchParams.set("section", "shop");
+      const slug = localStore?.slug || localStore?.id || localId || "";
+      const target = new URL("/htpweb/"+encodeURIComponent(slug)+"/tienda/", location.origin);
       if (productId) target.searchParams.set("product", productId);
       return target.href;
     }
