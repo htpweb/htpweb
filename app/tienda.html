@@ -349,16 +349,13 @@ const SECTION_PATHS={
 };
 const PATH_SECTIONS=Object.fromEntries(Object.entries(SECTION_PATHS).map(([k,v])=>[v,k]));
 function storefrontBasePath(){
- const marker="/htpweb/";
- const idx=location.pathname.toLowerCase().indexOf(marker);
- return idx>=0?location.pathname.slice(0,idx)+marker:"/htpweb/";
+ return "/";
 }
 function sectionFromLocation(){
  const querySection=(new URLSearchParams(location.search).get("section")||"").toLowerCase();
  if(querySection)return querySection==="catalog"?"shop":querySection;
- const base=storefrontBasePath();
- const rest=location.pathname.slice(base.length).split("/").filter(Boolean);
- if(rest[0]==="app"&&rest[1]==="tienda.html")return "home";
+ const rest=location.pathname.split("/").filter(Boolean);
+ if(rest[0]==="htpweb"&&rest[1]==="app"&&rest[2]==="tienda.html")return "home";
  const segment=(rest[1]||"").toLowerCase();
  return PATH_SECTIONS[segment]||"home";
 }
