@@ -14,7 +14,7 @@
 <script src="../config/auth.js?v=20261004-profiles1"></script>
 <link rel="stylesheet" href="../assets/admin.css?v=20261004-public-delivery1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="../assets/local-workspace.css?v=20261004-localbuilder1">
+<link rel="stylesheet" href="../assets/local-workspace.css?v=20261005-social1">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
 </head>
@@ -400,26 +400,32 @@
             <label>WhatsApp</label>
             <input id="profileLocalWhatsapp" maxlength="40">
           </div>
-          <div>
-            <label>Sitio web</label>
+          <div class="local-social-field">
+            <label><span class="local-social-mini web">🌐</span>Sitio web</label>
             <input id="profileLocalWebsite" maxlength="500" placeholder="https://...">
           </div>
-          <div>
-            <label>Instagram</label>
-            <input id="profileLocalInstagram" maxlength="500" placeholder="https://...">
+          <div class="local-social-field">
+            <label><span class="local-social-mini instagram">◎</span>Instagram</label>
+            <input id="profileLocalInstagram" maxlength="500" placeholder="https://instagram.com/...">
           </div>
-          <div>
-            <label>Facebook</label>
-            <input id="profileLocalFacebook" maxlength="500" placeholder="https://...">
+          <div class="local-social-field">
+            <label><span class="local-social-mini facebook">f</span>Facebook</label>
+            <input id="profileLocalFacebook" maxlength="500" placeholder="https://facebook.com/...">
           </div>
-          <div>
-            <label>TikTok</label>
-            <input id="profileLocalTiktok" maxlength="500" placeholder="https://...">
+          <div class="local-social-field">
+            <label><span class="local-social-mini tiktok">♪</span>TikTok</label>
+            <input id="profileLocalTiktok" maxlength="500" placeholder="https://tiktok.com/@...">
           </div>
-          <div>
-            <label>Telegram</label>
-            <input id="profileLocalTelegram" maxlength="500" placeholder="https://...">
+          <div class="local-social-field">
+            <label><span class="local-social-mini telegram">➤</span>Telegram</label>
+            <input id="profileLocalTelegram" maxlength="500" placeholder="https://t.me/...">
           </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <label>Enlaces públicos</label>
+          <div id="profileLocalSocialPreview" class="local-social-preview"></div>
+          <small class="muted">Los iconos activos abrirán directamente la red social del LOCAL.</small>
         </div>
 
         <label style="margin-top:12px">Descripción</label>
@@ -2296,7 +2302,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261004-catalogshop1"></script>
+<script src="./admin.js?v=20261005-social1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20260925-1300"></script>
