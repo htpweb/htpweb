@@ -2331,6 +2331,42 @@ async function shareOriginalGalleryImage(imageId) {
   }
 }
 
+function normalizeSocialUrl(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  const candidate=/^https?:\/\//i.test(raw)?raw:"https://"+raw.replace(/^\/+/, "");
+  try{
+    const url=new URL(candidate);
+    return ["http:","https:"].includes(url.protocol)?url.href:"";
+  }catch{return ""}
+}
+function localSocialIcon(type){
+  const icons={
+    web:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 6h-3.1a15.6 15.6 0 0 0-1.4-3.2A8.1 8.1 0 0 1 18.9 8ZM12 4c.8 1 1.5 2.3 1.9 4h-3.8c.4-1.7 1.1-3 1.9-4ZM9.6 4.8A15.6 15.6 0 0 0 8.2 8H5.1a8.1 8.1 0 0 1 4.5-3.2ZM4.3 10h3.5a16.6 16.6 0 0 0 0 4H4.3a8 8 0 0 1 0-4Zm.8 6h3.1a15.6 15.6 0 0 0 1.4 3.2A8.1 8.1 0 0 1 5.1 16Zm6.9 4c-.8-1-1.5-2.3-1.9-4h3.8c-.4 1.7-1.1 3-1.9 4Zm2.3-6H9.7a14.5 14.5 0 0 1 0-4h4.6a14.5 14.5 0 0 1 0 4Zm.1 5.2a15.6 15.6 0 0 0 1.4-3.2h3.1a8.1 8.1 0 0 1-4.5 3.2ZM16.2 14a16.6 16.6 0 0 0 0-4h3.5a8 8 0 0 1 0 4h-3.5Z"/></svg>',
+    instagram:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm10.5 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
+    facebook:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.4V11H7.3v3h2.8v8h3.4Z"/></svg>',
+    tiktok:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3c.4 2 1.6 3.3 3.5 3.8V10a8.3 8.3 0 0 1-3.5-1v6.2A5.8 5.8 0 1 1 9.7 9.5v3.2a2.7 2.7 0 1 0 1.6 2.5V3h3.2Z"/></svg>',
+    telegram:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.7 3.3 18.5 20c-.2 1.2-.9 1.5-1.8.9l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6 13.8l-4.8-1.5c-1-.3-1.1-1 .2-1.5L20.2 3.5c.9-.3 1.7.2 1.5-.2Z"/></svg>'
+  };
+  return icons[type]||"";
+}
+function renderLocalSocialPreview(){
+  const box=$("profileLocalSocialPreview");if(!box)return;
+  const rows=[
+    ["web","Sitio web",$("profileLocalWebsite")?.value],
+    ["instagram","Instagram",$("profileLocalInstagram")?.value],
+    ["facebook","Facebook",$("profileLocalFacebook")?.value],
+    ["tiktok","TikTok",$("profileLocalTiktok")?.value],
+    ["telegram","Telegram",$("profileLocalTelegram")?.value]
+  ];
+  box.innerHTML=rows.map(([type,label,value])=>{
+    const url=normalizeSocialUrl(value);
+    const cls="social-"+type+(url?"":" inactive");
+    return url
+      ? '<a class="'+cls+'" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(label)+'" aria-label="'+esc(label)+'">'+localSocialIcon(type)+'</a>'
+      : '<span class="'+cls+'" title="'+esc(label)+'">'+localSocialIcon(type)+'</span>';
+  }).join("");
+}
 async function loadLocalProfile() {
   if (state.role !== "LOCAL_ADMIN") return;
 
@@ -2384,6 +2420,7 @@ async function loadLocalProfileRecord() {
     $("profileLocalTiktok").value = data.tiktok_url || "";
     $("profileLocalTelegram").value = data.telegram_url || "";
     $("profileLocalDescription").value = data.description || "";
+    renderLocalSocialPreview();
     $("saveLocalProfileBtn").disabled = false;
     await loadLocalCommerce().catch(error => {
       console.warn("No se pudo cargar la página del LOCAL.", error);
@@ -2408,11 +2445,11 @@ async function saveLocalProfile() {
       p_logo_url: local.logo_url || null,
       p_phone: $("profileLocalPhone").value.trim() || null,
       p_whatsapp: $("profileLocalWhatsapp").value.trim() || null,
-      p_website_url: $("profileLocalWebsite").value.trim() || null,
-      p_instagram_url: $("profileLocalInstagram").value.trim() || null,
-      p_facebook_url: $("profileLocalFacebook").value.trim() || null,
-      p_tiktok_url: $("profileLocalTiktok").value.trim() || null,
-      p_telegram_url: $("profileLocalTelegram").value.trim() || null
+      p_website_url: normalizeSocialUrl($("profileLocalWebsite").value) || null,
+      p_instagram_url: normalizeSocialUrl($("profileLocalInstagram").value) || null,
+      p_facebook_url: normalizeSocialUrl($("profileLocalFacebook").value) || null,
+      p_tiktok_url: normalizeSocialUrl($("profileLocalTiktok").value) || null,
+      p_telegram_url: normalizeSocialUrl($("profileLocalTelegram").value) || null
     });
 
     message("Información del LOCAL actualizada.");
@@ -12170,6 +12207,9 @@ function bindEvents() {
   };
   ["localStoreAccent","localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText","localCatalogTitle","localProjectsTitle","localProjectsText","localBlogTitle","localContactTitle","localShowAbout","localShowCatalog","localShowProjects","localShowBlog","localShowContact","localShowPromotions"].forEach(id=>{
     if($(id))$(id).addEventListener(id.startsWith("localShow")?"change":"input",renderLocalStorePreview);
+  });
+  ["profileLocalWebsite","profileLocalInstagram","profileLocalFacebook","profileLocalTiktok","profileLocalTelegram"].forEach(id=>{
+    if($(id))$(id).addEventListener("input",renderLocalSocialPreview);
   });
   if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").oninput=()=>{
     $("localStoreAccent").value=$("localBuilderAccentMirror").value;renderLocalStorePreview();
