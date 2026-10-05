@@ -257,6 +257,39 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 .local-socials.branded svg{width:22px;height:22px;fill:currentColor}
 .local-socials.branded .social-web{background:#344054}.local-socials.branded .social-instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)}.local-socials.branded .social-facebook{background:#1877f2}.local-socials.branded .social-tiktok{background:#111}.local-socials.branded .social-telegram{background:#229ed9}
 
+
+.local-contact-page{display:block!important}
+.local-contact-head{max-width:720px;margin-bottom:28px}
+.local-contact-head h2{margin:6px 0 10px}
+.local-contact-head p{margin:0;color:#64748b;font-size:1rem}
+.local-contact-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(420px,1.1fr);gap:28px;align-items:stretch}
+.local-contact-left{display:flex;flex-direction:column;gap:16px}
+.local-contact-info-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.local-contact-info-card{display:flex;align-items:center;gap:14px;border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+.local-contact-info-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--local-accent) 12%,white);color:var(--local-accent);font-size:1.05rem;font-weight:900;flex:none}
+.local-contact-info-card small{display:block;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-size:.66rem;font-weight:800;margin-bottom:4px}
+.local-contact-info-card strong{font-size:1rem;word-break:break-word}
+.local-contact-whatsapp{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px;border-radius:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
+.local-contact-whatsapp div{display:grid;gap:4px}.local-contact-whatsapp span{font-size:.86rem;opacity:.9}
+.local-contact-whatsapp a{background:#fff;color:#15803d;text-decoration:none;font-weight:900;padding:10px 14px;border-radius:9px;white-space:nowrap}
+.local-contact-social-block{display:flex;justify-content:space-between;align-items:center;gap:18px;border:1px solid #e5e7eb;background:#f8fafc;border-radius:14px;padding:17px 18px}
+.local-contact-social-block strong{display:block;font-size:1rem;margin-bottom:3px}.local-contact-social-block p{margin:0;color:#64748b;font-size:.84rem}
+.local-contact-social-block .local-socials.branded{margin:0;justify-content:flex-end}
+.local-contact-social-block .local-socials.branded a{width:40px;height:40px}
+.local-contact-map-card{border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.07);min-height:470px;display:flex;flex-direction:column}
+.local-contact-map-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid #e5e7eb}
+.local-contact-map-heading strong{display:block;font-size:1rem}.local-contact-map-heading span{display:block;color:#64748b;font-size:.8rem;margin-top:3px}
+.local-contact-map-heading a{text-decoration:none;color:var(--local-accent);font-weight:900;font-size:.84rem;white-space:nowrap}
+.local-contact-map-card iframe{width:100%;min-height:400px;flex:1;border:0;background:#eef2f7}
+#contactSection + #finalCta{margin-top:34px}
+@media(max-width:920px){.local-contact-layout{grid-template-columns:1fr}.local-contact-map-card{min-height:420px}}
+@media(max-width:600px){
+ .local-contact-social-block,.local-contact-whatsapp{align-items:flex-start;flex-direction:column}
+ .local-contact-social-block .local-socials.branded{justify-content:flex-start}
+ .local-contact-map-heading{align-items:flex-start;flex-direction:column}
+ .local-contact-map-card iframe{min-height:330px}
+}
+
 </style>
 </head>
 <body class="local-store">
@@ -310,7 +343,38 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
   <section id="blogSection" class="local-page-section hidden">
     <div class="local-page-card"><h2 id="blogTitle">Blog</h2><div id="blogGrid" class="local-blog-grid"></div></div>
   </section>
-  <section id="contactSection" class="local-page-section hidden"><div class="local-page-card"><h2 id="contactTitle">Contacto</h2><div id="contactGrid" class="local-contact-grid"></div><div id="contactSocials"></div></div></section>
+  <section id="contactSection" class="local-page-section hidden">
+    <div class="local-page-card local-contact-page">
+      <div class="local-contact-head">
+        <span class="local-section-kicker">Estamos cerca de ti</span>
+        <h2 id="contactTitle">Contacto</h2>
+        <p>Encuentra aquí nuestros datos, ubicación y canales de atención.</p>
+      </div>
+      <div class="local-contact-layout">
+        <div class="local-contact-left">
+          <div id="contactGrid" class="local-contact-info-grid"></div>
+          <div id="contactWhatsappBox" class="local-contact-whatsapp hidden"></div>
+          <div id="contactSocialBlock" class="local-contact-social-block hidden">
+            <div>
+              <strong>Redes sociales</strong>
+              <p>Síguenos y conoce nuestras novedades.</p>
+            </div>
+            <div id="contactSocials"></div>
+          </div>
+        </div>
+        <div class="local-contact-map-card">
+          <div class="local-contact-map-heading">
+            <div>
+              <strong>Ubicación</strong>
+              <span id="contactMapAddress"></span>
+            </div>
+            <a id="contactMapDirections" href="#" target="_blank" rel="noopener noreferrer">Cómo llegar ↗</a>
+          </div>
+          <iframe id="contactMapFrame" title="Ubicación en Google Maps" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
   <section id="finalCta" class="local-footer-cta hidden"><div><h2>¿Hablamos?</h2><div>Estamos listos para atenderte.</div></div><a id="finalCtaLink" href="#">Contactar por WhatsApp</a></section>
 </main>
 <footer id="siteFooter" class="local-site-footer">
@@ -607,12 +671,41 @@ function renderPageSections(){
    : '<article class="local-blog-card"><img src="'+esc(visual.about)+'" alt=""><div class="local-blog-card-body"><small>Novedades</small><h3>Bienvenidos a '+esc(l.name)+'</h3><p>Muy pronto compartiremos novedades, proyectos y contenido de interés.</p></div></article>';
 
  $("contactTitle").textContent=cfg.contact_title||"Contacto";$("contactNav").textContent=cfg.contact_title||"Contacto";
- const contacts=[["Dirección",l.address],["Teléfono",l.phone],["WhatsApp",l.whatsapp]].filter(x=>x[1]);
- $("contactGrid").innerHTML=contacts.map(([name,value])=>'<div class="local-contact-item"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join("");
- $("contactSocials").innerHTML=socials(l);
- const hasContact=contacts.length||$("contactSocials").innerHTML;
- $("contactSection").classList.toggle("hidden",cfg.show_contact===false||!hasContact);$("contactNav").classList.toggle("hidden",cfg.show_contact===false||!hasContact);
+ const contactRows=[
+   ["Dirección",l.address,"⌖"],
+   ["Teléfono",l.phone,"☎"],
+   ["WhatsApp",l.whatsapp,"◉"]
+ ].filter(x=>x[1]);
+ $("contactGrid").innerHTML=contactRows.map(([name,value,icon])=>
+   '<div class="local-contact-info-card"><div class="local-contact-info-icon">'+esc(icon)+'</div><div><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div></div>'
+ ).join("");
+
+ const socialHtml=socials(l);
+ $("contactSocials").innerHTML=socialHtml;
+ $("contactSocialBlock").classList.toggle("hidden",!socialHtml);
+
  const waUrl=whatsappUrl(l);
+ const waBox=$("contactWhatsappBox");
+ if(waBox){
+   waBox.classList.toggle("hidden",!waUrl);
+   waBox.innerHTML=waUrl
+     ? '<div><strong>¿Prefieres escribirnos?</strong><span>Conversa directamente con nosotros por WhatsApp.</span></div><a href="'+esc(waUrl)+'" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>'
+     : '';
+ }
+
+ const lat=Number(l.latitude),lng=Number(l.longitude);
+ const hasCoords=Number.isFinite(lat)&&Number.isFinite(lng);
+ const mapQuery=hasCoords?(lat+','+lng):(l.address||l.name||'');
+ const mapUrl='https://www.google.com/maps?q='+encodeURIComponent(mapQuery)+'&output=embed';
+ const directionsUrl=hasCoords
+   ? 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng)
+   : 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l.address||l.name||'');
+ $("contactMapFrame").src=mapUrl;
+ $("contactMapAddress").textContent=l.address||'Ubicación del negocio';
+ $("contactMapDirections").href=directionsUrl;
+
+ const hasContact=contactRows.length||socialHtml||mapQuery;
+ $("contactSection").classList.toggle("hidden",cfg.show_contact===false||!hasContact);$("contactNav").classList.toggle("hidden",cfg.show_contact===false||!hasContact);
  $("finalCta").classList.toggle("hidden",!waUrl);
  if(waUrl)$("finalCtaLink").href=waUrl;
  const waFloat=$("waFloat");
