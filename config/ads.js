@@ -168,13 +168,16 @@
   }
 
   function isSupportedPlacement() {
-    const page = location.pathname.split("/").pop() || "";
-    if (page === "index.html" || page === "") {
+    const path = location.pathname;
+    const page = path.split("/").pop() || "";
+    if (page === "index.html" || (page === "" && !/\/htpweb\/[^/]+\//i.test(path))) {
       contextMode = "delivery";
       return true;
     }
-    if (page === "tienda.html") {
-      const section = (new URLSearchParams(location.search).get("section") || "home").toLowerCase();
+    const querySection = (new URLSearchParams(location.search).get("section") || "").toLowerCase();
+    const cleanShop = /\/htpweb\/[^/]+\/tienda\/?$/i.test(path);
+    if (page === "tienda.html" || cleanShop) {
+      const section = cleanShop ? "shop" : (querySection || "home");
       if (section === "shop" || section === "catalog") {
         contextMode = "local";
         return true;
@@ -385,8 +388,11 @@
         if (!delivery?.id) return;
       } else {
         const params = new URLSearchParams(location.search);
-        const key = params.get("local") || "";
-        if (!key) return;
+        const pathParts = location.pathname.split("/").filter(Boolean);
+        const htpIndex = pathParts.indexOf("htpweb");
+        const cleanKey = htpIndex >= 0 ? (pathParts[htpIndex + 1] || "") : "";
+        const key = params.get("local") || cleanKey;
+        if (!key || key === "app") return;
         const result = await supabaseClient.rpc("public_local_storefront", { p_local_key: key });
         if (result.error || !result.data?.local?.id) return;
         localStore = result.data.local;
