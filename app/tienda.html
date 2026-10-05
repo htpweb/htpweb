@@ -338,11 +338,37 @@ async function trackLocal(eventType,productId=null,metadata={}){
   });
  }catch(e){console.warn("Analytics LOCAL:",e?.message||e);}
 }
+const SECTION_PATHS={
+ home:"",
+ about:"quienes-somos",
+ services:"servicios",
+ shop:"tienda",
+ projects:"proyectos",
+ blog:"blog",
+ contact:"contacto"
+};
+const PATH_SECTIONS=Object.fromEntries(Object.entries(SECTION_PATHS).map(([k,v])=>[v,k]));
+function storefrontBasePath(){
+ const marker="/htpweb/";
+ const idx=location.pathname.toLowerCase().indexOf(marker);
+ return idx>=0?location.pathname.slice(0,idx)+marker:"/htpweb/";
+}
+function sectionFromLocation(){
+ const querySection=(new URLSearchParams(location.search).get("section")||"").toLowerCase();
+ if(querySection)return querySection==="catalog"?"shop":querySection;
+ const base=storefrontBasePath();
+ const rest=location.pathname.slice(base.length).split("/").filter(Boolean);
+ if(rest[0]==="app"&&rest[1]==="tienda.html")return "home";
+ const segment=(rest[1]||"").toLowerCase();
+ return PATH_SECTIONS[segment]||"home";
+}
 function siteSectionUrl(section){
- const url=new URL(location.href);
- url.searchParams.set("section",section);
- url.hash="";
- return url.toString();
+ const slug=store?.local?.slug||key;
+ if(!slug)return location.href;
+ const cleanSection=section==="catalog"?"shop":section;
+ const segment=SECTION_PATHS[cleanSection]||"";
+ const base=storefrontBasePath();
+ return location.origin+base+encodeURIComponent(slug)+"/"+(segment?segment+"/":"");
 }
 function navigateSiteSection(section,{replace=false}={}){
  pageSection=section==="catalog"?"shop":section;
@@ -771,8 +797,7 @@ async function loadMenu(){
  $("menuPages").innerHTML=rows.length?rows.map(x=>'<article class="menu-page"><strong>'+esc(x.title||"Menú")+'</strong><img src="'+esc(x.image_url||"")+'" alt=""></article>').join(""):'<div class="empty">Este LOCAL todavía no tiene hojas de menú visual.</div>';
 }
 window.addEventListener("popstate",()=>{
- const nextRaw=(new URLSearchParams(location.search).get("section")||"home").toLowerCase();
- pageSection=nextRaw==="catalog"?"shop":nextRaw;
+ pageSection=sectionFromLocation();
  configureSiteNavigation();
  applySinglePageSection();
  window.scrollTo({top:0,behavior:"instant"});
@@ -784,6 +809,7 @@ async function init(){
    const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});
    if(error)throw error;if(!data)throw new Error("Esta tienda no está disponible.");
    store=data;document.title=store.local.name+" | Sitio oficial";
+   history.replaceState({section:pageSection},"",siteSectionUrl(pageSection));
    document.body.classList.add("preset-"+store.settings.preset_code,"surface-"+store.settings.surface_style);
    applyStoreTheme();
    const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes]=await Promise.all([
