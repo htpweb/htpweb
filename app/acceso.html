@@ -103,6 +103,7 @@
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const referralCodeParam = String(params.get("ref") || "").trim().toUpperCase();
+const accessMode = String(params.get("mode") || "").trim().toLowerCase();
 const fallbackReturn = obtenerDeliverySlug() ? urlDelivery("index.html") : "../index.html";
 const hasExplicitReturn = params.has("return");
 const requestedReturn = retornoSeguro(params.get("return"), fallbackReturn);
@@ -223,7 +224,9 @@ function showRecoveryForm() {
 }
 
 async function init() {
-const user = await obtenerUsuarioActual();
+  if(accessMode==="register")showRegister();
+  else showLogin();
+  const user = await obtenerUsuarioActual();
 
   if (user) {
     let access = { role: "CLIENT", claim: null };
