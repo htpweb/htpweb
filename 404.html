@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTPWEB</title>
+<style>html,body{margin:0;background:#fff}</style>
+</head>
+<body>
+<script>
+(function(){
+  const base="/htpweb/";
+  const path=location.pathname;
+  if(!path.startsWith(base)){ location.replace(base); return; }
+
+  const rest=path.slice(base.length).split("/").filter(Boolean);
+  const reserved=new Set(["app","admin","assets","config","menu","branding","galeria"]);
+  if(!rest.length || reserved.has((rest[0]||"").toLowerCase())) {
+    location.replace(base);
+    return;
+  }
+
+  const slug=decodeURIComponent(rest[0]||"");
+  const route=(rest[1]||"").toLowerCase();
+  const sectionMap={
+    "":"home",
+    "quienes-somos":"about",
+    "servicios":"services",
+    "tienda":"shop",
+    "proyectos":"projects",
+    "blog":"blog",
+    "contacto":"contact"
+  };
+  const section=sectionMap[route];
+  if(!slug || section===undefined){
+    location.replace(base);
+    return;
+  }
+
+  const target=new URL(base+"app/tienda.html",location.origin);
+  target.searchParams.set("local",slug);
+  target.searchParams.set("section",section);
+  target.searchParams.set("__clean","1");
+  location.replace(target.toString());
+})();
+</script>
+</body>
+</html>
