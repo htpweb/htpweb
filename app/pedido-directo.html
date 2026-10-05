@@ -11,12 +11,22 @@
 <div id="message" class="hidden"></div><section id="detail" class="card"><div class="muted">Cargando pedido…</div></section>
 </main><script>
 const $=id=>document.getElementById(id),orderId=new URLSearchParams(location.search).get("order")||"";
+const GUEST_ORDER_TRACKING_KEY="HTPWEB_GUEST_ORDER_TRACKING_V1";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2),statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
 function error(text){$("message").textContent=text;$("message").className="error"}
+async function claimPendingGuestOrder(){
+ let pending=null;
+ try{pending=JSON.parse(sessionStorage.getItem(GUEST_ORDER_TRACKING_KEY)||"null")}catch{}
+ if(!pending?.order_id||pending.order_id!==orderId||pending.channel!=="DIRECT_LOCAL"||!pending.phone)return;
+ const claim=await supabaseClient.rpc("claim_my_guest_order",{p_order_id:orderId,p_phone:pending.phone});
+ if(claim.error)throw claim.error;
+ if(claim.data===true)sessionStorage.removeItem(GUEST_ORDER_TRACKING_KEY);
+}
 async function init(){
  const user=await obtenerUsuarioActual();if(!user){irAAcceso("pedido-directo.html?order="+encodeURIComponent(orderId));return}
  if(!orderId)throw new Error("Pedido no especificado.");
+ await claimPendingGuestOrder();
  const o=await supabaseClient.from("orders").select("id,origin_local_id,order_channel,fulfillment_method,status,subtotal,delivery_fee,total,customer_name,customer_phone,delivery_address,notes,created_at").eq("id",orderId).eq("order_channel","DIRECT_LOCAL").maybeSingle();
  if(o.error)throw o.error;if(!o.data)throw new Error("Este pedido no está disponible en tu cuenta.");
  const [l,it]=await Promise.all([supabaseClient.from("locals").select("id,name,slug,whatsapp").eq("id",o.data.origin_local_id).maybeSingle(),supabaseClient.from("order_items").select("id,product_name,variant_name,promotion_title,unit_price,quantity,subtotal").eq("order_id",orderId).order("created_at")]);

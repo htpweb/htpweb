@@ -25,11 +25,11 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 <div id="message" class="hidden"></div>
 <section class="cardx"><div id="cart"></div><div id="summary"></div></section>
 <section id="guestAccountEntry" class="cardx hidden" style="background:#f8fafc">
-  <strong style="display:block;margin-bottom:5px">¿Quieres guardar tus datos para próximas compras?</strong>
-  <p class="muted" style="margin:0 0 12px">Puedes guardar direcciones y consultar tus pedidos cuando quieras.</p>
+  <strong style="display:block;margin-bottom:5px">Tu compra también puede quedar vinculada a HTPWEB</strong>
+  <p class="muted" style="margin:0 0 12px">Puedes guardar tu dirección y consultar el seguimiento de tus pedidos desde tu cuenta.</p>
   <div class="row" style="gap:8px;flex-wrap:wrap">
     <a id="guestSaveAddressLink" class="btn btn-muted" href="#">Guardar dirección</a>
-    <a id="guestOrdersLink" class="btn btn-muted" href="#">Consultar pedidos</a>
+    <a id="guestOrdersLink" class="btn btn-muted" href="#">Mis pedidos</a>
   </div>
 </section>
 <section id="checkout" class="cardx hidden">
@@ -39,8 +39,9 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 <div id="addressBox" class="hidden"><label>Dirección de entrega *</label><input id="address" placeholder="Calle, sector, referencia"></div>
 <label>Observaciones</label><textarea id="notes" rows="3"></textarea>
 <button id="sendBtn" class="btn-primary primary" style="width:100%;margin-top:14px">Enviar pedido por WhatsApp</button>
-<p class="muted" style="margin-top:10px">Si compras directo, el pedido se registra y se abre el WhatsApp del LOCAL. Si eliges un DELIVERY, continuarás por su flujo de entrega.</p>
+<p class="muted" style="margin-top:10px">Este es el canal directo del LOCAL. El pedido se registra y se abre el WhatsApp del negocio. Los DELIVERY procesan pedidos únicamente desde sus propios canales.</p>
 </section>
+<section id="successCard" class="cardx hidden"></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -52,6 +53,32 @@ const campaign=params.get("campaign")||"";
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
 let store=null,items=[],products=new Map(),variants=new Map(),deliveries=[],inventory=[];
+const GUEST_ORDER_TRACKING_KEY="HTPWEB_GUEST_ORDER_TRACKING_V1";
+function accountAccessUrl(section){
+  const target="/htpweb/app/mi-cuenta.html#"+section;
+  return "/htpweb/app/acceso.html?return="+encodeURIComponent(target);
+}
+async function renderGuestAccountEntry(){
+  const user=await obtenerUsuarioActual();
+  const box=$("guestAccountEntry");
+  if(!box)return user;
+  box.classList.toggle("hidden",Boolean(user));
+  if(!user){
+    $("guestSaveAddressLink").href=accountAccessUrl("addresses");
+    $("guestOrdersLink").href=accountAccessUrl("orders");
+  }
+  return user;
+}
+function followDirectOrder(orderId,customerPhone){
+  sessionStorage.setItem(GUEST_ORDER_TRACKING_KEY,JSON.stringify({
+    order_id:orderId,
+    phone:String(customerPhone||"").trim(),
+    channel:"DIRECT_LOCAL",
+    local_id:store?.local?.id||null,
+    created_at:Date.now()
+  }));
+  irAAcceso("pedido-directo.html?order="+encodeURIComponent(orderId));
+}
 async function trackLocal(eventType,metadata={}){
  try{
   if(!store?.local?.id)return;
@@ -121,16 +148,13 @@ function renderFulfillment(){
  const s=store.settings,rows=[];
  if(s.pickup_enabled)rows.push({value:"PICKUP",label:"Retirar en "+store.local.name});
  if(s.own_delivery_enabled)rows.push({value:"OWN_DELIVERY",label:"Entrega propia del LOCAL"});
- if(s.htpweb_delivery_enabled)deliveries.forEach(d=>rows.push({value:"HTP:"+d.delivery_id,label:"DELIVERY HTPWEB · "+d.name}));
- $("fulfillment").innerHTML=rows.length?rows.map((r,i)=>'<label class="delivery-choice"><input type="radio" name="fulfillment" value="'+esc(r.value)+'" '+(i===0?"checked":"")+'> <span>'+esc(r.label)+'</span></label>').join(""):'<div class="error">Este LOCAL no tiene una forma de entrega habilitada.</div>';
+ $("fulfillment").innerHTML=rows.length?rows.map((r,i)=>'<label class="delivery-choice"><input type="radio" name="fulfillment" value="'+esc(r.value)+'" '+(i===0?"checked":"")+'> <span>'+esc(r.label)+'</span></label>').join(""):'<div class="error">Este LOCAL no tiene una forma de entrega directa habilitada.</div>';
  $("fulfillment").querySelectorAll("input").forEach(x=>x.onchange=()=>{syncAddress();syncCheckoutAction();});
  syncAddress();syncCheckoutAction();
 }
 function syncAddress(){const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"";$("addressBox").classList.toggle("hidden",v==="PICKUP"||!v)}
 function syncCheckoutAction(){
- const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"";
- const viaDelivery=v.startsWith("HTP:");
- $("sendBtn").textContent=viaDelivery?"Continuar con DELIVERY HTPWEB":"Registrar pedido y abrir WhatsApp";
+ $("sendBtn").textContent="Registrar pedido y abrir WhatsApp";
 }
 function buildMessage(orderId=null){
  const name=$("name").value.trim(),delivery=document.querySelector('input[name="fulfillment"]:checked');
@@ -145,7 +169,7 @@ function buildMessage(orderId=null){
  lines.push("","Subtotal: "+money(subtotal()));
  if(delivery.value==="PICKUP")lines.push("Entrega: Retiro en LOCAL");
  else if(delivery.value==="OWN_DELIVERY")lines.push("Entrega: Delivery propio del LOCAL");
- else{const d=deliveries.find(x=>"HTP:"+x.delivery_id===delivery.value);lines.push("DELIVERY elegido: "+(d?.name||"HTPWEB"))}
+ else lines.push("Entrega: Delivery propio del LOCAL")
  if(address)lines.push("Dirección: "+address);
  const notes=$("notes").value.trim();if(notes)lines.push("Observaciones: "+notes);
  lines.push("","Pedido enviado desde la tienda del LOCAL.");
@@ -156,14 +180,7 @@ async function send(){
   if(!items.length)throw new Error("El carrito está vacío.");
   await validateFreshStock();
   const fulfillment=document.querySelector('input[name="fulfillment"]:checked')?.value||"";
-  if(store.settings.order_mode==="HTPWEB_MANAGED"&&fulfillment.startsWith("HTP:")){
-    const delivery=deliveries.find(x=>"HTP:"+x.delivery_id===fulfillment);
-    if(!delivery?.slug)throw new Error("No se pudo resolver el DELIVERY seleccionado.");
-    carritoGuardar(delivery.slug,items);
-    await trackLocal("CHECKOUT_VIEW",{handoff:"HTPWEB_MANAGED",delivery_id:delivery.delivery_id});
-    location.href="carrito.html?delivery="+encodeURIComponent(delivery.slug);
-    return;
-  }
+  if(!["PICKUP","OWN_DELIVERY"].includes(fulfillment))throw new Error("Selecciona una forma de entrega directa del LOCAL.");
   const to=normalizePhone(store.local.whatsapp);if(!/^\d{8,15}$/.test(to))throw new Error("El LOCAL no tiene un WhatsApp válido.");
   const customerName=$("name").value.trim(),customerPhone=$("phone").value.trim(),address=$("address").value.trim(),notes=$("notes").value.trim();
   if(!customerName)throw new Error("Escribe tu nombre.");if(!customerPhone)throw new Error("Escribe tu WhatsApp.");
@@ -178,7 +195,20 @@ async function send(){
   await trackLocal("WHATSAPP_ORDER",{subtotal:subtotal(),fulfillment,order_id:orderId});
   window.open("https://wa.me/"+to+"?text="+encodeURIComponent(text),"_blank","noopener");
   carritoVaciar(scope());items=[];render();
-  $("message").textContent="Pedido registrado"+(orderId?" · #"+String(orderId).slice(0,8).toUpperCase():"")+". Se abrió WhatsApp para enviarlo al LOCAL.";
+  const user=await obtenerUsuarioActual();
+  $("successCard").innerHTML=
+    '<div class="success"><h2>✅ Pedido creado</h2>'+
+    (orderId?'<p><strong>ID:</strong> '+esc(orderId)+'</p>':'')+
+    '<p><strong>Total:</strong> '+money(created.data?.total??subtotal())+'</p></div>'+
+    (orderId
+      ? (user
+        ? '<a class="btn btn-primary" href="pedido-directo.html?order='+encodeURIComponent(orderId)+'">Ver y seguir mi pedido</a>'
+        : '<button class="btn btn-primary" type="button" id="followGuestOrderBtn">Ver y seguir mi pedido</button><small class="muted" style="display:block;margin-top:8px">Te llevaremos a HTPWEB para registrarte o iniciar sesión y luego volverás al seguimiento.</small>')
+      : '')+
+    '<div style="margin-top:10px"><a class="btn btn-muted" href="tienda.html?local='+encodeURIComponent(key)+'&src='+encodeURIComponent(source)+'">Volver a comprar</a></div>';
+  $("successCard").classList.remove("hidden");
+  if(!user&&orderId)$("followGuestOrderBtn").onclick=()=>followDirectOrder(orderId,customerPhone);
+  $("message").textContent="Pedido registrado"+(orderId?" · #"+String(orderId).slice(0,8).toUpperCase():"")+". WhatsApp se abrió para enviarlo al LOCAL.";
   $("message").className="success";
  }catch(e){$("message").textContent=e.message;$("message").className="error"}
 }
@@ -187,12 +217,9 @@ async function init(){
   await renderGuestAccountEntry();
   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});if(error)throw error;if(!data)throw new Error("Tienda no disponible.");
   store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);
-  const [d,inv]=await Promise.all([
-    supabaseClient.rpc("public_local_delivery_choices",{p_local_id:store.local.id}),
-    supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id})
-  ]);
-  if(d.error)throw d.error;if(inv.error)throw inv.error;
-  deliveries=Array.isArray(d.data)?d.data:[];inventory=Array.isArray(inv.data)?inv.data:[];
+  const inv=await supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id});
+  if(inv.error)throw inv.error;
+  deliveries=[];inventory=Array.isArray(inv.data)?inv.data:[];
   $("backBtn").onclick=()=>{
     const next=new URL("tienda.html",location.href);next.searchParams.set("local",key);
     if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
