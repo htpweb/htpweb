@@ -75,11 +75,28 @@ function _htpwebAuthPageName() {
 }
 
 function _htpwebAuthHeaderAllowed() {
-  const excluded = new Set(["acceso.html","index.html","local.html","tienda.html","local-pedido.html","repartidor-rapido.html"]);
+  // El encabezado corporativo HTPWEB solo pertenece al entorno HTPWEB.
+  // Nunca debe superponerse sobre sitios/carritos/pedidos públicos de LOCAL o DELIVERY.
+  const excluded = new Set([
+    "acceso.html",
+    "index.html",
+    "local.html",
+    "local-general.html",
+    "local-pedido.html",
+    "tienda.html",
+    "tienda-carrito.html",
+    "carrito.html",
+    "carrito-general.html",
+    "pedido-directo.html",
+    "pedidos.html",
+    "repartidor-rapido.html"
+  ]);
   return !excluded.has(_htpwebAuthPageName());
 }
 
 function _htpwebCompactProfilePage(){
+  // En sitios públicos se permite únicamente el control compacto "Mi cuenta"
+  // dentro de la cabecera propia del LOCAL/DELIVERY; no la cabecera HTPWEB.
   return new Set(["index.html","local.html","tienda.html"]).has(_htpwebAuthPageName());
 }
 
