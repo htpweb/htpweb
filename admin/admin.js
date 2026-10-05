@@ -6917,7 +6917,12 @@ function clearProductForm() {
   $("productId").value = "";
   $("productName").value = "";
   $("productDescription").value = "";
+  $("productShortDescription").value = "";
   $("productPrice").value = "";
+  $("productComparePrice").value = "";
+  $("productBadgeType").value = "NONE";
+  $("productBadgeText").value = "";
+  $("productFeatured").value = "false";
   $("productCategory").value = "";
   $("productOrder").value = "0";
   $("productActive").value = "true";
@@ -7024,7 +7029,15 @@ function renderCatalogProducts() {
                 ${product.description ? `<div class="muted">${esc(product.description)}</div>` : ""}
               </td>
               <td>${esc(catalogCategoryName(product.category_id))}</td>
-              <td>$${Number(product.price || 0).toFixed(2)}</td>
+              <td>
+                <strong>$${Number(product.price || 0).toFixed(2)}</strong>
+                ${product.compare_price!=null&&Number(product.compare_price)>Number(product.price||0)
+                  ? `<div class="muted" style="text-decoration:line-through">$${Number(product.compare_price).toFixed(2)}</div>`
+                  : ""}
+                ${product.badge_type&&product.badge_type!=="NONE"
+                  ? `<div><span class="badge">${esc(product.badge_text||({OFFER:"Oferta",PROMO:"Promo",NEW:"Nuevo"}[product.badge_type]||product.badge_type))}</span></div>`
+                  : ""}
+              </td>
               <td>${esc(product.display_order ?? 0)}</td>
               <td>${product.active ? "Activo" : "Inactivo"}</td>
               <td>
@@ -7122,7 +7135,7 @@ async function loadCatalog() {
 
     supabaseClient
       .from("products")
-      .select("id,local_id,category_id,name,sku,description,price,image_url,display_order,active")
+      .select("id,local_id,category_id,name,sku,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,active")
       .eq("local_id", localId)
       .order("display_order")
       .order("name")
@@ -7236,7 +7249,12 @@ function editProduct(productId) {
   $("productId").value = product.id;
   $("productName").value = product.name || "";
   $("productDescription").value = product.description || "";
+  $("productShortDescription").value = product.short_description || "";
   $("productPrice").value = product.price ?? "";
+  $("productComparePrice").value = product.compare_price ?? "";
+  $("productBadgeType").value = product.badge_type || "NONE";
+  $("productBadgeText").value = product.badge_text || "";
+  $("productFeatured").value = String(!!product.featured);
   $("productCategory").value = product.category_id || "";
   $("productOrder").value = product.display_order ?? 0;
   $("productActive").value = String(product.active);
@@ -7254,6 +7272,7 @@ async function saveProduct() {
     const productId = $("productId").value || null;
     const name = $("productName").value.trim();
     const priceRaw = $("productPrice").value.trim();
+    const comparePriceRaw = $("productComparePrice").value.trim();
     const orderRaw = $("productOrder").value.trim();
     const imageFile = $("catalogProductImageFile")?.files?.[0] || null;
 
@@ -7262,10 +7281,14 @@ async function saveProduct() {
     if (priceRaw === "") throw new Error("Escribe el precio del producto.");
 
     const price = Number(priceRaw);
+    const comparePrice = comparePriceRaw === "" ? null : Number(comparePriceRaw);
     const displayOrder = orderRaw === "" ? 0 : Number(orderRaw);
 
     if (!Number.isFinite(price) || price < 0) {
       throw new Error("El precio debe ser igual o mayor que 0.");
+    }
+    if (comparePrice !== null && (!Number.isFinite(comparePrice) || comparePrice <= price)) {
+      throw new Error("El precio anterior debe ser mayor que el precio actual para mostrarse tachado.");
     }
 
     if (!Number.isInteger(displayOrder) || displayOrder < 0) {
@@ -7300,8 +7323,19 @@ async function saveProduct() {
       savedId = lookup.data?.[0]?.id || null;
     }
 
+    if (!savedId) throw new Error("El producto se guardó, pero no se pudo identificar para completar su presentación.");
+
+    await rpc("save_local_product_presentation", {
+      p_local_id: localId,
+      p_product_id: savedId,
+      p_compare_price: comparePrice,
+      p_short_description: $("productShortDescription").value.trim() || null,
+      p_badge_type: $("productBadgeType").value || "NONE",
+      p_badge_text: $("productBadgeText").value.trim() || null,
+      p_featured: $("productFeatured").value === "true"
+    });
+
     if (imageFile) {
-      if (!savedId) throw new Error("El producto se guardó, pero no se pudo identificar para subir su imagen.");
       const productForImage = {
         id: savedId,
         local_id: localId,
