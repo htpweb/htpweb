@@ -6,8 +6,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
+<script src="../config/addresses.js"></script>
 <script src="../config/cart.js"></script>
-<link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="../assets/app.css?v=20261005-localcart1">
 <style>
 :root{--local-accent:#111827;--local-radius:18px}
 body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
@@ -16,12 +19,20 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 .cart-row img{width:72px;height:72px;object-fit:cover;border-radius:12px;background:#eef2f7}.qty{display:flex;align-items:center;gap:8px}.qty button{width:34px;height:34px}
 .total{font-size:1.35rem;font-weight:800}.primary{background:var(--local-accent)!important;color:#fff!important;border:0!important}
 .delivery-choice{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #e5e7eb;border-radius:12px;margin:8px 0}.delivery-choice input{width:auto;margin-top:3px}
-@media(max-width:560px){.shell{padding:10px}.cart-row{grid-template-columns:54px 1fr}.cart-row img{width:54px;height:54px}.cart-row>div:last-child{grid-column:2}}
+.local-store-header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.97);border-bottom:1px solid #e5e7eb;box-shadow:0 3px 18px rgba(15,23,42,.04)}
+.local-store-header-inner{max-width:1180px;height:82px;margin:auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-sizing:border-box}.local-brand{display:flex;gap:12px;align-items:center;min-width:0}.local-brand img{width:58px;height:58px;border-radius:10px;object-fit:cover;border:1px solid #e5e7eb;background:#fff}.local-brand strong{display:block;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.local-brand small{display:block;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}.local-cart-nav{display:flex;gap:14px;align-items:center}.local-cart-nav a{color:#111827;text-decoration:none;font-weight:800;font-size:.86rem}.local-cart-nav a:hover{color:var(--local-accent)}
+#map{height:320px;border-radius:14px;margin:10px 0;border:1px solid #dbe2ea;overflow:hidden}.address-actions{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.invoice-box{margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb}.save-address-panel{padding:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;margin:12px 0}
+@media(max-width:700px){.local-store-header-inner{height:auto;min-height:72px;padding:10px 12px}.local-brand img{width:48px;height:48px}.local-cart-nav a:not(.keep-mobile){display:none}}
+@media(max-width:560px){.shell{padding:10px}.cart-row{grid-template-columns:54px 1fr}.cart-row img{width:54px;height:54px}.cart-row>div:last-child{grid-column:2}#map{height:270px}}
 </style>
 </head>
 <body>
+<header class="local-store-header"><div class="local-store-header-inner">
+  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName">LOCAL</strong><small>Sitio oficial · by HTPWEB</small></div></div>
+  <nav class="local-cart-nav"><a id="homeLink" href="#">Inicio</a><a id="aboutLink" href="#">Quiénes somos</a><a id="servicesLink" href="#">Nuestros servicios</a><a id="shopLink" href="#">Tienda virtual</a><a id="projectsLink" href="#">Proyectos</a><a id="blogLink" href="#">Blog</a><a id="contactLink" href="#">Contacto</a><a id="backBtn" class="keep-mobile" href="#">← Seguir comprando</a></nav>
+</div></header>
 <main class="shell">
-<div class="top"><div><h1 id="title" style="margin:0">Mi carrito</h1></div><button id="backBtn">← Seguir comprando</button></div>
+<div class="top"><div><h1 id="title" style="margin:0">Mi carrito</h1></div></div>
 <div id="message" class="hidden"></div>
 <section class="cardx"><div id="cart"></div><div id="summary"></div></section>
 <section id="guestAccountEntry" class="cardx hidden" style="background:#f8fafc">
@@ -36,9 +47,20 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 <h2>Finalizar pedido</h2>
 <div class="form-grid"><div><label>Nombre *</label><input id="name" autocomplete="name"></div><div><label>WhatsApp *</label><input id="phone" type="tel" autocomplete="tel"></div></div>
 <label>Forma de entrega</label><div id="fulfillment"></div>
-<div id="addressBox" class="hidden"><label>Dirección de entrega *</label><input id="address" placeholder="Calle, sector, referencia"></div>
+<div id="addressBox" class="hidden">
+  <div id="savedAddressBox" class="hidden"><label>Direcciones guardadas</label><select id="savedAddressSelect"><option value="">Nueva dirección</option></select></div>
+  <h3>Ubicación de entrega</h3>
+  <button class="btn btn-muted" id="geoBtn" type="button">📍 Usar mi ubicación</button>
+  <div id="map"></div>
+  <small class="muted" id="locationInfo">Selecciona un punto en el mapa y confírmalo.</small>
+  <div class="address-actions"><button class="btn btn-success hidden" id="acceptLocation" type="button">Aceptar ubicación</button></div>
+  <label>Dirección de entrega *</label><input id="address" placeholder="Calle, número, sector">
+  <label>Referencia</label><input id="reference" placeholder="Casa, edificio, punto de referencia">
+  <div id="saveAddressPanel" class="save-address-panel hidden"><label>Nombre de esta dirección</label><input id="addressLabel" placeholder="Ej. Casa, Trabajo"><label class="row"><input id="addressDefault" type="checkbox" style="width:auto"> Usar como predeterminada</label><div class="address-actions"><button class="btn btn-muted" id="saveAddressBtn" type="button">Guardar dirección</button><button class="btn btn-muted hidden" id="deactivateAddressBtn" type="button">Desactivar</button></div></div>
+</div>
 <label>Observaciones</label><textarea id="notes" rows="3"></textarea>
-<button id="sendBtn" class="btn-primary primary" style="width:100%;margin-top:14px">Enviar pedido por WhatsApp</button>
+<div class="invoice-box"><label class="row"><input id="requiresInvoice" type="checkbox" style="width:auto"> Necesito factura</label><div id="invoiceFields" class="hidden"><label>Tipo de documento</label><select id="documentType"><option value="">Seleccione</option><option value="cedula">Cédula</option><option value="ruc">RUC</option><option value="pasaporte">Pasaporte</option></select><label>Número de documento</label><input id="documentNumber"><label>Correo para factura</label><input id="invoiceEmail" type="email"></div></div>
+<button id="sendBtn" class="btn-primary primary" style="width:100%;margin-top:14px">Registrar pedido y abrir WhatsApp</button>
 <p class="muted" style="margin-top:10px">Este es el canal directo del LOCAL. El pedido se registra y se abre el WhatsApp del negocio. Los DELIVERY procesan pedidos únicamente desde sus propios canales.</p>
 </section>
 <section id="successCard" class="cardx hidden"></section>
@@ -53,6 +75,7 @@ const campaign=params.get("campaign")||"";
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
 let store=null,items=[],products=new Map(),variants=new Map(),deliveries=[],inventory=[];
+let checkoutUser=null,savedAddresses=[],map=null,marker=null,latitude=null,longitude=null,locationAccepted=false;
 const GUEST_ORDER_TRACKING_KEY="HTPWEB_GUEST_ORDER_TRACKING_V1";
 function accountAccessUrl(section){
   const target="/htpweb/app/mi-cuenta.html#"+section;
@@ -144,6 +167,20 @@ async function validateFreshStock(){
  const {data,error}=await supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id});if(error)throw error;
  const fresh=Array.isArray(data)?data:[];items.forEach(i=>assertStock(i,Number(i.quantity||0),fresh));inventory=fresh;
 }
+function localUrl(section="shop"){const u=new URL("tienda.html",location.href);u.searchParams.set("local",key);u.searchParams.set("section",section);if(source!=="direct")u.searchParams.set("src",source);if(campaign)u.searchParams.set("campaign",campaign);return u.toString();}
+function applyLocalHeader(){
+ $("brandName").textContent=store.local.name||"LOCAL";
+ if(store.local.logo_url){$("brandLogo").src=store.local.logo_url;$("brandLogo").classList.remove("hidden");}
+ $("homeLink").href=localUrl("home");$("aboutLink").href=localUrl("about");$("servicesLink").href=localUrl("services");$("shopLink").href=localUrl("shop");$("projectsLink").href=localUrl("projects");$("blogLink").href=localUrl("blog");$("contactLink").href=localUrl("contact");$("backBtn").href=localUrl("shop");
+}
+function initMap(){if(map)return;map=L.map("map").setView([0.95,-79.65],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);map.on("click",e=>setLocation(e.latlng.lat,e.latlng.lng));}
+function setLocation(lat,lng){latitude=Number(lat);longitude=Number(lng);locationAccepted=false;if(marker)marker.setLatLng([latitude,longitude]);else{marker=L.marker([latitude,longitude],{draggable:true}).addTo(map);marker.on("dragend",e=>{const p=e.target.getLatLng();setLocation(p.lat,p.lng)});}map.setView([latitude,longitude],17);$("locationInfo").textContent=`Ubicación seleccionada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;$("acceptLocation").classList.remove("hidden");}
+async function loadSavedAddresses(){
+ if(!checkoutUser)return;savedAddresses=await listarMisDireccionesCliente({soloActivas:true});$("savedAddressBox").classList.remove("hidden");$("saveAddressPanel").classList.remove("hidden");
+ $("savedAddressSelect").innerHTML='<option value="">Nueva dirección</option>'+savedAddresses.map(a=>`<option value="${a.id}">${esc(a.label)}${a.is_default?" — predeterminada":""}</option>`).join("");const d=savedAddresses.find(a=>a.is_default);if(d){$("savedAddressSelect").value=d.id;applySavedAddress(d.id);}
+}
+function applySavedAddress(id){const a=savedAddresses.find(x=>x.id===id);if(!a)return;$("address").value=a.address||"";$("reference").value=a.reference||"";$("addressLabel").value=a.label||"";$("addressDefault").checked=!!a.is_default;$("deactivateAddressBtn").classList.remove("hidden");if(a.latitude!==null&&a.longitude!==null){initMap();setLocation(Number(a.latitude),Number(a.longitude));locationAccepted=true;$("locationInfo").textContent=`✓ Dirección guardada: ${Number(a.latitude).toFixed(6)}, ${Number(a.longitude).toFixed(6)}`;$("acceptLocation").classList.add("hidden");}}
+async function saveCurrentAddress(){try{if(!checkoutUser){location.href=accountAccessUrl("addresses");return;}const label=$("addressLabel").value.trim(),address=$("address").value.trim();if(!label)throw new Error("Escribe un nombre para la dirección.");if(!address)throw new Error("Escribe la dirección.");if(!locationAccepted||latitude===null||longitude===null)throw new Error("Selecciona y acepta la ubicación.");await asegurarCustomerActual({name:$("name").value.trim(),phone:$("phone").value.trim(),email:checkoutUser.email||""});const current=savedAddresses.find(a=>a.id===$("savedAddressSelect").value)||null;await guardarMiDireccionCliente({id:current?.id||null,label,address,reference:$("reference").value.trim()||null,latitude,longitude,isDefault:$("addressDefault").checked,active:true});await loadSavedAddresses();$("message").textContent="Dirección guardada.";$("message").className="success";}catch(e){$("message").textContent=e.message;$("message").className="error";}}
 function renderFulfillment(){
  const s=store.settings,rows=[];
  if(s.pickup_enabled)rows.push({value:"PICKUP",label:"Retirar en "+store.local.name});
@@ -152,7 +189,7 @@ function renderFulfillment(){
  $("fulfillment").querySelectorAll("input").forEach(x=>x.onchange=()=>{syncAddress();syncCheckoutAction();});
  syncAddress();syncCheckoutAction();
 }
-function syncAddress(){const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"";$("addressBox").classList.toggle("hidden",v==="PICKUP"||!v)}
+function syncAddress(){const v=document.querySelector('input[name="fulfillment"]:checked')?.value||"",show=v==="OWN_DELIVERY";$("addressBox").classList.toggle("hidden",!show);if(show){initMap();setTimeout(()=>map?.invalidateSize(),80);}}
 function syncCheckoutAction(){
  $("sendBtn").textContent="Registrar pedido y abrir WhatsApp";
 }
@@ -171,10 +208,18 @@ function buildMessage(orderId=null){
  else if(delivery.value==="OWN_DELIVERY")lines.push("Entrega: Delivery propio del LOCAL");
  else lines.push("Entrega: Delivery propio del LOCAL")
  if(address)lines.push("Dirección: "+address);
+ const reference=$("reference").value.trim();if(reference)lines.push("Referencia: "+reference);
+ if(delivery.value==="OWN_DELIVERY"&&latitude!==null&&longitude!==null)lines.push("Ubicación: https://maps.google.com/?q="+latitude+","+longitude);
+ if($("requiresInvoice").checked){lines.push("","Factura: Sí","Documento: "+$("documentType").value+" "+$("documentNumber").value.trim(),"Correo: "+$("invoiceEmail").value.trim());}
  const notes=$("notes").value.trim();if(notes)lines.push("Observaciones: "+notes);
  lines.push("","Pedido enviado desde la tienda del LOCAL.");
  return lines.join("\n");
 }
+$("savedAddressSelect").onchange=()=>{const id=$("savedAddressSelect").value;if(id)applySavedAddress(id);else{$("deactivateAddressBtn").classList.add("hidden");$("addressLabel").value="";$("addressDefault").checked=false;}};
+$("saveAddressBtn").onclick=saveCurrentAddress;
+$("geoBtn").onclick=()=>{if(!navigator.geolocation)return void($("message").textContent="Tu navegador no permite geolocalización.");navigator.geolocation.getCurrentPosition(p=>setLocation(p.coords.latitude,p.coords.longitude),()=>{$("message").textContent="No fue posible obtener tu ubicación. Márcala en el mapa.";$("message").className="error";},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};
+$("acceptLocation").onclick=async()=>{if(latitude===null||longitude===null)return;locationAccepted=true;$("locationInfo").textContent=`✓ Ubicación aceptada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;$("acceptLocation").classList.add("hidden");try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1`,{headers:{Accept:"application/json"}});if(r.ok){const d=await r.json();if(d.display_name&&!$("address").value.trim())$("address").value=d.display_name;}}catch{}};
+$("requiresInvoice").onchange=()=>$("invoiceFields").classList.toggle("hidden",!$("requiresInvoice").checked);
 async function send(){
  try{
   if(!items.length)throw new Error("El carrito está vacío.");
@@ -184,10 +229,15 @@ async function send(){
   const to=normalizePhone(store.local.whatsapp);if(!/^\d{8,15}$/.test(to))throw new Error("El LOCAL no tiene un WhatsApp válido.");
   const customerName=$("name").value.trim(),customerPhone=$("phone").value.trim(),address=$("address").value.trim(),notes=$("notes").value.trim();
   if(!customerName)throw new Error("Escribe tu nombre.");if(!customerPhone)throw new Error("Escribe tu WhatsApp.");
+  if(fulfillment==="OWN_DELIVERY"){if(!address)throw new Error("Escribe la dirección de entrega.");if(!locationAccepted||latitude===null||longitude===null)throw new Error("Selecciona y acepta la ubicación en el mapa.");}
+  const requiresInvoice=$("requiresInvoice").checked,documentType=$("documentType").value.trim(),documentNumber=$("documentNumber").value.trim(),invoiceEmail=$("invoiceEmail").value.trim();
+  if(requiresInvoice&&(!documentType||!documentNumber||!invoiceEmail))throw new Error("Completa los datos de facturación.");
   const directItems=items.map(i=>({product_id:i.product_id||null,variant_id:i.variant_id||null,promotion_id:i.promotion_id||null,quantity:Number(i.quantity||0)}));
   const created=await supabaseClient.rpc("create_direct_local_order",{
     p_local_id:store.local.id,p_customer_name:customerName,p_customer_phone:customerPhone,
-    p_address:address||null,p_notes:notes||null,p_fulfillment:fulfillment,p_items:directItems
+    p_address:address||null,p_reference:$("reference").value.trim()||null,p_latitude:fulfillment==="OWN_DELIVERY"?latitude:null,p_longitude:fulfillment==="OWN_DELIVERY"?longitude:null,
+    p_requires_invoice:requiresInvoice,p_document_type:requiresInvoice?documentType:null,p_document_number:requiresInvoice?documentNumber:null,p_invoice_email:requiresInvoice?invoiceEmail:null,
+    p_notes:notes||null,p_fulfillment:fulfillment,p_items:directItems
   });
   if(created.error)throw created.error;
   const orderId=created.data?.order_id||null;
@@ -214,9 +264,10 @@ async function send(){
 }
 async function init(){
  try{
-  await renderGuestAccountEntry();
+  checkoutUser=await renderGuestAccountEntry();
   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});if(error)throw error;if(!data)throw new Error("Tienda no disponible.");
-  store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);
+  store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);applyLocalHeader();
+  if(checkoutUser){$("saveAddressPanel").classList.remove("hidden");$("invoiceEmail").value=checkoutUser.email||"";}
   const inv=await supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id});
   if(inv.error)throw inv.error;
   deliveries=[];inventory=Array.isArray(inv.data)?inv.data:[];
@@ -227,6 +278,7 @@ async function init(){
   };
   $("sendBtn").onclick=send;
   await loadCart();renderFulfillment();
+  if(checkoutUser)await loadSavedAddresses();
   if(items.length)trackLocal("CHECKOUT_VIEW",{items:items.length});
  }catch(e){$("message").textContent=e.message||"No se pudo abrir el carrito.";$("message").className="error"}
 }
