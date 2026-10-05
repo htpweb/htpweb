@@ -21,9 +21,17 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 </head>
 <body>
 <main class="shell">
-<div class="top"><div><h1 id="title" style="margin:0">Mi carrito</h1><small>Plataforma de HTPWEB</small></div><button id="backBtn">← Seguir comprando</button></div>
+<div class="top"><div><h1 id="title" style="margin:0">Mi carrito</h1></div><button id="backBtn">← Seguir comprando</button></div>
 <div id="message" class="hidden"></div>
 <section class="cardx"><div id="cart"></div><div id="summary"></div></section>
+<section id="guestAccountEntry" class="cardx hidden" style="background:#f8fafc">
+  <strong style="display:block;margin-bottom:5px">¿Quieres guardar tus datos para próximas compras?</strong>
+  <p class="muted" style="margin:0 0 12px">Puedes guardar direcciones y consultar tus pedidos cuando quieras.</p>
+  <div class="row" style="gap:8px;flex-wrap:wrap">
+    <a id="guestSaveAddressLink" class="btn btn-muted" href="#">Guardar dirección</a>
+    <a id="guestOrdersLink" class="btn btn-muted" href="#">Consultar pedidos</a>
+  </div>
+</section>
 <section id="checkout" class="cardx hidden">
 <h2>Finalizar pedido</h2>
 <div class="form-grid"><div><label>Nombre *</label><input id="name" autocomplete="name"></div><div><label>WhatsApp *</label><input id="phone" type="tel" autocomplete="tel"></div></div>
@@ -31,7 +39,7 @@ body{background:#f6f7f9}.shell{max-width:860px;margin:auto;padding:18px}.top{dis
 <div id="addressBox" class="hidden"><label>Dirección de entrega *</label><input id="address" placeholder="Calle, sector, referencia"></div>
 <label>Observaciones</label><textarea id="notes" rows="3"></textarea>
 <button id="sendBtn" class="btn-primary primary" style="width:100%;margin-top:14px">Enviar pedido por WhatsApp</button>
-<p class="muted" style="margin-top:10px">Si compras directo, HTPWEB registra el pedido y abre el WhatsApp del LOCAL. Si eliges un DELIVERY HTPWEB, continúas por el flujo del DELIVERY.</p>
+<p class="muted" style="margin-top:10px">Si compras directo, el pedido se registra y se abre el WhatsApp del LOCAL. Si eliges un DELIVERY, continuarás por su flujo de entrega.</p>
 </section>
 </main>
 <script>
@@ -140,7 +148,7 @@ function buildMessage(orderId=null){
  else{const d=deliveries.find(x=>"HTP:"+x.delivery_id===delivery.value);lines.push("DELIVERY elegido: "+(d?.name||"HTPWEB"))}
  if(address)lines.push("Dirección: "+address);
  const notes=$("notes").value.trim();if(notes)lines.push("Observaciones: "+notes);
- lines.push("","Pedido enviado desde HTPWEB Local.");
+ lines.push("","Pedido enviado desde la tienda del LOCAL.");
  return lines.join("\n");
 }
 async function send(){
@@ -170,12 +178,13 @@ async function send(){
   await trackLocal("WHATSAPP_ORDER",{subtotal:subtotal(),fulfillment,order_id:orderId});
   window.open("https://wa.me/"+to+"?text="+encodeURIComponent(text),"_blank","noopener");
   carritoVaciar(scope());items=[];render();
-  $("message").textContent="Pedido registrado en HTPWEB"+(orderId?" · #"+String(orderId).slice(0,8).toUpperCase():"")+". Se abrió WhatsApp para enviarlo al LOCAL.";
+  $("message").textContent="Pedido registrado"+(orderId?" · #"+String(orderId).slice(0,8).toUpperCase():"")+". Se abrió WhatsApp para enviarlo al LOCAL.";
   $("message").className="success";
  }catch(e){$("message").textContent=e.message;$("message").className="error"}
 }
 async function init(){
  try{
+  await renderGuestAccountEntry();
   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});if(error)throw error;if(!data)throw new Error("Tienda no disponible.");
   store=data;if(store.settings.accent_color)document.documentElement.style.setProperty("--local-accent",store.settings.accent_color);
   const [d,inv]=await Promise.all([
