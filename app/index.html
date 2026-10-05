@@ -89,7 +89,7 @@ let availabilityByLocal = new Map();
 let categoryId = "";
 function businessRegistrationUrl(){
   const next="/htpweb/app/crear-local.html";
-  return "/htpweb/app/acceso.html?return="+encodeURIComponent(next);
+  return "/htpweb/app/acceso.html?mode=register&return="+encodeURIComponent(next);
 }
 
 async function init() {
