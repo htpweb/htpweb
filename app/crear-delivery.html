@@ -24,7 +24,7 @@
 
 <section class="card" style="margin-top:16px">
 <div class="step"><span class="step-num">1</span><div><h2 style="margin:0">Datos del DELIVERY</h2><div class="muted">Información básica para crear tu espacio.</div></div></div>
-<div class="grid"><div><label>Nombre del DELIVERY *</label><input id="name" placeholder="Ej. Sobre Ruedas"></div><div><label>WhatsApp *</label><input id="whatsapp" type="tel" placeholder="0999999999"></div></div>
+<div class="grid"><div><label>Nombre del DELIVERY *</label><input id="name" placeholder="Ej. Sobre Ruedas"><div id="deliveryPathState" class="muted" style="margin-top:6px;font-size:.82rem"></div></div><div><label>WhatsApp *</label><input id="whatsapp" type="tel" placeholder="0999999999"></div></div>
 <div class="grid" style="margin-top:12px"><div><label>Teléfono</label><input id="phone" type="tel"></div><div><label>Descripción</label><input id="description" placeholder="Describe brevemente tu servicio"></div></div>
 </section>
 
@@ -48,9 +48,27 @@
 </main>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-let zones=[],selectedZoneId=null,map=null,layers=new Map();
+let zones=[],selectedZoneId=null,map=null,layers=new Map(),pathTimer=null;
 function msg(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error";$("message").scrollIntoView({behavior:"smooth",block:"center"})}
 function selectedZone(){return zones.find(z=>z.id===selectedZoneId)||null}
+function schedulePathCheck(){
+ clearTimeout(pathTimer);
+ const name=$("name").value.trim();
+ if(!name){$("deliveryPathState").textContent="";return}
+ $("deliveryPathState").textContent="Comprobando dirección pública…";
+ pathTimer=setTimeout(checkPath,320);
+}
+async function checkPath(){
+ const name=$("name").value.trim();
+ if(!name)return null;
+ const {data,error}=await supabaseClient.rpc("check_public_path_availability",{p_name:name,p_entity:"DELIVERY"});
+ if(error){$("deliveryPathState").textContent="No se pudo validar la dirección pública.";return null}
+ $("deliveryPathState").innerHTML=data?.available
+   ? '✓ Dirección disponible: <strong>'+esc(data.url||"")+'</strong>'
+   : '⚠ '+esc(data?.message||"Esta dirección no está disponible.");
+ $("deliveryPathState").style.color=data?.available?"#067647":"#b42318";
+ return data;
+}
 function normalizeBoundary(boundary){if(!Array.isArray(boundary))return[];return boundary.map(p=>Array.isArray(p)&&p.length>=2?[Number(p[0]),Number(p[1])]:null).filter(Boolean)}
 function selectZone(id){
  selectedZoneId=id;const z=selectedZone();
@@ -78,6 +96,8 @@ async function submit(){
  try{
   const name=$("name").value.trim(),whatsapp=$("whatsapp").value.trim();
   if(!name)throw new Error("Escribe el nombre del DELIVERY.");
+  const pathCheck=await checkPath();
+  if(!pathCheck?.available)throw new Error(pathCheck?.message||"La dirección pública no está disponible.");
   if(!whatsapp)throw new Error("Escribe el WhatsApp operativo.");
   if(!selectedZoneId)throw new Error("Selecciona una zona de operación.");
   $("submitBtn").disabled=true;$("submitBtn").textContent="Creando DELIVERY…";
@@ -87,6 +107,6 @@ async function submit(){
   msg("DELIVERY creado. Abriendo tu panel…");setTimeout(()=>location.href="../admin/index.html",500);
  }catch(e){msg(e.message||"No se pudo crear el DELIVERY.","error");$("submitBtn").disabled=false;$("submitBtn").textContent="Crear mi DELIVERY"}
 }
-async function init(){const user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-delivery.html");return}await loadZones();$("submitBtn").onclick=submit}
+async function init(){const user=await obtenerUsuarioActual();if(!user){irAAcceso("crear-delivery.html");return}await loadZones();$("name").addEventListener("input",schedulePathCheck);$("submitBtn").onclick=submit}
 init().catch(e=>msg(e.message||"No se pudo abrir el formulario.","error"));
 </script></body></html>
