@@ -342,3 +342,22 @@ test("account theme never recolors authenticated HTPWEB header",()=>{
   assert.match(css,/html\[data-delivery-theme\] body>header:not\(\.htp-auth-header\):not\(\.top\)/);
   assert.doesNotMatch(css,/html\[data-delivery-theme\] header,/);
 });
+
+
+test("LOCAL cart is direct-only and keeps HTPWEB account/tracking actions",()=>{
+  const cart=read("app/tienda-carrito.html");
+  const detail=read("app/pedido-directo.html");
+  assert.match(cart,/function renderGuestAccountEntry/);
+  assert.match(cart,/Guardar dirección/);
+  assert.match(cart,/Mis pedidos/);
+  assert.match(cart,/Los DELIVERY procesan pedidos únicamente desde sus propios canales/);
+  assert.doesNotMatch(cart,/rows\.push\(\{value:"HTP:/);
+  assert.doesNotMatch(cart,/Continuar con DELIVERY HTPWEB/);
+  assert.match(cart,/Ver y seguir mi pedido/);
+  assert.match(cart,/followDirectOrder/);
+  assert.match(detail,/claim_my_guest_order/);
+});
+
+test("LOCAL cart inline script compiles",()=>{
+  for(const script of scripts("app/tienda-carrito.html")) new vm.Script(script,{filename:"app/tienda-carrito.html"});
+});
