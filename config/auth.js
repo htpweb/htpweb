@@ -74,9 +74,21 @@ function _htpwebAuthPageName() {
   return (location.pathname.split("/").pop() || "").toLowerCase();
 }
 
+function _htpwebIsBrandedPublicShell() {
+  // Las URLs limpias de LOCAL terminan en /slug/ y no tienen nombre de archivo.
+  // Detectamos el shell por marcadores del DOM para impedir que auth.js
+  // inyecte la cabecera corporativa HTPWEB sobre la marca del LOCAL/DELIVERY.
+  if (document.documentElement?.dataset?.localSlug) return true;
+  if (document.body?.classList?.contains("local-store")) return true;
+  return Boolean(document.querySelector(
+    ".delivery-brand-shell,.delivery-brand-strip,.delivery-public-header,.local-store-header"
+  ));
+}
+
 function _htpwebAuthHeaderAllowed() {
   // El encabezado corporativo HTPWEB solo pertenece al entorno HTPWEB.
   // Nunca debe superponerse sobre sitios/carritos/pedidos públicos de LOCAL o DELIVERY.
+  if (_htpwebIsBrandedPublicShell()) return false;
   const excluded = new Set([
     "acceso.html",
     "index.html",
