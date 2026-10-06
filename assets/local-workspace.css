@@ -144,3 +144,7 @@
 .eng-architecture.family-HARDWARE .arch-cta,.eng-architecture.family-HARDWARE .arch-outline,.eng-architecture.family-HARDWARE .arch-trust,.eng-architecture.family-HARDWARE article{border-radius:2px}.eng-architecture.family-HARDWARE .arch-bold-mark{background:#f97316}.eng-architecture.family-HARDWARE .arch-tech-grid{background:#dbe2e8}
 .eng-architecture.family-SERVICES .arch-photo-hero h2,.eng-architecture.family-SERVICES .arch-split-left h2{max-width:12ch}.eng-architecture.family-SERVICES .arch-side-nav{background:#102a56}.eng-architecture.family-SERVICES .arch-trust{box-shadow:0 16px 36px #1d4ed820}
 .eng-architecture.family-BEAUTY{background:#fff8fc}.eng-architecture.family-BEAUTY .arch-photo-hero h2,.eng-architecture.family-BEAUTY .arch-ed-intro h2,.eng-architecture.family-BEAUTY .arch-luxe-hero h2{font-family:Georgia,serif;font-weight:400}.eng-architecture.family-BEAUTY .arch-cta{border-radius:999px}.eng-architecture.family-BEAUTY .arch-trust{border-radius:24px}.eng-architecture.family-BEAUTY .arch-side-nav{background:#3b164c}
+
+/* Preview media cards */
+.eng-architecture .arch-photo-card{background-size:cover!important;background-position:center!important;color:#fff!important;min-height:120px;display:flex!important;flex-direction:column;justify-content:flex-end!important;text-shadow:0 1px 10px #0008}
+.eng-architecture .arch-photo-card small{color:#fff!important;opacity:.82}.eng-architecture .arch-photo-card strong{color:#fff!important}

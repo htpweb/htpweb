@@ -2834,16 +2834,34 @@ function storefrontFamilyProfile(family){
   return profiles[family]||profiles.GENERAL;
 }
 
+function storefrontPreviewMedia(family){
+  const media={
+    FOOD:{hero:"https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80"]},
+    PROFESSIONAL:{hero:"https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80"]},
+    BOOKS:{hero:"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1496104679561-38d3af73f9b0?auto=format&fit=crop&w=900&q=80"]},
+    BEAUTY:{hero:"https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=80"]},
+    HEALTH:{hero:"https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=900&q=80"]},
+    HARDWARE:{hero:"https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1513467535987-fd81bc7d62f8?auto=format&fit=crop&w=900&q=80"]},
+    FASHION:{hero:"https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80"]},
+    FLOWERS:{hero:"https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1518882605630-8eb7c9cfadcd?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1507501336603-6e31db2be093?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=80"]},
+    SERVICES:{hero:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80"]},
+    RETAIL:{hero:"https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1580915411954-282cb1b0d780?auto=format&fit=crop&w=900&q=80"]},
+    GENERAL:{hero:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80"]}
+  };
+  return media[family]||media.GENERAL;
+}
+
 function professionalStorefrontPreviewMarkup(ctx){
   const {design,family="GENERAL",primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
   const profile=storefrontFamilyProfile(family);
+  const media=storefrontPreviewMedia(family);
   const name=esc(state.localProfileRecord?.name||"LOCAL");
   const aboutText=esc($("localAboutText")?.value.trim()||"Una propuesta profesional, clara y confiable, pensada para mostrar lo mejor del negocio y facilitar el contacto con sus clientes.");
-  const img=bannerCss?('url('+bannerCss+')'):'linear-gradient(135deg,'+esc(primary)+','+esc(secondary)+')';
+  const img=bannerCss?('url('+bannerCss+')'):('url('+media.hero+')');
   const navHtml=nav.map(x=>'<span>'+esc(x)+'</span>').join("");
   const services=profile.services;
   const svc=services.map((s,i)=>'<article><b>0'+(i+1)+'</b><strong>'+esc(s)+'</strong><i></i></article>').join("");
-  const projectCards=profile.projects.map((p,i)=>'<article><small>'+esc(["Destacado","Experiencia","Novedad"][i]||"Selección")+'</small><strong>'+esc(p)+'</strong></article>').join("");
+  const projectCards=profile.projects.map((p,i)=>'<article class="arch-photo-card" style="background-image:linear-gradient(0deg,rgba(6,12,20,.82),rgba(6,12,20,.08)),url('+esc(media.projects[i%media.projects.length])+')"><small>'+esc(["Destacado","Experiencia","Novedad"][i]||"Selección")+'</small><strong>'+esc(p)+'</strong></article>').join("");
   const stats='<div><strong>18+</strong><span>Años</span></div><div><strong>240</strong><span>Proyectos</span></div><div><strong>12</strong><span>Disciplinas</span></div><div><strong>96%</strong><span>Clientes</span></div>';
   const head='<strong>'+name+'</strong><nav>'+navHtml+'</nav>';
   const cta='<span class="arch-cta">Solicitar propuesta</span>';
