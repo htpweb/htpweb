@@ -1,0 +1,325 @@
+/*
+ * HTPWEB PUBLIC STOREFRONT SHELL
+ * Structural invariants only. Visual personality lives in storefront-design-systems.css.
+ * Loaded AFTER the design-system stylesheet.
+ */
+html,body.local-store{width:100%;max-width:100%;overflow-x:hidden}
+body.local-store *,body.local-store *::before,body.local-store *::after{box-sizing:border-box}
+
+/* Media never stretch or collapse */
+body.local-store img{max-width:100%}
+body.local-store .local-brand img{
+  width:58px;
+  height:58px;
+  object-fit:contain!important;
+  object-position:center!important;
+  flex:none;
+}
+body.local-store .local-hero>img{
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}
+body.local-store .local-project-card img,
+body.local-store .local-blog-card img,
+body.local-store .catalog-product-media>img,
+body.local-store .product-card img{
+  width:100%!important;
+  object-position:center!important;
+}
+body.local-store .local-project-card img,
+body.local-store .local-blog-card img{object-fit:cover!important}
+body.local-store .catalog-product-media>img,
+body.local-store .product-card img{object-fit:cover!important}
+body.design-MINIMAL .local-hero>img{object-position:right center!important}
+body.design-EDITORIAL .local-hero>img,
+body.design-MAGAZINE .local-hero>img{object-position:center center!important}
+body.design-IMMERSIVE .local-hero>img{object-position:center center!important}
+
+/* Global page shell */
+body.local-store main.local-store-shell{
+  width:100%;
+  max-width:none;
+  min-width:0;
+  margin:0;
+}
+body.local-store .local-page-section,
+body.local-store #catalogSection{
+  min-width:0;
+}
+body.local-store .local-page-card{
+  min-width:0;
+}
+body.local-store h1,
+body.local-store h2,
+body.local-store h3,
+body.local-store p{
+  writing-mode:horizontal-tb;
+}
+
+/* Header/footer geometry belongs to the selected theme, but cannot break */
+body.local-store .local-store-header,
+body.local-store .local-store-header-inner,
+body.local-store .local-site-footer,
+body.local-store .local-site-footer-inner{
+  box-sizing:border-box;
+  min-width:0;
+}
+body.local-store .local-store-header-inner{
+  width:100%;
+}
+body.local-store .local-site-footer{
+  width:100%;
+  overflow:hidden;
+}
+body.local-store .local-site-footer-inner{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1.6fr) minmax(180px,.7fr) minmax(180px,.7fr);
+  gap:36px;
+}
+body.local-store .local-site-footer-inner>*{min-width:0}
+body.local-store .local-site-footer a,
+body.local-store .local-site-footer p{
+  overflow-wrap:break-word;
+}
+body.local-store .local-site-footer-bottom{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+}
+
+/* SIGNATURE gets a complete shell too */
+body.design-SIGNATURE .local-store-header{
+  background:#fff;
+  border-bottom:1px solid rgba(15,23,42,.08);
+  box-shadow:0 3px 18px rgba(15,23,42,.04);
+}
+body.design-SIGNATURE .local-site-footer{
+  background:#08111f;
+  color:#fff;
+}
+body.design-SIGNATURE .local-site-footer a,
+body.design-SIGNATURE .local-site-footer p{color:#cbd5e1}
+
+/* Standalone pages: one geometry for all themes/imports */
+body[data-page-section="projects"] main.local-store-shell,
+body[data-page-section="blog"] main.local-store-shell{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+body[data-page-section="projects"] #projectsSection,
+body[data-page-section="blog"] #blogSection{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:72px max(24px,calc((100vw - 1180px)/2))!important;
+  float:none!important;
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+  column-count:auto!important;
+  columns:auto!important;
+}
+body[data-page-section="projects"] #projectsSection .local-page-card,
+body[data-page-section="blog"] #blogSection .local-page-card{
+  display:block!important;
+  width:100%!important;
+  max-width:1180px!important;
+  min-width:0!important;
+  margin:0 auto!important;
+  padding:0!important;
+  float:none!important;
+  position:relative!important;
+  transform:none!important;
+  column-count:auto!important;
+  columns:auto!important;
+}
+body[data-page-section="projects"] #projectsTitle,
+body[data-page-section="blog"] #blogTitle{
+  display:block!important;
+  width:100%!important;
+  max-width:900px!important;
+  min-width:0!important;
+  margin:0 0 18px!important;
+  padding:0!important;
+  font-size:clamp(2.4rem,5vw,4.6rem)!important;
+  line-height:.98!important;
+  letter-spacing:-.045em!important;
+  writing-mode:horizontal-tb!important;
+  word-break:normal!important;
+  overflow-wrap:normal!important;
+  white-space:normal!important;
+}
+body[data-page-section="projects"] #projectsText{
+  display:block!important;
+  width:100%!important;
+  max-width:760px!important;
+  min-width:0!important;
+  margin:0 0 28px!important;
+  padding:0!important;
+  font-size:1.05rem!important;
+  line-height:1.65!important;
+  writing-mode:horizontal-tb!important;
+  word-break:normal!important;
+  overflow-wrap:break-word!important;
+  white-space:normal!important;
+}
+body[data-page-section="projects"] #projectsGrid,
+body[data-page-section="blog"] #blogGrid{
+  display:grid!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:28px 0 0!important;
+  padding:0!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:22px!important;
+  align-items:stretch!important;
+  float:none!important;
+  transform:none!important;
+}
+body[data-page-section="projects"] #projectsGrid>.local-project-card,
+body[data-page-section="blog"] #blogGrid>.local-blog-card{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  margin:0!important;
+  float:none!important;
+  transform:none!important;
+}
+body[data-page-section="projects"] #projectsGrid>.local-project-card{
+  height:340px!important;
+  min-height:340px!important;
+}
+body[data-page-section="projects"] #projectsGrid>.local-project-card img{
+  width:100%!important;
+  height:340px!important;
+  min-height:340px!important;
+  object-fit:cover!important;
+}
+body[data-page-section="blog"] #blogGrid>.local-blog-card{
+  display:flex!important;
+  flex-direction:column!important;
+  height:100%!important;
+}
+body[data-page-section="blog"] #blogGrid>.local-blog-card img{
+  width:100%!important;
+  height:240px!important;
+  min-height:240px!important;
+  object-fit:cover!important;
+  flex:none!important;
+}
+body[data-page-section="blog"] #blogGrid>.local-blog-card-body{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  padding:20px!important;
+  flex:1!important;
+}
+body[data-page-section="blog"] #blogGrid h3,
+body[data-page-section="blog"] #blogGrid p{
+  width:auto!important;
+  max-width:none!important;
+  writing-mode:horizontal-tb!important;
+  word-break:normal!important;
+  overflow-wrap:break-word!important;
+  white-space:normal!important;
+}
+
+/* Theme personality on standalone grids, geometry stays safe */
+body.design-MAGAZINE[data-page-section="projects"] #projectsGrid{
+  grid-template-columns:2fr 1fr 1fr!important;
+}
+body.design-MAGAZINE[data-page-section="projects"] #projectsGrid>.local-project-card:first-child{
+  grid-row:span 2!important;
+  height:auto!important;
+  min-height:702px!important;
+}
+body.design-MAGAZINE[data-page-section="projects"] #projectsGrid>.local-project-card:first-child img{
+  height:100%!important;
+  min-height:702px!important;
+}
+body.design-MAGAZINE[data-page-section="blog"] #blogGrid{
+  grid-template-columns:1.4fr .8fr .8fr!important;
+}
+body.design-COMPACT[data-page-section="projects"] #projectsGrid>.local-project-card,
+body.design-COMPACT[data-page-section="projects"] #projectsGrid>.local-project-card img{
+  height:260px!important;
+  min-height:260px!important;
+}
+body.design-COMPACT[data-page-section="blog"] #blogGrid>.local-blog-card img{
+  height:190px!important;
+  min-height:190px!important;
+}
+body.design-EDITORIAL[data-page-section="projects"] .local-project-card,
+body.design-EDITORIAL[data-page-section="blog"] .local-blog-card,
+body.design-BOLD[data-page-section="projects"] .local-project-card,
+body.design-BOLD[data-page-section="blog"] .local-blog-card{
+  border-radius:0!important;
+}
+
+/* Imported reference can alter shell appearance, never page geometry */
+body.imported-reference[data-page-section="projects"] #projectsSection,
+body.imported-reference[data-page-section="blog"] #blogSection{
+  margin-left:0!important;
+  width:100%!important;
+}
+
+/* Responsive invariants */
+@media(max-width:980px){
+  body.local-store .local-site-footer-inner{
+    grid-template-columns:1fr 1fr;
+  }
+  body.local-store .local-site-footer-inner>div:first-child{
+    grid-column:1/-1;
+  }
+  body[data-page-section="projects"] #projectsGrid,
+  body[data-page-section="blog"] #blogGrid,
+  body.design-MAGAZINE[data-page-section="projects"] #projectsGrid,
+  body.design-MAGAZINE[data-page-section="blog"] #blogGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body.design-MAGAZINE[data-page-section="projects"] #projectsGrid>.local-project-card:first-child{
+    grid-row:auto!important;
+    min-height:340px!important;
+  }
+  body.design-MAGAZINE[data-page-section="projects"] #projectsGrid>.local-project-card:first-child img{
+    min-height:340px!important;
+  }
+}
+@media(max-width:620px){
+  body.local-store .local-site-footer-inner{grid-template-columns:1fr}
+  body.local-store .local-site-footer-inner>div:first-child{grid-column:auto}
+  body[data-page-section="projects"] #projectsSection,
+  body[data-page-section="blog"] #blogSection{
+    padding:44px 16px!important;
+  }
+  body[data-page-section="projects"] #projectsGrid,
+  body[data-page-section="blog"] #blogGrid,
+  body.design-MAGAZINE[data-page-section="projects"] #projectsGrid,
+  body.design-MAGAZINE[data-page-section="blog"] #blogGrid{
+    grid-template-columns:1fr!important;
+  }
+  body[data-page-section="projects"] #projectsTitle,
+  body[data-page-section="blog"] #blogTitle{
+    font-size:clamp(2rem,11vw,3rem)!important;
+  }
+  body[data-page-section="projects"] #projectsGrid>.local-project-card,
+  body[data-page-section="projects"] #projectsGrid>.local-project-card img{
+    height:270px!important;
+    min-height:270px!important;
+  }
+}
