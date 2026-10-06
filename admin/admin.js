@@ -1929,6 +1929,98 @@ async function loadDeliveryProfileRecord() {
   }
 }
 
+const META_APP_ID = "1407687117661354";
+const META_EMBEDDED_SIGNUP_CONFIG_ID = "1660785875612165";
+const META_GRAPH_VERSION = "v25.0";
+let metaFacebookSdkReady = false;
+
+function ensureMetaFacebookSdk() {
+  return new Promise((resolve, reject) => {
+    const finish = () => {
+      if (!window.FB) return false;
+      try {
+        window.FB.init({
+          appId: META_APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: META_GRAPH_VERSION
+        });
+        metaFacebookSdkReady = true;
+        resolve(window.FB);
+        return true;
+      } catch (error) {
+        reject(error);
+        return true;
+      }
+    };
+    if (metaFacebookSdkReady && window.FB) return resolve(window.FB);
+    if (finish()) return;
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (finish()) return clearInterval(timer);
+      if (Date.now() - started > 12000) {
+        clearInterval(timer);
+        reject(new Error("No se pudo cargar Facebook/Meta. Recarga la página e inténtalo nuevamente."));
+      }
+    }, 120);
+  });
+}
+
+function waitForMetaWhatsappEmbeddedSignup() {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener("message", listener);
+      clearTimeout(timer);
+    };
+    const listener = event => {
+      if (!["https://www.facebook.com", "https://web.facebook.com"].includes(event.origin)) return;
+      let payload = event.data;
+      if (typeof payload === "string") {
+        try { payload = JSON.parse(payload); } catch { return; }
+      }
+      if (payload?.type !== "WA_EMBEDDED_SIGNUP") return;
+      if (payload.event === "FINISH") {
+        settled = true;
+        cleanup();
+        resolve(payload.data || {});
+      } else if (payload.event === "CANCEL") {
+        settled = true;
+        cleanup();
+        reject(new Error("La conexión con Meta fue cancelada."));
+      } else if (payload.event === "ERROR") {
+        settled = true;
+        cleanup();
+        reject(new Error(payload?.data?.error_message || "Meta no pudo completar la conexión."));
+      }
+    };
+    window.addEventListener("message", listener);
+    const timer = setTimeout(() => {
+      if (settled) return;
+      cleanup();
+      reject(new Error("Meta tardó demasiado en completar la conexión."));
+    }, 180000);
+  });
+}
+
+function loginMetaWhatsappEmbedded(FB) {
+  return new Promise((resolve, reject) => {
+    FB.login(response => {
+      const code = response?.authResponse?.code;
+      if (!code) {
+        reject(new Error("Meta no devolvió el código de autorización."));
+        return;
+      }
+      resolve(code);
+    }, {
+      config_id: META_EMBEDDED_SIGNUP_CONFIG_ID,
+      response_type: "code",
+      override_default_response_type: true,
+      extras: { setup: {} }
+    });
+  });
+}
+
 function renderDeliveryProfileWhatsapp() {
   const connection = state.deliveryProfileWhatsappConnection || { configured:false, status:"DISCONNECTED" };
   const settings = state.deliveryProfileWhatsappSettings || {
@@ -1995,7 +2087,7 @@ function renderDeliveryProfileWhatsapp() {
   if (mode) mode.value = selectedMode;
   if (phone) phone.value = connection.requested_phone || state.deliveryProfileRecord?.whatsapp || "";
   if (phoneWrap) phoneWrap.classList.toggle("hidden", selectedMode === "OWN");
-  if (requestBtn) requestBtn.textContent = connection.status === "PENDING" ? "Actualizar solicitud Meta" : "Preparar conexión con Meta";
+  if (requestBtn) requestBtn.textContent = connection.configured ? "Reconectar WhatsApp con Meta" : "Conectar WhatsApp con Meta";
 
   if (messageMode) {
     const automaticOption = [...messageMode.options].find(option => option.value === "AUTOMATIC");
@@ -2017,8 +2109,8 @@ function renderDeliveryProfileWhatsapp() {
 
   if (connectionHelp) {
     connectionHelp.textContent = selectedMode === "OWN"
-      ? "WhatsApp propio: el administrador del número deberá autorizar Meta una sola vez."
-      : "Administrado por HTPWEB: se usa el número registrado del DELIVERY y HTPWEB prepara la conexión con Meta.";
+      ? "WhatsApp propio requiere una credencial administrada por el DELIVERY."
+      : "Pulsa Conectar WhatsApp con Meta. Facebook abrirá una ventana oficial para autorizar y verificar la cuenta del DELIVERY.";
   }
   if (settingsHelp) {
     settingsHelp.textContent = connection.configured === true && provider.configured === true
@@ -2066,25 +2158,62 @@ async function loadDeliveryProfileWhatsapp() {
 }
 
 async function requestDeliveryProfileWhatsappConnection() {
+  const requestBtn = $("profileWhatsappConnectionRequestBtn");
   try {
     const deliveryId = $("profileDelivery")?.value || null;
     if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+
     const mode = $("profileWhatsappConnectionMode")?.value || "HTPWEB_MANAGED";
-    const phone = mode === "HTPWEB_MANAGED"
-      ? ($("profileWhatsappRequestedPhone")?.value || state.deliveryProfileRecord?.whatsapp || "").trim()
-      : null;
-    if (mode === "HTPWEB_MANAGED" && !phone) {
-      throw new Error("Ingresa el número de WhatsApp del DELIVERY.");
+    if (mode !== "HTPWEB_MANAGED") {
+      throw new Error("Para la conexión automática con Meta selecciona Administrado por HTPWEB.");
     }
+
+    const phone = ($("profileWhatsappRequestedPhone")?.value || state.deliveryProfileRecord?.whatsapp || "").trim();
+    if (!phone) throw new Error("Ingresa el número de WhatsApp del DELIVERY.");
+
+    if (requestBtn) {
+      requestBtn.disabled = true;
+      requestBtn.textContent = "Abriendo Meta...";
+    }
+
+    const FB = await ensureMetaFacebookSdk();
+    const sessionPromise = waitForMetaWhatsappEmbeddedSignup();
+    const codePromise = loginMetaWhatsappEmbedded(FB);
+    const [session, code] = await Promise.all([sessionPromise, codePromise]);
+
+    const wabaId = String(session?.waba_id || "");
+    const phoneNumberId = String(session?.phone_number_id || "");
+    const businessId = session?.business_id ? String(session.business_id) : null;
+    if (!wabaId || !phoneNumberId) {
+      throw new Error("Meta no devolvió el WABA ID o Phone Number ID.");
+    }
+
     await rpc("delivery_request_whatsapp_connection", {
-      p_delivery_id:deliveryId,
-      p_connection_mode:mode,
-      p_phone:phone
+      p_delivery_id: deliveryId,
+      p_connection_mode: "HTPWEB_MANAGED",
+      p_phone: phone
     });
-    message("Solicitud de conexión con Meta actualizada.");
+
+    const { data, error } = await supabaseClient.functions.invoke("meta-whatsapp-connect", {
+      body: {
+        delivery_id: deliveryId,
+        code,
+        waba_id: wabaId,
+        phone_number_id: phoneNumberId,
+        business_id: businessId
+      }
+    });
+
+    if (error) throw new Error(data?.error || error.message || "No se pudo completar la conexión con Meta.");
+    if (!data?.ok) throw new Error(data?.error || "No se pudo completar la conexión con Meta.");
+
+    message("WhatsApp quedó conectado con Meta correctamente.");
     await loadDeliveryProfileWhatsapp();
   } catch (e) {
-    message(e.message || "No se pudo preparar la conexión con Meta.", "error");
+    message(e.message || "No se pudo conectar WhatsApp con Meta.", "error");
+    await loadDeliveryProfileWhatsapp().catch(() => {});
+  } finally {
+    if (requestBtn) requestBtn.disabled = false;
   }
 }
 
