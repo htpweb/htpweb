@@ -47,17 +47,8 @@ body.local-store:not([data-page-section]) main,body.local-store:not([data-page-s
 .product-card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#f3f4f6}.product-card .body{padding:15px;display:flex;flex-direction:column;gap:8px;flex:1}.product-card h3{margin:0}.price{font-weight:800;font-size:1.05rem}.product-card button{margin-top:auto;background:var(--local-accent);color:#fff;border:0;border-radius:12px;padding:10px;font-weight:700}.product-card button:disabled{opacity:.45}
 .local-grid.compact{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.local-grid.compact .product-card img{aspect-ratio:4/3}.local-grid.compact .body{padding:11px}
 .visual-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}.menu-page{background:#fff;border-radius:var(--local-radius);padding:10px;border:1px solid #e5e7eb}.menu-page img{width:100%;height:auto;border-radius:calc(var(--local-radius) - 6px)}
-.preset-FASHION_EDITORIAL .local-hero img{height:420px}.preset-FASHION_EDITORIAL .product-card img{aspect-ratio:3/4}
-.preset-HARDWARE_CATALOG .local-hero img,.preset-HEALTH_CLEAN .local-hero img,.preset-GROCERY_DENSE .local-hero img{height:180px}
-.preset-BOOKS_STATIONERY .local-hero{display:grid;grid-template-columns:1fr 1fr}.preset-BOOKS_STATIONERY .local-hero img{height:100%;min-height:300px}.preset-BOOKS_STATIONERY .product-card img{aspect-ratio:4/5}
-.preset-FLOWERS_GIFTS .local-hero img{height:430px}.preset-FLOWERS_GIFTS .local-hero-copy{text-align:center}.preset-FLOWERS_GIFTS .product-card{box-shadow:0 12px 26px rgba(217,54,112,.08)}
-.preset-ENGINEERING_PRO .local-hero{display:grid;grid-template-columns:1.15fr .85fr}.preset-ENGINEERING_PRO .local-hero img{height:100%;min-height:330px}.preset-ENGINEERING_PRO .local-hero-copy{display:flex;flex-direction:column;justify-content:center}.preset-ENGINEERING_PRO .product-card img,.preset-HEALTH_SERVICES .product-card img{aspect-ratio:16/9}
-.preset-HEALTH_SERVICES .local-hero{border-top:6px solid var(--local-accent)}.preset-HEALTH_SERVICES .local-page-card{box-shadow:none}
-.preset-BEAUTY_BOOKING .local-hero img{height:400px}.preset-BEAUTY_BOOKING .product-card img{aspect-ratio:4/5}
-.preset-SERVICES_SHOWCASE .local-grid,.preset-ENGINEERING_PRO .local-grid,.preset-HEALTH_SERVICES .local-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .surface-SQUARE{--local-radius:4px}.surface-ROUNDED{--local-radius:28px}.surface-EDITORIAL{--local-radius:0px}
 .empty{padding:30px;text-align:center;background:#fff;border-radius:var(--local-radius);color:#6b7280}
-@media(max-width:820px){.local-project-grid,.local-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.local-store-header-inner{flex-wrap:wrap}.local-site-nav{order:3;flex-basis:100%;overflow:auto;justify-content:flex-start;padding:4px 0 2px}.local-grid,.local-grid.compact,.preset-SERVICES_SHOWCASE .local-grid,.preset-ENGINEERING_PRO .local-grid,.preset-HEALTH_SERVICES .local-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.visual-menu{grid-template-columns:1fr}.local-hero img{height:220px}.preset-BOOKS_STATIONERY .local-hero,.preset-ENGINEERING_PRO .local-hero{grid-template-columns:1fr}.local-contact-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.local-project-grid,.local-blog-grid{grid-template-columns:1fr}.local-store-shell{padding:10px}.local-grid,.local-grid.compact{grid-template-columns:1fr 1fr;gap:8px}.product-card .body{padding:10px}.product-card p{display:none}.local-brand small{font-size:.75rem}.local-site-nav{gap:12px}.local-site-nav a{font-size:.82rem}}
 
 /* HTPWEB professional storefront layer */
@@ -104,9 +95,6 @@ body.local-store{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMa
 #contactSection{margin-top:0;padding-top:82px}.local-contact-grid{gap:16px}.local-contact-item{padding:20px;border:1px solid #e5e7eb;background:#fff}.local-contact-item small{text-transform:uppercase;letter-spacing:.08em;font-size:.68rem;font-weight:800}
 .local-footer-cta{margin-top:70px;margin-bottom:70px;border-radius:16px;padding:38px 42px}.local-footer-cta h2{font-size:2rem}.local-footer-cta a{padding:14px 18px;border-radius:8px}
 .empty{border:1px dashed #cbd5e1;background:#f8fafc}
-.preset-ENGINEERING_PRO .local-store-header,.preset-FOOD_VISUAL .local-store-header{background:rgba(12,16,22,.96);border-bottom-color:rgba(255,255,255,.12)}.preset-ENGINEERING_PRO .local-brand strong,.preset-ENGINEERING_PRO .local-brand small,.preset-ENGINEERING_PRO .local-site-nav a,.preset-FOOD_VISUAL .local-brand strong,.preset-FOOD_VISUAL .local-brand small,.preset-FOOD_VISUAL .local-site-nav a{color:#fff}
-.preset-BOOKS_STATIONERY .local-hero::after,.preset-HEALTH_SERVICES .local-hero::after,.preset-HEALTH_CLEAN .local-hero::after{background:linear-gradient(90deg,rgba(255,255,255,.96),rgba(255,255,255,.7) 55%,rgba(255,255,255,.08))}
-.preset-BOOKS_STATIONERY .local-hero-copy,.preset-HEALTH_SERVICES .local-hero-copy,.preset-HEALTH_CLEAN .local-hero-copy{color:var(--local-text)}.preset-BOOKS_STATIONERY .local-hero p,.preset-HEALTH_SERVICES .local-hero p,.preset-HEALTH_CLEAN .local-hero p{color:#475467}.preset-BOOKS_STATIONERY .local-hero-copy .hero-eyebrow,.preset-HEALTH_SERVICES .local-hero-copy .hero-eyebrow,.preset-HEALTH_CLEAN .local-hero-copy .hero-eyebrow{color:var(--local-accent)}.preset-BOOKS_STATIONERY .local-hero-secondary,.preset-HEALTH_SERVICES .local-hero-secondary,.preset-HEALTH_CLEAN .local-hero-secondary{color:var(--local-text);border-color:#94a3b8;background:rgba(255,255,255,.65)}
 @media(max-width:820px){
  .local-store-header-inner{padding:10px 14px}.local-hero{min-height:560px}.local-hero>img{min-height:560px!important}.local-hero-copy{width:calc(100% - 32px);padding:70px 0}.local-hero h1{font-size:clamp(2.7rem,12vw,4.5rem)}
  .local-hero-trust{width:calc(100% - 28px);grid-template-columns:1fr;margin-top:-32px}.local-hero-trust>div{border-right:0;border-bottom:1px solid #e5e7eb;padding:16px 18px}
@@ -128,15 +116,6 @@ body.local-store{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMa
 
 
 /* Sector-specific composition */
-.preset-FOOD_VISUAL .local-hero-copy{text-align:center;margin-left:auto;margin-right:auto;display:flex;flex-direction:column;align-items:center}.preset-FOOD_VISUAL .local-hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:700;max-width:900px}.preset-FOOD_VISUAL .local-hero p{max-width:620px}.preset-FOOD_VISUAL .local-hero::after{background:linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,.72))}.preset-FOOD_VISUAL .local-hero-actions{justify-content:center}
-.preset-ENGINEERING_PRO .local-hero-copy{max-width:1320px}.preset-ENGINEERING_PRO .local-hero h1{text-transform:uppercase;max-width:820px;font-weight:900}.preset-ENGINEERING_PRO .local-hero::before{content:"";position:absolute;right:6%;top:12%;width:250px;height:250px;border:1px solid rgba(255,255,255,.18);transform:rotate(45deg);z-index:2}.preset-ENGINEERING_PRO #aboutSection .local-about-image{border-radius:4px}.preset-ENGINEERING_PRO .local-service-placeholder,.preset-ENGINEERING_PRO .product-card{border-radius:4px}.preset-ENGINEERING_PRO #projectsSection{background:#0a0f18}
-.preset-BOOKS_STATIONERY .local-hero{min-height:570px;background:#f7f1ea}.preset-BOOKS_STATIONERY .local-hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:700;max-width:620px}.preset-BOOKS_STATIONERY .local-hero>img{clip-path:polygon(48% 0,100% 0,100% 100%,36% 100%)}.preset-BOOKS_STATIONERY .local-hero-copy{width:min(1180px,calc(100% - 48px))}.preset-BOOKS_STATIONERY .local-hero-copy>*{max-width:48%}.preset-BOOKS_STATIONERY .local-toolbar{border-radius:999px;padding:8px 12px}.preset-BOOKS_STATIONERY .local-toolbar input{border-radius:999px}
-.preset-BEAUTY_BOOKING .local-hero-copy{margin-left:auto;margin-right:6%;width:min(650px,calc(100% - 48px));text-align:right}.preset-BEAUTY_BOOKING .local-hero-actions{justify-content:flex-end}.preset-BEAUTY_BOOKING .local-hero-copy .hero-eyebrow{justify-content:flex-end}.preset-BEAUTY_BOOKING .local-hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:500}.preset-BEAUTY_BOOKING .local-hero::after{background:linear-gradient(90deg,rgba(30,10,28,.18),rgba(30,10,28,.78))}
-.preset-HEALTH_SERVICES .local-hero,.preset-HEALTH_CLEAN .local-hero{min-height:560px}.preset-HEALTH_SERVICES .local-hero h1,.preset-HEALTH_CLEAN .local-hero h1{max-width:650px;font-size:clamp(2.8rem,6vw,5rem)}.preset-HEALTH_SERVICES .local-hero-trust,.preset-HEALTH_CLEAN .local-hero-trust{box-shadow:0 16px 45px rgba(14,116,144,.12)}
-.preset-HARDWARE_CATALOG #catalogSection,.preset-GROCERY_DENSE #catalogSection{margin-top:26px}.preset-HARDWARE_CATALOG .local-toolbar,.preset-GROCERY_DENSE .local-toolbar{position:sticky;top:88px;z-index:8;box-shadow:0 8px 24px rgba(15,23,42,.08)}
-.preset-FASHION_EDITORIAL .local-hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:500;max-width:650px}.preset-FASHION_EDITORIAL .local-hero-copy{padding-top:130px;padding-bottom:130px}.preset-FASHION_EDITORIAL .local-project-card{border-radius:0}
-.preset-FLOWERS_GIFTS .local-hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:500}.preset-FLOWERS_GIFTS .local-hero-copy{text-align:center;display:flex;flex-direction:column;align-items:center}.preset-FLOWERS_GIFTS .local-hero-actions{justify-content:center}
-@media(max-width:820px){.preset-BOOKS_STATIONERY .local-hero>img{clip-path:none;opacity:.32}.preset-BOOKS_STATIONERY .local-hero-copy>*{max-width:100%}.preset-BEAUTY_BOOKING .local-hero-copy{margin:0 auto;text-align:left;width:calc(100% - 32px)}.preset-BEAUTY_BOOKING .local-hero-actions,.preset-BEAUTY_BOOKING .local-hero-copy .hero-eyebrow{justify-content:flex-start}}
 
 
 .section-page-hidden{display:none!important}
@@ -351,8 +330,9 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 }
 
 </style>
-<link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-root1">
-<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261006-root1">
+<link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-chrome2">
+<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261006-chrome2">
+<script src="../assets/storefront-chrome.js?v=20261006-chrome2"></script>
 <!-- HTPWEB_AUTO_SEO_LOCAL -->
 </head>
 <body class="local-store">
@@ -1147,13 +1127,16 @@ async function init(){
    if(error)throw error;if(!data)throw new Error("Esta tienda no está disponible.");
    store=data;document.title=store.local.name+" | Sitio oficial";
    history.replaceState({section:pageSection},"",siteSectionUrl(pageSection));
-   document.body.classList.add(
-  "preset-"+store.settings.preset_code,
-  "surface-"+store.settings.surface_style,
-  "family-"+String(store?.preset?.layout_family||"GENERAL"),
-  "design-"+String(store?.preset?.config?.design_system||"SIGNATURE")
-);
-   applyStoreTheme();applyImportedReferenceLayout();
+   document.body.dataset.presetCode=String(store?.settings?.preset_code||"GENERAL_MODERN");
+   document.body.dataset.surfaceStyle=String(store?.settings?.surface_style||"SOFT");
+   if(window.HTPWEBStorefrontChrome?.apply)window.HTPWEBStorefrontChrome.apply(store);
+   else{
+     const d=String(store?.preset?.config?.design_system||"SIGNATURE").toUpperCase();
+     document.body.dataset.designSystem=d;
+     document.body.classList.add("design-"+d,"family-"+String(store?.preset?.layout_family||"GENERAL"));
+   }
+   applyStoreTheme();
+   if(document.body.dataset.designSystem==="REFERENCE")applyImportedReferenceLayout();
    const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes]=await Promise.all([
      supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),

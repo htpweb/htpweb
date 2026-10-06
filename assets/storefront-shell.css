@@ -323,3 +323,202 @@ body.imported-reference[data-page-section="blog"] #blogSection{
     min-height:270px!important;
   }
 }
+
+/* ============================================================
+   HTPWEB TEMPLATE CHROME — single authority for header/footer.
+   Applied by storefront-chrome.js from the saved design_system.
+   ============================================================ */
+body.local-store .local-store-header-inner>.htp-auth-account-menu,
+body.local-store .local-store-header-inner>.htp-compact-profile-menu{
+  min-width:0;
+}
+
+/* SIGNATURE — balanced corporate bar */
+body.chrome-SIGNATURE .local-store-header{background:#fff!important;border-bottom:1px solid #e5e7eb!important}
+body.chrome-SIGNATURE .local-store-header-inner{
+  max-width:1320px!important;min-height:82px!important;height:auto!important;padding:12px 28px!important;
+  display:grid!important;grid-template-columns:minmax(190px,1fr) auto minmax(190px,1fr)!important;align-items:center!important;gap:24px!important
+}
+body.chrome-SIGNATURE .local-brand{grid-column:1!important}
+body.chrome-SIGNATURE .local-site-nav{grid-column:2!important;justify-content:center!important}
+body.chrome-SIGNATURE .local-cart-btn,
+body.chrome-SIGNATURE .local-store-header-inner>.htp-auth-account-menu,
+body.chrome-SIGNATURE .local-store-header-inner>.htp-compact-profile-menu{grid-column:3!important;justify-self:end!important}
+body.chrome-SIGNATURE .local-site-footer{background:#08111f!important;color:#fff!important}
+body.chrome-SIGNATURE .local-site-footer a,body.chrome-SIGNATURE .local-site-footer p{color:#cbd5e1!important}
+
+/* MINIMAL — quiet single line */
+body.chrome-MINIMAL .local-store-header{background:#fff!important;border:0!important;box-shadow:none!important}
+body.chrome-MINIMAL .local-store-header-inner{
+  max-width:1240px!important;min-height:88px!important;padding:18px 30px!important;
+  display:flex!important;align-items:center!important;gap:28px!important
+}
+body.chrome-MINIMAL .local-brand{margin-right:auto!important}
+body.chrome-MINIMAL .local-brand small{display:none!important}
+body.chrome-MINIMAL .local-site-nav{gap:26px!important}
+body.chrome-MINIMAL .local-site-nav a{font-weight:500!important;text-transform:none!important;letter-spacing:0!important}
+body.chrome-MINIMAL .local-site-footer{background:#fff!important;color:#111827!important;border-top:1px solid #111827!important}
+body.chrome-MINIMAL .local-site-footer a,body.chrome-MINIMAL .local-site-footer p{color:#475467!important}
+
+/* SPLIT — header and footer continue the 46/54 composition */
+body.chrome-SPLIT .local-store-header{background:linear-gradient(90deg,#f8fafc 0 46%,#111827 46% 100%)!important;border:0!important}
+body.chrome-SPLIT .local-store-header-inner{
+  max-width:none!important;min-height:86px!important;padding:0 3vw!important;
+  display:grid!important;grid-template-columns:46% 54%!important;align-items:center!important;gap:0!important
+}
+body.chrome-SPLIT .local-brand{grid-column:1!important;padding-right:24px!important}
+body.chrome-SPLIT .local-site-nav{grid-column:2!important;justify-content:center!important;padding-left:30px!important}
+body.chrome-SPLIT .local-site-nav a{color:#fff!important}
+body.chrome-SPLIT .local-store-header-inner>.htp-auth-account-menu,
+body.chrome-SPLIT .local-store-header-inner>.htp-compact-profile-menu,
+body.chrome-SPLIT .local-cart-btn{position:absolute!important;right:3vw!important}
+body.chrome-SPLIT .local-site-footer{background:linear-gradient(90deg,#f8fafc 0 46%,#111827 46% 100%)!important;color:#fff!important}
+body.chrome-SPLIT .local-site-footer-inner{max-width:none!important;padding-inline:4vw!important}
+body.chrome-SPLIT .local-site-footer-inner>div:first-child{color:#111827!important}
+body.chrome-SPLIT .local-site-footer-inner>div:first-child p{color:#64748b!important}
+
+/* SIDEBAR — true vertical navigation */
+body.chrome-SIDEBAR{padding-left:240px!important}
+body.chrome-SIDEBAR .local-store-header{
+  position:fixed!important;left:0!important;top:0!important;bottom:0!important;width:240px!important;height:100vh!important;
+  background:#071522!important;border:0!important;border-right:1px solid #ffffff1a!important
+}
+body.chrome-SIDEBAR .local-store-header-inner{
+  width:240px!important;height:100%!important;min-height:100vh!important;padding:30px 22px!important;
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:0!important
+}
+body.chrome-SIDEBAR .local-brand{width:100%!important;margin:0 0 30px!important}
+body.chrome-SIDEBAR .local-brand strong,body.chrome-SIDEBAR .local-brand small,body.chrome-SIDEBAR .local-site-nav a{color:#fff!important}
+body.chrome-SIDEBAR .local-site-nav{width:100%!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important}
+body.chrome-SIDEBAR .local-site-nav a{width:100%!important;padding:10px 8px!important;text-align:left!important}
+body.chrome-SIDEBAR .local-cart-btn,
+body.chrome-SIDEBAR .local-store-header-inner>.htp-auth-account-menu,
+body.chrome-SIDEBAR .local-store-header-inner>.htp-compact-profile-menu{margin-top:auto!important;width:100%!important}
+body.chrome-SIDEBAR main,body.chrome-SIDEBAR .local-topbar,body.chrome-SIDEBAR .local-site-footer,body.chrome-SIDEBAR #waFloat{margin-left:0!important}
+body.chrome-SIDEBAR .local-site-footer{background:#061522!important;color:#fff!important}
+body.chrome-SIDEBAR .local-site-footer a,body.chrome-SIDEBAR .local-site-footer p{color:#cbd5e1!important}
+
+/* EDITORIAL — centered masthead + nav row */
+body.chrome-EDITORIAL .local-store-header{background:#fff!important;border:0!important;border-bottom:1px solid #111!important;box-shadow:none!important}
+body.chrome-EDITORIAL .local-store-header-inner{
+  max-width:1320px!important;min-height:128px!important;padding:18px 28px 12px!important;
+  display:grid!important;grid-template-columns:1fr auto 1fr!important;grid-template-rows:auto auto!important;align-items:center!important
+}
+body.chrome-EDITORIAL .local-brand{grid-column:1/-1!important;grid-row:1!important;justify-self:center!important;text-align:center!important}
+body.chrome-EDITORIAL .local-brand strong{font-family:Georgia,"Times New Roman",serif!important;font-size:1.55rem!important;font-weight:500!important}
+body.chrome-EDITORIAL .local-site-nav{grid-column:1/-1!important;grid-row:2!important;justify-content:center!important;border-top:1px solid #e5e7eb!important;padding-top:12px!important}
+body.chrome-EDITORIAL .local-site-nav a{font-family:Georgia,"Times New Roman",serif!important;font-weight:500!important}
+body.chrome-EDITORIAL .local-cart-btn,
+body.chrome-EDITORIAL .local-store-header-inner>.htp-auth-account-menu,
+body.chrome-EDITORIAL .local-store-header-inner>.htp-compact-profile-menu{position:absolute!important;right:28px!important;top:20px!important}
+body.chrome-EDITORIAL .chrome-editorial-rule{position:absolute!important;left:28px!important;right:28px!important;bottom:45px!important;height:1px!important;background:#e5e7eb!important}
+body.chrome-EDITORIAL .local-site-footer{background:#f7f5f0!important;color:#111!important;border-top:1px solid #111!important}
+body.chrome-EDITORIAL .local-site-footer h3,body.chrome-EDITORIAL .local-site-footer h4{font-family:Georgia,"Times New Roman",serif!important;font-weight:500!important}
+body.chrome-EDITORIAL .local-site-footer a,body.chrome-EDITORIAL .local-site-footer p{color:#475467!important}
+
+/* LUXE — dark restrained navigation */
+body.chrome-LUXE .local-store-header{background:#090d15f2!important;border-bottom:1px solid #c8a96b33!important;backdrop-filter:blur(18px)!important}
+body.chrome-LUXE .local-store-header-inner{max-width:1320px!important;min-height:88px!important;padding:14px 28px!important;display:flex!important;align-items:center!important;gap:30px!important}
+body.chrome-LUXE .local-brand{margin-right:auto!important}
+body.chrome-LUXE .local-brand strong{font-family:Georgia,serif!important;font-weight:500!important;letter-spacing:.06em!important;color:#fff!important}
+body.chrome-LUXE .local-brand small{color:#9ca3af!important}
+body.chrome-LUXE .chrome-luxe-mark{color:#d8c49a!important;margin-right:8px!important}
+body.chrome-LUXE .local-site-nav a{color:#d8c49a!important;font-weight:500!important}
+body.chrome-LUXE .local-site-footer{background:#05070b!important;color:#f8fafc!important;border-top:1px solid #c8a96b33!important}
+body.chrome-LUXE .local-site-footer h3,body.chrome-LUXE .local-site-footer h4{color:#d8c49a!important}
+body.chrome-LUXE .local-site-footer a,body.chrome-LUXE .local-site-footer p{color:#a8b0bf!important}
+
+/* BOLD — high impact full-width bar */
+body.chrome-BOLD .local-store-header{background:#111!important;border:0!important;border-bottom:7px solid var(--local-accent)!important}
+body.chrome-BOLD .local-store-header-inner{max-width:none!important;min-height:92px!important;padding:14px 4vw!important;display:flex!important;align-items:center!important;gap:26px!important}
+body.chrome-BOLD .local-brand{margin-right:auto!important}
+body.chrome-BOLD .local-brand strong,body.chrome-BOLD .local-brand small,body.chrome-BOLD .local-site-nav a{color:#fff!important}
+body.chrome-BOLD .local-brand strong{font-size:1.2rem!important;text-transform:uppercase!important;font-weight:1000!important}
+body.chrome-BOLD .chrome-bold-tag{color:var(--local-accent)!important;margin-right:8px!important}
+body.chrome-BOLD .local-site-nav a{text-transform:uppercase!important;font-weight:1000!important;font-size:.78rem!important}
+body.chrome-BOLD .local-site-footer{background:#111!important;color:#fff!important;border-top:10px solid var(--local-accent)!important}
+body.chrome-BOLD .local-site-footer h3,body.chrome-BOLD .local-site-footer h4{text-transform:uppercase!important;font-weight:1000!important}
+body.chrome-BOLD .local-site-footer a,body.chrome-BOLD .local-site-footer p{color:#d1d5db!important}
+
+/* MAGAZINE — real magazine masthead with separate nav rail */
+body.chrome-MAGAZINE .local-store-header{background:#fff!important;color:#111!important;border:0!important;border-bottom:4px solid #111!important;box-shadow:none!important}
+body.chrome-MAGAZINE .local-store-header-inner{
+  max-width:1320px!important;min-height:150px!important;padding:14px 28px 0!important;
+  display:grid!important;grid-template-columns:1fr auto 1fr!important;grid-template-rows:20px 72px 44px!important;align-items:center!important;gap:0!important
+}
+body.chrome-MAGAZINE .chrome-magazine-kicker{
+  grid-column:1/-1!important;grid-row:1!important;justify-self:center!important;
+  font-size:.64rem!important;letter-spacing:.22em!important;text-transform:uppercase!important;color:#6b7280!important
+}
+body.chrome-MAGAZINE .local-brand{
+  grid-column:1/-1!important;grid-row:2!important;justify-self:center!important;text-align:center!important;margin:0!important
+}
+body.chrome-MAGAZINE .local-brand img{width:46px!important;height:46px!important}
+body.chrome-MAGAZINE .local-brand strong{font-family:Georgia,"Times New Roman",serif!important;font-size:2rem!important;font-weight:500!important;letter-spacing:-.04em!important;color:#111!important}
+body.chrome-MAGAZINE .local-brand small{font-size:.62rem!important;letter-spacing:.16em!important;color:#6b7280!important}
+body.chrome-MAGAZINE .local-site-nav{
+  grid-column:1/-1!important;grid-row:3!important;width:100%!important;justify-content:center!important;
+  border-top:1px solid #111!important;gap:28px!important
+}
+body.chrome-MAGAZINE .local-site-nav a{font-family:Georgia,"Times New Roman",serif!important;color:#111!important;font-weight:600!important;text-transform:none!important}
+body.chrome-MAGAZINE .local-cart-btn,
+body.chrome-MAGAZINE .local-store-header-inner>.htp-auth-account-menu,
+body.chrome-MAGAZINE .local-store-header-inner>.htp-compact-profile-menu{position:absolute!important;right:28px!important;top:42px!important}
+body.chrome-MAGAZINE .local-site-footer{background:#fff!important;color:#111!important;border-top:4px solid #111!important}
+body.chrome-MAGAZINE .chrome-magazine-footer-mast{
+  max-width:1320px!important;margin:0 auto!important;padding:30px 28px 18px!important;
+  font-family:Georgia,"Times New Roman",serif!important;font-size:clamp(2.2rem,5vw,4.6rem)!important;line-height:1!important;border-bottom:1px solid #111!important
+}
+body.chrome-MAGAZINE .local-site-footer h3,body.chrome-MAGAZINE .local-site-footer h4{font-family:Georgia,"Times New Roman",serif!important;color:#111!important}
+body.chrome-MAGAZINE .local-site-footer a,body.chrome-MAGAZINE .local-site-footer p{color:#475467!important}
+body.chrome-MAGAZINE .local-site-footer-bottom{border-top:1px solid #111!important;color:#6b7280!important}
+
+/* IMMERSIVE — navigation floats over the hero */
+body.chrome-IMMERSIVE .local-store-header{position:absolute!important;top:0!important;left:0!important;right:0!important;background:linear-gradient(180deg,#030712cc,transparent)!important;border:0!important;box-shadow:none!important;z-index:60!important}
+body.chrome-IMMERSIVE .local-store-header-inner{max-width:1360px!important;min-height:100px!important;padding:20px 30px!important;display:flex!important;align-items:center!important;gap:30px!important}
+body.chrome-IMMERSIVE .local-brand{margin-right:auto!important}
+body.chrome-IMMERSIVE .local-brand strong,body.chrome-IMMERSIVE .local-brand small,body.chrome-IMMERSIVE .local-site-nav a{color:#fff!important}
+body.chrome-IMMERSIVE .local-site-footer{background:#030712!important;color:#fff!important}
+body.chrome-IMMERSIVE .local-site-footer a,body.chrome-IMMERSIVE .local-site-footer p{color:#cbd5e1!important}
+
+/* COMPACT — dense utility bar */
+body.chrome-COMPACT .local-store-header{background:#fff!important;border:0!important;border-bottom:1px solid #cbd5e1!important;box-shadow:none!important}
+body.chrome-COMPACT .local-store-header-inner{max-width:none!important;min-height:64px!important;height:64px!important;padding:7px 18px!important;display:flex!important;align-items:center!important;gap:16px!important}
+body.chrome-COMPACT .local-brand{margin-right:auto!important}
+body.chrome-COMPACT .local-brand img{width:36px!important;height:36px!important;border-radius:3px!important}
+body.chrome-COMPACT .local-brand strong{font-size:.9rem!important}
+body.chrome-COMPACT .local-brand small{display:none!important}
+body.chrome-COMPACT .local-site-nav{gap:10px!important}
+body.chrome-COMPACT .local-site-nav a{font-size:.72rem!important}
+body.chrome-COMPACT .local-site-footer{background:#111827!important;color:#fff!important}
+body.chrome-COMPACT .local-site-footer-inner{padding:24px!important;gap:18px!important}
+body.chrome-COMPACT .local-site-footer a,body.chrome-COMPACT .local-site-footer p{font-size:.78rem!important;color:#cbd5e1!important}
+
+/* Chrome responsive behavior */
+@media(max-width:900px){
+  body.chrome-SIGNATURE .local-store-header-inner,
+  body.chrome-EDITORIAL .local-store-header-inner,
+  body.chrome-MAGAZINE .local-store-header-inner{max-width:100%!important}
+  body.chrome-SPLIT .local-store-header{background:#fff!important}
+  body.chrome-SPLIT .local-store-header-inner{display:flex!important;padding:10px 16px!important}
+  body.chrome-SPLIT .local-site-nav a{color:#111827!important}
+}
+@media(max-width:820px){
+  body.chrome-SIDEBAR{padding-left:0!important}
+  body.chrome-SIDEBAR .local-store-header{position:sticky!important;width:100%!important;height:auto!important}
+  body.chrome-SIDEBAR .local-store-header-inner{width:100%!important;min-height:0!important;height:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;flex-wrap:wrap!important}
+  body.chrome-SIDEBAR .local-brand{width:auto!important;margin:0 auto 0 0!important}
+  body.chrome-SIDEBAR .local-site-nav{order:3!important;flex-basis:100%!important;flex-direction:row!important;overflow:auto!important}
+  body.chrome-SIDEBAR .local-site-nav a{width:auto!important;white-space:nowrap!important}
+  body.chrome-EDITORIAL .local-store-header-inner,
+  body.chrome-MAGAZINE .local-store-header-inner{
+    min-height:0!important;height:auto!important;padding:10px 14px!important;display:flex!important;flex-wrap:wrap!important
+  }
+  body.chrome-EDITORIAL .chrome-editorial-rule,body.chrome-MAGAZINE .chrome-magazine-kicker{display:none!important}
+  body.chrome-EDITORIAL .local-brand,body.chrome-MAGAZINE .local-brand{margin-right:auto!important;text-align:left!important}
+  body.chrome-EDITORIAL .local-brand strong,body.chrome-MAGAZINE .local-brand strong{font-size:1.1rem!important}
+  body.chrome-EDITORIAL .local-site-nav,body.chrome-MAGAZINE .local-site-nav{order:3!important;flex-basis:100%!important;overflow:auto!important;justify-content:flex-start!important;border-top:1px solid #e5e7eb!important;padding-top:8px!important}
+  body.chrome-EDITORIAL .local-cart-btn,body.chrome-MAGAZINE .local-cart-btn,
+  body.chrome-EDITORIAL .local-store-header-inner>.htp-auth-account-menu,body.chrome-MAGAZINE .local-store-header-inner>.htp-auth-account-menu,
+  body.chrome-EDITORIAL .local-store-header-inner>.htp-compact-profile-menu,body.chrome-MAGAZINE .local-store-header-inner>.htp-compact-profile-menu{position:static!important}
+}
