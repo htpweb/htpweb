@@ -1931,7 +1931,7 @@ async function loadDeliveryProfileRecord() {
 
 const META_APP_ID = "1407687117661354";
 const META_EMBEDDED_SIGNUP_CONFIG_ID = "1660785875612165";
-const META_GRAPH_VERSION = "v25.0";
+const META_GRAPH_VERSION = "v26.0";
 let metaFacebookSdkReady = false;
 
 function ensureMetaFacebookSdk() {
@@ -1980,10 +1980,10 @@ function waitForMetaWhatsappEmbeddedSignup() {
         try { payload = JSON.parse(payload); } catch { return; }
       }
       if (payload?.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (payload.event === "FINISH") {
+      if (["FINISH", "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"].includes(payload.event)) {
         settled = true;
         cleanup();
-        resolve(payload.data || {});
+        resolve({ ...(payload.data || {}), coexistence: payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" });
       } else if (payload.event === "CANCEL") {
         settled = true;
         cleanup();
@@ -2016,7 +2016,11 @@ function loginMetaWhatsappEmbedded(FB) {
       config_id: META_EMBEDDED_SIGNUP_CONFIG_ID,
       response_type: "code",
       override_default_response_type: true,
-      extras: { setup: {} }
+      extras: {
+        setup: {},
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3"
+      }
     });
   });
 }
@@ -2110,7 +2114,8 @@ function renderDeliveryProfileWhatsapp() {
   if (connectionHelp) {
     connectionHelp.textContent = selectedMode === "OWN"
       ? "WhatsApp propio requiere una credencial administrada por el DELIVERY."
-      : "Pulsa Conectar WhatsApp con Meta. Facebook abrirá una ventana oficial para autorizar y verificar la cuenta del DELIVERY.";
+      : "Requiere WhatsApp Business. Pulsa Conectar WhatsApp con Meta: el DELIVERY conservará su WhatsApp Business en el celular y HTPWEB se conectará mediante coexistencia para automatizar mensajes.";
+
   }
   if (settingsHelp) {
     settingsHelp.textContent = connection.configured === true && provider.configured === true
@@ -2184,8 +2189,9 @@ async function requestDeliveryProfileWhatsappConnection() {
     const wabaId = String(session?.waba_id || "");
     const phoneNumberId = String(session?.phone_number_id || "");
     const businessId = session?.business_id ? String(session.business_id) : null;
-    if (!wabaId || !phoneNumberId) {
-      throw new Error("Meta no devolvió el WABA ID o Phone Number ID.");
+    const coexistence = session?.coexistence === true;
+    if (!wabaId) {
+      throw new Error("Meta no devolvió el WABA ID de la cuenta autorizada.");
     }
 
     await rpc("delivery_request_whatsapp_connection", {
@@ -2200,7 +2206,8 @@ async function requestDeliveryProfileWhatsappConnection() {
         code,
         waba_id: wabaId,
         phone_number_id: phoneNumberId,
-        business_id: businessId
+        business_id: businessId,
+        coexistence
       }
     });
 
