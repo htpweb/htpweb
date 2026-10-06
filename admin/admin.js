@@ -2854,6 +2854,16 @@ function storefrontPreviewMedia(family){
 
 function professionalStorefrontPreviewMarkup(ctx){
   const {design,family="GENERAL",primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
+  if(window.HTPWEBStorefrontArchitectures?.render){
+    return window.HTPWEBStorefrontArchitectures.render({
+      design,family,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,
+      nav:(nav||[]).map(label=>({label})),
+      banner:bannerCss||"",
+      name:state.localProfileRecord?.name||"LOCAL",
+      aboutText:$("localAboutText")?.value.trim()||"",
+      flags:{about:$("localShowAbout")?.checked,catalog:$("localShowCatalog")?.checked,projects:$("localShowProjects")?.checked,blog:$("localShowBlog")?.checked,contact:$("localShowContact")?.checked}
+    });
+  }
   const profile=storefrontFamilyProfile(family);
   const media=storefrontPreviewMedia(family);
   const name=esc(state.localProfileRecord?.name||"LOCAL");
