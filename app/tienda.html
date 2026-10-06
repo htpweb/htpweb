@@ -357,7 +357,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 @media(max-width:820px){.design-SPLIT .local-hero{display:block!important}.design-SPLIT .local-hero>img{position:absolute!important}.design-SPLIT .local-hero::after{display:block}.design-SPLIT .local-hero-copy{position:relative;color:#fff;padding:70px 0;width:calc(100% - 32px);margin:auto}.design-SPLIT .local-hero p{color:#fff}.design-SIDEBAR .local-store-header{position:sticky;width:auto;height:auto}.design-SIDEBAR .local-store-header-inner{height:auto;flex-direction:row;align-items:center}.design-SIDEBAR .local-site-nav{flex-direction:row;overflow:auto}.design-SIDEBAR main,.design-SIDEBAR #siteFooter,.design-SIDEBAR #waFloat,.design-SIDEBAR .local-topbar{margin-left:0}.design-MAGAZINE .local-grid,.design-COMPACT .local-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 </style>
-<link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-projects1">
+<link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-reference1">
 </head>
 <body class="local-store">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
@@ -684,6 +684,49 @@ function catalogLabel(){
  const cfg=pageContent();
  return cfg.catalog_title||store?.preset?.config?.catalog_label||(["SERVICES","PROFESSIONAL","HEALTH","BEAUTY"].includes(store?.preset?.layout_family)?"Servicios":"Productos");
 }
+
+function applyImportedReferenceLayout(){
+ const ref=pageContent()?.imported_design?.reference_layout;
+ if(!ref?.enabled)return;
+ document.body.classList.add("imported-reference");
+ document.body.classList.add(ref.topbar?"ref-has-topbar":"ref-no-topbar");
+ document.body.classList.add(ref.has_search?"ref-has-search":"ref-no-search");
+ document.body.classList.add("ref-hero-"+String(ref.hero_mode||"IMAGE_HERO").toLowerCase());
+ const header=document.querySelector(".local-store-header-inner");
+ if(!header)return;
+ if(ref.has_search&&!header.querySelector(".imported-reference-search")){
+   const search=document.createElement("label");
+   search.className="imported-reference-search";
+   search.innerHTML='<input type="search" aria-label="Buscar" placeholder="Escribe para buscar…"><span>⌕</span>';
+   const brand=header.querySelector(".local-brand");
+   brand?.insertAdjacentElement("afterend",search);
+   search.querySelector("input")?.addEventListener("keydown",e=>{
+     if(e.key==="Enter"){
+       e.preventDefault();
+       navigateSiteSection("shop");
+       setTimeout(()=>{const q=document.getElementById("search");if(q){q.value=e.target.value;q.dispatchEvent(new Event("input"));q.focus();}},60);
+     }
+   });
+ }
+ if(ref.has_contact_strip&&!header.querySelector(".imported-reference-contact")){
+   const c=document.createElement("a");
+   c.className="imported-reference-contact";
+   c.textContent="WhatsApp";
+   c.href=whatsappUrl(store?.local)||siteSectionUrl("contact");
+   if(c.href.includes("wa.me")){c.target="_blank";c.rel="noopener noreferrer";}
+   const cart=header.querySelector("#cartBtn");
+   cart?.insertAdjacentElement("beforebegin",c);
+ }
+ const top=document.getElementById("localTopbar");
+ if(top&&ref.topbar){
+   top.classList.remove("hidden");
+   const phone=document.getElementById("topbarPhone");
+   if(phone)phone.textContent=store?.local?.phone||store?.local?.whatsapp||store?.local?.name||"";
+   const cta=document.getElementById("topbarCta");
+   if(cta){cta.textContent="Contacto";cta.href=siteSectionUrl("contact");}
+ }
+}
+
 function applyStoreTheme(){
  const t=store?.theme||{},imported=pageContent()?.imported_design?.palette||{};
  const valid=(v,fallback)=>/^#[0-9a-f]{6}$/i.test(String(v||""))?v:fallback;
@@ -1114,7 +1157,7 @@ async function init(){
   "family-"+String(store?.preset?.layout_family||"GENERAL"),
   "design-"+String(store?.preset?.config?.design_system||"SIGNATURE")
 );
-   applyStoreTheme();
+   applyStoreTheme();applyImportedReferenceLayout();
    const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes]=await Promise.all([
      supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),

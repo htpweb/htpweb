@@ -2966,6 +2966,10 @@ function renderLocalStorePreview(){
   const banner=state.localProfileRecord?.banner_url;
   const layout=preset?.dataset?.family||"GENERAL";
   const bannerCss=banner?String(banner).replace(/["'()\\]/g,ch=>encodeURIComponent(ch)):"";
+  if(state.localImportedDesign?.reference_layout?.enabled){
+    box.innerHTML=importedReferencePreviewMarkup({design,family:layout,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,blog,contact,nav,bannerCss},state.localImportedDesign);
+    return;
+  }
   if(["FOOD","RETAIL","FASHION","BOOKS","FLOWERS","HEALTH","HARDWARE","SERVICES","PROFESSIONAL","BEAUTY","GENERAL"].includes(layout)){
     box.innerHTML=professionalStorefrontPreviewMarkup({design,family:layout,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss});
     return;
@@ -3265,6 +3269,62 @@ function importedTextNearHeading(doc,heading){
 function findImportedHeading(doc,words){
   return [...doc.querySelectorAll("h1,h2,h3")].find(h=>words.some(w=>h.textContent.toLowerCase().includes(w)))||null;
 }
+
+function detectImportedReferenceLayout(doc,css,meta={}){
+  const low=((doc.documentElement?.outerHTML||"")+" "+String(css||"")).toLowerCase();
+  const body=doc.body;
+  const search=!!doc.querySelector('input[type="search"],input[placeholder*="buscar" i],input[placeholder*="search" i],form[role="search"]');
+  const topbar=!!doc.querySelector('.topbar,.top-bar,.header-top,.top-header,.header__top,.contact-bar,.utility-bar,.social-top')||/(header-top|topbar|top-bar|utility-bar|contact-bar)/.test(low);
+  const logo=!!doc.querySelector('header img[src*="logo" i],img[class*="logo" i],a[class*="logo" i] img,.logo img');
+  const navLinks=[...doc.querySelectorAll('nav a,header .menu a,header ul a')].filter(a=>a.textContent.trim().length>0);
+  const side=!!doc.querySelector('aside nav,.sidebar nav,.side-nav');
+  const hero=doc.querySelector('.hero,.banner,.slider,.carousel,[class*="hero"],[class*="banner"],[class*="slider"]');
+  const heroHasImage=!!hero?.querySelector('img')||/(hero|banner|slider)[\s\S]{0,500}(background-image|<img)/.test(low);
+  const heroFull=/width\s*:\s*100(vw|%)/.test(low)||!!doc.querySelector('.fullwidth,.full-width,.container-fluid');
+  const hasTopContacts=/whatsapp|tel[eé]fono|phone|correo|email/.test((doc.querySelector('header')?.textContent||"").toLowerCase());
+  const topbarDetected=topbar||hasTopContacts;
+  const menuBelow=search||topbarDetected||/main-header|header-main|header-middle/.test(low);
+  const rounded=(String(css||"").match(/border-radius\s*:\s*(\d+)px/gi)||[]).map(x=>parseInt(x.match(/\d+/)?.[0]||"0")).filter(Number.isFinite);
+  const radius=rounded.length?Math.round(rounded.reduce((a,b)=>a+b,0)/rounded.length):6;
+  return {
+    enabled:true,
+    header_rows:Math.min(3,1+(topbarDetected?1:0)+(search?1:0)),
+    topbar:topbarDetected,
+    has_search:search,
+    has_logo:logo,
+    has_contact_strip:hasTopContacts,
+    nav_style:side?"VERTICAL":"HORIZONTAL",
+    nav_below:menuBelow&&!side,
+    nav_full_width:!side&&navLinks.length>=5,
+    hero_mode:heroHasImage?(heroFull?"FULL_BLEED":"IMAGE_HERO"):"CONTENT_HERO",
+    hero_has_image:heroHasImage,
+    hero_text_align:/text-align\s*:\s*center/.test(String(css||""))?"CENTER":"LEFT",
+    content_width:/max-width\s*:\s*(1[2-9]\d\d|[2-9]\d{3})px/.test(String(css||""))?"WIDE":"STANDARD",
+    card_radius:Math.max(0,Math.min(radius,32)),
+    density:doc.querySelectorAll("body *").length>500?"DENSE":"AIRY",
+    source_domain:(()=>{try{return new URL(meta.url||"").hostname}catch{return""}})()
+  };
+}
+function importedReferencePreviewMarkup(ctx,schema){
+  const {primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,blog,contact,nav,bannerCss}=ctx;
+  const ref=schema?.reference_layout||{};
+  const family=ctx.family||"GENERAL";
+  const media=storefrontPreviewMedia(family);
+  const name=esc(state.localProfileRecord?.name||"LOCAL");
+  const heroImage=bannerCss?bannerCss:media.hero;
+  const top=ref.topbar?'<div class="ref-topbar"><span>✉ info@tunegocio.com</span><span>◉ WhatsApp</span><span>☎ Contacto</span></div>':"";
+  const search=ref.has_search?'<div class="ref-search-row"><strong class="ref-logo">'+name+'</strong><div class="ref-search-box">Buscar productos o servicios… <b>⌕</b></div><span class="ref-whatsapp">WhatsApp</span><span class="ref-icon">♙</span><span class="ref-icon">🛒</span></div>':'<div class="ref-brand-row"><strong>'+name+'</strong><span>WhatsApp</span></div>';
+  const navBar='<div class="ref-nav">'+nav.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div>';
+  const header=top+search+(ref.nav_below?navBar:"");
+  const inlineNav=ref.nav_below?"":navBar;
+  const cards=[1,2,3].map((_,i)=>'<article><img src="'+esc(media.projects[i%media.projects.length])+'" alt=""><strong>'+esc([catalog,projects,about][i]||"Destacado")+'</strong></article>').join("");
+  return '<div class="local-store-preview-root reference-preview" style="--ref-primary:'+esc(primary)+';--ref-secondary:'+esc(secondary)+';--ref-bg:'+esc(background)+';--ref-surface:'+esc(surface)+';--ref-text:'+esc(text)+';--ref-radius:'+Number(ref.card_radius||6)+'px">'+
+    '<div class="ref-site">'+header+inlineNav+
+      '<section class="ref-hero '+(ref.hero_text_align==="CENTER"?"center":"")+'" style="background-image:linear-gradient(90deg,rgba(255,255,255,.94),rgba(255,255,255,.08)),url('+esc(heroImage)+')"><div><small>'+esc(storefrontFamilyProfile(family).kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><span class="ref-cta">Conocer más</span></div></section>'+
+      '<section class="ref-grid">'+cards+'</section>'+
+      '<section class="ref-strip"><div><strong>'+esc(catalog)+'</strong><span>Productos y soluciones destacadas</span></div><div><strong>'+esc(projects)+'</strong><span>Experiencia y trabajos</span></div><div><strong>'+esc(contact)+'</strong><span>Contacto directo</span></div></section>'+
+    '</div></div>';
+}
 function analyzeImportedMarkup(html,extraCss="",meta={}){
   const parser=new DOMParser(),doc=parser.parseFromString(String(html||""),"text/html");
   doc.querySelectorAll("script,noscript,iframe,object,embed").forEach(n=>n.remove());
@@ -3285,7 +3345,8 @@ function analyzeImportedMarkup(html,extraCss="",meta={}){
     version:1,
     source:{type:meta.type||"HTML",name:String(meta.name||"").slice(0,240),url:String(meta.url||"").slice(0,1000),title:String(meta.title||doc.title||"").slice(0,240)},
     analyzed_at:new Date().toISOString(),
-    design_system:designSystem,
+    design_system:meta.type==="URL"?"SIGNATURE":designSystem,
+    reference_layout:detectImportedReferenceLayout(doc,styleText,meta),
     palette:{primary:palette.primary,secondary:palette.secondary,background:palette.background,surface:palette.surface,text:palette.text,swatches:palette.swatches},
     sections,
     navigation:nav,
@@ -3334,15 +3395,16 @@ function applyImportedDesign(schema){
   if(schema.palette?.primary&&$("localStoreAccent"))$("localStoreAccent").value=schema.palette.primary;
   if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").value=$("localStoreAccent")?.value||schema.palette?.primary||"#111827";
   const c=schema.content||{};
-  if(c.hero_title&&$("localHeroTitle"))$("localHeroTitle").value=c.hero_title;
-  if(c.hero_subtitle&&$("localHeroSubtitle"))$("localHeroSubtitle").value=c.hero_subtitle;
-  if(c.about_title&&$("localAboutTitle"))$("localAboutTitle").value=c.about_title;
-  if(c.about_text&&$("localAboutText"))$("localAboutText").value=c.about_text;
-  if(c.projects_title&&$("localProjectsTitle"))$("localProjectsTitle").value=c.projects_title;
-  if(c.blog_title&&$("localBlogTitle"))$("localBlogTitle").value=c.blog_title;
-  if(c.contact_title&&$("localContactTitle"))$("localContactTitle").value=c.contact_title;
+  const importContent=schema.source?.type!=="URL";
+  if(importContent&&c.hero_title&&$("localHeroTitle"))$("localHeroTitle").value=c.hero_title;
+  if(importContent&&c.hero_subtitle&&$("localHeroSubtitle"))$("localHeroSubtitle").value=c.hero_subtitle;
+  if(importContent&&c.about_title&&$("localAboutTitle"))$("localAboutTitle").value=c.about_title;
+  if(importContent&&c.about_text&&$("localAboutText"))$("localAboutText").value=c.about_text;
+  if(importContent&&c.projects_title&&$("localProjectsTitle"))$("localProjectsTitle").value=c.projects_title;
+  if(importContent&&c.blog_title&&$("localBlogTitle"))$("localBlogTitle").value=c.blog_title;
+  if(importContent&&c.contact_title&&$("localContactTitle"))$("localContactTitle").value=c.contact_title;
   const s=schema.sections||{};
-  if(Object.values(s).some(Boolean)){
+  if(importContent&&Object.values(s).some(Boolean)){
     if($("localShowAbout"))$("localShowAbout").checked=!!s.about;
     if($("localShowCatalog"))$("localShowCatalog").checked=!!s.catalog;
     if($("localShowProjects"))$("localShowProjects").checked=!!s.projects;
