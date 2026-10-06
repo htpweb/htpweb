@@ -2819,30 +2819,72 @@ function syncLocalPublicAccess(){
 
 function professionalStorefrontPreviewMarkup(ctx){
   const {design,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
-  const heroStyle=bannerCss
-    ? 'background:linear-gradient(100deg,rgba(5,15,30,.94),rgba(5,15,30,.38)),url('+bannerCss+') center/cover;'
-    : 'background:radial-gradient(circle at 78% 18%,'+esc(primary)+'99,transparent 25%),linear-gradient(135deg,'+esc(secondary)+','+esc(primary)+');';
   const name=esc(state.localProfileRecord?.name||"LOCAL");
   const aboutText=esc($("localAboutText")?.value.trim()||"Integramos experiencia técnica, planificación y ejecución para desarrollar soluciones confiables, eficientes y sostenibles.");
-  const metricLabels=design==="IMMERSIVE"?["PROYECTOS","DISCIPLINAS","SECTORES","CALIDAD"]:design==="COMPACT"?["BIM","QA/QC","HSE","ESG"]:["18+ AÑOS","240 PROYECTOS","12 DISCIPLINAS","96% CLIENTES"];
-  return '<div class="local-store-preview-root professional-preview design-'+esc(design)+'" style="--pv-primary:'+esc(primary)+';--pv-secondary:'+esc(secondary)+';--pv-bg:'+esc(background)+';--pv-surface:'+esc(surface)+';--pv-text:'+esc(text)+';background:'+esc(background)+';color:'+esc(text)+'">'+
-    '<div class="pv-shell">'+
-      '<header class="pv-head"><strong class="pv-brand">'+name+'</strong><nav class="pv-nav">'+nav.map(x=>'<span>'+esc(x)+'</span>').join("")+'</nav><span class="pv-head-cta">Solicitar propuesta</span></header>'+
-      '<section class="pv-hero" style="'+heroStyle+'"><div class="pv-hero-copy"><small class="pv-kicker">INGENIERÍA · ARQUITECTURA · PROYECTOS</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div class="pv-hero-actions"><span class="pv-cta">Explorar proyectos</span><span class="pv-cta secondary">Ver capacidades</span></div></div><div class="pv-blueprint-mark">ENG<br>01</div></section>'+
-      '<div class="pv-metrics">'+metricLabels.map((m,i)=>'<div><strong>'+["18+","240","12","96%"][i]+'</strong><span>'+esc(m)+'</span></div>').join("")+'</div>'+
-      '<main class="pv-content">'+
-        ($("localShowCatalog")?.checked?'<section class="pv-section pv-capabilities"><div class="pv-section-title"><small>CAPACIDADES</small><strong>'+esc(catalog)+'</strong></div><div class="pv-grid">'+
-          ['Ingeniería y diseño','Arquitectura y planificación','Gestión de proyectos','Consultoría técnica'].map((s,i)=>'<article class="pv-card"><b>0'+(i+1)+'</b><strong>'+s+'</strong><i></i></article>').join("")+
-        '</div></section>':"")+
-        ($("localShowProjects")?.checked?'<section class="pv-section pv-project-section"><div class="pv-section-title"><small>PORTAFOLIO</small><strong>'+esc(projects)+'</strong></div><div class="pv-projects"><article><span>Infraestructura</span><strong>Corredor Metropolitano</strong></article><article><span>Energía</span><strong>Planta Horizonte</strong></article><article><span>Industria</span><strong>Centro Operativo Delta</strong></article></div></section>':"")+
-        ($("localShowAbout")?.checked?'<section class="pv-section pv-about"><div class="pv-section-title"><small>FIRMA</small><strong>'+esc(about)+'</strong></div><p>'+aboutText+'</p><div class="pv-cert-row"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section>':"")+
-        ($("localShowBlog")?.checked?'<section class="pv-section pv-insights"><div class="pv-section-title"><small>INSIGHTS</small><strong>Conocimiento técnico</strong></div><div><span>Caso de estudio</span><span>Tendencias de ingeniería</span><span>Innovación y sostenibilidad</span></div></section>':"")+
-        ($("localShowContact")?.checked?'<section class="pv-section pv-contact"><div><small>CONTACTO</small><strong>'+esc(contact)+'</strong><p>WhatsApp · Teléfono · Dirección · Redes sociales</p></div><span class="pv-cta">Hablemos del proyecto</span></section>':"")+
-      '</main>'+
-    '</div>'+
-  '</div>';
+  const img=bannerCss?('url('+bannerCss+')'):'linear-gradient(135deg,'+esc(primary)+','+esc(secondary)+')';
+  const navHtml=nav.map(x=>'<span>'+esc(x)+'</span>').join("");
+  const services=['Ingeniería y diseño','Arquitectura y planificación','Gestión de proyectos','Consultoría técnica'];
+  const svc=services.map((s,i)=>'<article><b>0'+(i+1)+'</b><strong>'+s+'</strong><i></i></article>').join("");
+  const projectCards='<article><small>Infraestructura</small><strong>Corredor Metropolitano</strong></article><article><small>Energía</small><strong>Planta Horizonte</strong></article><article><small>Industria</small><strong>Centro Operativo Delta</strong></article>';
+  const stats='<div><strong>18+</strong><span>Años</span></div><div><strong>240</strong><span>Proyectos</span></div><div><strong>12</strong><span>Disciplinas</span></div><div><strong>96%</strong><span>Clientes</span></div>';
+  const head='<strong>'+name+'</strong><nav>'+navHtml+'</nav>';
+  const cta='<span class="arch-cta">Solicitar propuesta</span>';
+  const sectionFlags={about:$("localShowAbout")?.checked,catalog:$("localShowCatalog")?.checked,projects:$("localShowProjects")?.checked,blog:$("localShowBlog")?.checked,contact:$("localShowContact")?.checked};
+  const wrap=(body)=>'<div class="local-store-preview-root eng-architecture arch-'+esc(design)+'" style="--a:'+esc(primary)+';--b:'+esc(secondary)+';--bg:'+esc(background)+';--surface:'+esc(surface)+';--text:'+esc(text)+'">'+body+'</div>';
+  if(design==="SIGNATURE") return wrap(
+    '<header class="arch-header">'+head+cta+'</header>'+
+    '<section class="arch-photo-hero" style="background-image:linear-gradient(90deg,#050b12dd,#050b1244),'+img+'"><div><small>INGENIERÍA · PROYECTOS · SOLUCIONES</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div><span class="arch-cta">Solicitar una cotización</span><span class="arch-outline">Conocer nuestros servicios</span></div></div></section>'+
+    '<div class="arch-trust"><div><strong>Soluciones a medida</strong><span>Proyectos enfocados en resultados</span></div><div><strong>Experiencia técnica</strong><span>Planificación y ejecución profesional</span></div><div><strong>Contacto directo</strong><span>Cuéntanos tu proyecto por WhatsApp</span></div></div>'+
+    '<footer class="arch-footer"><b>'+name+'</b><div><strong>Explora</strong><span>Inicio</span><span>Servicios</span><span>Proyectos</span></div><div><strong>Contacto</strong><span>WhatsApp</span><span>Ubicación</span></div></footer>'
+  );
+  if(design==="MINIMAL") return wrap(
+    '<header class="arch-min-head">'+head+'</header><main class="arch-min-main"><aside><span>01</span><span>02</span><span>03</span><span>04</span></aside><section><small>ESTUDIO DE INGENIERÍA</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+
+    '<div class="arch-min-rule"></div><div class="arch-min-stats">'+stats+'</div>'+
+    (sectionFlags.catalog?'<h3>'+esc(catalog)+'</h3><div class="arch-min-services">'+svc+'</div>':'')+
+    (sectionFlags.projects?'<h3>'+esc(projects)+'</h3><div class="arch-min-projects">'+projectCards+'</div>':'')+
+    '</section></main>'
+  );
+  if(design==="SPLIT") return wrap(
+    '<div class="arch-split"><section class="arch-split-left"><header>'+head+'</header><small>ENGINEERING / 01</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+'<div class="arch-split-stats">'+stats+'</div></section>'+
+    '<section class="arch-split-right" style="background-image:linear-gradient(#0b122044,#0b122044),'+img+'"><div class="arch-project-stack">'+projectCards+'</div></section></div>'
+  );
+  if(design==="SIDEBAR") return wrap(
+    '<div class="arch-side-shell"><aside class="arch-side-nav"><strong>'+name+'</strong>'+navHtml+cta+'</aside><main><section class="arch-side-hero" style="background-image:linear-gradient(90deg,#062033dd,#06203355),'+img+'"><small>BLUEPRINT / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><div class="arch-side-stats">'+stats+'</div>'+
+    (sectionFlags.catalog?'<section class="arch-blue-grid"><h3>'+esc(catalog)+'</h3><div>'+svc+'</div></section>':'')+
+    (sectionFlags.projects?'<section class="arch-blue-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')+'</main></div>'
+  );
+  if(design==="EDITORIAL") return wrap(
+    '<header class="arch-ed-head">'+head+'</header><main class="arch-editorial"><div class="arch-ed-number">01</div><section class="arch-ed-intro"><small>ARCHITECTURE / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section>'+
+    '<section class="arch-ed-feature" style="background-image:'+img+'"><span>PROYECTO DESTACADO</span></section>'+
+    (sectionFlags.projects?'<section class="arch-ed-project-list"><h3>'+esc(projects)+'</h3>'+projectCards+'</section>':'')+
+    (sectionFlags.about?'<section class="arch-ed-about"><h3>'+esc(about)+'</h3><p>'+aboutText+'</p></section>':'')+'</main>'
+  );
+  if(design==="LUXE") return wrap(
+    '<div class="arch-luxe-shell"><header>'+head+cta+'</header><section class="arch-luxe-hero"><div class="arch-orbit"></div><small>ADVANCED ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div class="arch-luxe-actions"><span>Explorar capacidades</span><span>Ver proyectos</span></div></section><div class="arch-luxe-stats">'+stats+'</div>'+
+    (sectionFlags.catalog?'<section class="arch-luxe-services"><h3>'+esc(catalog)+'</h3><div>'+svc+'</div></section>':'')+
+    (sectionFlags.projects?'<section class="arch-luxe-projects">'+projectCards+'</section>':'')+'</div>'
+  );
+  if(design==="BOLD") return wrap(
+    '<header class="arch-bold-head"><strong>'+name+'</strong><div>'+navHtml+'</div></header><section class="arch-bold-hero"><div><small>BUILD / ENGINEER / DELIVER</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></div><div class="arch-bold-mark">01</div></section><div class="arch-bold-band">'+stats+'</div>'+
+    (sectionFlags.catalog?'<section class="arch-bold-services"><h3>'+esc(catalog)+'</h3>'+svc+'</section>':'')+
+    (sectionFlags.projects?'<section class="arch-bold-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')
+  );
+  if(design==="MAGAZINE") return wrap(
+    '<header class="arch-mag-head">'+head+'<span>ISSUE 01</span></header><main class="arch-mag-grid"><section class="arch-mag-cover" style="background-image:linear-gradient(#0f172a55,#0f172a99),'+img+'"><small>FEATURE</small><h2>'+esc(hero)+'</h2></section><aside class="arch-mag-index"><b>CONTENIDO</b><span>01 '+esc(about)+'</span><span>02 '+esc(catalog)+'</span><span>03 '+esc(projects)+'</span><span>04 '+esc(contact)+'</span></aside>'+
+    '<section class="arch-mag-story"><small>ENTREVISTA / ESTUDIO</small><h3>Diseño técnico con visión de negocio</h3><p>'+aboutText+'</p></section>'+
+    (sectionFlags.projects?'<section class="arch-mag-projects">'+projectCards+'</section>':'')+'</main>'
+  );
+  if(design==="IMMERSIVE") return wrap(
+    '<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>INFRASTRUCTURE / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><span class="arch-cta">Descubrir proyecto</span></div><div class="arch-immersive-scroll">SCROLL ↓</div></section>'+
+    '<div class="arch-immersive-float">'+stats+'</div>'+
+    (sectionFlags.projects?'<section class="arch-immersive-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')
+  );
+  return wrap(
+    '<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>TECHNICAL CONTROL</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><section class="arch-tech-kpis">'+stats+'</section>'+
+    '<section class="arch-tech-panel"><h3>Capacidades</h3><div>'+svc+'</div></section><section class="arch-tech-panel"><h3>Certificaciones</h3><div class="arch-tech-tags"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section>'+
+    '<section class="arch-tech-panel wide"><h3>'+esc(projects)+'</h3><div class="arch-tech-projects">'+projectCards+'</div></section></div>'
+  );
 }
-
 function professionalTemplateThumb(design){
   const blocks={
     SIGNATURE:'<div class="eng-thumb hero"><i></i><b></b><span></span></div><div class="eng-thumb metrics"><i></i><i></i><i></i><i></i></div>',
