@@ -1895,6 +1895,10 @@ async function loadDeliveryProfileRecord() {
     renderDeliveryThemeSelection("HTPWEB");
     syncDeliveryPublicAccess(null);
     $("saveDeliveryProfileBtn").disabled = true;
+    state.deliveryProfileWhatsappConnection = { configured:false, status:"DISCONNECTED" };
+    state.deliveryProfileWhatsappSettings = null;
+    state.deliveryProfileWhatsappProvider = { configured:false };
+    renderDeliveryProfileWhatsapp();
     return;
   }
 
@@ -1916,11 +1920,196 @@ async function loadDeliveryProfileRecord() {
     renderDeliveryThemeSelection(data.theme_key || "HTPWEB");
     syncDeliveryPublicAccess(data);
     $("saveDeliveryProfileBtn").disabled = false;
+    await loadDeliveryProfileWhatsapp();
   } catch (e) {
     state.deliveryProfileRecord = null;
     syncDeliveryPublicAccess(null);
     $("saveDeliveryProfileBtn").disabled = true;
     message(e.message || "No se pudo cargar la información del DELIVERY.", "error");
+  }
+}
+
+function renderDeliveryProfileWhatsapp() {
+  const connection = state.deliveryProfileWhatsappConnection || { configured:false, status:"DISCONNECTED" };
+  const settings = state.deliveryProfileWhatsappSettings || {
+    mode:"ASSISTED",
+    local_orders:true,
+    driver_dispatch:true,
+    customer_orders:true,
+    customer_order_available:true
+  };
+  const provider = state.deliveryProfileWhatsappProvider || { configured:false };
+  const badge = $("profileWhatsappConnectionBadge");
+  const current = $("profileWhatsappConnectionCurrent");
+  const adminBox = $("profileWhatsappConnectionAdmin");
+  const mode = $("profileWhatsappConnectionMode");
+  const phone = $("profileWhatsappRequestedPhone");
+  const phoneWrap = $("profileWhatsappRequestedPhoneWrap");
+  const requestBtn = $("profileWhatsappConnectionRequestBtn");
+  const messageMode = $("profileWhatsappModeSelect");
+  const localOrders = $("profileWhatsappLocalOrders");
+  const driverDispatch = $("profileWhatsappDriverDispatch");
+  const customerOrders = $("profileWhatsappCustomerOrders");
+  const saveBtn = $("profileWhatsappSettingsSave");
+  const connectionHelp = $("profileWhatsappConnectionHelp");
+  const settingsHelp = $("profileWhatsappSettingsHelp");
+  if (!badge || !current || !adminBox) return;
+
+  const labels = {
+    CONNECTED:"Conectado",
+    PENDING:"Pendiente",
+    DISCONNECTED:"Sin conectar",
+    ERROR:"Error",
+    NOT_INCLUDED:"No incluido"
+  };
+  badge.textContent = labels[connection.status] || connection.status || "Sin conectar";
+  badge.className = "badge";
+
+  if (connection.status === "NOT_INCLUDED") {
+    current.innerHTML = "<strong>WhatsApp Business no está incluido en el plan actual.</strong>";
+    adminBox.classList.add("hidden");
+    return;
+  }
+
+  adminBox.classList.remove("hidden");
+  if (connection.configured) {
+    current.innerHTML =
+      "<strong>WhatsApp conectado:</strong> " +
+      esc(connection.display_phone || connection.requested_phone || "—") +
+      (connection.verified_name ? " · " + esc(connection.verified_name) : "") +
+      " · " + esc(connection.connection_mode === "OWN" ? "WhatsApp propio" : "Administrado por HTPWEB") +
+      (connection.environment === "TEST" ? " · Entorno de prueba" : "") +
+      (connection.waba_id ? "<br><small>WABA: " + esc(connection.waba_id) + " · Phone Number ID: " + esc(connection.phone_number_id || "—") + "</small>" : "");
+  } else if (connection.status === "PENDING") {
+    current.innerHTML =
+      "<strong>Conexión pendiente con Meta.</strong> " +
+      esc(connection.requested_phone || state.deliveryProfileRecord?.whatsapp || "Número por definir") +
+      ". Aún no hay WABA ID ni Phone Number ID asignados.";
+  } else if (connection.status === "ERROR") {
+    current.innerHTML = "<strong>Error de conexión.</strong> " + esc(connection.last_error || "Revisa la configuración.");
+  } else {
+    current.textContent = "Este DELIVERY todavía no tiene un remitente WhatsApp Business conectado.";
+  }
+
+  const selectedMode = connection.connection_mode || "HTPWEB_MANAGED";
+  if (mode) mode.value = selectedMode;
+  if (phone) phone.value = connection.requested_phone || state.deliveryProfileRecord?.whatsapp || "";
+  if (phoneWrap) phoneWrap.classList.toggle("hidden", selectedMode === "OWN");
+  if (requestBtn) requestBtn.textContent = connection.status === "PENDING" ? "Actualizar solicitud Meta" : "Preparar conexión con Meta";
+
+  if (messageMode) {
+    const automaticOption = [...messageMode.options].find(option => option.value === "AUTOMATIC");
+    if (automaticOption) automaticOption.disabled = provider.configured !== true || connection.configured !== true;
+    messageMode.value = settings.mode || "ASSISTED";
+  }
+  if (localOrders) localOrders.checked = settings.local_orders !== false;
+  if (driverDispatch) driverDispatch.checked = settings.driver_dispatch !== false;
+  if (customerOrders) {
+    customerOrders.checked = settings.customer_orders !== false;
+    customerOrders.disabled = settings.customer_order_available === false;
+  }
+
+  const canManage = state.role === "DELIVERY_ADMIN";
+  [mode, phone, requestBtn, messageMode, localOrders, driverDispatch, saveBtn].forEach(el => {
+    if (el) el.disabled = !canManage;
+  });
+  if (customerOrders && settings.customer_order_available !== false) customerOrders.disabled = !canManage;
+
+  if (connectionHelp) {
+    connectionHelp.textContent = selectedMode === "OWN"
+      ? "WhatsApp propio: el administrador del número deberá autorizar Meta una sola vez."
+      : "Administrado por HTPWEB: se usa el número registrado del DELIVERY y HTPWEB prepara la conexión con Meta.";
+  }
+  if (settingsHelp) {
+    settingsHelp.textContent = connection.configured === true && provider.configured === true
+      ? "Meta está listo para este DELIVERY. Puedes usar el modo Automático."
+      : "El modo Automático quedará disponible cuando Meta asigne y valide WABA ID + Phone Number ID para este DELIVERY.";
+  }
+}
+
+async function loadDeliveryProfileWhatsapp() {
+  if (state.role !== "DELIVERY_ADMIN") return;
+  const deliveryId = $("profileDelivery")?.value || null;
+  if (!deliveryId) return;
+
+  try {
+    const plan = await rpc("delivery_plan_snapshot", { p_delivery_id: deliveryId });
+    const ent = plan?.current?.entitlements || {};
+    if (ent["whatsapp.manage"] !== true) {
+      state.deliveryProfileWhatsappConnection = { configured:false, status:"NOT_INCLUDED" };
+      state.deliveryProfileWhatsappSettings = {
+        mode:"ASSISTED", local_orders:false, driver_dispatch:false,
+        customer_orders:ent["whatsapp.customer_order"] === true,
+        customer_order_available:ent["whatsapp.customer_order"] === true
+      };
+      state.deliveryProfileWhatsappProvider = { configured:false };
+      renderDeliveryProfileWhatsapp();
+      return;
+    }
+
+    const [connection, settings, provider] = await Promise.all([
+      rpc("delivery_whatsapp_connection_snapshot", { p_delivery_id: deliveryId }),
+      rpc("delivery_whatsapp_settings_snapshot", { p_delivery_id: deliveryId }),
+      typeof htpWhatsappProviderStatus === "function"
+        ? htpWhatsappProviderStatus(deliveryId)
+        : Promise.resolve({ configured:false })
+    ]);
+    state.deliveryProfileWhatsappConnection = connection || { configured:false, status:"DISCONNECTED" };
+    state.deliveryProfileWhatsappSettings = settings || { mode:"ASSISTED", local_orders:true, driver_dispatch:true, customer_orders:true };
+    state.deliveryProfileWhatsappProvider = provider || { configured:false };
+    renderDeliveryProfileWhatsapp();
+  } catch (e) {
+    state.deliveryProfileWhatsappConnection = { configured:false, status:"ERROR", last_error:e.message || "No se pudo consultar Meta." };
+    state.deliveryProfileWhatsappProvider = { configured:false };
+    renderDeliveryProfileWhatsapp();
+  }
+}
+
+async function requestDeliveryProfileWhatsappConnection() {
+  try {
+    const deliveryId = $("profileDelivery")?.value || null;
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+    const mode = $("profileWhatsappConnectionMode")?.value || "HTPWEB_MANAGED";
+    const phone = mode === "HTPWEB_MANAGED"
+      ? ($("profileWhatsappRequestedPhone")?.value || state.deliveryProfileRecord?.whatsapp || "").trim()
+      : null;
+    if (mode === "HTPWEB_MANAGED" && !phone) {
+      throw new Error("Ingresa el número de WhatsApp del DELIVERY.");
+    }
+    await rpc("delivery_request_whatsapp_connection", {
+      p_delivery_id:deliveryId,
+      p_connection_mode:mode,
+      p_phone:phone
+    });
+    message("Solicitud de conexión con Meta actualizada.");
+    await loadDeliveryProfileWhatsapp();
+  } catch (e) {
+    message(e.message || "No se pudo preparar la conexión con Meta.", "error");
+  }
+}
+
+async function saveDeliveryProfileWhatsappSettings() {
+  try {
+    const deliveryId = $("profileDelivery")?.value || null;
+    if (!deliveryId) throw new Error("Selecciona un DELIVERY.");
+    const mode = $("profileWhatsappModeSelect")?.value || "ASSISTED";
+    if (mode === "AUTOMATIC" && (
+      state.deliveryProfileWhatsappConnection?.configured !== true ||
+      state.deliveryProfileWhatsappProvider?.configured !== true
+    )) {
+      throw new Error("Meta todavía no está completamente conectado para este DELIVERY.");
+    }
+    await rpc("delivery_set_whatsapp_settings", {
+      p_delivery_id:deliveryId,
+      p_mode:mode,
+      p_local_orders:$("profileWhatsappLocalOrders")?.checked !== false,
+      p_driver_dispatch:$("profileWhatsappDriverDispatch")?.checked !== false,
+      p_customer_orders:$("profileWhatsappCustomerOrders")?.checked !== false
+    });
+    message("Configuración de WhatsApp actualizada.");
+    await loadDeliveryProfileWhatsapp();
+  } catch (e) {
+    message(e.message || "No se pudo guardar la configuración de WhatsApp.", "error");
   }
 }
 
@@ -12289,6 +12478,19 @@ function bindEvents() {
   if ($("requestType")) $("requestType").onchange = updateRequestForm;
   if ($("requestDelivery")) $("requestDelivery").onchange = updateRequestForm;
   if ($("profileDelivery")) $("profileDelivery").onchange = loadDeliveryProfileRecord;
+  if ($("profileWhatsappConnectionRequestBtn")) $("profileWhatsappConnectionRequestBtn").onclick = requestDeliveryProfileWhatsappConnection;
+  if ($("profileWhatsappSettingsSave")) $("profileWhatsappSettingsSave").onclick = saveDeliveryProfileWhatsappSettings;
+  if ($("profileWhatsappConnectionMode")) $("profileWhatsappConnectionMode").onchange = () => {
+    const mode = $("profileWhatsappConnectionMode")?.value || "HTPWEB_MANAGED";
+    const wrap = $("profileWhatsappRequestedPhoneWrap");
+    const help = $("profileWhatsappConnectionHelp");
+    if (wrap) wrap.classList.toggle("hidden", mode === "OWN");
+    if (help) {
+      help.textContent = mode === "OWN"
+        ? "WhatsApp propio: el administrador del número deberá autorizar Meta una sola vez."
+        : "Administrado por HTPWEB: se usa el número registrado del DELIVERY y HTPWEB prepara la conexión con Meta.";
+    }
+  };
   if ($("profileCopyPublicUrlBtn")) $("profileCopyPublicUrlBtn").onclick = async () => {
     const id=state.deliveryProfileRecord?.id;
     if(id) await copyMasterDeliveryPublicUrl(id);

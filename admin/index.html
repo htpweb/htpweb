@@ -266,6 +266,54 @@
           </div>
         </div>
 
+        <div class="card" id="profileWhatsappCard" style="margin-top:14px">
+          <div class="row between" style="gap:12px;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">WhatsApp Business / Meta</h3>
+              <p class="muted" style="margin:5px 0 0">Conecta el número de este DELIVERY con la API oficial de WhatsApp Business.</p>
+            </div>
+            <span id="profileWhatsappConnectionBadge" class="badge">Consultando...</span>
+          </div>
+
+          <div id="profileWhatsappConnectionCurrent" class="workspace-note" style="margin-top:12px"></div>
+
+          <div id="profileWhatsappConnectionAdmin" style="margin-top:14px">
+            <div class="form-grid">
+              <div>
+                <label>Tipo de conexión</label>
+                <select id="profileWhatsappConnectionMode">
+                  <option value="HTPWEB_MANAGED">Administrado por HTPWEB</option>
+                  <option value="OWN">WhatsApp propio</option>
+                </select>
+              </div>
+              <div id="profileWhatsappRequestedPhoneWrap">
+                <label>Número a conectar</label>
+                <input id="profileWhatsappRequestedPhone" maxlength="40" placeholder="Ej. 0980390363">
+              </div>
+              <div>
+                <label>Modo de mensajería</label>
+                <select id="profileWhatsappModeSelect">
+                  <option value="ASSISTED">Asistido</option>
+                  <option value="AUTOMATIC">Automático</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:12px">
+              <label class="workspace-note"><input id="profileWhatsappLocalOrders" type="checkbox"> Pedidos a locales</label>
+              <label class="workspace-note"><input id="profileWhatsappDriverDispatch" type="checkbox"> Avisos a repartidores</label>
+              <label class="workspace-note"><input id="profileWhatsappCustomerOrders" type="checkbox"> Pedidos de clientes</label>
+            </div>
+
+            <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
+              <button class="btn-primary" id="profileWhatsappConnectionRequestBtn" type="button">Preparar conexión con Meta</button>
+              <button class="btn-muted" id="profileWhatsappSettingsSave" type="button">Guardar configuración</button>
+            </div>
+            <small id="profileWhatsappConnectionHelp" class="muted" style="display:block;margin-top:10px"></small>
+            <small id="profileWhatsappSettingsHelp" class="muted" style="display:block;margin-top:6px"></small>
+          </div>
+        </div>
+
         <div class="row" style="margin-top:14px">
           <button class="btn-primary" id="saveDeliveryProfileBtn">Guardar información</button>
           <button class="btn-muted" id="profileGoStorageBtn">Gestionar logo</button>
