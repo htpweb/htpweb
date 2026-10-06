@@ -2817,55 +2817,73 @@ function syncLocalPublicAccess(){
   return url;
 }
 
+function storefrontFamilyProfile(family){
+  const profiles={
+    FOOD:{kicker:"SABOR · EXPERIENCIA · PEDIDOS",services:["Especialidades","Menú destacado","Combos y promociones","Pedidos y delivery"],projects:["Plato insignia","Experiencia del local","Promoción del día"],trust:["Ingredientes y sabor","Atención rápida","Pedido directo"]},
+    RETAIL:{kicker:"COMPRA · VARIEDAD · DISPONIBILIDAD",services:["Categorías destacadas","Promociones","Novedades","Compra rápida"],projects:["Más vendidos","Recomendados","Oferta especial"],trust:["Stock visible","Compra ágil","Atención directa"]},
+    FASHION:{kicker:"COLECCIÓN · ESTILO · TENDENCIA",services:["Nueva colección","Looks destacados","Accesorios","Compra online"],projects:["Editorial","Colección cápsula","Tendencias"],trust:["Curaduría de estilo","Nuevos ingresos","Compra segura"]},
+    BOOKS:{kicker:"LECTURA · IDEAS · DESCUBRIMIENTO",services:["Novedades editoriales","Escolar y oficina","Recomendados","Pedidos especiales"],projects:["Selección del mes","Autores destacados","Colecciones"],trust:["Catálogo curado","Reserva fácil","Atención personalizada"]},
+    FLOWERS:{kicker:"DETALLES · EMOCIONES · MOMENTOS",services:["Arreglos florales","Regalos especiales","Eventos","Pedidos personalizados"],projects:["Colección romántica","Celebraciones","Diseños exclusivos"],trust:["Hecho con cuidado","Entrega coordinada","Personalización"]},
+    HEALTH:{kicker:"SALUD · CONFIANZA · CUIDADO",services:["Especialidades","Atención profesional","Servicios clínicos","Agenda y contacto"],projects:["Equipo médico","Instalaciones","Programas de salud"],trust:["Profesionales","Atención segura","Contacto directo"]},
+    HARDWARE:{kicker:"CATÁLOGO · SOLUCIONES · DISPONIBILIDAD",services:["Líneas de producto","Asesoría técnica","Marcas","Cotización"],projects:["Producto destacado","Solución recomendada","Aplicación técnica"],trust:["Stock y variedad","Asesoría técnica","Compra directa"]},
+    SERVICES:{kicker:"EXPERIENCIA · SERVICIO · RESULTADOS",services:["Servicios principales","Soluciones a medida","Casos atendidos","Agenda y contacto"],projects:["Caso destacado","Proceso de trabajo","Resultado logrado"],trust:["Atención profesional","Experiencia","Respuesta directa"]},
+    BEAUTY:{kicker:"BELLEZA · CUIDADO · EXPERIENCIA",services:["Servicios estrella","Tratamientos","Paquetes","Reservas"],projects:["Transformaciones","Experiencia studio","Tendencias"],trust:["Atención personalizada","Profesionales","Reserva fácil"]},
+    GENERAL:{kicker:"NEGOCIO · EXPERIENCIA · CONFIANZA",services:["Servicios","Productos","Novedades","Contacto"],projects:["Destacado","Experiencia","Novedad"],trust:["Calidad","Atención","Contacto directo"]},
+    PROFESSIONAL:{kicker:"INGENIERÍA · PROYECTOS · SOLUCIONES",services:["Ingeniería y diseño","Arquitectura y planificación","Gestión de proyectos","Consultoría técnica"],projects:["Corredor Metropolitano","Planta Horizonte","Centro Operativo Delta"],trust:["Soluciones a medida","Experiencia técnica","Contacto directo"]}
+  };
+  return profiles[family]||profiles.GENERAL;
+}
+
 function professionalStorefrontPreviewMarkup(ctx){
-  const {design,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
+  const {design,family="GENERAL",primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
+  const profile=storefrontFamilyProfile(family);
   const name=esc(state.localProfileRecord?.name||"LOCAL");
-  const aboutText=esc($("localAboutText")?.value.trim()||"Integramos experiencia técnica, planificación y ejecución para desarrollar soluciones confiables, eficientes y sostenibles.");
+  const aboutText=esc($("localAboutText")?.value.trim()||"Una propuesta profesional, clara y confiable, pensada para mostrar lo mejor del negocio y facilitar el contacto con sus clientes.");
   const img=bannerCss?('url('+bannerCss+')'):'linear-gradient(135deg,'+esc(primary)+','+esc(secondary)+')';
   const navHtml=nav.map(x=>'<span>'+esc(x)+'</span>').join("");
-  const services=['Ingeniería y diseño','Arquitectura y planificación','Gestión de proyectos','Consultoría técnica'];
-  const svc=services.map((s,i)=>'<article><b>0'+(i+1)+'</b><strong>'+s+'</strong><i></i></article>').join("");
-  const projectCards='<article><small>Infraestructura</small><strong>Corredor Metropolitano</strong></article><article><small>Energía</small><strong>Planta Horizonte</strong></article><article><small>Industria</small><strong>Centro Operativo Delta</strong></article>';
+  const services=profile.services;
+  const svc=services.map((s,i)=>'<article><b>0'+(i+1)+'</b><strong>'+esc(s)+'</strong><i></i></article>').join("");
+  const projectCards=profile.projects.map((p,i)=>'<article><small>'+esc(["Destacado","Experiencia","Novedad"][i]||"Selección")+'</small><strong>'+esc(p)+'</strong></article>').join("");
   const stats='<div><strong>18+</strong><span>Años</span></div><div><strong>240</strong><span>Proyectos</span></div><div><strong>12</strong><span>Disciplinas</span></div><div><strong>96%</strong><span>Clientes</span></div>';
   const head='<strong>'+name+'</strong><nav>'+navHtml+'</nav>';
   const cta='<span class="arch-cta">Solicitar propuesta</span>';
   const sectionFlags={about:$("localShowAbout")?.checked,catalog:$("localShowCatalog")?.checked,projects:$("localShowProjects")?.checked,blog:$("localShowBlog")?.checked,contact:$("localShowContact")?.checked};
-  const wrap=(body)=>'<div class="local-store-preview-root eng-architecture arch-'+esc(design)+'" style="--a:'+esc(primary)+';--b:'+esc(secondary)+';--bg:'+esc(background)+';--surface:'+esc(surface)+';--text:'+esc(text)+'">'+body+'</div>';
+  const wrap=(body)=>'<div class="local-store-preview-root eng-architecture family-'+esc(family)+' arch-'+esc(design)+'" style="--a:'+esc(primary)+';--b:'+esc(secondary)+';--bg:'+esc(background)+';--surface:'+esc(surface)+';--text:'+esc(text)+'">'+body+'</div>';
   if(design==="SIGNATURE") return wrap(
     '<header class="arch-header">'+head+cta+'</header>'+
-    '<section class="arch-photo-hero" style="background-image:linear-gradient(90deg,#050b12dd,#050b1244),'+img+'"><div><small>INGENIERÍA · PROYECTOS · SOLUCIONES</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div><span class="arch-cta">Solicitar una cotización</span><span class="arch-outline">Conocer nuestros servicios</span></div></div></section>'+
-    '<div class="arch-trust"><div><strong>Soluciones a medida</strong><span>Proyectos enfocados en resultados</span></div><div><strong>Experiencia técnica</strong><span>Planificación y ejecución profesional</span></div><div><strong>Contacto directo</strong><span>Cuéntanos tu proyecto por WhatsApp</span></div></div>'+
+    '<section class="arch-photo-hero" style="background-image:linear-gradient(90deg,#050b12dd,#050b1244),'+img+'"><div><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div><span class="arch-cta">Solicitar una cotización</span><span class="arch-outline">Conocer nuestros servicios</span></div></div></section>'+
+    '<div class="arch-trust">'+profile.trust.map((t,i)=>'<div><strong>'+esc(t)+'</strong><span>'+esc(["Una experiencia pensada para tu cliente","Presentación profesional y clara","Contacto directo y fácil"][i])+'</span></div>').join("")+'</div>'+
     '<footer class="arch-footer"><b>'+name+'</b><div><strong>Explora</strong><span>Inicio</span><span>Servicios</span><span>Proyectos</span></div><div><strong>Contacto</strong><span>WhatsApp</span><span>Ubicación</span></div></footer>'
   );
   if(design==="MINIMAL") return wrap(
-    '<header class="arch-min-head">'+head+'</header><main class="arch-min-main"><aside><span>01</span><span>02</span><span>03</span><span>04</span></aside><section><small>ESTUDIO DE INGENIERÍA</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+
+    '<header class="arch-min-head">'+head+'</header><main class="arch-min-main"><aside><span>01</span><span>02</span><span>03</span><span>04</span></aside><section><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+
     '<div class="arch-min-rule"></div><div class="arch-min-stats">'+stats+'</div>'+
     (sectionFlags.catalog?'<h3>'+esc(catalog)+'</h3><div class="arch-min-services">'+svc+'</div>':'')+
     (sectionFlags.projects?'<h3>'+esc(projects)+'</h3><div class="arch-min-projects">'+projectCards+'</div>':'')+
     '</section></main>'
   );
   if(design==="SPLIT") return wrap(
-    '<div class="arch-split"><section class="arch-split-left"><header>'+head+'</header><small>ENGINEERING / 01</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+'<div class="arch-split-stats">'+stats+'</div></section>'+
+    '<div class="arch-split"><section class="arch-split-left"><header>'+head+'</header><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p>'+cta+'<div class="arch-split-stats">'+stats+'</div></section>'+
     '<section class="arch-split-right" style="background-image:linear-gradient(#0b122044,#0b122044),'+img+'"><div class="arch-project-stack">'+projectCards+'</div></section></div>'
   );
   if(design==="SIDEBAR") return wrap(
-    '<div class="arch-side-shell"><aside class="arch-side-nav"><strong>'+name+'</strong>'+navHtml+cta+'</aside><main><section class="arch-side-hero" style="background-image:linear-gradient(90deg,#062033dd,#06203355),'+img+'"><small>BLUEPRINT / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><div class="arch-side-stats">'+stats+'</div>'+
+    '<div class="arch-side-shell"><aside class="arch-side-nav"><strong>'+name+'</strong>'+navHtml+cta+'</aside><main><section class="arch-side-hero" style="background-image:linear-gradient(90deg,#062033dd,#06203355),'+img+'"><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><div class="arch-side-stats">'+stats+'</div>'+
     (sectionFlags.catalog?'<section class="arch-blue-grid"><h3>'+esc(catalog)+'</h3><div>'+svc+'</div></section>':'')+
     (sectionFlags.projects?'<section class="arch-blue-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')+'</main></div>'
   );
   if(design==="EDITORIAL") return wrap(
-    '<header class="arch-ed-head">'+head+'</header><main class="arch-editorial"><div class="arch-ed-number">01</div><section class="arch-ed-intro"><small>ARCHITECTURE / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section>'+
+    '<header class="arch-ed-head">'+head+'</header><main class="arch-editorial"><div class="arch-ed-number">01</div><section class="arch-ed-intro"><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section>'+
     '<section class="arch-ed-feature" style="background-image:'+img+'"><span>PROYECTO DESTACADO</span></section>'+
     (sectionFlags.projects?'<section class="arch-ed-project-list"><h3>'+esc(projects)+'</h3>'+projectCards+'</section>':'')+
     (sectionFlags.about?'<section class="arch-ed-about"><h3>'+esc(about)+'</h3><p>'+aboutText+'</p></section>':'')+'</main>'
   );
   if(design==="LUXE") return wrap(
-    '<div class="arch-luxe-shell"><header>'+head+cta+'</header><section class="arch-luxe-hero"><div class="arch-orbit"></div><small>ADVANCED ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div class="arch-luxe-actions"><span>Explorar capacidades</span><span>Ver proyectos</span></div></section><div class="arch-luxe-stats">'+stats+'</div>'+
+    '<div class="arch-luxe-shell"><header>'+head+cta+'</header><section class="arch-luxe-hero"><div class="arch-orbit"></div><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div class="arch-luxe-actions"><span>Explorar capacidades</span><span>Ver proyectos</span></div></section><div class="arch-luxe-stats">'+stats+'</div>'+
     (sectionFlags.catalog?'<section class="arch-luxe-services"><h3>'+esc(catalog)+'</h3><div>'+svc+'</div></section>':'')+
     (sectionFlags.projects?'<section class="arch-luxe-projects">'+projectCards+'</section>':'')+'</div>'
   );
   if(design==="BOLD") return wrap(
-    '<header class="arch-bold-head"><strong>'+name+'</strong><div>'+navHtml+'</div></header><section class="arch-bold-hero"><div><small>BUILD / ENGINEER / DELIVER</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></div><div class="arch-bold-mark">01</div></section><div class="arch-bold-band">'+stats+'</div>'+
+    '<header class="arch-bold-head"><strong>'+name+'</strong><div>'+navHtml+'</div></header><section class="arch-bold-hero"><div><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></div><div class="arch-bold-mark">01</div></section><div class="arch-bold-band">'+stats+'</div>'+
     (sectionFlags.catalog?'<section class="arch-bold-services"><h3>'+esc(catalog)+'</h3>'+svc+'</section>':'')+
     (sectionFlags.projects?'<section class="arch-bold-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')
   );
@@ -2875,12 +2893,12 @@ function professionalStorefrontPreviewMarkup(ctx){
     (sectionFlags.projects?'<section class="arch-mag-projects">'+projectCards+'</section>':'')+'</main>'
   );
   if(design==="IMMERSIVE") return wrap(
-    '<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>INFRASTRUCTURE / ENGINEERING</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><span class="arch-cta">Descubrir proyecto</span></div><div class="arch-immersive-scroll">SCROLL ↓</div></section>'+
+    '<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><span class="arch-cta">Descubrir proyecto</span></div><div class="arch-immersive-scroll">SCROLL ↓</div></section>'+
     '<div class="arch-immersive-float">'+stats+'</div>'+
     (sectionFlags.projects?'<section class="arch-immersive-projects"><h3>'+esc(projects)+'</h3><div>'+projectCards+'</div></section>':'')
   );
   return wrap(
-    '<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>TECHNICAL CONTROL</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><section class="arch-tech-kpis">'+stats+'</section>'+
+    '<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>'+esc(profile.kicker)+'</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p></section><section class="arch-tech-kpis">'+stats+'</section>'+
     '<section class="arch-tech-panel"><h3>Capacidades</h3><div>'+svc+'</div></section><section class="arch-tech-panel"><h3>Certificaciones</h3><div class="arch-tech-tags"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section>'+
     '<section class="arch-tech-panel wide"><h3>'+esc(projects)+'</h3><div class="arch-tech-projects">'+projectCards+'</div></section></div>'
   );
@@ -2928,8 +2946,8 @@ function renderLocalStorePreview(){
   const banner=state.localProfileRecord?.banner_url;
   const layout=preset?.dataset?.family||"GENERAL";
   const bannerCss=banner?String(banner).replace(/["'()\\]/g,ch=>encodeURIComponent(ch)):"";
-  if(layout==="PROFESSIONAL"){
-    box.innerHTML=professionalStorefrontPreviewMarkup({design,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss});
+  if(["FOOD","RETAIL","FASHION","BOOKS","FLOWERS","HEALTH","HARDWARE","SERVICES","PROFESSIONAL","BEAUTY","GENERAL"].includes(layout)){
+    box.innerHTML=professionalStorefrontPreviewMarkup({design,family:layout,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss});
     return;
   }
   const heroStyle=banner
@@ -2989,9 +3007,7 @@ function renderLocalBuilderChoices(){
     const palette={FOOD:["#b91c1c","#f59e0b"],RETAIL:["#0f766e","#14b8a6"],FASHION:["#111827","#d946ef"],BOOKS:["#92400e","#fbbf24"],FLOWERS:["#be185d","#f9a8d4"],HEALTH:["#0f766e","#38bdf8"],HARDWARE:["#111827","#f97316"],SERVICES:["#1d4ed8","#60a5fa"],PROFESSIONAL:["#0f172a","#64748b"],BEAUTY:["#7c3aed","#ec4899"],GENERAL:["#1466e8","#0b1730"]};
     presetBox.innerHTML=filtered.map(p=>{
       const family=String(p.layout_family||"GENERAL"),colors=palette[family]||palette.GENERAL,meta=localPresetDesignMeta(p),active=$("localStorePreset")?.value===p.code;
-      const thumb=family==="PROFESSIONAL"
-        ? '<div class="local-template-thumb engineering-thumb design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'">'+professionalTemplateThumb(meta.design)+'</div>'
-        : '<div class="local-template-thumb design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'"><div class="local-template-nav"></div><div class="local-template-hero"></div><div class="local-template-cards"><i></i><i></i><i></i><i></i></div></div>';
+      const thumb='<div class="local-template-thumb engineering-thumb family-'+esc(family)+' design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'">'+professionalTemplateThumb(meta.design)+'</div>';
       return '<button type="button" class="local-template-card '+(active?"active":"")+'" data-local-preset-card="'+esc(p.code)+'">'+
         '<span class="design-badge">'+esc(meta.design)+'</span>'+thumb+
         '<div class="local-template-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.description||p.business_fit||"Diseño profesional")+'</small></div></button>';
