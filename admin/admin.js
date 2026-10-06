@@ -2817,6 +2817,48 @@ function syncLocalPublicAccess(){
   return url;
 }
 
+function professionalStorefrontPreviewMarkup(ctx){
+  const {design,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss}=ctx;
+  const heroStyle=bannerCss
+    ? 'background:linear-gradient(100deg,rgba(5,15,30,.94),rgba(5,15,30,.38)),url('+bannerCss+') center/cover;'
+    : 'background:radial-gradient(circle at 78% 18%,'+esc(primary)+'99,transparent 25%),linear-gradient(135deg,'+esc(secondary)+','+esc(primary)+');';
+  const name=esc(state.localProfileRecord?.name||"LOCAL");
+  const aboutText=esc($("localAboutText")?.value.trim()||"Integramos experiencia técnica, planificación y ejecución para desarrollar soluciones confiables, eficientes y sostenibles.");
+  const metricLabels=design==="IMMERSIVE"?["PROYECTOS","DISCIPLINAS","SECTORES","CALIDAD"]:design==="COMPACT"?["BIM","QA/QC","HSE","ESG"]:["18+ AÑOS","240 PROYECTOS","12 DISCIPLINAS","96% CLIENTES"];
+  return '<div class="local-store-preview-root professional-preview design-'+esc(design)+'" style="--pv-primary:'+esc(primary)+';--pv-secondary:'+esc(secondary)+';--pv-bg:'+esc(background)+';--pv-surface:'+esc(surface)+';--pv-text:'+esc(text)+';background:'+esc(background)+';color:'+esc(text)+'">'+
+    '<div class="pv-shell">'+
+      '<header class="pv-head"><strong class="pv-brand">'+name+'</strong><nav class="pv-nav">'+nav.map(x=>'<span>'+esc(x)+'</span>').join("")+'</nav><span class="pv-head-cta">Solicitar propuesta</span></header>'+
+      '<section class="pv-hero" style="'+heroStyle+'"><div class="pv-hero-copy"><small class="pv-kicker">INGENIERÍA · ARQUITECTURA · PROYECTOS</small><h2>'+esc(hero)+'</h2><p>'+esc(subtitle)+'</p><div class="pv-hero-actions"><span class="pv-cta">Explorar proyectos</span><span class="pv-cta secondary">Ver capacidades</span></div></div><div class="pv-blueprint-mark">ENG<br>01</div></section>'+
+      '<div class="pv-metrics">'+metricLabels.map((m,i)=>'<div><strong>'+["18+","240","12","96%"][i]+'</strong><span>'+esc(m)+'</span></div>').join("")+'</div>'+
+      '<main class="pv-content">'+
+        ($("localShowCatalog")?.checked?'<section class="pv-section pv-capabilities"><div class="pv-section-title"><small>CAPACIDADES</small><strong>'+esc(catalog)+'</strong></div><div class="pv-grid">'+
+          ['Ingeniería y diseño','Arquitectura y planificación','Gestión de proyectos','Consultoría técnica'].map((s,i)=>'<article class="pv-card"><b>0'+(i+1)+'</b><strong>'+s+'</strong><i></i></article>').join("")+
+        '</div></section>':"")+
+        ($("localShowProjects")?.checked?'<section class="pv-section pv-project-section"><div class="pv-section-title"><small>PORTAFOLIO</small><strong>'+esc(projects)+'</strong></div><div class="pv-projects"><article><span>Infraestructura</span><strong>Corredor Metropolitano</strong></article><article><span>Energía</span><strong>Planta Horizonte</strong></article><article><span>Industria</span><strong>Centro Operativo Delta</strong></article></div></section>':"")+
+        ($("localShowAbout")?.checked?'<section class="pv-section pv-about"><div class="pv-section-title"><small>FIRMA</small><strong>'+esc(about)+'</strong></div><p>'+aboutText+'</p><div class="pv-cert-row"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section>':"")+
+        ($("localShowBlog")?.checked?'<section class="pv-section pv-insights"><div class="pv-section-title"><small>INSIGHTS</small><strong>Conocimiento técnico</strong></div><div><span>Caso de estudio</span><span>Tendencias de ingeniería</span><span>Innovación y sostenibilidad</span></div></section>':"")+
+        ($("localShowContact")?.checked?'<section class="pv-section pv-contact"><div><small>CONTACTO</small><strong>'+esc(contact)+'</strong><p>WhatsApp · Teléfono · Dirección · Redes sociales</p></div><span class="pv-cta">Hablemos del proyecto</span></section>':"")+
+      '</main>'+
+    '</div>'+
+  '</div>';
+}
+
+function professionalTemplateThumb(design){
+  const blocks={
+    SIGNATURE:'<div class="eng-thumb hero"><i></i><b></b><span></span></div><div class="eng-thumb metrics"><i></i><i></i><i></i><i></i></div>',
+    MINIMAL:'<div class="eng-thumb minimal-copy"><b></b><b></b><i></i></div><div class="eng-thumb minimal-line"></div>',
+    SPLIT:'<div class="eng-thumb split-copy"><b></b><i></i><i></i></div><div class="eng-thumb split-visual"></div>',
+    SIDEBAR:'<div class="eng-thumb side"></div><div class="eng-thumb side-main"><b></b><i></i><i></i></div>',
+    EDITORIAL:'<div class="eng-thumb editorial-title"></div><div class="eng-thumb editorial-grid"><i></i><i></i><i></i></div>',
+    LUXE:'<div class="eng-thumb luxe-orbit"></div><div class="eng-thumb luxe-copy"><b></b><i></i><i></i></div>',
+    BOLD:'<div class="eng-thumb bold-title"></div><div class="eng-thumb bold-grid"><i></i><i></i><i></i></div>',
+    MAGAZINE:'<div class="eng-thumb mag-main"></div><div class="eng-thumb mag-side"><i></i><i></i><i></i></div>',
+    IMMERSIVE:'<div class="eng-thumb immersive-layer"><b></b><i></i></div>',
+    COMPACT:'<div class="eng-thumb compact-head"></div><div class="eng-thumb compact-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div>'
+  };
+  return blocks[design]||blocks.SIGNATURE;
+}
+
 function renderLocalStorePreview(){
   const box=$("localStorePreview");if(!box)return;
   const preset=$("localStorePreset")?.selectedOptions?.[0];
@@ -2844,6 +2886,10 @@ function renderLocalStorePreview(){
   const banner=state.localProfileRecord?.banner_url;
   const layout=preset?.dataset?.family||"GENERAL";
   const bannerCss=banner?String(banner).replace(/["'()\\]/g,ch=>encodeURIComponent(ch)):"";
+  if(layout==="PROFESSIONAL"){
+    box.innerHTML=professionalStorefrontPreviewMarkup({design,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss});
+    return;
+  }
   const heroStyle=banner
     ? 'background:linear-gradient(90deg,rgba(11,23,48,.88),rgba(11,23,48,.2)),url('+bannerCss+') center/cover;'
     : 'background:linear-gradient(135deg,'+esc(primary)+','+esc(secondary)+');';
@@ -2901,9 +2947,11 @@ function renderLocalBuilderChoices(){
     const palette={FOOD:["#b91c1c","#f59e0b"],RETAIL:["#0f766e","#14b8a6"],FASHION:["#111827","#d946ef"],BOOKS:["#92400e","#fbbf24"],FLOWERS:["#be185d","#f9a8d4"],HEALTH:["#0f766e","#38bdf8"],HARDWARE:["#111827","#f97316"],SERVICES:["#1d4ed8","#60a5fa"],PROFESSIONAL:["#0f172a","#64748b"],BEAUTY:["#7c3aed","#ec4899"],GENERAL:["#1466e8","#0b1730"]};
     presetBox.innerHTML=filtered.map(p=>{
       const family=String(p.layout_family||"GENERAL"),colors=palette[family]||palette.GENERAL,meta=localPresetDesignMeta(p),active=$("localStorePreset")?.value===p.code;
+      const thumb=family==="PROFESSIONAL"
+        ? '<div class="local-template-thumb engineering-thumb design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'">'+professionalTemplateThumb(meta.design)+'</div>'
+        : '<div class="local-template-thumb design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'"><div class="local-template-nav"></div><div class="local-template-hero"></div><div class="local-template-cards"><i></i><i></i><i></i><i></i></div></div>';
       return '<button type="button" class="local-template-card '+(active?"active":"")+'" data-local-preset-card="'+esc(p.code)+'">'+
-        '<span class="design-badge">'+esc(meta.design)+'</span>'+
-        '<div class="local-template-thumb design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'"><div class="local-template-nav"></div><div class="local-template-hero"></div><div class="local-template-cards"><i></i><i></i><i></i><i></i></div></div>'+
+        '<span class="design-badge">'+esc(meta.design)+'</span>'+thumb+
         '<div class="local-template-copy"><strong>'+esc(p.name)+'</strong><small>'+esc(p.description||p.business_fit||"Diseño profesional")+'</small></div></button>';
     }).join("");
     presetBox.querySelectorAll("[data-local-preset-card]").forEach(btn=>btn.onclick=()=>{
