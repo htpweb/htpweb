@@ -16,6 +16,7 @@ const state = {
   localProfileRecord: null,
   localStorePresets: [],
   localStoreThemes: [],
+  localImportedDesign: null,
   localBlogPosts: [],
   users: [],
   feeRates: [],
@@ -2943,11 +2944,12 @@ function renderLocalStorePreview(){
   const presetRecord=(state.localStorePresets||[]).find(p=>p.code===$("localStorePreset")?.value)||{};
   const design=String(presetRecord?.config?.design_system||"SIGNATURE").toUpperCase();
   const theme=$("localStoreTheme")?.selectedOptions?.[0];
-  const primary=theme?.dataset?.primary||$("localStoreAccent")?.value||"#1466E8";
-  const secondary=theme?.dataset?.secondary||"#0B1730";
-  const background=theme?.dataset?.background||"#F6F9FF";
-  const surface=theme?.dataset?.surface||"#FFFFFF";
-  const text=theme?.dataset?.text||"#0B1730";
+  const importedPalette=state.localImportedDesign?.palette||{};
+  const primary=$("localStoreAccent")?.value||importedPalette.primary||theme?.dataset?.primary||"#1466E8";
+  const secondary=importedPalette.secondary||theme?.dataset?.secondary||"#0B1730";
+  const background=importedPalette.background||theme?.dataset?.background||"#F6F9FF";
+  const surface=importedPalette.surface||theme?.dataset?.surface||"#FFFFFF";
+  const text=importedPalette.text||theme?.dataset?.text||"#0B1730";
   const hero=$("localHeroTitle")?.value.trim()||state.localProfileRecord?.name||"Tu negocio";
   const subtitle=$("localHeroSubtitle")?.value.trim()||"Una propuesta clara, profesional y lista para crecer.";
   const catalog=$("localCatalogTitle")?.value.trim()||preset?.dataset?.catalog||"Productos / Servicios";
@@ -3035,7 +3037,8 @@ function renderLocalBuilderChoices(){
       const p=all.find(x=>x.code===btn.dataset.localPresetCard);
       if(p?.default_catalog_mode)$("localStoreCatalogMode").value=p.default_catalog_mode;
       if(p?.default_card_density)$("localStoreCardDensity").value=p.default_card_density;
-      syncLocalPresetHelp();renderLocalBuilderChoices();renderLocalStorePreview();
+      if(state.localImportedDesign&&p)state.localImportedDesign.design_system=String(p.config?.design_system||"SIGNATURE").toUpperCase();
+      renderLocalDesignImportSummary();syncLocalPresetHelp();renderLocalBuilderChoices();renderLocalStorePreview();
     });
   }
   if(themeBox){
@@ -3047,6 +3050,7 @@ function renderLocalBuilderChoices(){
       $("localStoreTheme").value=btn.dataset.localThemeCard;
       const t=(state.localStoreThemes||[]).find(x=>x.code===btn.dataset.localThemeCard);
       if(t?.primary_color){$("localStoreAccent").value=t.primary_color;if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").value=t.primary_color}
+      if(state.localImportedDesign&&t){state.localImportedDesign.palette={...(state.localImportedDesign.palette||{}),primary:t.primary_color,secondary:t.secondary_color,background:t.background_color,surface:t.surface_color,text:t.text_color,swatches:[t.primary_color,t.secondary_color,t.background_color,t.surface_color,t.text_color].filter(Boolean)};renderLocalDesignImportSummary();}
       $("localStoreThemeHelp").textContent=t?.business_fit||"";renderLocalBuilderChoices();renderLocalStorePreview();
     });
   }
@@ -3178,6 +3182,243 @@ async function cancelLocalDomain(){
   }catch(e){message(e.message||"No se pudo cancelar la solicitud.","error");}
 }
 
+
+function normalizeImportedHex(value){
+  const v=String(value||"").trim().toLowerCase();
+  if(/^#[0-9a-f]{3}$/.test(v))return "#"+v.slice(1).split("").map(x=>x+x).join("");
+  if(/^#[0-9a-f]{6}$/.test(v))return v;
+  const m=v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if(m)return "#"+m.slice(1,4).map(n=>Math.max(0,Math.min(255,Number(n))).toString(16).padStart(2,"0")).join("");
+  return "";
+}
+function importedRgb(hex){
+  const h=normalizeImportedHex(hex);if(!h)return [17,24,39];
+  return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+}
+function importedLuminance(hex){
+  const [r,g,b]=importedRgb(hex);return .2126*r+.7152*g+.0722*b;
+}
+function importedColorDistance(a,b){
+  const x=importedRgb(a),y=importedRgb(b);return Math.sqrt(x.reduce((s,v,i)=>s+Math.pow(v-y[i],2),0));
+}
+function extractImportedPalette(source){
+  const hits=[];
+  const text=String(source||"");
+  for(const m of text.matchAll(/#[0-9a-fA-F]{3,8}\b/g)){
+    let v=m[0];if(v.length===5||v.length===9)v=v.slice(0,v.length===5?4:7);
+    const h=normalizeImportedHex(v);if(h)hits.push(h);
+  }
+  for(const m of text.matchAll(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,[^)]+)?\)/gi)){
+    const h=normalizeImportedHex(m[0]);if(h)hits.push(h);
+  }
+  const count=new Map();hits.forEach(h=>count.set(h,(count.get(h)||0)+1));
+  const ranked=[...count.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const chromatic=ranked.filter(h=>{
+    const [r,g,b]=importedRgb(h),lum=importedLuminance(h);
+    return Math.max(r,g,b)-Math.min(r,g,b)>28&&lum>28&&lum<232;
+  });
+  const light=ranked.find(h=>importedLuminance(h)>225)||"#f8fafc";
+  const dark=ranked.find(h=>importedLuminance(h)<55)||"#111827";
+  const primary=chromatic[0]||ranked.find(h=>importedLuminance(h)>45&&importedLuminance(h)<210)||"#1466e8";
+  const secondary=chromatic.find(h=>h!==primary)||ranked.find(h=>h!==primary&&importedLuminance(h)<210)||dark;
+  const bodyBg=(text.match(/body[^{]*\{[^}]*background(?:-color)?\s*:\s*([^;}\s]+)/i)||[])[1];
+  const background=normalizeImportedHex(bodyBg)||light;
+  return {primary,secondary,background,surface:light,text:importedLuminance(background)<120?"#f8fafc":dark,swatches:ranked.slice(0,8)};
+}
+function importedSectionPresence(doc){
+  const source=[...doc.querySelectorAll("[id],[class],h1,h2,h3,nav a")].map(el=>(el.id+" "+el.className+" "+el.textContent)).join(" ").toLowerCase();
+  const has=(words)=>words.some(w=>source.includes(w));
+  return {
+    about:has(["about","nosotros","quienes somos","quiénes somos","historia","empresa"]),
+    catalog:has(["service","servicio","product","producto","menu","menú","catalog","tienda","shop","solucion"]),
+    projects:has(["project","proyecto","portfolio","portafolio","galeria","galería","works","casos"]),
+    blog:has(["blog","news","noticia","insight","novedad","articulo","artículo"]),
+    contact:has(["contact","contacto","ubicacion","ubicación","telefono","teléfono","whatsapp"]),
+    promotions:has(["promo","promocion","promoción","oferta","sale","descuento"])
+  };
+}
+function detectImportedDesignSystem(doc,css,palette){
+  const source=(doc.documentElement?.outerHTML||"")+" "+String(css||"");
+  const low=source.toLowerCase();
+  const articleCount=doc.querySelectorAll("article,.card,.product,.item").length;
+  const navSide=!!doc.querySelector("aside nav,aside .menu,.sidebar nav,.side-nav");
+  const dark=importedLuminance(palette.background)<95||importedLuminance(palette.surface)<75;
+  if(navSide||(/position\s*:\s*fixed/.test(low)&&/(sidebar|side-nav|aside)/.test(low)))return "SIDEBAR";
+  if(/100vh/.test(low)||/(hero|banner)[\s\S]{0,300}(background-image|object-fit\s*:\s*cover)/.test(low))return "IMMERSIVE";
+  if(/grid-template-columns\s*:\s*[^;]*(?:1fr|%)[^;]*(?:1fr|%)/.test(low)&&doc.querySelector("h1"))return "SPLIT";
+  if(dark&&(/gold|#c8a96b|#d4af37|serif/.test(low)))return "LUXE";
+  if(/font-family\s*:[^;]*(georgia|times|serif)/.test(low)||doc.querySelectorAll("article").length>=4)return articleCount>=7?"MAGAZINE":"EDITORIAL";
+  if(/text-transform\s*:\s*uppercase/.test(low)&&/font-weight\s*:\s*(8|9)00/.test(low))return "BOLD";
+  if(articleCount>=10||doc.querySelectorAll("table,.table,.list-group").length>=2)return "COMPACT";
+  if(doc.querySelectorAll("body *").length<90&&articleCount<4)return "MINIMAL";
+  return "SIGNATURE";
+}
+function importedTextNearHeading(doc,heading){
+  if(!heading)return "";
+  const parent=heading.parentElement;
+  const p=parent?.querySelector("p");
+  if(p&&p.textContent.trim())return p.textContent.trim().replace(/\s+/g," ").slice(0,260);
+  let n=heading.nextElementSibling;
+  for(let i=0;n&&i<3;i++,n=n.nextElementSibling)if(n.matches?.("p")&&n.textContent.trim())return n.textContent.trim().replace(/\s+/g," ").slice(0,260);
+  return "";
+}
+function findImportedHeading(doc,words){
+  return [...doc.querySelectorAll("h1,h2,h3")].find(h=>words.some(w=>h.textContent.toLowerCase().includes(w)))||null;
+}
+function analyzeImportedMarkup(html,extraCss="",meta={}){
+  const parser=new DOMParser(),doc=parser.parseFromString(String(html||""),"text/html");
+  doc.querySelectorAll("script,noscript,iframe,object,embed").forEach(n=>n.remove());
+  const styleText=[...doc.querySelectorAll("style")].map(x=>x.textContent||"").join("\n")+"\n"+String(extraCss||"");
+  const combined=(doc.documentElement?.outerHTML||"")+"\n"+styleText;
+  const palette=extractImportedPalette(combined);
+  const designSystem=detectImportedDesignSystem(doc,styleText,palette);
+  const sections=importedSectionPresence(doc);
+  const h1=doc.querySelector("h1");
+  const heroTitle=(h1?.textContent||doc.title||"").trim().replace(/\s+/g," ").slice(0,120);
+  const heroSubtitle=importedTextNearHeading(doc,h1);
+  const aboutHeading=findImportedHeading(doc,["about","nosotros","quienes","quiénes","historia"]);
+  const projectsHeading=findImportedHeading(doc,["project","proyecto","portfolio","portafolio","galería","galeria"]);
+  const blogHeading=findImportedHeading(doc,["blog","news","noticia","novedad","insight"]);
+  const contactHeading=findImportedHeading(doc,["contact","contacto"]);
+  const nav=[...doc.querySelectorAll("nav a,header a")].map(a=>a.textContent.trim().replace(/\s+/g," ")).filter(x=>x&&x.length<40).filter((x,i,a)=>a.indexOf(x)===i).slice(0,10);
+  return {
+    version:1,
+    source:{type:meta.type||"HTML",name:String(meta.name||"").slice(0,240),url:String(meta.url||"").slice(0,1000),title:String(meta.title||doc.title||"").slice(0,240)},
+    analyzed_at:new Date().toISOString(),
+    design_system:designSystem,
+    palette:{primary:palette.primary,secondary:palette.secondary,background:palette.background,surface:palette.surface,text:palette.text,swatches:palette.swatches},
+    sections,
+    navigation:nav,
+    content:{
+      hero_title:heroTitle,
+      hero_subtitle:heroSubtitle,
+      about_title:(aboutHeading?.textContent||"").trim().slice(0,80),
+      about_text:importedTextNearHeading(doc,aboutHeading).slice(0,1200),
+      projects_title:(projectsHeading?.textContent||"").trim().slice(0,80),
+      blog_title:(blogHeading?.textContent||"").trim().slice(0,80),
+      contact_title:(contactHeading?.textContent||"").trim().slice(0,80)
+    },
+    stats:{elements:doc.querySelectorAll("body *").length,articles:doc.querySelectorAll("article").length,images:doc.querySelectorAll("img").length}
+  };
+}
+function closestImportedTheme(primary){
+  const themes=state.localStoreThemes||[];if(!themes.length)return null;
+  return themes.map(t=>({t,d:importedColorDistance(primary,t.primary_color)})).sort((a,b)=>a.d-b.d)[0]?.t||themes[0];
+}
+function renderLocalDesignImportSummary(){
+  const box=$("localDesignImportSummary"),status=$("localDesignImportStatus"),clear=$("clearLocalImportedDesignBtn");
+  if(!box||!status)return;
+  const d=state.localImportedDesign;
+  if(!d){
+    box.classList.add("hidden");box.innerHTML="";clear?.classList.add("hidden");
+    status.className="local-import-status muted";status.textContent="Todavía no has importado un diseño.";
+    return;
+  }
+  const sections=Object.entries(d.sections||{}).filter(x=>x[1]).map(x=>({about:"Nosotros",catalog:"Productos/Servicios",projects:"Proyectos",blog:"Blog",contact:"Contacto",promotions:"Promociones"}[x[0]]||x[0])).join(", ")||"Inicio";
+  const sw=(d.palette?.swatches||[d.palette?.primary,d.palette?.secondary,d.palette?.background]).filter(Boolean).slice(0,6);
+  box.innerHTML=
+    '<div><small>Origen</small><strong>'+esc(d.source?.name||d.source?.url||d.source?.type||"Importado")+'</strong></div>'+
+    '<div><small>Arquitectura detectada</small><strong>'+esc(d.design_system||"SIGNATURE")+'</strong></div>'+
+    '<div><small>Secciones</small><strong>'+esc(sections)+'</strong></div>'+
+    '<div><small>Paleta detectada</small><strong>'+esc(d.palette?.primary||"")+'</strong><span class="local-import-palette">'+sw.map(c=>'<i style="background:'+esc(c)+'"></i>').join("")+'</span></div>';
+  box.classList.remove("hidden");clear?.classList.remove("hidden");
+  status.className="local-import-status is-success";
+  status.textContent="Diseño analizado y adaptado a HTPWEB. Puedes seguir editándolo antes de guardar.";
+}
+function applyImportedDesign(schema){
+  state.localImportedDesign=schema;
+  const match=(state.localStorePresets||[]).find(p=>String(p.config?.design_system||"SIGNATURE").toUpperCase()===String(schema.design_system||"SIGNATURE").toUpperCase())||state.localStorePresets?.[0];
+  if(match&&$("localStorePreset"))$("localStorePreset").value=match.code;
+  const theme=closestImportedTheme(schema.palette?.primary||"#1466e8");
+  if(theme&&$("localStoreTheme"))$("localStoreTheme").value=theme.code;
+  if(schema.palette?.primary&&$("localStoreAccent"))$("localStoreAccent").value=schema.palette.primary;
+  if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").value=$("localStoreAccent")?.value||schema.palette?.primary||"#111827";
+  const c=schema.content||{};
+  if(c.hero_title&&$("localHeroTitle"))$("localHeroTitle").value=c.hero_title;
+  if(c.hero_subtitle&&$("localHeroSubtitle"))$("localHeroSubtitle").value=c.hero_subtitle;
+  if(c.about_title&&$("localAboutTitle"))$("localAboutTitle").value=c.about_title;
+  if(c.about_text&&$("localAboutText"))$("localAboutText").value=c.about_text;
+  if(c.projects_title&&$("localProjectsTitle"))$("localProjectsTitle").value=c.projects_title;
+  if(c.blog_title&&$("localBlogTitle"))$("localBlogTitle").value=c.blog_title;
+  if(c.contact_title&&$("localContactTitle"))$("localContactTitle").value=c.contact_title;
+  const s=schema.sections||{};
+  if(Object.values(s).some(Boolean)){
+    if($("localShowAbout"))$("localShowAbout").checked=!!s.about;
+    if($("localShowCatalog"))$("localShowCatalog").checked=!!s.catalog;
+    if($("localShowProjects"))$("localShowProjects").checked=!!s.projects;
+    if($("localShowBlog"))$("localShowBlog").checked=!!s.blog;
+    if($("localShowContact"))$("localShowContact").checked=s.contact!==false;
+    if($("localShowPromotions"))$("localShowPromotions").checked=!!s.promotions;
+  }
+  syncLocalPresetHelp();
+  renderLocalBuilderChoices();
+  renderLocalDesignImportSummary();
+  renderLocalStorePreview();
+}
+async function readImportedDesignFile(file){
+  const name=String(file?.name||"");
+  if(!file)throw new Error("Selecciona un archivo HTML o ZIP.");
+  if(file.size>12*1024*1024)throw new Error("El archivo supera el límite de 12 MB.");
+  if(/\.html?$/i.test(name)){
+    const html=await file.text();
+    if(html.length>1_500_000)throw new Error("El HTML es demasiado grande para analizarlo.");
+    return analyzeImportedMarkup(html,"",{type:"HTML",name});
+  }
+  if(/\.zip$/i.test(name)){
+    if(!window.HTPWEBZip?.loadAsync)throw new Error("El lector ZIP de HTPWEB no está disponible.");
+    const zip=await window.HTPWEBZip.loadAsync(file);
+    const entries=Object.values(zip.files||{}).filter(e=>!e.dir);
+    const htmlEntries=entries.filter(e=>/\.html?$/i.test(e.name));
+    if(!htmlEntries.length)throw new Error("El ZIP no contiene ningún archivo HTML.");
+    const preferred=htmlEntries.find(e=>/(^|\/)index\.html?$/i.test(e.name))||htmlEntries.sort((a,b)=>a.name.length-b.name.length)[0];
+    const html=await preferred.async("text");
+    let css="",total=0;
+    for(const e of entries.filter(e=>/\.css$/i.test(e.name)).slice(0,20)){
+      const t=await e.async("text");total+=t.length;if(total>700_000)break;css+="\n"+t;
+    }
+    return analyzeImportedMarkup(html,css,{type:"ZIP",name});
+  }
+  throw new Error("Formato no compatible. Usa HTML, HTM o ZIP.");
+}
+async function analyzeLocalDesignFile(){
+  const status=$("localDesignImportStatus");
+  try{
+    const file=$("localDesignImportFile")?.files?.[0];
+    if(status){status.className="local-import-status is-working";status.textContent="Analizando estructura, estilos y secciones…";}
+    const schema=await readImportedDesignFile(file);
+    applyImportedDesign(schema);
+    message("Diseño importado y adaptado. Revisa la vista previa antes de guardar.");
+  }catch(e){
+    if(status){status.className="local-import-status is-error";status.textContent=e.message||"No se pudo analizar el archivo.";}
+    message(e.message||"No se pudo importar el diseño.","error");
+  }
+}
+async function analyzeLocalDesignUrl(){
+  const status=$("localDesignImportStatus");
+  try{
+    const url=$("localDesignImportUrl")?.value.trim();
+    if(!url)throw new Error("Pega una URL para analizar.");
+    if(status){status.className="local-import-status is-working";status.textContent="Leyendo la web de referencia de forma segura…";}
+    const {data,error}=await supabaseClient.functions.invoke("storefront-reference-fetch",{body:{url}});
+    if(error)throw error;
+    if(!data?.ok)throw new Error(data?.error||"No se pudo leer la URL.");
+    const schema=analyzeImportedMarkup(data.html,data.css||"",{type:"URL",name:data.title||data.final_url,url:data.final_url,title:data.title});
+    applyImportedDesign(schema);
+    message("Referencia web analizada. HTPWEB reconstruyó una propuesta editable.");
+  }catch(e){
+    if(status){status.className="local-import-status is-error";status.textContent=e.message||"No se pudo analizar la URL.";}
+    message(e.message||"No se pudo importar desde URL.","error");
+  }
+}
+function clearLocalImportedDesign(){
+  state.localImportedDesign=null;
+  if($("localDesignImportFile"))$("localDesignImportFile").value="";
+  if($("localDesignImportUrl"))$("localDesignImportUrl").value="";
+  renderLocalDesignImportSummary();
+  renderLocalStorePreview();
+  message("Diseño importado retirado. La plantilla actual se mantiene.");
+}
+
 async function loadLocalCommerce(){
   if(state.role!=="LOCAL_ADMIN")return;
   const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
@@ -3212,6 +3453,7 @@ async function loadLocalCommerce(){
   $("localStoreOwnDelivery").checked=!!settings.own_delivery_enabled;
   $("localStoreHtpDelivery").checked=settings.htpweb_delivery_enabled!==false;
   const content=settings.content_config||{};
+  state.localImportedDesign=content.imported_design||null;
   $("localHeroTitle").value=content.hero_title||"";
   $("localHeroSubtitle").value=content.hero_subtitle||"";
   $("localAboutTitle").value=content.about_title||"Quiénes somos";
@@ -3245,6 +3487,7 @@ async function loadLocalCommerce(){
   if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").value=$("localStoreAccent").value;
   syncLocalPresetHelp();
   renderLocalBuilderChoices();
+  renderLocalDesignImportSummary();
   await loadLocalBlogPosts();
 }
 
@@ -3284,7 +3527,8 @@ async function saveLocalCommerce(){
         show_projects:$("localShowProjects").checked,
         show_blog:$("localShowBlog").checked,
         show_contact:$("localShowContact").checked,
-        show_promotions:$("localShowPromotions").checked
+        show_promotions:$("localShowPromotions").checked,
+        imported_design:state.localImportedDesign||null
       }
     });
     message("Página web y configuración comercial guardadas.");
@@ -12801,12 +13045,19 @@ function bindEvents() {
   $("profileLocalGoCatalogBtn").onclick = openLocalCatalog;
   $("profileLocalGoScheduleBtn").onclick = openLocalSchedules;
   if ($("saveLocalCommerceBtn")) $("saveLocalCommerceBtn").onclick = saveLocalCommerce;
+  if ($("analyzeLocalDesignFileBtn")) $("analyzeLocalDesignFileBtn").onclick = analyzeLocalDesignFile;
+  if ($("analyzeLocalDesignUrlBtn")) $("analyzeLocalDesignUrlBtn").onclick = analyzeLocalDesignUrl;
+  if ($("clearLocalImportedDesignBtn")) $("clearLocalImportedDesignBtn").onclick = clearLocalImportedDesign;
   if ($("requestLocalDeliveryBtn")) $("requestLocalDeliveryBtn").onclick = requestLocalDelivery;
   if ($("localStorePreset")) $("localStorePreset").onchange = syncLocalPresetHelp;
   if ($("localStoreTheme")) $("localStoreTheme").onchange = () => {
     const o=$("localStoreTheme").selectedOptions?.[0];
     $("localStoreThemeHelp").textContent=o?.dataset?.help||"";
     if(o?.dataset?.primary)$("localStoreAccent").value=o.dataset.primary;
+    if(state.localImportedDesign&&o){
+      state.localImportedDesign.palette={...(state.localImportedDesign.palette||{}),primary:o.dataset.primary,secondary:o.dataset.secondary,background:o.dataset.background,surface:o.dataset.surface,text:o.dataset.text,swatches:[o.dataset.primary,o.dataset.secondary,o.dataset.background,o.dataset.surface,o.dataset.text].filter(Boolean)};
+      renderLocalDesignImportSummary();
+    }
     renderLocalStorePreview();
   };
   ["localStoreAccent","localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText","localCatalogTitle","localProjectsTitle","localProjectsText","localBlogTitle","localContactTitle","localShowAbout","localShowCatalog","localShowProjects","localShowBlog","localShowContact","localShowPromotions"].forEach(id=>{
@@ -12816,7 +13067,9 @@ function bindEvents() {
     if($(id))$(id).addEventListener("input",renderLocalSocialPreview);
   });
   if($("localBuilderAccentMirror"))$("localBuilderAccentMirror").oninput=()=>{
-    $("localStoreAccent").value=$("localBuilderAccentMirror").value;renderLocalStorePreview();
+    $("localStoreAccent").value=$("localBuilderAccentMirror").value;
+    if(state.localImportedDesign){state.localImportedDesign.palette={...(state.localImportedDesign.palette||{}),primary:$("localBuilderAccentMirror").value};renderLocalDesignImportSummary();}
+    renderLocalStorePreview();
   };
   if($("previewLocalStoreBtn"))$("previewLocalStoreBtn").onclick=openLocalStorePreview;
   if($("closeLocalPreviewBtn"))$("closeLocalPreviewBtn").onclick=closeLocalStorePreview;

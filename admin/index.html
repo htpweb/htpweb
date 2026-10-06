@@ -14,7 +14,7 @@
 <script src="../config/auth.js?v=20261004-profiles1"></script>
 <link rel="stylesheet" href="../assets/admin.css?v=20261004-public-delivery1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-preview2">
+<link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-import1">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
 </head>
@@ -619,6 +619,33 @@
             </div>
             <div class="local-design-toolbar"><div id="localPresetCategoryTabs" class="local-design-categories"></div><div class="local-design-count"><strong id="localPresetCount">0</strong><span>diseños profesionales</span></div></div>
             <div id="localPresetCards" class="local-template-grid"></div>
+          </section>
+
+          <section class="local-builder-panel local-import-panel">
+            <div class="local-builder-heading">
+              <div><span>↗</span><div><h4>Importar diseño propio</h4><p>HTPWEB analiza tu HTML, ZIP o una web existente y reconstruye el diseño de forma segura.</p></div></div>
+            </div>
+            <div class="local-import-grid">
+              <div class="local-import-card">
+                <strong>HTML / ZIP</strong>
+                <p>Sube un archivo <code>.html</code>, <code>.htm</code> o un <code>.zip</code> con HTML/CSS.</p>
+                <input id="localDesignImportFile" type="file" accept=".html,.htm,.zip,text/html,application/zip">
+                <button id="analyzeLocalDesignFileBtn" class="btn-muted" type="button">Analizar archivo</button>
+              </div>
+              <div class="local-import-card">
+                <strong>Desde una URL</strong>
+                <p>Pega la dirección de una web que quieras migrar o usar como referencia.</p>
+                <input id="localDesignImportUrl" type="url" maxlength="1000" placeholder="https://miempresa.com">
+                <button id="analyzeLocalDesignUrlBtn" class="btn-muted" type="button">Analizar URL</button>
+              </div>
+            </div>
+            <div class="local-import-security">
+              <strong>Importación segura</strong>
+              <span>No ejecutamos JavaScript externo. HTPWEB analiza la composición y la reconstruye con sus propios componentes.</span>
+            </div>
+            <div id="localDesignImportStatus" class="local-import-status muted">Todavía no has importado un diseño.</div>
+            <div id="localDesignImportSummary" class="local-import-summary hidden"></div>
+            <button id="clearLocalImportedDesignBtn" class="btn-muted hidden" type="button">Quitar diseño importado</button>
           </section>
 
           <section class="local-builder-panel">
@@ -2417,7 +2444,7 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="./admin.js?v=20261006-preview2"></script>
+<script src="./admin.js?v=20261006-import1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20261005-domain1"></script>

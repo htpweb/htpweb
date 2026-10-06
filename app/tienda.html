@@ -685,13 +685,14 @@ function catalogLabel(){
  return cfg.catalog_title||store?.preset?.config?.catalog_label||(["SERVICES","PROFESSIONAL","HEALTH","BEAUTY"].includes(store?.preset?.layout_family)?"Servicios":"Productos");
 }
 function applyStoreTheme(){
- const t=store?.theme||{};
+ const t=store?.theme||{},imported=pageContent()?.imported_design?.palette||{};
+ const valid=(v,fallback)=>/^#[0-9a-f]{6}$/i.test(String(v||""))?v:fallback;
  const root=document.documentElement.style;
- root.setProperty("--local-accent",store?.settings?.accent_color||t.primary_color||"#111827");
- root.setProperty("--local-secondary",t.secondary_color||"#475467");
- root.setProperty("--local-bg",t.background_color||"#f6f7f9");
- root.setProperty("--local-surface",t.surface_color||"#fff");
- root.setProperty("--local-text",t.text_color||"#111827");
+ root.setProperty("--local-accent",valid(store?.settings?.accent_color,valid(imported.primary,t.primary_color||"#111827")));
+ root.setProperty("--local-secondary",valid(imported.secondary,t.secondary_color||"#475467"));
+ root.setProperty("--local-bg",valid(imported.background,t.background_color||"#f6f7f9"));
+ root.setProperty("--local-surface",valid(imported.surface,t.surface_color||"#fff"));
+ root.setProperty("--local-text",valid(imported.text,t.text_color||"#111827"));
 }
 function normalizeWhatsAppNumber(value){
  let digits=String(value||"").replace(/\D/g,"");
