@@ -36,6 +36,12 @@ function mediaPathLocalService(localId, serviceId) {
   return `local/${localId}/services/${serviceId}`;
 }
 
+function mediaPathLocalPageAsset(localId, page, key) {
+  const safePage=String(page||"page").replace(/[^a-z0-9_-]+/gi,"-").slice(0,50);
+  const safeKey=String(key||"asset").replace(/[^a-z0-9_-]+/gi,"-").slice(0,90);
+  return `local/${localId}/site-editor/${safePage}/${safeKey}`;
+}
+
 function pathDesdePublicUrlHTPWEB(url) {
   if (!url) return null;
   try {

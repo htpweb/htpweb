@@ -145,5 +145,51 @@ function render(ctx){
  if(design==="IMMERSIVE")return wrap('<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Descubrir proyecto","arch-cta","projects")+'</div><div class="arch-immersive-scroll">SCROLL ↓</div></section><div class="arch-immersive-float">'+stats+'</div>'+(flags.projects?'<section class="arch-immersive-projects"><h3>'+projects+'</h3><div>'+projectCards+'</div></section>':''));
  return wrap('<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Solicitar cotización","arch-tech-cta")+'</section><section class="arch-tech-kpis">'+stats+'</section><section class="arch-tech-panel"><h3>Capacidades</h3><div>'+svc+'</div></section><section class="arch-tech-panel"><h3>Certificaciones</h3><div class="arch-tech-tags"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section><section class="arch-tech-panel wide"><h3>'+projects+'</h3><div class="arch-tech-projects">'+projectCards+'</div></section></div>');
 }
-window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,version:"20261007.5-visual-editor"};
+function indexEditableTargets(root,section){
+ const page=String(section||"home").toLowerCase();
+ const textNodes=[];
+ root.querySelectorAll("h1,h2,h3,h4,h5,h6,p,small,strong,b,span,a,button").forEach(el=>{
+   if(el.closest(".local-canvas-card-tools"))return;
+   const direct=[...el.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.nodeValue||"").join("").trim();
+   if(!direct&&!el.children.length)return;
+   if(el.children.length&&direct==="")return;
+   const key=page+":text:"+textNodes.length;
+   el.dataset.editorTextKey=key;textNodes.push(el);
+ });
+ const imageNodes=[];
+ root.querySelectorAll("img").forEach(el=>{const key=page+":image:"+imageNodes.length;el.dataset.editorImageKey=key;imageNodes.push(el);});
+ const bgNodes=[];
+ root.querySelectorAll("*").forEach(el=>{
+   if(el.closest(".local-canvas-card-tools"))return;
+   const inline=(el.style?.backgroundImage||"").trim();
+   if(!inline||inline==="none")return;
+   const key=page+":background:"+bgNodes.length;el.dataset.editorBackgroundKey=key;el.dataset.editorBackgroundBase=inline;bgNodes.push(el);
+ });
+ return {textNodes,imageNodes,bgNodes};
+}
+function applyEditorOverrides(root,section,overrides){
+ if(!root)return {textNodes:[],imageNodes:[],bgNodes:[]};
+ const indexed=indexEditableTargets(root,section);
+ const cfg=overrides&&typeof overrides==="object"?overrides:{};
+ const text=cfg.text||{},style=cfg.style||{},image=cfg.image||{};
+ indexed.textNodes.forEach(el=>{
+   const key=el.dataset.editorTextKey;
+   if(Object.prototype.hasOwnProperty.call(text,key))el.textContent=String(text[key]??"");
+   const s=style[key];
+   if(s&&typeof s==="object"){
+     if(s.fontSize)el.style.fontSize=String(s.fontSize);
+     if(s.color)el.style.color=String(s.color);
+     if(s.fontFamily)el.style.fontFamily=String(s.fontFamily);
+     if(s.fontWeight)el.style.fontWeight=String(s.fontWeight);
+     if(s.textAlign)el.style.textAlign=String(s.textAlign);
+     if(s.fontStyle)el.style.fontStyle=String(s.fontStyle);
+     if(s.textDecoration)el.style.textDecoration=String(s.textDecoration);
+     if(s.lineHeight)el.style.lineHeight=String(s.lineHeight);
+   }
+ });
+ indexed.imageNodes.forEach(el=>{const key=el.dataset.editorImageKey;if(image[key])el.src=String(image[key]);});
+ indexed.bgNodes.forEach(el=>{const key=el.dataset.editorBackgroundKey;if(image[key]){const next='url("'+String(image[key]).replace(/"/g,'%22')+'")';const base=el.dataset.editorBackgroundBase||el.style.backgroundImage||"";el.style.backgroundImage=/url\(/i.test(base)?base.replace(/url\([^)]*\)(?![\s\S]*url\()/i,next):next;}});
+ return indexed;
+}
+window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,indexEditableTargets,applyOverrides:applyEditorOverrides,version:"20261007.6-powerpoint-editor"};
 })();

@@ -328,8 +328,8 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-internalarch4">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-visual-editor2">
-<script src="../assets/storefront-architectures.js?v=20261007-visual-editor2"></script>
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-powerpoint1">
+<script src="../assets/storefront-architectures.js?v=20261007-powerpoint1"></script>
 <script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 </head>
 <body class="local-store theme-pending">
@@ -927,6 +927,7 @@ function renderSharedArchitecturePage(){
    text:style.getPropertyValue("--local-text").trim()||"#0b1730",
    flags:{about:cfg.show_about!==false,catalog:cfg.show_catalog!==false,projects:cfg.show_projects!==false,blog:cfg.show_blog!==false,contact:cfg.show_contact!==false}
  });
+ window.HTPWEBStorefrontArchitectures.applyOverrides(root,pageSection,cfg.editor_overrides||{});
  document.body.classList.toggle("architecture-home",pageSection==="home");
  document.body.classList.toggle("architecture-page",pageSection!=="home");
  document.body.dataset.architectureVersion=window.HTPWEBStorefrontArchitectures.version||"shared";

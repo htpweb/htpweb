@@ -110,6 +110,7 @@
       el.classList.remove("editing");
       const value=clean(el.innerText);
       $id(fieldId).value=value;
+      if(el.dataset.editorTextKey){overrides().text[el.dataset.editorTextKey]=value;persistOverrides(false);}
       $id(fieldId).dispatchEvent(new Event("input",{bubbles:true}));
     });
     el.addEventListener("keydown",e=>{
@@ -201,6 +202,146 @@
     }
   }
 
+  let selectedVisualTarget=null;
+
+  function overrides(){
+    if(!state.localEditorOverrides||typeof state.localEditorOverrides!=="object")state.localEditorOverrides={};
+    state.localEditorOverrides.text=state.localEditorOverrides.text||{};
+    state.localEditorOverrides.style=state.localEditorOverrides.style||{};
+    state.localEditorOverrides.image=state.localEditorOverrides.image||{};
+    return state.localEditorOverrides;
+  }
+
+  async function persistOverrides(showMessage=false){
+    const lid=localId();if(!lid)return;
+    try{
+      const saved=await rpc("save_my_local_editor_overrides",{p_local_id:lid,p_editor_overrides:overrides()});
+      state.localEditorOverrides=(saved&&typeof saved==="object")?saved:overrides();
+      if(showMessage)message("Diseño guardado.");
+    }catch(e){message(e.message||"No se pudo guardar el cambio visual.","error");}
+  }
+
+  function rgbToHex(value){
+    const m=String(value||"").match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if(!m)return /^#[0-9a-f]{6}$/i.test(value||"")?value:"#111827";
+    return "#"+[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,"0")).join("");
+  }
+
+  function clearVisualSelection(){
+    document.querySelectorAll(".local-editor-selected,.local-editor-image-selected").forEach(el=>el.classList.remove("local-editor-selected","local-editor-image-selected"));
+    selectedVisualTarget=null;
+    $id("localTextFormatControls")?.classList.add("hidden");
+    $id("localImageFormatControls")?.classList.add("hidden");
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent="Selecciona un texto o una imagen";
+  }
+
+  function selectTextTarget(el){
+    clearVisualSelection();
+    const key=el?.dataset?.editorTextKey;if(!key)return;
+    selectedVisualTarget={type:"text",key,el};
+    el.classList.add("local-editor-selected");
+    $id("localTextFormatControls")?.classList.remove("hidden");
+    const cs=getComputedStyle(el),saved=overrides().style[key]||{};
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent="Texto · "+clean(el.textContent).slice(0,42);
+    const font=$id("localFormatFontFamily");
+    if(font){
+      const wanted=saved.fontFamily||"";
+      [...font.options].forEach(o=>o.selected=o.value===wanted);
+      if(!font.value)font.value="";
+    }
+    if($id("localFormatFontSize"))$id("localFormatFontSize").value=parseFloat(saved.fontSize||cs.fontSize)||16;
+    if($id("localFormatColor"))$id("localFormatColor").value=rgbToHex(saved.color||cs.color);
+    if($id("localFormatLineHeight")){
+      const lh=parseFloat(saved.lineHeight||cs.lineHeight);
+      $id("localFormatLineHeight").value=Number.isFinite(lh)&&lh<10?lh:"";
+    }
+    $id("localFormatBold")?.classList.toggle("active",String(saved.fontWeight||cs.fontWeight)==="700"||Number(saved.fontWeight||cs.fontWeight)>=600);
+    $id("localFormatItalic")?.classList.toggle("active",String(saved.fontStyle||cs.fontStyle)==="italic");
+  }
+
+  function imageUrlFromElement(el,type){
+    if(type==="image")return el?.src||"";
+    const bg=el?.style?.backgroundImage||getComputedStyle(el||document.body).backgroundImage||"";
+    const m=bg.match(/url\(["']?(.*?)["']?\)/i);return m?.[1]||"";
+  }
+
+  function selectImageTarget(el,type){
+    clearVisualSelection();
+    const key=type==="image"?el?.dataset?.editorImageKey:el?.dataset?.editorBackgroundKey;
+    if(!key)return;
+    selectedVisualTarget={type,key,el};
+    el.classList.add("local-editor-image-selected");
+    $id("localImageFormatControls")?.classList.remove("hidden");
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent=type==="background"?"Imagen de fondo":"Imagen";
+    const url=overrides().image[key]||imageUrlFromElement(el,type);
+    const preview=$id("localFormatImagePreview");
+    if(preview){preview.style.backgroundImage=url?'url("'+String(url).replace(/"/g,"%22")+'")':"";preview.textContent=url?"":"Sin imagen";}
+  }
+
+  function decorateGenericEditor(indexed){
+    indexed.textNodes.forEach(el=>{
+      el.addEventListener("click",e=>{e.stopPropagation();selectTextTarget(el);});
+      if(!el.classList.contains("local-canvas-inline-edit")){
+        el.setAttribute("contenteditable","true");
+        el.classList.add("local-canvas-inline-edit");
+        el.addEventListener("blur",async()=>{
+          const key=el.dataset.editorTextKey;
+          overrides().text[key]=clean(el.innerText);
+          await persistOverrides(false);
+        });
+      }
+    });
+    indexed.imageNodes.forEach(el=>el.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();selectImageTarget(el,"image");}));
+    indexed.bgNodes.forEach(el=>{
+      el.title=el.title||"Haz clic en el fondo para cambiar su imagen";
+      el.classList.add("local-editor-bg-target");
+      const badge=document.createElement("button");
+      badge.type="button";badge.className="local-editor-bg-button";badge.textContent="📷 Cambiar fondo";
+      badge.onclick=e=>{e.preventDefault();e.stopPropagation();selectImageTarget(el,"background");};
+      el.appendChild(badge);
+      el.addEventListener("click",e=>{if(e.target===el){e.preventDefault();e.stopPropagation();selectImageTarget(el,"background");}});
+    });
+  }
+
+  function applySelectedTextStyle(prop,value){
+    if(selectedVisualTarget?.type!=="text")return;
+    const {key,el}=selectedVisualTarget;
+    const map=overrides().style;
+    map[key]=map[key]||{};
+    if(value===null||value==="")delete map[key][prop];else map[key][prop]=value;
+    el.style[prop]=value||"";
+    persistOverrides(false);
+  }
+
+  function bindFormatPanel(){
+    const clear=$id("localFormatClearSelection");if(clear&&!clear.dataset.bound){clear.dataset.bound="1";clear.onclick=clearVisualSelection;}
+    const font=$id("localFormatFontFamily");if(font&&!font.dataset.bound){font.dataset.bound="1";font.onchange=()=>applySelectedTextStyle("fontFamily",font.value);}
+    const size=$id("localFormatFontSize");if(size&&!size.dataset.bound){size.dataset.bound="1";size.onchange=()=>applySelectedTextStyle("fontSize",size.value?Math.max(8,Math.min(160,Number(size.value)))+"px":"");}
+    const color=$id("localFormatColor");if(color&&!color.dataset.bound){color.dataset.bound="1";color.oninput=()=>applySelectedTextStyle("color",color.value);}
+    const lh=$id("localFormatLineHeight");if(lh&&!lh.dataset.bound){lh.dataset.bound="1";lh.onchange=()=>applySelectedTextStyle("lineHeight",lh.value?String(Math.max(.8,Math.min(3,Number(lh.value)))):"");}
+    const bold=$id("localFormatBold");if(bold&&!bold.dataset.bound){bold.dataset.bound="1";bold.onclick=()=>{const active=!bold.classList.contains("active");bold.classList.toggle("active",active);applySelectedTextStyle("fontWeight",active?"700":"400");};}
+    const italic=$id("localFormatItalic");if(italic&&!italic.dataset.bound){italic.dataset.bound="1";italic.onclick=()=>{const active=!italic.classList.contains("active");italic.classList.toggle("active",active);applySelectedTextStyle("fontStyle",active?"italic":"normal");};}
+    document.querySelectorAll("[data-local-align]").forEach(btn=>{if(btn.dataset.bound)return;btn.dataset.bound="1";btn.onclick=()=>applySelectedTextStyle("textAlign",btn.dataset.localAlign);});
+    const resetText=$id("localFormatResetText");if(resetText&&!resetText.dataset.bound){resetText.dataset.bound="1";resetText.onclick=async()=>{if(selectedVisualTarget?.type!=="text")return;delete overrides().style[selectedVisualTarget.key];selectedVisualTarget.el.removeAttribute("style");await persistOverrides(false);renderCanvas();};}
+    const change=$id("localFormatChangeImage");if(change&&!change.dataset.bound){change.dataset.bound="1";change.onclick=()=>{if(selectedVisualTarget&&selectedVisualTarget.type!=="text"){$id("localFormatImageFile").value="";$id("localFormatImageFile").click();}};}
+    const imageFile=$id("localFormatImageFile");if(imageFile&&!imageFile.dataset.bound){imageFile.dataset.bound="1";imageFile.onchange=uploadSelectedVisualImage;}
+    const resetImage=$id("localFormatResetImage");if(resetImage&&!resetImage.dataset.bound){resetImage.dataset.bound="1";resetImage.onclick=async()=>{if(!selectedVisualTarget||selectedVisualTarget.type==="text")return;delete overrides().image[selectedVisualTarget.key];await persistOverrides(false);renderCanvas();clearVisualSelection();};}
+  }
+
+  async function uploadSelectedVisualImage(){
+    const file=$id("localFormatImageFile")?.files?.[0],target=selectedVisualTarget,lid=localId();
+    if(!file||!target||target.type==="text"||!lid)return;
+    try{
+      message("Subiendo imagen…");
+      const uploaded=await subirImagenHTPWEB(mediaPathLocalPageAsset(lid,activePage,target.key),file);
+      overrides().image[target.key]=uploaded.url;
+      await persistOverrides(false);
+      renderCanvas();
+      message("Imagen actualizada.");
+    }catch(e){message(e.message||"No se pudo cambiar la imagen.","error");}
+    finally{if($id("localFormatImageFile"))$id("localFormatImageFile").value="";}
+  }
+
   function renderCanvas(){
     const canvas=$id("localVisualPageCanvas");
     if(!canvas||!window.HTPWEBStorefrontArchitectures?.render)return;
@@ -208,7 +349,10 @@
     canvas.innerHTML=window.HTPWEBStorefrontArchitectures.render(ctx);
     canvas.classList.toggle("mobile",activeDevice==="mobile");
     canvas.classList.toggle("desktop",activeDevice!=="mobile");
+    clearVisualSelection();
+    const indexed=window.HTPWEBStorefrontArchitectures.applyOverrides(canvas,activePage,overrides());
     decorateCanvas();
+    decorateGenericEditor(indexed);
     const label=$id("localVisualPageLabel");
     if(label)label.textContent=pageMeta[activePage]?.[0]||"Página";
     const add=$id("localVisualAddBtn");
@@ -275,6 +419,8 @@
       const el=$id(id);
       if(el&&!el.dataset.visualBound){el.dataset.visualBound="1";el.addEventListener("change",()=>renderCanvas());}
     }
+
+    bindFormatPanel();
 
     if(!projectReplaceInput){
       projectReplaceInput=document.createElement("input");

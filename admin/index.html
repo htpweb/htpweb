@@ -12,10 +12,10 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261007-real-preview1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261007-powerpoint1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-visual-editor2">
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-powerpoint1">
 <link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
@@ -705,8 +705,56 @@
                   <button type="button" class="btn-primary hidden" id="localVisualAddBtn">+ Agregar</button>
                 </div>
               </div>
-              <div class="local-visual-editor-stage">
-                <div id="localVisualPageCanvas" class="local-visual-page-canvas desktop"></div>
+              <div class="local-visual-editor-layout">
+                <div class="local-visual-editor-stage">
+                  <div id="localVisualPageCanvas" class="local-visual-page-canvas desktop"></div>
+                </div>
+                <aside id="localFormatPanel" class="local-format-panel">
+                  <div class="local-format-panel-head">
+                    <div><strong>Formato</strong><span id="localFormatSelectionLabel">Selecciona un texto o una imagen</span></div>
+                    <button type="button" class="btn-muted" id="localFormatClearSelection">×</button>
+                  </div>
+                  <div id="localTextFormatControls" class="local-format-controls hidden">
+                    <label>Tipo de letra
+                      <select id="localFormatFontFamily">
+                        <option value="">Plantilla</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="'Times New Roman', serif">Times New Roman</option>
+                        <option value="'Courier New', monospace">Courier New</option>
+                        <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                      </select>
+                    </label>
+                    <div class="local-format-row">
+                      <label>Tamaño
+                        <input id="localFormatFontSize" type="number" min="8" max="160" step="1">
+                      </label>
+                      <label>Color
+                        <input id="localFormatColor" type="color" value="#111827">
+                      </label>
+                    </div>
+                    <div class="local-format-buttons">
+                      <button type="button" class="btn-muted" id="localFormatBold"><strong>B</strong></button>
+                      <button type="button" class="btn-muted" id="localFormatItalic"><em>I</em></button>
+                      <button type="button" class="btn-muted" data-local-align="left">Izq.</button>
+                      <button type="button" class="btn-muted" data-local-align="center">Centro</button>
+                      <button type="button" class="btn-muted" data-local-align="right">Der.</button>
+                    </div>
+                    <label>Interlineado
+                      <input id="localFormatLineHeight" type="number" min="0.8" max="3" step="0.05" placeholder="1.2">
+                    </label>
+                    <button type="button" class="btn-muted" id="localFormatResetText">Restablecer estilo</button>
+                  </div>
+                  <div id="localImageFormatControls" class="local-format-controls hidden">
+                    <div class="local-format-image-preview" id="localFormatImagePreview"></div>
+                    <button type="button" class="btn-primary" id="localFormatChangeImage">Cambiar imagen</button>
+                    <button type="button" class="btn-muted" id="localFormatResetImage">Restablecer imagen</button>
+                    <input id="localFormatImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                  </div>
+                  <div class="local-format-panel-tip">HTPWEB conserva la estructura, los vínculos y el comportamiento responsive de la plantilla. Tú editas el contenido visual.</div>
+                </aside>
               </div>
             </div>
 
@@ -2597,13 +2645,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
-<script src="../config/storage.js?v=20261007-visual-editor2"></script>
+<script src="../config/storage.js?v=20261007-powerpoint1"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="../assets/storefront-architectures.js?v=20261007-visual-editor2"></script>
+<script src="../assets/storefront-architectures.js?v=20261007-powerpoint1"></script>
 <script src="../config/compact-menu.js?v=20261007-compact1"></script>
-<script src="./admin.js?v=20261007-visual-editor2"></script>
-<script src="./local-page-editor.js?v=20261007-visual-editor2"></script>
+<script src="./admin.js?v=20261007-powerpoint1"></script>
+<script src="./local-page-editor.js?v=20261007-powerpoint1"></script>
 <script src="./master-websites.js?v=20261007-real-preview1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
