@@ -20,32 +20,34 @@ test('HTPWEB exposes crawl metadata and sitemap',()=>{
   assert.match(sitemap,/https:\/\/htpweb\.github\.io\/htpweb\//);
 });
 
-test('active LOCAL SEO pages are generated with server-visible metadata',()=>{
-  assert.match(consiso,/HTPWEB_AUTO_SEO_LOCAL/);
-  assert.match(consiso,/data-local-slug="consiso"/);
+test('active BUSINESS SEO pages are generated with server-visible metadata',()=>{
+  assert.match(consiso,/HTPWEB_AUTO_SEO_BUSINESS/);
+  assert.match(consiso,/data-business-slug="consiso"/);
   assert.match(consiso,/<title>CONSISO \| Sitio oficial<\/title>/);
   assert.match(consiso,/rel="canonical" href="https:\/\/htpweb\.github\.io\/consiso\//);
   assert.match(consiso,/application\/ld\+json/);
   assert.match(sitemap,/https:\/\/htpweb\.github\.io\/consiso\//);
 });
 
-test('storefront accepts generated LOCAL pages without query parameters',()=>{
+test('storefront accepts generated BUSINESS pages without query parameters',()=>{
   assert.match(tienda,/document\.documentElement\.dataset\.localSlug/);
   assert.match(tienda,/document\.documentElement\.dataset\.initialSection/);
   assert.match(tienda,/return parts\[0\]==="htpweb"\?"\/htpweb\/"\:"\/"/);
 });
 
-test('SEO generator refreshes active locals and excludes internal test local',()=>{
-  assert.match(generator,/rest\/v1\/locals/);
+test('SEO generator refreshes active businesses and excludes internal test business',()=>{
+  assert.match(generator,/rest\/v1\/businesses/);
   assert.match(generator,/active=eq\.true/);
   assert.match(generator,/htpweb-local-pruebas/);
+  assert.match(generator,/\.seo-generated-businesses\.json/);
   assert.match(generator,/sitemap\.xml/);
   assert.match(generator,/robots\.txt/);
 });
 
-test('SEO automation runs hourly and can publish generated pages',()=>{
+test('SEO automation runs hourly and can publish generated business pages',()=>{
   assert.match(workflow,/cron: "17 \* \* \* \*"/);
   assert.match(workflow,/permissions:\s*\n\s*contents: write/);
   assert.match(workflow,/node scripts\/generate-seo\.mjs/);
+  assert.match(workflow,/\.seo-generated-businesses\.json/);
   assert.match(workflow,/git push origin HEAD:main/);
 });

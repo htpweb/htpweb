@@ -161,12 +161,13 @@ function _htpwebProfileSwitcherHtml(modes){
       '</button>'
     );
   });
-  (modes.locals||[]).forEach(l=>{
-    const isActive=active.mode==="LOCAL"&&active.resource_id===l.id;
+  const businesses=Array.isArray(modes.businesses)?modes.businesses:(modes.locals||[]);
+  businesses.forEach(business=>{
+    const isActive=["BUSINESS","LOCAL"].includes(active.mode)&&active.resource_id===business.id;
     items.push(
-      '<button type="button" class="htp-profile-option '+(isActive?"active":"")+'" data-htp-profile-mode="LOCAL" data-htp-profile-resource="'+_htpwebEsc(l.id)+'">'+
-        (l.logo_url?'<img class="htp-profile-avatar" src="'+_htpwebEsc(l.logo_url)+'" alt="">':'<span class="htp-profile-avatar local">L</span>')+
-        '<span><strong>'+_htpwebEsc(l.name)+'</strong><small>Perfil LOCAL</small></span>'+
+      '<button type="button" class="htp-profile-option '+(isActive?"active":"")+'" data-htp-profile-mode="BUSINESS" data-htp-profile-resource="'+_htpwebEsc(business.id)+'">'+
+        (business.logo_url?'<img class="htp-profile-avatar" src="'+_htpwebEsc(business.logo_url)+'" alt="">':'<span class="htp-profile-avatar local">N</span>')+
+        '<span><strong>'+_htpwebEsc(business.name)+'</strong><small>Perfil negocio</small></span>'+
         (isActive?'<b class="htp-profile-check">✓</b>':'')+
       '</button>'
     );
@@ -179,9 +180,10 @@ function _htpwebBindProfileSwitcher(root,{clientHref,workspaceHref}){
     button.addEventListener("click",async()=>{
       const mode=button.dataset.htpProfileMode;
       const resource=button.dataset.htpProfileResource||null;
+      const backendMode=window.HTPBusinessDomain?.toLegacyTargetType(mode)||(mode==="BUSINESS"?"LOCAL":mode);
       button.disabled=true;
       try{
-        const result=await supabaseClient.rpc("switch_my_account_mode",{p_mode:mode,p_resource_id:resource});
+        const result=await supabaseClient.rpc("switch_my_account_mode",{p_mode:backendMode,p_resource_id:resource});
         if(result.error)throw result.error;
         location.href=mode==="CLIENT"?clientHref:workspaceHref;
       }catch(error){
@@ -304,7 +306,7 @@ async function instalarEncabezadoHTPWEB() {
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="'+_htpwebRootUrl("index.html")+'">Inicio</a>'+
         '<a href="'+_htpwebRootUrl("como-funciona.html")+'">Cómo funciona</a>'+
-        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar locales</a>'+
+        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar negocios</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
@@ -341,7 +343,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   if(!session?.user)return;
 
   const roleResult=await supabaseClient.rpc("current_role_code");
-  if(roleResult.error||!["DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN"].includes(roleResult.data))return;
+  if(roleResult.error||!["DELIVERY_ADMIN","DELIVERY_OPERATOR","LOCAL_ADMIN","BUSINESS_ADMIN"].includes(roleResult.data))return;
   const accountModes=await _htpwebAccountModes();
 
   if(!document.querySelector('link[href*="authenticated-shell.css"]')){
@@ -361,7 +363,7 @@ async function prepararEncabezadoDeliveryAdmin(){
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
         '<a href="'+_htpwebRootUrl("index.html")+'">Inicio</a>'+
         '<a href="'+_htpwebRootUrl("como-funciona.html")+'">Cómo funciona</a>'+
-        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar locales</a>'+
+        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar negocios</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="adminHtpAccountTrigger" class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
