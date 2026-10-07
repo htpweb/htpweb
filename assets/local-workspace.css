@@ -199,3 +199,14 @@
 .reference-preview .ref-strip strong,.reference-preview .ref-strip span{display:block}
 .reference-preview .ref-strip span{font-size:.72rem;opacity:.75;margin-top:4px}
 @media(max-width:760px){.reference-preview .ref-search-row{grid-template-columns:1fr}.reference-preview .ref-search-box,.reference-preview .ref-whatsapp,.reference-preview .ref-icon{display:none}.reference-preview .ref-nav{grid-auto-flow:row;grid-template-columns:repeat(2,1fr)}.reference-preview .ref-grid,.reference-preview .ref-strip{grid-template-columns:1fr}.reference-preview .ref-hero{min-height:300px}}
+
+
+/* PREMIUM LOCAL BUILDER GEOMETRY — keep editor inside the admin workspace */
+.local-site-builder{min-width:0;max-width:100%}
+.local-site-builder>*{min-width:0;max-width:100%}
+.local-builder-hero,.local-builder-panel,.local-builder-heading,.local-design-toolbar,.local-template-grid,.local-theme-grid,.local-section-picker,.local-import-grid,.local-import-security,.local-import-status{min-width:0;max-width:100%}
+.local-template-grid>*{min-width:0}
+.local-builder-hero>*{min-width:0}
+.local-builder-hero h3,.local-builder-hero p,.local-builder-panel p,.local-builder-panel h4{overflow-wrap:anywhere}
+@media(max-width:1100px){.local-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.local-import-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.local-template-grid{grid-template-columns:1fr}}
