@@ -181,6 +181,30 @@ function _htpwebBindProfileSwitcher(root,{clientHref,workspaceHref}){
   });
 }
 
+
+function _htpwebBindAccountDropdown(menu,trigger,dropdown){
+  if(!menu||!trigger||!dropdown)return;
+  const close=()=>{
+    dropdown.classList.add("hidden");
+    trigger.setAttribute("aria-expanded","false");
+  };
+  trigger.setAttribute("aria-haspopup","menu");
+  trigger.setAttribute("aria-expanded","false");
+  dropdown.setAttribute("role","menu");
+  trigger.addEventListener("click",e=>{
+    e.preventDefault();e.stopPropagation();
+    const opening=dropdown.classList.contains("hidden");
+    dropdown.classList.toggle("hidden");
+    trigger.setAttribute("aria-expanded",opening?"true":"false");
+  });
+  document.addEventListener("click",e=>{if(!menu.contains(e.target))close()});
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&!dropdown.classList.contains("hidden")){
+      close();trigger.focus();
+    }
+  });
+}
+
 async function instalarSelectorPerfilesCompacto(){
   if(!_htpwebCompactProfilePage())return;
   if(document.querySelector("[data-htpweb-compact-profiles]"))return;
@@ -224,8 +248,7 @@ async function instalarSelectorPerfilesCompacto(){
 
   const trigger=wrap.querySelector(".htp-auth-account");
   const dropdown=wrap.querySelector(".htp-auth-account-dropdown");
-  trigger.onclick=e=>{e.preventDefault();e.stopPropagation();dropdown.classList.toggle("hidden")};
-  document.addEventListener("click",e=>{if(!wrap.contains(e.target))dropdown.classList.add("hidden")});
+  _htpwebBindAccountDropdown(wrap,trigger,dropdown);
   _htpwebBindProfileSwitcher(wrap,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
   wrap.querySelector(".logout").onclick=async()=>{await cerrarSesion();location.href="../index.html"};
 
@@ -292,8 +315,7 @@ async function instalarEncabezadoHTPWEB() {
   const menu=header.querySelector(".htp-auth-account-menu");
   const trigger=header.querySelector("#htpAuthAccountTrigger");
   const dropdown=header.querySelector("#htpAuthAccountDropdown");
-  trigger?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")});
-  document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+  _htpwebBindAccountDropdown(menu,trigger,dropdown);
   _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
   const logout=header.querySelector("#htpAuthLogout");
   logout?.addEventListener("click",async()=>{await cerrarSesion();location.href="../index.html"});
@@ -347,8 +369,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   const menu=header.querySelector(".htp-auth-account-menu");
   const trigger=header.querySelector("#adminHtpAccountTrigger");
   const dropdown=header.querySelector("#adminHtpAccountDropdown");
-  if(trigger)trigger.onclick=e=>{e.preventDefault();e.stopPropagation();dropdown?.classList.toggle("hidden")};
-  document.addEventListener("click",e=>{if(menu&&!menu.contains(e.target))dropdown?.classList.add("hidden")});
+  _htpwebBindAccountDropdown(menu,trigger,dropdown);
   _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"./index.html"});
 }
 
