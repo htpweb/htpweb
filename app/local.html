@@ -10,8 +10,10 @@
 <script src="../config/auth.js?v=20261004-profiles2"></script>
 <script src="../config/negocio.js?v=20261002-theme3"></script>
 <script src="../config/cart.js"></script>
+<script src="../config/compact-menu.js?v=20261007-compact1"></script>
 <script src="../config/ads.js?v=20261002-mobile1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-stickyanchor1">
+<link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
 </head>
 <body>
 <header>
@@ -35,13 +37,14 @@
 </header>
 
 <main>
+  <section id="compactMenuMount" class="hidden" aria-label="Menú compacto"></section>
   <section id="localCard" class="card"></section>
   <div id="localOrderStatusNotice" class="local-order-status-notice hidden" role="status"></div>
   <section id="promotionsCard" class="card hidden">
     <h2>Promociones</h2>
     <div id="promotionsListPublic" class="promotions-grid"></div>
   </section>
-  <section class="card">
+  <section id="productsCard" class="card">
     <h2>Productos</h2>
     <div id="products"></div>
   </section>
@@ -57,6 +60,7 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 const params = new URLSearchParams(location.search);
 const localId = params.get("local") || params.get("id");
 const sharedProductId = params.get("product") || "";
+const menuPreview = (params.get("menu_preview") || "").toUpperCase();
 
 let negocioActual = null;
 let localActual = null;
@@ -65,6 +69,9 @@ let availability = null;
 let claimState = null;
 let products = [];
 let variants = [];
+let categories = [];
+let inventory = [];
+let compactMenuController = null;
 
 async function init() {
   try {
@@ -90,7 +97,7 @@ async function init() {
 
     const localRes = await supabaseClient
       .from("locals")
-      .select("id,name,description,banner_url,logo_url,address,phone,whatsapp,active")
+      .select("id,name,description,banner_url,logo_url,address,phone,whatsapp,active,menu_design")
       .eq("id", localId)
       .eq("active", true)
       .single();
@@ -126,7 +133,7 @@ async function init() {
 
     const productRes = await supabaseClient
       .from("products")
-      .select("id,local_id,category_id,name,description,price,image_url,display_order,active,catalog_visible")
+      .select("id,local_id,category_id,name,description,short_description,price,image_url,featured,display_order,active,catalog_visible")
       .eq("local_id", localId)
       .eq("active", true)
       .eq("catalog_visible", true)
@@ -149,7 +156,21 @@ async function init() {
       variants = variantRes.data || [];
     }
 
+    const [categoryRes, inventoryRes] = await Promise.all([
+      supabaseClient.from("categories")
+        .select("id,local_id,name,display_order,active")
+        .eq("local_id", localId)
+        .eq("active", true)
+        .order("display_order")
+        .order("name"),
+      supabaseClient.rpc("public_local_inventory", { p_local_id: localId })
+    ]);
+    if (categoryRes.error) throw categoryRes.error;
+    categories = categoryRes.data || [];
+    inventory = Array.isArray(inventoryRes.data) ? inventoryRes.data : [];
+
     render();
+    applyCompactMenuIfNeeded();
     window.dispatchEvent(new CustomEvent("htpweb:local-ready"));
 
     if (sharedProductId) {
@@ -170,6 +191,69 @@ async function init() {
     $("error").textContent = error.message || "No se pudo cargar el local.";
     $("error").classList.remove("hidden");
   }
+}
+
+function compactCartSummary() {
+  if (!negocioActual?.slug || !localActual?.id) return { count: 0, subtotal: 0 };
+  const rows = carritoObtener(negocioActual.slug).filter(item => String(item.local_id) === String(localActual.id) && !item.promotion_id);
+  let count = 0;
+  let subtotal = 0;
+  rows.forEach(item => {
+    const product = products.find(p => String(p.id) === String(item.product_id));
+    if (!product) return;
+    const variant = item.variant_id ? variants.find(v => String(v.id) === String(item.variant_id)) : null;
+    const qty = Number(item.quantity || 0);
+    count += qty;
+    subtotal += qty * Number(variant?.price ?? product.price ?? 0);
+  });
+  return { count, subtotal };
+}
+
+function applyCompactMenuIfNeeded() {
+  const previewCompact = menuPreview === "COMPACT";
+  const compactActive = previewCompact || String(localActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT";
+  const root = $("compactMenuMount");
+  if (!root) return;
+
+  if (!compactActive) {
+    root.classList.add("hidden");
+    return;
+  }
+
+  $("localCard")?.classList.add("hidden");
+  $("localOrderStatusNotice")?.classList.add("hidden");
+  $("promotionsCard")?.classList.add("hidden");
+  $("productsCard")?.classList.add("hidden");
+  root.classList.remove("hidden");
+
+  if (compactMenuController?.destroy) compactMenuController.destroy();
+  compactMenuController = window.HTPWEBCompactMenu?.mount({
+    root,
+    local: localActual,
+    products,
+    variants,
+    categories,
+    inventory,
+    availability,
+    preview: previewCompact,
+    cart: {
+      canOrder: availability?.is_open !== false,
+      getQuantity(product, variant) {
+        return cartQuantityForProduct(product.id, variant?.id || null);
+      },
+      changeQuantity(product, variant, delta) {
+        return changeProductQuantity(product.id, delta, variant?.id || null);
+      },
+      getSummary: compactCartSummary,
+      onViewCart() {
+        location.href = urlDelivery("carrito.html");
+      }
+    },
+    onError(messageText) {
+      $("error").textContent = messageText || "No se pudo actualizar el pedido.";
+      $("error").classList.remove("hidden");
+    }
+  }) || null;
 }
 
 function availabilityMessage() {
