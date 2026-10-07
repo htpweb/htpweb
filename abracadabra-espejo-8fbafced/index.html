@@ -17,8 +17,10 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
 <script src="../config/cart.js"></script>
+<script src="../config/compact-menu.js?v=20261007-compact1"></script>
 <script src="../config/ads.js?v=20261004-localshop1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
+<link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
 <style>
 :root{--local-accent:#111827;--local-secondary:#475467;--local-bg:#f6f7f9;--local-surface:#fff;--local-text:#111827;--local-radius:18px;--local-gap:18px}
 html{scroll-behavior:smooth;scrollbar-gutter:stable}
@@ -368,19 +370,20 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
     </div>
   </section>
   <section id="catalogSection" class="local-page-section">
-    <div class="local-shop-intro">
+    <div id="compactMenuMount" class="hidden" aria-label="Menú compacto"></div>
+    <div class="local-shop-intro" data-current-menu-ui>
       <span class="local-section-kicker">Compra directamente</span>
       <h2 id="catalogTitle">Tienda virtual</h2>
       <p>Busca, filtra y agrega al carrito los productos publicados por este LOCAL.</p>
     </div>
-    <div id="localShopAdvertisingMount"></div>
-    <section id="promotionsSection" class="hidden local-shop-promotions"><h2>Promociones</h2><div id="promotions" class="local-grid"></div></section>
-    <div class="local-toolbar local-shop-toolbar">
+    <div id="localShopAdvertisingMount" data-current-menu-ui></div>
+    <section id="promotionsSection" class="hidden local-shop-promotions" data-current-menu-ui><h2>Promociones</h2><div id="promotions" class="local-grid"></div></section>
+    <div class="local-toolbar local-shop-toolbar" data-current-menu-ui>
       <input id="search" type="search" placeholder="Buscar productos">
       <div id="cats" class="local-cats"></div>
     </div>
-    <section id="menuSection" class="hidden"><h2>Menú</h2><div id="menuPages" class="visual-menu"></div></section>
-    <section id="productsSection">
+    <section id="menuSection" class="hidden" data-current-menu-ui><h2>Menú</h2><div id="menuPages" class="visual-menu"></div></section>
+    <section id="productsSection" data-current-menu-ui>
       <div class="local-shop-results-heading"><h3 id="shopResultsTitle">Productos</h3><span id="shopResultsCount"></span></div>
       <div id="products" class="local-grid"></div>
     </section>
@@ -442,11 +445,13 @@ const key=params.get("local")||document.documentElement.dataset.localSlug||"";
 const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const sharedProductId=params.get("product")||"";
+const menuPreview=(params.get("menu_preview")||"").toUpperCase();
+const menuPreviewEmbed=params.get("menu_preview_embed")==="1";
 const rawPageSection=(params.get("section")||document.documentElement.dataset.initialSection||"home").toLowerCase();
 let pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
-let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="";
+let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="",availability=null,compactMenuController=null;
 const promotionMixSelections=new Map();
 const productCardQuantities=new Map();
 async function trackLocal(eventType,productId=null,metadata={}){
@@ -1190,6 +1195,58 @@ function renderPromotions(){
  $("promotions").querySelectorAll("[data-mix-plus]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixPlus);if(p)changePromotionMix(p,b.dataset.var,1)});
  $("promotions").querySelectorAll("[data-mix-add]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixAdd);if(p){trackLocal("PROMOTION_VIEW",null,{promotion_id:p.id,title:p.title});addMixedPromotion(p);}});
 }
+function compactStoreCartSummary(){
+ const rows=carritoObtener(scope()).filter(item=>String(item.local_id)===String(store?.local?.id)&&!item.promotion_id);
+ let count=0,subtotal=0;
+ rows.forEach(item=>{
+  const p=products.find(x=>String(x.id)===String(item.product_id));if(!p)return;
+  const v=item.variant_id?variants.find(x=>String(x.id)===String(item.variant_id)):null;
+  const qty=Number(item.quantity||0);count+=qty;subtotal+=qty*Number(v?.price??p.price??0);
+ });
+ return{count,subtotal};
+}
+function compactStoreChangeQuantity(p,v,delta){
+ const matcher=itemMatcher(p,v),current=carritoCantidadItem(scope(),matcher);
+ if(Number(delta)>0){
+  if(availability&&availability.is_open!==true)throw new Error("Este local no está disponible para pedidos en este momento.");
+  const st=stockFor(p,v);
+  if(st?.track_stock&&current>=Number(st.available_qty||0))throw new Error(p.name+" alcanzó el stock disponible.");
+  carritoAgregar(scope(),{...matcher,snapshot:{name:p.name,variant_name:v?.name||null,price:Number(v?.price??p.price),image_url:p.image_url||null}},1);
+ }else if(current>0){
+  const next=current-1;
+  if(next<=0)carritoEliminar(scope(),matcher);else carritoCambiarCantidad(scope(),matcher,next);
+ }
+ updateCount();
+ return carritoCantidadItem(scope(),matcher);
+}
+function openStoreCart(){
+ trackLocal("CART_VIEW",null,{action:"open"});
+ if(source==="htpweb"){location.href="/htpweb/app/carrito-general.html";return;}
+ const next=new URL("/htpweb/app/tienda-carrito.html",location.origin);
+ next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
+ location.href=next.toString();
+}
+function applyCompactStorefrontMenu(){
+ const previewCompact=menuPreview==="COMPACT";
+ const compactActive=previewCompact||String(store?.settings?.menu_design||"CURRENT").toUpperCase()==="COMPACT";
+ const root=$("compactMenuMount");if(!root)return;
+ if(!compactActive){root.classList.add("hidden");return;}
+ document.querySelectorAll("[data-current-menu-ui]").forEach(el=>el.classList.add("hidden"));
+ root.classList.remove("hidden");
+ if(menuPreviewEmbed)document.body.classList.add("cm-preview-embed");
+ if(compactMenuController?.destroy)compactMenuController.destroy();
+ compactMenuController=window.HTPWEBCompactMenu?.mount({
+  root,local:store.local,products,variants,categories,inventory,availability,preview:previewCompact,
+  cart:{
+   canOrder:availability?.is_open!==false,
+   getQuantity:(p,v)=>carritoCantidadItem(scope(),itemMatcher(p,v)),
+   changeQuantity:compactStoreChangeQuantity,
+   getSummary:compactStoreCartSummary,
+   onViewCart:openStoreCart
+  },
+  onError(messageText){$("error").textContent=messageText||"No se pudo actualizar el pedido.";$("error").classList.remove("hidden");}
+ })||null;
+}
 async function loadMenu(){
  const mode=store.settings.catalog_mode;
  $("menuSection").classList.toggle("hidden",mode==="CARDS");
@@ -1230,34 +1287,26 @@ async function init(){
    }
    applyStoreTheme();
    if(document.body.dataset.designSystem==="REFERENCE")applyImportedReferenceLayout();
-   const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes]=await Promise.all([
+   const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes,availabilityRes]=await Promise.all([
      supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
      supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",store.local.id).eq("active",true).order("display_order"),
      supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_local_promotions_catalog",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_list_local_gallery",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_local_blog_posts",{p_local_id:store.local.id})
+     supabaseClient.rpc("public_local_blog_posts",{p_local_id:store.local.id}),
+     supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[store.local.id]})
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
-   products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];
-   configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitecturePage();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applySinglePageSection();updateCount();
+   products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];availability=Array.isArray(availabilityRes.data)?availabilityRes.data[0]||null:null;
+   configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitecturePage();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applyCompactStorefrontMenu();applySinglePageSection();updateCount();
    trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
    if(sharedProductId){
      const target=document.getElementById("product-"+sharedProductId);
      if(target){trackLocal("PRODUCT_VIEW",sharedProductId,{deep_link:true});target.scrollIntoView({behavior:"smooth",block:"center"});}
    }
    $("search").oninput=renderProducts;
-   $("cartBtn").onclick=()=>{
-     trackLocal("CART_VIEW",null,{action:"open"});
-     if(source==="htpweb"){
-       location.href="/htpweb/app/carrito-general.html";
-       return;
-     }
-     const next=new URL("/htpweb/app/tienda-carrito.html",location.origin);
-     next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
-     location.href=next.toString();
-   };
+   $("cartBtn").onclick=openStoreCart;
  }catch(e){document.body.classList.remove("theme-pending");document.body.classList.add("theme-ready");$("error").textContent=e.message||"No se pudo abrir la tienda.";$("error").classList.remove("hidden");}
 }
 init();
