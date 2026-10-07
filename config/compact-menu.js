@@ -99,7 +99,10 @@ function render(state,opts={}){
  const productMarkup=visibleGroups.map(g=>'<section class="cm-group" id="cm-cat-'+esc(g.id)+'"><h2>'+esc(g.name)+'</h2><div class="cm-products">'+g.products.map(p=>{
    const vs=state.variants.filter(v=>String(v.product_id)===String(p.id)),v=variantFor(state,p),st=stockFor(state,p,v),sold=st?.track_stock&&Number(st.available_qty||0)<=0;
    const desc=p.short_description||p.description||"";
-   return '<article class="cm-product" id="product-'+esc(p.id)+'"><div class="cm-product-copy"><div class="cm-product-name">'+esc(p.name)+'</div>'+
+   const image=String(p.image_url||p.product_image_url||"").trim();
+   return '<article class="cm-product '+(image?"has-image":"no-image")+'" id="product-'+esc(p.id)+'">'+
+    (image?'<div class="cm-product-media"><img src="'+esc(image)+'" alt="'+esc(p.name)+'" loading="lazy" decoding="async"></div>':"")+
+    '<div class="cm-product-copy"><div class="cm-product-name">'+esc(p.name)+'</div>'+
     (desc?'<div class="cm-product-description">'+esc(desc)+'</div>':"")+
     '<div class="cm-product-price" data-cm-price="'+esc(p.id)+'">'+money(v?.price??p.price)+'</div>'+
     (vs.length?'<select class="cm-variant" data-cm-variant="'+esc(p.id)+'" aria-label="Variante de '+esc(p.name)+'">'+vs.map(x=>{

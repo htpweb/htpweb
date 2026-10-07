@@ -23,8 +23,12 @@
 .cm-featured-card img{width:100%;height:132px;display:block;object-fit:cover;background:#eef2f7}
 .cm-featured-copy{padding:9px 10px 10px}.cm-featured-copy strong{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cm-featured-copy span{display:block;margin-top:3px;font-weight:900;color:var(--cm-accent)}
 .cm-group{margin:22px 0}.cm-group h2{margin:0 0 9px;font-size:1.22rem;letter-spacing:-.025em}
-.cm-products{display:grid;gap:8px}
-.cm-product{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--cm-line);border-radius:13px;background:#fff;padding:11px 12px;box-shadow:0 2px 8px rgba(15,35,64,.025)}
+.cm-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cm-product{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--cm-line);border-radius:16px;background:#fff;padding:12px;box-shadow:0 5px 18px rgba(15,35,64,.055);overflow:hidden;min-width:0}
+.cm-product.has-image{grid-template-columns:132px minmax(0,1fr) auto;align-items:center}
+.cm-product-media{width:132px;aspect-ratio:1/1;border-radius:13px;background:linear-gradient(145deg,#f8fafc,#eef3f8);overflow:hidden;display:grid;place-items:center}
+.cm-product-media img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;padding:7px}
+.cm-product.no-image{min-height:96px}
 .cm-product-copy{min-width:0}.cm-product-name{font-size:.94rem;font-weight:900;line-height:1.2}.cm-product-description{margin-top:3px;color:var(--cm-muted);font-size:.78rem;line-height:1.35}
 .cm-product-price{margin-top:5px;font-size:.92rem;font-weight:950;color:var(--cm-ink)}
 .cm-variant{width:min(260px,100%);margin-top:7px;border:1px solid var(--cm-line);border-radius:9px;padding:7px 9px;background:#f8fbff;color:var(--cm-ink);font-size:.78rem;font-weight:750}
@@ -50,7 +54,10 @@ body.cm-preview-embed main{padding-top:0!important}
 @media(max-width:620px){
  .htp-compact-menu{padding:12px 10px 104px}
  .cm-toolbar{top:0}
+ .cm-products{grid-template-columns:1fr}
  .cm-product{grid-template-columns:minmax(0,1fr) auto;padding:10px}
+ .cm-product.has-image{grid-template-columns:102px minmax(0,1fr) auto}
+ .cm-product-media{width:102px}
  .cm-product-description{font-size:.75rem}
  .cm-qty{grid-template-columns:31px 31px 31px}.cm-qty button{height:34px}
  .cm-menu-pages{grid-template-columns:1fr}
