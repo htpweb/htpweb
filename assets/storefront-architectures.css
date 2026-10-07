@@ -64,7 +64,7 @@ body.architecture-home .local-site-footer{margin-top:0!important}
 .eng-architecture nav a,.eng-architecture nav span{position:relative;padding:8px 0}
 .eng-architecture nav a:after,.eng-architecture nav span:after{content:"";position:absolute;left:0;right:100%;bottom:2px;height:1px;background:currentColor;transition:right .22s ease}
 .eng-architecture nav a:hover:after,.eng-architecture nav span:hover:after{right:0}
-.eng-architecture .arch-cta,.eng-architecture .arch-outline{min-height:42px;align-items:center;justify-content:center;padding:11px 17px;letter-spacing:.01em;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+.eng-architecture .arch-cta,.eng-architecture .arch-outline{min-height:42px;align-items:center;justify-content:center;padding:11px 17px;letter-spacing:.01em;text-decoration:none;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
 .eng-architecture .arch-cta:hover,.eng-architecture .arch-outline:hover{transform:translateY(-2px)}
 .eng-architecture .arch-cta{box-shadow:0 12px 26px color-mix(in srgb,var(--a) 24%,transparent)}
 .eng-architecture .arch-photo-card{min-height:180px!important;position:relative;overflow:hidden;border:0!important;transition:transform .28s ease,box-shadow .28s ease}
@@ -157,8 +157,8 @@ body.architecture-home .local-site-footer{margin-top:0!important}
 .arch-EDITORIAL .arch-ed-intro p{font-size:1.02rem;max-width:40ch}
 .arch-EDITORIAL .arch-ed-feature{min-height:500px}
 .arch-EDITORIAL .arch-ed-feature span{left:26px;bottom:26px;padding:11px 14px;letter-spacing:.12em}
-.arch-EDITORIAL .arch-ed-project-list{grid-template-columns:170px repeat(3,1fr);padding:0;background:#1f2937;gap:1px}
-.arch-EDITORIAL .arch-ed-project-list>*{background:#f7f4ef;padding:24px}
+.arch-EDITORIAL .arch-ed-project-list{grid-template-columns:minmax(110px,170px) repeat(3,minmax(0,1fr));padding:0;background:#1f2937;gap:1px;overflow:hidden}
+.arch-EDITORIAL .arch-ed-project-list>*{background:#f7f4ef;padding:24px;min-width:0;overflow:hidden}
 .arch-EDITORIAL .arch-ed-about{padding:54px;max-width:920px}
 
 /* LUXE — technology / premium systems */
@@ -242,6 +242,14 @@ body.architecture-home .local-site-footer{margin-top:0!important}
 .arch-COMPACT .arch-tech-tags span{border-radius:5px;font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace}
 .arch-COMPACT .arch-tech-projects{gap:10px!important}
 .arch-COMPACT .arch-tech-projects article{min-height:150px!important;border-radius:7px}
+
+/* Conversion-focused calls to action for editorial architectures */
+.arch-ed-cta,.arch-bold-cta,.arch-mag-cta,.arch-tech-cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;max-width:100%;padding:12px 17px;margin-top:18px;font-size:.76rem;font-weight:850;letter-spacing:.035em;line-height:1;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.arch-ed-cta:hover,.arch-bold-cta:hover,.arch-mag-cta:hover,.arch-tech-cta:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(15,23,42,.16)}
+.arch-EDITORIAL .arch-ed-cta{background:#1f2937;color:#fff;border:1px solid #1f2937}
+.arch-BOLD .arch-bold-cta{background:#111;color:#fff;border:2px solid #111}
+.arch-MAGAZINE .arch-mag-cta{color:#fff;border:1px solid #ffffff99;background:#11182755;backdrop-filter:blur(8px)}
+.arch-COMPACT .arch-tech-cta{background:#07111f;color:#fff;border:1px solid #07111f;border-radius:5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 /* Professional family finishing */
 .eng-architecture.family-PROFESSIONAL .arch-cta{background:var(--a)}
