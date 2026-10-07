@@ -32,6 +32,10 @@ function mediaPathLocalGallery(localId, imageId) {
   return `local/${localId}/gallery/${imageId}`;
 }
 
+function mediaPathLocalService(localId, serviceId) {
+  return `local/${localId}/services/${serviceId}`;
+}
+
 function pathDesdePublicUrlHTPWEB(url) {
   if (!url) return null;
   try {
