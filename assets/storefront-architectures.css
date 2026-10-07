@@ -331,3 +331,152 @@ body.architecture-home .local-site-footer{margin-top:0!important}
  .arch-COMPACT .arch-tech-grid>section{margin-bottom:8px}
  .arch-COMPACT .arch-tech-panel.wide{grid-column:auto}
 }
+
+
+/* ==========================================================================
+   HTPWEB STOREFRONT REBUILD · INTERNAL PAGE COMPOSITION
+   Version 20261007.3
+   ========================================================================== */
+.architecture-page .local-site-main{max-width:none;padding:0}
+.internal-architecture{min-height:70vh;background:var(--bg,var(--local-bg));color:var(--text,var(--local-text))}
+.internal-template-head{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px clamp(22px,6vw,90px);border-bottom:1px solid color-mix(in srgb,var(--text) 16%,transparent)}
+.internal-template-head>strong{font-size:1.05rem;letter-spacing:.02em}
+.internal-template-head nav{display:flex;gap:18px;flex-wrap:wrap}
+.internal-template-head nav a{color:inherit;text-decoration:none;font-size:.84rem;font-weight:700}
+.internal-architecture .local-page-card{box-sizing:border-box}
+.internal-architecture .local-about-image{background-size:cover;background-position:center}
+.internal-architecture .local-contact-map-card iframe{width:100%;min-height:390px;border:0}
+
+/* SIGNATURE */
+.arch-SIGNATURE .internal-signature-frame{position:relative;padding:80px clamp(24px,7vw,110px) 110px}
+.arch-SIGNATURE .internal-signature-number{position:absolute;right:5vw;top:24px;font-size:clamp(5rem,13vw,11rem);font-weight:900;line-height:.8;color:color-mix(in srgb,var(--a) 10%,transparent);pointer-events:none}
+.arch-SIGNATURE .internal-about{display:grid;grid-template-columns:1fr 1.15fr;gap:56px;align-items:center}
+.arch-SIGNATURE .internal-about h2,.arch-SIGNATURE .internal-services h2,.arch-SIGNATURE .internal-projects h2,.arch-SIGNATURE .internal-blog h2,.arch-SIGNATURE .internal-contact h2{font-size:clamp(3.4rem,6vw,6rem);line-height:.92;letter-spacing:-.06em;max-width:10ch}
+.arch-SIGNATURE .internal-about .local-about-image{min-height:520px;border-radius:22px}
+.arch-SIGNATURE .internal-services .local-service-placeholders{grid-template-columns:repeat(4,1fr)}
+.arch-SIGNATURE .internal-projects .local-project-grid{grid-template-columns:1.5fr .75fr .75fr}
+.arch-SIGNATURE .internal-blog .local-blog-grid{grid-template-columns:1.35fr .825fr .825fr}
+.arch-SIGNATURE .internal-contact .local-contact-layout{grid-template-columns:.9fr 1.1fr}
+
+/* MINIMAL */
+.arch-MINIMAL{background:#fff;color:#111}
+.arch-MINIMAL .internal-minimal-top{padding:0 clamp(28px,10vw,160px)}
+.arch-MINIMAL .internal-minimal-top .internal-template-head{padding-left:0;padding-right:0}
+.arch-MINIMAL .internal-minimal-top>span{display:block;margin-top:44px;font-size:.7rem;letter-spacing:.18em}
+.arch-MINIMAL .internal-minimal-body{padding:30px clamp(28px,10vw,160px) 110px}
+.arch-MINIMAL h2{font-weight:500!important;font-size:clamp(3.5rem,7vw,6.6rem)!important;line-height:.9!important;max-width:8ch!important}
+.arch-MINIMAL .local-service-placeholders,.arch-MINIMAL .local-blog-grid,.arch-MINIMAL .local-project-grid{display:block!important;border-top:1px solid #111}
+.arch-MINIMAL .local-service-placeholder{display:grid;grid-template-columns:90px 1fr 1.2fr;align-items:center;border:0!important;border-bottom:1px solid #ddd!important;border-radius:0!important;box-shadow:none!important;padding:22px 0!important}
+.arch-MINIMAL .local-project-card{display:grid!important;grid-template-columns:150px 1fr;align-items:center;min-height:0!important;border-radius:0!important;border-bottom:1px solid #ddd}
+.arch-MINIMAL .local-project-card img{width:120px!important;height:80px!important;min-height:0!important}
+.arch-MINIMAL .local-project-card span{position:static!important;background:transparent!important;color:#111!important}
+.arch-MINIMAL .local-blog-card{display:grid;grid-template-columns:180px 1fr;border:0;border-bottom:1px solid #ddd;border-radius:0;box-shadow:none}
+.arch-MINIMAL .local-contact-layout{display:block!important}.arch-MINIMAL .local-contact-map-card{margin-top:40px;border-radius:0!important}
+
+/* SPLIT */
+.arch-SPLIT .internal-split-shell{display:grid;grid-template-columns:minmax(280px,36%) 1fr;min-height:760px}
+.arch-SPLIT .internal-split-index{background:#f4f7fb;color:#101828;padding:64px clamp(24px,5vw,72px);display:flex;flex-direction:column;align-items:flex-start;gap:24px}
+.arch-SPLIT .internal-split-index>strong{font-size:1.1rem}.arch-SPLIT .internal-split-index>span{margin-top:auto;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase}
+.arch-SPLIT .internal-split-index nav{display:flex;flex-direction:column;gap:12px}.arch-SPLIT .internal-split-index nav a{color:inherit;text-decoration:none;font-weight:700}
+.arch-SPLIT .internal-split-shell>main{background:#111827;color:#fff;padding:80px clamp(28px,6vw,90px)}
+.arch-SPLIT h2{font-size:clamp(3rem,5.5vw,5.5rem)!important;line-height:.92!important}
+.arch-SPLIT .local-project-intro,.arch-SPLIT .local-service-placeholder p,.arch-SPLIT .local-blog-card p{color:#cbd5e1!important}
+.arch-SPLIT .local-service-placeholders,.arch-SPLIT .local-project-grid,.arch-SPLIT .local-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.arch-SPLIT .local-service-placeholder,.arch-SPLIT .local-blog-card{background:#fff!important;color:#111827!important}
+
+/* SIDEBAR */
+.arch-SIDEBAR .internal-blueprint-shell{display:grid;grid-template-columns:220px 1fr;min-height:780px;background:#eef5f9;color:#0b2942}
+.arch-SIDEBAR .internal-blueprint-shell>aside{background:#061522;color:#dbeafe;padding:42px 24px;display:flex;flex-direction:column;gap:18px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.arch-SIDEBAR .internal-blueprint-shell>aside small{margin:22px 0 12px;letter-spacing:.14em}
+.arch-SIDEBAR .internal-blueprint-shell>aside a{color:#dbeafe;text-decoration:none;font-size:.78rem}
+.arch-SIDEBAR .internal-blueprint-shell>main{padding:70px clamp(28px,5vw,75px)}
+.arch-SIDEBAR h2{font:800 clamp(2.8rem,5vw,4.8rem)/.95 ui-monospace,SFMono-Regular,Menlo,monospace!important}
+.arch-SIDEBAR .local-service-placeholders,.arch-SIDEBAR .local-project-grid,.arch-SIDEBAR .local-blog-grid{gap:1px!important;background:#7890a3!important;border:1px solid #7890a3}
+.arch-SIDEBAR .local-service-placeholder,.arch-SIDEBAR .local-project-card,.arch-SIDEBAR .local-blog-card{border-radius:0!important;box-shadow:none!important}
+
+/* EDITORIAL */
+.arch-EDITORIAL{background:#f7f5f0;color:#171717}
+.arch-EDITORIAL .internal-editorial-shell{position:relative;padding:90px clamp(26px,7vw,100px) 110px 170px}
+.arch-EDITORIAL .internal-editorial-folio{position:absolute;left:5vw;top:75px;font:500 clamp(5rem,10vw,9rem)/1 Georgia,serif;color:#c9c1b6}
+.arch-EDITORIAL h2{font:500 clamp(3.5rem,6vw,6rem)/.92 Georgia,serif!important;max-width:9ch!important}
+.arch-EDITORIAL .internal-about{display:grid;grid-template-columns:1fr 1.15fr;gap:50px}
+.arch-EDITORIAL .local-about-image{min-height:520px;border-radius:0!important}
+.arch-EDITORIAL .local-service-placeholders{grid-template-columns:repeat(2,1fr)!important}
+.arch-EDITORIAL .local-project-grid,.arch-EDITORIAL .local-blog-grid{grid-template-columns:1.4fr .8fr .8fr!important}
+.arch-EDITORIAL .local-service-placeholder,.arch-EDITORIAL .local-project-card,.arch-EDITORIAL .local-blog-card{border-radius:0!important;box-shadow:none!important}
+
+/* LUXE */
+.arch-LUXE{position:relative;overflow:hidden;background:#05070b;color:#f8fafc}
+.arch-LUXE .internal-template-head{position:relative;z-index:2;border-color:#ffffff1a}
+.arch-LUXE .internal-template-head nav a{color:#e2e8f0}
+.arch-LUXE .internal-luxe-glow{position:absolute;width:620px;height:620px;right:-160px;top:-220px;border-radius:50%;background:radial-gradient(circle,#29456f88,transparent 65%);filter:blur(10px)}
+.arch-LUXE .internal-luxe-shell{position:relative;z-index:1;padding:100px clamp(28px,7vw,110px)}
+.arch-LUXE h2{font:500 clamp(3.5rem,6vw,6.3rem)/.94 Georgia,serif!important;color:#fff!important}
+.arch-LUXE .local-project-intro,.arch-LUXE .local-about-copy p,.arch-LUXE .local-contact-head p{color:#aab7c8!important}
+.arch-LUXE .local-service-placeholder,.arch-LUXE .local-blog-card,.arch-LUXE .local-contact-info-card,.arch-LUXE .local-contact-map-card{background:#ffffff08!important;color:#fff!important;border:1px solid #ffffff1a!important;border-radius:2px!important;box-shadow:none!important}
+.arch-LUXE .local-project-grid{grid-template-columns:2fr 1fr 1fr!important}
+
+/* BOLD */
+.arch-BOLD{background:#f4f4ef;color:#111;border-top:10px solid #111}
+.arch-BOLD .internal-template-head{border-bottom:4px solid #111;padding-top:18px;padding-bottom:18px}
+.arch-BOLD .internal-bold-label{padding:24px clamp(22px,6vw,86px);border-bottom:4px solid #111;font-weight:1000;text-transform:uppercase;letter-spacing:.08em}
+.arch-BOLD .local-page-card{max-width:none!important}
+.arch-BOLD h2{font-size:clamp(4rem,9vw,8rem)!important;line-height:.82!important;text-transform:uppercase!important;margin:0!important;padding:50px clamp(22px,6vw,86px)!important}
+.arch-BOLD .local-project-intro,.arch-BOLD .local-contact-head p{padding:0 clamp(22px,6vw,86px) 40px!important}
+.arch-BOLD .local-service-placeholders,.arch-BOLD .local-project-grid,.arch-BOLD .local-blog-grid{gap:0!important;border-top:4px solid #111}
+.arch-BOLD .local-service-placeholder,.arch-BOLD .local-project-card,.arch-BOLD .local-blog-card{border-radius:0!important;border-right:4px solid #111!important;box-shadow:none!important}
+
+/* MAGAZINE */
+.arch-MAGAZINE{background:#fff;color:#111}
+.arch-MAGAZINE .internal-mag-mast{display:flex;align-items:flex-end;justify-content:space-between;padding:28px clamp(22px,5vw,74px) 18px;border-top:5px solid #111;border-bottom:2px solid #111}
+.arch-MAGAZINE .internal-mag-mast strong{font:700 clamp(2rem,4vw,4rem)/1 Georgia,serif}
+.arch-MAGAZINE .internal-mag-mast span{font:.72rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.arch-MAGAZINE .internal-mag-nav{display:flex;gap:20px;padding:12px clamp(22px,5vw,74px);border-bottom:1px solid #111}
+.arch-MAGAZINE .internal-mag-nav a{color:#111;text-decoration:none;font-size:.8rem;font-weight:800;text-transform:uppercase}
+.arch-MAGAZINE .local-page-card{padding:62px clamp(22px,5vw,74px)!important}
+.arch-MAGAZINE h2{font:500 clamp(3.3rem,6vw,6.2rem)/.9 Georgia,"Times New Roman",serif!important;border-bottom:1px solid #111;padding-bottom:24px!important}
+.arch-MAGAZINE .local-service-placeholders{grid-template-columns:repeat(2,1fr)!important;gap:1px!important;background:#111!important}
+.arch-MAGAZINE .local-project-grid,.arch-MAGAZINE .local-blog-grid{grid-template-columns:1.5fr .75fr .75fr!important;gap:1px!important;background:#111!important}
+.arch-MAGAZINE .local-service-placeholder,.arch-MAGAZINE .local-project-card,.arch-MAGAZINE .local-blog-card{border-radius:0!important}
+
+/* IMMERSIVE */
+.arch-IMMERSIVE{background:#030712;color:#fff}
+.arch-IMMERSIVE .internal-immersive-bg{min-height:420px;background-size:cover;background-position:center;display:flex;flex-direction:column}
+.arch-IMMERSIVE .internal-template-head{color:#fff;border-color:#ffffff24}.arch-IMMERSIVE .internal-template-head nav a{color:#fff}
+.arch-IMMERSIVE .internal-immersive-title{padding:70px 7vw 80px;margin-top:auto}
+.arch-IMMERSIVE .internal-immersive-title small{letter-spacing:.18em;text-transform:uppercase}.arch-IMMERSIVE .internal-immersive-title h1{font-size:clamp(4rem,9vw,8rem);line-height:.86;margin:12px 0 0;max-width:9ch}
+.arch-IMMERSIVE .internal-immersive-content{padding:80px 7vw 110px}
+.arch-IMMERSIVE h2{font-size:clamp(3rem,6vw,5.5rem)!important;color:#fff!important}
+.arch-IMMERSIVE .local-project-intro,.arch-IMMERSIVE .local-about-copy p,.arch-IMMERSIVE .local-contact-head p{color:#cbd5e1!important}
+.arch-IMMERSIVE .local-service-placeholder,.arch-IMMERSIVE .local-blog-card,.arch-IMMERSIVE .local-contact-info-card,.arch-IMMERSIVE .local-contact-map-card{background:#111827!important;color:#fff!important;border:1px solid #ffffff1a!important}
+.arch-IMMERSIVE .local-project-grid{grid-template-columns:1.5fr .75fr .75fr!important}.arch-IMMERSIVE .local-project-card{min-height:520px!important}
+
+/* COMPACT */
+.arch-COMPACT{background:#e8edf3;color:#07111f;padding:18px}
+.arch-COMPACT .internal-tech-bar{display:flex;justify-content:space-between;background:#07111f;color:#fff;padding:14px 18px;font:700 .78rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.arch-COMPACT .internal-tech-shell{display:grid;grid-template-columns:190px 1fr;gap:10px;margin-top:10px}
+.arch-COMPACT .internal-tech-shell>aside{background:#fff;border:1px solid #cbd5e1;padding:16px;display:flex;flex-direction:column;gap:10px}
+.arch-COMPACT .internal-tech-shell>aside a{color:#07111f;text-decoration:none;font:700 .75rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.arch-COMPACT .internal-tech-shell>main{background:#fff;border:1px solid #cbd5e1;padding:24px}
+.arch-COMPACT h2{font:800 clamp(2.2rem,4vw,3.4rem)/1 ui-monospace,SFMono-Regular,Menlo,monospace!important}
+.arch-COMPACT .local-service-placeholders{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+.arch-COMPACT .local-project-grid,.arch-COMPACT .local-blog-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+.arch-COMPACT .local-service-placeholder,.arch-COMPACT .local-project-card,.arch-COMPACT .local-blog-card,.arch-COMPACT .local-contact-map-card{border-radius:4px!important;box-shadow:none!important;border:1px solid #cbd5e1!important}
+
+/* Mobile */
+@media(max-width:820px){
+ .internal-template-head{align-items:flex-start;flex-direction:column}.internal-template-head nav{gap:10px}
+ .arch-SIGNATURE .internal-signature-frame,.arch-EDITORIAL .internal-editorial-shell,.arch-LUXE .internal-luxe-shell,.arch-IMMERSIVE .internal-immersive-content{padding:50px 18px 70px}
+ .arch-SIGNATURE .internal-signature-number,.arch-EDITORIAL .internal-editorial-folio{position:static;font-size:3rem;margin-bottom:14px}
+ .arch-SIGNATURE .internal-about,.arch-EDITORIAL .internal-about{display:block}.arch-SIGNATURE .local-about-image,.arch-EDITORIAL .local-about-image{min-height:300px;margin-top:24px}
+ .arch-SPLIT .internal-split-shell,.arch-SIDEBAR .internal-blueprint-shell,.arch-COMPACT .internal-tech-shell{display:block}
+ .arch-SPLIT .internal-split-index,.arch-SIDEBAR .internal-blueprint-shell>aside,.arch-COMPACT .internal-tech-shell>aside{display:none}
+ .arch-SPLIT .internal-split-shell>main,.arch-SIDEBAR .internal-blueprint-shell>main{padding:50px 18px}
+ .arch-MINIMAL .internal-minimal-top,.arch-MINIMAL .internal-minimal-body{padding-left:18px;padding-right:18px}
+ .arch-MINIMAL .local-service-placeholder{grid-template-columns:55px 1fr}.arch-MINIMAL .local-service-placeholder p{grid-column:2}
+ .arch-BOLD h2{padding-left:18px!important;padding-right:18px!important}.arch-BOLD .local-project-intro,.arch-BOLD .local-contact-head p{padding-left:18px!important;padding-right:18px!important}
+ .arch-MAGAZINE .local-page-card{padding-left:18px!important;padding-right:18px!important}.arch-MAGAZINE .internal-mag-mast,.arch-MAGAZINE .internal-mag-nav{padding-left:18px;padding-right:18px}
+ .arch-IMMERSIVE .internal-immersive-title{padding-left:18px;padding-right:18px}
+ .internal-architecture .local-service-placeholders,.internal-architecture .local-project-grid,.internal-architecture .local-blog-grid,.internal-architecture .local-contact-layout{display:block!important}
+ .internal-architecture .local-service-placeholder,.internal-architecture .local-project-card,.internal-architecture .local-blog-card{margin-bottom:12px}
+}

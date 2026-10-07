@@ -32,9 +32,49 @@ function m(f){return MEDIA[f]||MEDIA.GENERAL}
 function navHtml(items,links){
  return (items||[]).map((x,i)=>links?'<a href="'+e(x.href||"#")+'" data-site-section="'+e(x.section||"")+'">'+e(x.label||x)+'</a>':'<span>'+e(x.label||x)+'</span>').join("");
 }
+function renderInternalSection(ctx,design,family,profile,media){
+ const section=String(ctx.section||"home").toLowerCase();
+ if(section==="home")return "";
+ const name=e(ctx.name||"LOCAL"),about=e(ctx.about||"Quiénes somos"),catalog=e(ctx.catalog||"Nuestros servicios"),projectsTitle=e(ctx.projects||"Proyectos y portafolio"),blogTitle=e(ctx.blog||"Blog"),contact=e(ctx.contact||"Contacto");
+ const aboutText=e(ctx.aboutText||"");
+ const primary=e(ctx.primary||"#1466e8"),secondary=e(ctx.secondary||"#0b1730"),background=e(ctx.background||"#f6f9ff"),surface=e(ctx.surface||"#fff"),text=e(ctx.text||"#0b1730");
+ const style='--a:'+primary+';--b:'+secondary+';--bg:'+background+';--surface:'+surface+';--text:'+text;
+ const nav=navHtml(ctx.nav||[],!!ctx.links);
+ const head='<header class="internal-template-head"><strong>'+name+'</strong><nav>'+nav+'</nav></header>';
+ const services=(ctx.serviceItems?.length?ctx.serviceItems:profile.services.map((title,i)=>({title,copy:"Solución profesional adaptada a las necesidades del cliente.",index:i+1}))).slice(0,8);
+ const projectItems=(ctx.projectItems?.length?ctx.projectItems:profile.projects.map((title,i)=>({title,image:media.projects[i%media.projects.length]}))).slice(0,8);
+ const blogItems=(ctx.blogItems?.length?ctx.blogItems:[{title:"Novedades de "+name,excerpt:"Muy pronto compartiremos novedades y contenido de interés.",date:"Actualidad",image:media.projects[0]}]).slice(0,6);
+ const contacts=ctx.contactItems||[];
+ const serviceCards=services.map((x,i)=>'<article class="local-service-placeholder"><div class="icon">'+String(i+1).padStart(2,"0")+'</div><h3>'+e(x.title||"Servicio")+'</h3><p>'+e(x.copy||"")+'</p></article>').join("");
+ const projectCards=projectItems.map((x,i)=>'<article class="local-project-card"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><span>'+e(x.title||("Proyecto "+String(i+1).padStart(2,"0")))+'</span></article>').join("");
+ const blogCards=blogItems.map((x,i)=>'<article class="local-blog-card"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><div class="local-blog-card-body"><small>'+e(x.date||"")+'</small><h3>'+e(x.title||"")+'</h3><p>'+e(x.excerpt||"")+'</p></div></article>').join("");
+ const contactCards=contacts.map(x=>'<div class="local-contact-info-card"><div class="local-contact-info-icon">'+e(x.icon||"•")+'</div><div><small>'+e(x.label||"")+'</small><strong>'+e(x.value||"")+'</strong></div></div>').join("");
+ const map=ctx.mapHtml||"",social=ctx.socialHtml||"",wa=ctx.whatsappHtml||"";
+ const sectionTitle=section==="about"?about:section==="services"?catalog:section==="projects"?projectsTitle:section==="blog"?blogTitle:contact;
+ const kicker=section==="about"?"Nuestra historia":section==="services"?"Capacidades":section==="projects"?"Portafolio":section==="blog"?"Actualidad":"Hablemos";
+ const core={
+  about:'<section class="local-page-card internal-about"><div class="local-about-copy"><span class="local-section-kicker">'+kicker+'</span><h2>'+sectionTitle+'</h2><p>'+aboutText+'</p></div><div class="local-about-image" style="background-image:url('+e(ctx.aboutImage||media.hero)+')"></div></section>',
+  services:'<section class="local-page-card internal-services"><span class="local-section-kicker">'+kicker+'</span><h2>'+sectionTitle+'</h2><p class="local-project-intro">'+e(ctx.subtitle||"")+'</p><div class="local-service-placeholders">'+serviceCards+'</div></section>',
+  projects:'<section class="local-page-card internal-projects"><span class="local-section-kicker">'+kicker+'</span><h2>'+sectionTitle+'</h2><p class="local-project-intro">'+e(ctx.projectsText||"")+'</p><div class="local-project-grid">'+projectCards+'</div></section>',
+  blog:'<section class="local-page-card internal-blog"><span class="local-section-kicker">'+kicker+'</span><h2>'+sectionTitle+'</h2><div class="local-blog-grid">'+blogCards+'</div></section>',
+  contact:'<section class="local-page-card local-contact-page internal-contact"><div class="local-contact-head"><span class="local-section-kicker">'+kicker+'</span><h2>'+sectionTitle+'</h2><p>'+e(ctx.contactIntro||"Encuentra nuestros canales de atención y ubicación.")+'</p></div><div class="local-contact-layout"><div class="local-contact-left"><div class="local-contact-info-grid">'+contactCards+'</div>'+wa+social+'</div>'+map+'</div></section>'
+ }[section]||"";
+ const idx=["about","services","projects","blog","contact"].indexOf(section)+1;
+ if(design==="SIGNATURE") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-SIGNATURE" style="'+style+'">'+head+'<div class="internal-signature-frame"><div class="internal-signature-number">0'+idx+'</div>'+core+'</div></div>';
+ if(design==="MINIMAL") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-MINIMAL" style="'+style+'"><div class="internal-minimal-top">'+head+'<span>'+e(kicker.toUpperCase())+'</span></div><div class="internal-minimal-body">'+core+'</div></div>';
+ if(design==="SPLIT") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-SPLIT" style="'+style+'"><div class="internal-split-shell"><aside class="internal-split-index"><strong>'+name+'</strong><span>'+e(kicker)+'</span><nav>'+nav+'</nav></aside><main>'+core+'</main></div></div>';
+ if(design==="SIDEBAR") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-SIDEBAR" style="'+style+'"><div class="internal-blueprint-shell"><aside><strong>'+name+'</strong><small>PROJECT INDEX</small>'+nav+'</aside><main>'+core+'</main></div></div>';
+ if(design==="EDITORIAL") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-EDITORIAL" style="'+style+'">'+head+'<div class="internal-editorial-shell"><div class="internal-editorial-folio">0'+idx+'</div>'+core+'</div></div>';
+ if(design==="LUXE") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-LUXE" style="'+style+'">'+head+'<div class="internal-luxe-glow"></div><div class="internal-luxe-shell">'+core+'</div></div>';
+ if(design==="BOLD") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-BOLD" style="'+style+'">'+head+'<div class="internal-bold-label">'+e(kicker)+'</div>'+core+'</div>';
+ if(design==="MAGAZINE") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-MAGAZINE" style="'+style+'"><div class="internal-mag-mast"><strong>'+name+'</strong><span>ISSUE 0'+idx+'</span></div><div class="internal-mag-nav">'+nav+'</div>'+core+'</div>';
+ if(design==="IMMERSIVE") return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-IMMERSIVE" style="'+style+'"><div class="internal-immersive-bg" style="background-image:linear-gradient(90deg,#030712ee,#03071288),url('+e(ctx.banner||media.hero)+')">'+head+'<div class="internal-immersive-title"><small>'+e(kicker)+'</small><h1>'+sectionTitle+'</h1></div></div><div class="internal-immersive-content">'+core+'</div></div>';
+ return '<div class="eng-architecture internal-architecture family-'+e(family)+' arch-COMPACT" style="'+style+'"><div class="internal-tech-bar"><strong>'+name+'</strong><span>SYS / '+e(section.toUpperCase())+'</span></div><div class="internal-tech-shell"><aside>'+nav+'</aside><main>'+core+'</main></div></div>';
+}
 function render(ctx){
  const design=String(ctx.design||"SIGNATURE").toUpperCase(),family=String(ctx.family||"GENERAL").toUpperCase();
  const profile=p(family),media=m(family),name=e(ctx.name||"LOCAL"),hero=e(ctx.hero||ctx.name||"LOCAL"),subtitle=e(ctx.subtitle||""),about=e(ctx.about||"Quiénes somos"),catalog=e(ctx.catalog||"Nuestros servicios"),projects=e(ctx.projects||"Proyectos y portafolio"),contact=e(ctx.contact||"Contacto"),aboutText=e(ctx.aboutText||"");
+ const internal=renderInternalSection(ctx,design,family,profile,media); if(internal)return internal;
  const image=ctx.banner||media.hero, img='url('+e(image)+')', nav=navHtml(ctx.nav||[],!!ctx.links);
  const sectionHref=section=>{const item=(ctx.nav||[]).find(x=>String(x?.section||"").toLowerCase()===String(section||"").toLowerCase());return item?.href||"#";};
  const action=(label,cls="arch-cta",section="contact")=>ctx.links?'<a class="'+e(cls)+'" href="'+e(sectionHref(section))+'" data-site-section="'+e(section)+'">'+e(label)+'</a>':'<span class="'+e(cls)+'">'+e(label)+'</span>';
@@ -56,5 +96,5 @@ function render(ctx){
  if(design==="IMMERSIVE")return wrap('<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Descubrir proyecto","arch-cta","projects")+'</div><div class="arch-immersive-scroll">SCROLL ↓</div></section><div class="arch-immersive-float">'+stats+'</div>'+(flags.projects?'<section class="arch-immersive-projects"><h3>'+projects+'</h3><div>'+projectCards+'</div></section>':''));
  return wrap('<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Solicitar cotización","arch-tech-cta")+'</section><section class="arch-tech-kpis">'+stats+'</section><section class="arch-tech-panel"><h3>Capacidades</h3><div>'+svc+'</div></section><section class="arch-tech-panel"><h3>Certificaciones</h3><div class="arch-tech-tags"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section><section class="arch-tech-panel wide"><h3>'+projects+'</h3><div class="arch-tech-projects">'+projectCards+'</div></section></div>');
 }
-window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,version:"20261007.2"};
+window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,version:"20261007.3-rebuild"};
 })();
