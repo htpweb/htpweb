@@ -16,7 +16,7 @@ test("LOCAL claim flow originates from the LOCAL page and hides once claimed or 
 });
 
 test("claim form collects ownership evidence and keeps LOCAL context through auth",()=>{
- const html=read("app/reclamar-local.html");
+ const html=read("app/reclamar-negocio.html");
  assert.match(html,/responsibleName/);
  assert.match(html,/declaredWhatsapp/);
  assert.match(html,/REGISTERED_WHATSAPP/);
@@ -57,7 +57,7 @@ test("backend refuses CLAIM approval without a documented verification note",()=
 
 test("NEEDS_INFO claimant can submit additional evidence",()=>{
  const sql=read("supabase/migrations/20261002232422_local_claim_context_followup.sql");
- const html=read("app/reclamar-local.html");
+ const html=read("app/reclamar-negocio.html");
  assert.match(sql,/update_local_claim_evidence/);
  assert.match(sql,/r\.status<>'NEEDS_INFO'/);
  assert.match(html,/Enviar información adicional/);
@@ -65,7 +65,7 @@ test("NEEDS_INFO claimant can submit additional evidence",()=>{
 });
 
 test("claim related inline scripts compile",()=>{
- for(const file of ["app/local.html","app/reclamar-local.html"]){
+ for(const file of ["app/local.html","app/reclamar-negocio.html"]){
   for(const script of scripts(file))new vm.Script(script,{filename:file});
  }
 });

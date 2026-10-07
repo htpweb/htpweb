@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Explora todos los locales activos de HTPWEB por provincia y ciudad y visita directamente su página de inicio.">
+<meta name="description" content="Explora todos los negocios activos de HTPWEB por provincia y ciudad y visita directamente su página de inicio.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://htpweb.github.io/htpweb/explorar-negocios.html">
-<title>Explorar locales | HTPWEB</title>
+<title>Explorar negocios | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./config/supabase.js"></script>
 <link rel="stylesheet" href="./assets/app.css?v=20261003-explore1">
@@ -39,12 +39,14 @@ html{overflow-y:scroll;scrollbar-gutter:stable}body{overflow-x:hidden}@view-tran
 @media(max-width:720px){.top{height:96px;padding:0 14px}.logo{left:14px;font-size:24px}.logo>span{font-size:24px}.logo img{width:58px;height:46px}.header-actions{right:14px}.header-actions .btn{height:44px;padding:0 12px}.hero{padding:26px 14px 10px}.hero h1{font-size:34px}.search-wrap{padding:0 14px}.search-box{grid-template-columns:1fr}.search-box button{padding:14px}.filters{grid-template-columns:1fr}.clear-filter{padding:12px}.search-meta{align-items:flex-start;flex-direction:column}.directory{padding:0 14px 28px}.directory-grid{grid-template-columns:1fr}.business-entry{padding:0 14px}.business-entry-card{align-items:flex-start;flex-direction:column}.business-entry-actions{width:100%}.business-entry-actions a{flex:1;text-align:center}}
 ::view-transition-old(public-header),::view-transition-new(public-header){animation-duration:.01s;animation-timing-function:linear}
 </style>
+<script src="./config/business-domain.js?v=20261007-business1"></script>
+<script src="./assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <header class="top">
 <a class="logo" href="./index.html"><img class="logo-mark" src="./assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>
 <nav class="nav"><a href="./index.html">Inicio</a><a href="./como-funciona.html">Cómo funciona</a><a aria-current="page" href="./explorar-negocios.html">Explorar locales</a></nav>
-<div class="header-actions"><div class="account-menu-wrap"><a id="accountLink" class="btn access" href="./app/acceso.html?return=../explorar-negocios.html">Acceder / Crear cuenta</a><div id="publicAccountMenu" class="public-account-menu hidden"><button id="publicAccountTrigger" class="public-account-trigger" type="button"><span class="account-icon">&#128100;</span><span>Mi cuenta</span><span>&#9662;</span></button><div id="publicAccountDropdown" class="public-account-dropdown hidden"><div class="public-account-summary"><strong id="publicAccountName">Mi cuenta</strong><small id="publicAccountEmail"></small></div><a href="./app/mi-cuenta.html">Abrir mi cuenta</a><div class="public-account-separator"></div><a href="./app/crear-local.html">Crear negocio</a><a href="./app/crear-delivery.html">Crear delivery</a><div class="public-account-separator"></div><button id="publicAccountLogout" class="logout" type="button">Cerrar sesión</button></div></div></div></div>
+<div class="header-actions"><div class="account-menu-wrap"><a id="accountLink" class="btn access" href="./app/acceso.html?return=../explorar-negocios.html">Acceder / Crear cuenta</a><div id="publicAccountMenu" class="public-account-menu hidden"><button id="publicAccountTrigger" class="public-account-trigger" type="button"><span class="account-icon">&#128100;</span><span>Mi cuenta</span><span>&#9662;</span></button><div id="publicAccountDropdown" class="public-account-dropdown hidden"><div class="public-account-summary"><strong id="publicAccountName">Mi cuenta</strong><small id="publicAccountEmail"></small></div><a href="./app/mi-cuenta.html">Abrir mi cuenta</a><div class="public-account-separator"></div><a href="./app/crear-negocio.html">Crear negocio</a><a href="./app/crear-delivery.html">Crear delivery</a><div class="public-account-separator"></div><button id="publicAccountLogout" class="logout" type="button">Cerrar sesión</button></div></div></div></div>
 </header>
 
 <section class="hero">
@@ -73,7 +75,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}body{overflow-x:hidden}@view-tran
 <section class="business-entry">
 <div class="business-entry-card">
 <div><h2>¿Tienes un negocio y quieres aparecer aquí?</h2><p>Publica tu local en HTPWEB para tener tu propia página, mostrar tus productos y conectar con clientes. Si tu negocio ya aparece, puedes reclamarlo y administrarlo.</p></div>
-<div class="business-entry-actions"><a class="business-register" href="./app/crear-local.html">Regístrate aquí</a><a class="business-claim" href="./app/crear-local.html">Buscar / reclamar mi local</a></div>
+<div class="business-entry-actions"><a class="business-register" href="./app/crear-negocio.html">Regístrate aquí</a><a class="business-claim" href="./app/crear-negocio.html">Buscar / reclamar mi local</a></div>
 </div>
 </section>
 
@@ -143,7 +145,7 @@ function renderDirectory(){
         '</div>'+
         '<div class="directory-actions">'+
           '<a class="btn-primary" href="'+localHomeUrl(local)+'">Ver página</a>'+
-          (!local.claimed?'<a class="btn-muted" href="./app/reclamar-local.html?local='+encodeURIComponent(local.id)+'">Reclamar este LOCAL</a>':'')+
+          (!local.claimed?'<a class="btn-muted" href="./app/reclamar-negocio.html?local='+encodeURIComponent(local.id)+'">Reclamar este LOCAL</a>':'')+
         '</div>'+
       '</div></article>';
   }).join(""):'<div class="empty">No encontramos locales con esos filtros.</div>';

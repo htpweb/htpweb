@@ -8,7 +8,7 @@ const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(Boolean)}
 
 test("document claim uses private PDF/image evidence and captured location",()=>{
- const page=read("app/reclamar-local.html");
+ const page=read("app/reclamar-negocio.html");
  const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
  assert.match(page,/local-claim-evidence/);
  assert.match(page,/application\/pdf/);
@@ -21,7 +21,7 @@ test("document claim uses private PDF/image evidence and captured location",()=>
 });
 
 test("WhatsApp OTP path is prepared and cannot submit without verification",()=>{
- const page=read("app/reclamar-local.html");
+ const page=read("app/reclamar-negocio.html");
  const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
  const fn=read("supabase/functions/local-claim-whatsapp-otp/index.ts");
  assert.match(page,/local-claim-whatsapp-otp/);
@@ -47,7 +47,7 @@ test("CLIENT can track claim progress and MASTER gets private evidence links",()
 });
 
 test("new claim pages inline scripts compile",()=>{
- for(const file of ["app/reclamar-local.html","app/mis-reclamaciones.html"]){
+ for(const file of ["app/reclamar-negocio.html","app/mis-reclamaciones.html"]){
   for(const script of scripts(file))new vm.Script(script,{filename:file});
  }
 });

@@ -126,7 +126,7 @@ function _htpwebCompactProfilePage(){
 function _htpwebAuthActiveHref() {
   const page=_htpwebAuthPageName();
   if (["mi-cuenta.html","configuracion.html"].includes(page)) return "account";
-  if (["crear-local.html","reclamar-local.html","mis-reclamaciones.html"].includes(page)) return "business";
+  if (["crear-negocio.html","reclamar-negocio.html","mis-reclamaciones.html"].includes(page)) return "business";
   return "";
 }
 
@@ -245,7 +245,7 @@ async function instalarSelectorPerfilesCompacto(){
       '<a href="'+_htpwebRootUrl("app/mi-cuenta.html")+'">Abrir mi cuenta</a>'+
       '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
       '<div class="htp-auth-account-separator"></div>'+
-      '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+      '<a href="'+_htpwebRootUrl("app/crear-negocio.html")+'">Crear negocio</a>'+
       '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
       '<div class="htp-auth-account-separator"></div>'+
       '<button class="logout" type="button">Cerrar sesión</button>'+
@@ -315,7 +315,7 @@ async function instalarEncabezadoHTPWEB() {
           '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
           masterAdminLink+
           '<div class="htp-auth-account-separator"></div>'+
-          '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-negocio.html")+'">Crear negocio</a>'+
           '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
           '<div class="htp-auth-account-separator"></div>'+
           '<button id="htpAuthLogout" class="logout" type="button">Cerrar sesión</button>'+
@@ -371,7 +371,7 @@ async function prepararEncabezadoDeliveryAdmin(){
           '<a href="'+_htpwebRootUrl("app/mi-cuenta.html")+'">Abrir mi cuenta</a>'+
           '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
           '<div class="htp-auth-account-separator"></div>'+
-          '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-negocio.html")+'">Crear negocio</a>'+
           '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
         '</div>'+
       '</div>'+

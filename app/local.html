@@ -8,12 +8,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
-<script src="../config/negocio.js?v=20261002-theme3"></script>
+<script src="../config/delivery-context.js?v=20261002-theme3"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/compact-menu.js?v=20261007-compact1"></script>
 <script src="../config/ads.js?v=20261002-mobile1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-stickyanchor1">
 <link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
+<script src="../config/business-domain.js?v=20261007-business1"></script>
+<script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <header>
@@ -303,7 +305,7 @@ function availabilityMessage() {
 }
 
 function claimEntryUrl(){
-  const claimPath="/htpweb/app/reclamar-local.html?local="+encodeURIComponent(localActual?.id||"")+
+  const claimPath="/htpweb/app/reclamar-negocio.html?local="+encodeURIComponent(localActual?.id||"")+
     "&delivery="+encodeURIComponent(negocioActual?.slug||"");
   return viewerUser
     ? claimPath

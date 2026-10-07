@@ -1,0 +1,10 @@
+{
+  "scope": ["admin","app","assets","config","express","scripts","supabase/functions"],
+  "patterns": {
+    "local_id": 403,
+    "LOCAL_ADMIN": 39,
+    "local_deliveries": 9,
+    "\\blocals\\b": 221
+  },
+  "note": "Guardrail congelado tras introducir la capa de compatibilidad NEGOCIO/BUSINESS. Estos conteos pueden bajar, nunca subir."
+}

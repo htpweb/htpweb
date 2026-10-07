@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 
 const index=fs.readFileSync('app/index.html','utf8');
-const negocio=fs.readFileSync('config/negocio.js','utf8');
+const negocio=fs.readFileSync('config/delivery-context.js','utf8');
 const whatsapp=fs.readFileSync('config/whatsapp.js','utf8');
 const localPedido=fs.readFileSync('app/local-pedido.html','utf8');
 const driver=fs.readFileSync('app/repartidor-rapido.html','utf8');

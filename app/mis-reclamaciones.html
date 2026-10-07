@@ -15,6 +15,8 @@
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.note{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}
 @media(max-width:680px){.meta{grid-template-columns:1fr}.wrap{padding:14px 10px}}
 </style>
+<script src="../config/business-domain.js?v=20261007-business1"></script>
+<script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <main class="wrap">
@@ -48,7 +50,7 @@ function render(rows){
     const deadline=p.review_deadline?new Date(p.review_deadline).toLocaleString():"—";
     const method=p.verification_method==="REGISTERED_WHATSAPP"?"WhatsApp registrado":p.verification_method==="DOCUMENT_LOCATION"?"Documentos + ubicación":p.verification_method||"—";
     const action=row.status==="NEEDS_INFO"&&!row.applied_at
-      ?'<a class="btn btn-primary" href="reclamar-local.html?local='+encodeURIComponent(row.local_id)+(p.source_delivery_slug?'&delivery='+encodeURIComponent(p.source_delivery_slug):'')+'">Completar información</a>':"";
+      ?'<a class="btn btn-primary" href="reclamar-negocio.html?local='+encodeURIComponent(row.local_id)+(p.source_delivery_slug?'&delivery='+encodeURIComponent(p.source_delivery_slug):'')+'">Completar información</a>':"";
     return '<section class="claim-item"><div class="claim-head">'+
       (row.local_logo_url?'<img class="claim-logo" src="'+esc(row.local_logo_url)+'" alt="">':'<div class="claim-logo"></div>')+
       '<div><h2 style="margin:0">'+esc(row.local_name)+'</h2><div class="muted">'+new Date(row.created_at).toLocaleString()+'</div></div></div>'+

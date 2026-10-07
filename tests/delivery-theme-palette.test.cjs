@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const negocio=fs.readFileSync('config/negocio.js','utf8');
+const negocio=fs.readFileSync('config/delivery-context.js','utf8');
 const appCss=fs.readFileSync('assets/app.css','utf8');
 const admin=fs.readFileSync('admin/admin.js','utf8');
 const adminHtml=fs.readFileSync('admin/index.html','utf8');

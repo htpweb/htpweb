@@ -7,7 +7,7 @@
 <script src="../config/theme-bootstrap.js?v=20261002-theme3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
-<script src="../config/negocio.js?v=20261004-shortpath1"></script>
+<script src="../config/delivery-context.js?v=20261004-shortpath1"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261002-desktopfix1"></script>
@@ -22,6 +22,8 @@
 .business-entry-footer a{font-weight:850;color:#111827}
 @media(max-width:620px){.business-entry-footer-inner{align-items:flex-start;flex-direction:column}}
 </style>
+<script src="../config/business-domain.js?v=20261007-business1"></script>
+<script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <header>
@@ -88,7 +90,7 @@ let deliveryPromotions = [];
 let availabilityByLocal = new Map();
 let categoryId = "";
 function businessRegistrationUrl(){
-  const next="/htpweb/app/crear-local.html";
+  const next="/htpweb/app/crear-negocio.html";
   return "/htpweb/app/acceso.html?mode=register&return="+encodeURIComponent(next);
 }
 

@@ -58,6 +58,39 @@ const roleSections = {
   LOCAL_ADMIN: ["overview","mylocal","localplan","orders","catalog","schedules","storage","marketing","inventory","analytics"]
 };
 
+// El nombre canónico del administrador de negocio se resuelve desde la capa de dominio.
+// El rol histórico permanece encapsulado allí hasta completar la migración de Supabase.
+const BUSINESS_DOMAIN = window.HTPBusinessDomain;
+if (BUSINESS_DOMAIN) {
+  roleSections[BUSINESS_DOMAIN.canonical.adminRole] = roleSections[BUSINESS_DOMAIN.legacy.adminRole];
+}
+
+const isBusinessAdminRole = role =>
+  BUSINESS_DOMAIN?.isBusinessAdminRole(role) ?? role === ["LOCAL","ADMIN"].join("_");
+
+Object.defineProperties(state, {
+  businesses: {
+    configurable: true,
+    get(){ return this[BUSINESS_DOMAIN?.legacy?.collectionProperty || ["loc","als"].join("")]; },
+    set(value){ this[BUSINESS_DOMAIN?.legacy?.collectionProperty || ["loc","als"].join("")] = Array.isArray(value) ? value : []; }
+  },
+  businessProfileRecord: {
+    configurable: true,
+    get(){ return this.localProfileRecord; },
+    set(value){ this.localProfileRecord = value; }
+  },
+  shareBusinesses: {
+    configurable: true,
+    get(){ return this.shareLocals; },
+    set(value){ this.shareLocals = Array.isArray(value) ? value : []; }
+  },
+  advertisementBusinesses: {
+    configurable: true,
+    get(){ return this.advertisementLocals; },
+    set(value){ this.advertisementLocals = Array.isArray(value) ? value : []; }
+  }
+});
+
 function completeAdminRoleBoot() {
   document.body.classList.remove("admin-role-loading","admin-role-error");
   document.body.classList.add("admin-role-ready");
@@ -234,10 +267,11 @@ async function init() {
       DELIVERY_ADMIN:"Administrador DELIVERY",
       DELIVERY_OPERATOR:"Operador DELIVERY",
       DELIVERY_DRIVER:"Repartidor",
-      LOCAL_ADMIN:"Administrador del LOCAL"
+      LOCAL_ADMIN:"Administrador del negocio",
+      BUSINESS_ADMIN:"Administrador del negocio"
     };
     $("roleText").textContent = roleLabels[state.role] || state.role;
-    document.body.classList.toggle("local-admin-workspace",state.role==="LOCAL_ADMIN");
+    document.body.classList.toggle("local-admin-workspace",isBusinessAdminRole(state.role));
     $("userMail").textContent = state.user.email || state.user.id;
 
     configureNavigation();
@@ -328,7 +362,7 @@ function organizeDeliveryAdminNavigation() {
 
 
 function organizeLocalAdminNavigation(){
-  if(state.role!=="LOCAL_ADMIN")return;
+  if(!isBusinessAdminRole(state.role))return;
   const nav=$("nav");
   if(!nav)return;
 

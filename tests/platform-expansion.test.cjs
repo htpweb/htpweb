@@ -1,4 +1,4 @@
-﻿const test=require("node:test");
+const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const vm=require("node:vm");
@@ -45,14 +45,14 @@ test("one account can switch client LOCAL and DELIVERY modes",()=>{
  assert.match(sql,/switch_my_account_mode/);
  assert.match(sql,/my_account_modes/);
  assert.match(account,/Modo cliente/);
- assert.match(account,/data-open-local/);
+ assert.match(account,/data-open-business/);
  assert.match(account,/data-open-delivery/);
 });
 
 test("account can request LOCAL independent of DELIVERY",()=>{
- const page=read("app/crear-local.html");
+ const page=read("app/crear-negocio.html");
  const sql=read("supabase/migrations/20261003065044_account_local_creation_flow.sql");
- assert.match(page,/Crear mi LOCAL/);
+ assert.match(page,/Crear mi (?:LOCAL|negocio)/);
  assert.match(page,/submit_my_local_creation_request/);
  assert.match(sql,/delivery_id is null/);
  assert.match(sql,/local_request_duplicates/);
@@ -71,7 +71,7 @@ test("account can create DELIVERY directly with one evaluation zone",()=>{
 });
 
 test("new inline scripts compile",()=>{
- for(const file of ["index.html","app/local-general.html","app/crear-local.html","app/crear-delivery.html","app/mi-cuenta.html"])
+ for(const file of ["index.html","app/local-general.html","app/crear-negocio.html","app/crear-delivery.html","app/mi-cuenta.html"])
   for(const script of scripts(file)) new vm.Script(script,{filename:file});
 });
 test("HTPWEB general cart resolves one or many LOCAL at checkout",()=>{
@@ -94,7 +94,7 @@ test("direct LOCAL orders reuse guest customers and appear in account history",(
  const detail=read("app/pedido-directo.html");
  const reuse=read("supabase/migrations/20261003081623_direct_local_guest_customer_reuse.sql");
  assert.match(account,/order_channel/);
- assert.match(account,/Pedidos directos a LOCAL/);
+ assert.match(account,/Pedidos directos a negocios/);
  assert.match(account,/pedido-directo\.html\?order=/);
  assert.match(detail,/DIRECT_LOCAL/);
  assert.match(reuse,/profile_id is null/);
@@ -108,7 +108,7 @@ test("platform cart and direct detail inline scripts compile",()=>{
 
 
 test("creating a LOCAL requires private ownership evidence and supports NEEDS_INFO resubmission",()=>{
- const page=read("app/crear-local.html");
+ const page=read("app/crear-negocio.html");
  const admin=read("admin/admin.js");
  const sql=read("supabase/migrations/20261003082507_local_creation_evidence_verification.sql");
  assert.match(page,/RUC \/ RIMPE/);
@@ -300,7 +300,7 @@ test("authenticated account header is not captured by DELIVERY dark header styli
 
 test("self-service DELIVERY gets a unique short public path and public loader resolves it",()=>{
   const sql=read("supabase/migrations/20261004024500_delivery_short_public_path.sql");
-  const negocio=read("config/negocio.js");
+  const negocio=read("config/delivery-context.js");
   const admin=read("admin/admin.js");
   assert.match(sql,/public_share_path/);
   assert.match(sql,/deliveries_public_share_path_uq/);

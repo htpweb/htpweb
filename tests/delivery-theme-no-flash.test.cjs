@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const bootstrap=fs.readFileSync('config/theme-bootstrap.js','utf8');
-const negocio=fs.readFileSync('config/negocio.js','utf8');
+const negocio=fs.readFileSync('config/delivery-context.js','utf8');
 const css=fs.readFileSync('assets/app.css','utf8');
 const pages=['app/index.html','app/local.html','app/carrito.html','app/pedidos.html','app/acceso.html'];
 

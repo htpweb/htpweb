@@ -14,6 +14,8 @@
 .badge{display:inline-block;padding:5px 8px;border-radius:999px;background:#f1f5f9;font-size:.8rem}.owner{background:#ecfdf5}
 @media(max-width:720px){.channel-grid,.product-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.channel-grid,.product-grid{grid-template-columns:1fr}}
 </style>
+<script src="../config/business-domain.js?v=20261007-business1"></script>
+<script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <main class="shell">
@@ -48,7 +50,7 @@ function render(){
  $("hero").innerHTML=(local.banner_url?'<img src="'+esc(local.banner_url)+'" alt="'+esc(local.name)+'">':'')+
   '<div style="padding-top:12px"><div class="row between"><h1 style="margin:0">'+esc(local.name)+'</h1><span class="badge '+(claim.claimed?"owner":"")+'">'+(claim.claimed?"Administrado por el negocio":"No reclamado")+'</span></div>'+
   '<p class="muted">'+esc(local.description||"")+'</p>'+(local.address?'<p><strong>Dirección:</strong> '+esc(local.address)+'</p>':'')+
-  (!claim.claimed&&!claim.pending?'<div style="margin-top:12px"><a class="btn btn-muted" href="reclamar-local.html?local='+encodeURIComponent(local.id)+'">¿Administras este negocio? Reclamar LOCAL</a></div>':'')+'</div>';
+  (!claim.claimed&&!claim.pending?'<div style="margin-top:12px"><a class="btn btn-muted" href="reclamar-negocio.html?local='+encodeURIComponent(local.id)+'">¿Administras este negocio? Reclamar LOCAL</a></div>':'')+'</div>';
  const rows=[];
  if(claim.claimed)rows.push('<div class="channel"><h3>Compra directa</h3><p class="muted">El pedido es gestionado directamente por '+esc(local.name)+'.</p><a class="btn btn-primary" href="tienda.html?local='+encodeURIComponent(local.slug||local.id)+'&src=htpweb">Comprar directo al negocio</a></div>');
  deliveries.forEach(d=>rows.push('<div class="channel"><h3>'+esc(d.name)+'</h3><p class="muted">Compra mediante este DELIVERY y continúa con su flujo de pedido y entrega.</p><a class="btn btn-dark" href="local.html?delivery='+encodeURIComponent(d.slug)+'&local='+encodeURIComponent(local.id)+'">Comprar con '+esc(d.name)+'</a></div>'));

@@ -6,7 +6,7 @@
 <script src="../config/theme-bootstrap.js?v=20261002-theme3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
-<script src="../config/negocio.js?v=20261002-theme3"></script>
+<script src="../config/delivery-context.js?v=20261002-theme3"></script>
 <script src="../config/auth.js?v=20261004-profiles1"></script>
 <script src="../config/addresses.js"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261004-accountheader3"><link rel="stylesheet" href="../assets/authenticated-shell.css?v=20261004-profiles1">
@@ -64,9 +64,11 @@
 .plan-scope{margin:10px 0 0;padding-left:19px;display:grid;gap:5px;color:#475467}
 .plan-scope li{line-height:1.35}
 .plan-scope strong{color:#172033}
-.plan-local-empty{padding:16px;border:1px dashed #cfd8e3;border-radius:14px;background:#f8fafc;color:#667085}
+.plan-business-empty{padding:16px;border:1px dashed #cfd8e3;border-radius:14px;background:#f8fafc;color:#667085}
 @media(max-width:760px){.plan-option-grid{grid-template-columns:1fr}}
 </style>
+<script src="../config/business-domain.js?v=20261007-business1"></script>
+<script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
 <body>
 <main class="account-shell">
@@ -112,10 +114,10 @@
     </section>
 
     <section class="account-pane" data-account-pane="businesses" id="businesses">
-      <div class="account-page-title"><h1>Mis negocios</h1><p>LOCAL que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div>
+      <div class="account-page-title"><h1>Mis negocios</h1><p>Negocios que administras o has solicitado administrar con esta misma cuenta HTPWEB.</p></div>
       <section class="account-card">
-        <div class="section-title"><div><h2 style="margin:0">LOCAL que administro</h2></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar LOCAL existente</a><a class="btn btn-muted" href="crear-local.html">+ Crear LOCAL</a></div></div>
-        <div id="ownedLocalsList"><div class="muted">Cargando negocios…</div></div>
+        <div class="section-title"><div><h2 style="margin:0">Negocios que administro</h2></div><div class="row-actions"><a class="btn btn-primary" href="../explorar-negocios.html">Reclamar negocio existente</a><a class="btn btn-muted" href="crear-negocio.html">+ Crear negocio</a></div></div>
+        <div id="ownedBusinessesList"><div class="muted">Cargando negocios…</div></div>
         <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">
           <div class="section-title"><div><h3 style="margin:0">Mis reclamaciones</h3><p class="muted">Seguimiento de negocios que has solicitado administrar.</p></div><div class="row-actions"><span class="pill">Activas: <strong id="claimsCount">—</strong></span><a class="btn btn-muted" href="mis-reclamaciones.html">Ver todas</a></div></div>
           <div id="claimsList"><div class="muted">Cargando…</div></div>
@@ -132,7 +134,7 @@
     </section>
 
     <section class="account-pane" data-account-pane="plans" id="plans">
-      <div class="account-page-title"><h1>Planes y suscripciones</h1><p>Revisa los planes de tus DELIVERY y LOCAL, sus capacidades, límites y opciones disponibles.</p></div>
+      <div class="account-page-title"><h1>Planes y suscripciones</h1><p>Revisa los planes de tus DELIVERY y negocios, sus capacidades, límites y opciones disponibles.</p></div>
       <section class="account-card">
         <div class="section-title"><h2 style="margin:0">Planes actuales</h2><a class="btn btn-primary" href="#availablePlans">Ver planes disponibles</a></div>
         <div id="currentPlans"><div class="muted">Cargando suscripciones…</div></div>
@@ -186,7 +188,7 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
 const statusNames={PENDING:"Pendiente",CONFIRMED:"Confirmado",PREPARING:"En preparación",READY:"Listo",EN_ROUTE:"En camino",DELIVERED:"Entregado",CANCELLED:"Cancelado"};
-let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedLocals=[],managedDeliveries=[],directLocals=[],plansData={deliveries:[],available_delivery_plans:[],locals:[],available_local_plans:[],local_plans_status:"PENDING_DEFINITION"};
+let user=null,customerId=null,deliveries=[],orders=[],addresses=[],claims=[],ownedBusinesses=[],managedDeliveries=[],directBusinesses=[],plansData={deliveries:[],available_delivery_plans:[],businesses:[],available_business_plans:[],business_plans_status:"PENDING_DEFINITION"};
 function show(text,type="success"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 function initials(name){return String(name||"U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"U"}
 function deliveryById(id){return deliveries.find(d=>d.id===id)||null}
@@ -232,22 +234,31 @@ async function loadCustomer(){
  if(delRes.error)throw delRes.error;if(ordRes.error)throw ordRes.error;
  orders=ordRes.data||[];
  const ids=[...new Set([...(delRes.data||[]).map(x=>x.delivery_id),...orders.map(x=>x.delivery_id)].filter(Boolean))];
- const localIds=[...new Set(orders.map(x=>x.origin_local_id).filter(Boolean))];
- let deliveryRows=[],localRows=[];
+ const businessIds=[...new Set(orders.map(x=>x.origin_local_id).filter(Boolean))];
+ let deliveryRows=[],businessRows=[];
  if(ids.length){const d=await supabaseClient.from("deliveries").select("id,name,slug,logo_url,active").in("id",ids);if(d.error)throw d.error;deliveryRows=d.data||[]}
- if(localIds.length){const l=await supabaseClient.from("locals").select("id,name,slug,logo_url,active").in("id",localIds);if(l.error)throw l.error;localRows=l.data||[]}
- deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));directLocals=localRows;
+ // Lectura canónica BUSINESS; la vista public.businesses conserva RLS del esquema histórico.
+ if(businessIds.length){const b=await supabaseClient.from(HTPBusinessDomain?.canonical?.table||"businesses").select("id,business_id,name,slug,logo_url,active").in("id",businessIds);if(b.error)throw b.error;businessRows=b.data||[]}
+ deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));directBusinesses=businessRows;
 }
 async function loadAddresses(){if(!customerId){addresses=[];return}addresses=await listarMisDireccionesCliente({soloActivas:true})}
 async function loadClaims(){const r=await supabaseClient.rpc("my_local_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
 async function loadManagedEntities(){
  const modes=await supabaseClient.rpc("my_account_modes");if(modes.error)throw modes.error;
- ownedLocals=Array.isArray(modes.data?.locals)?modes.data.locals:[];
+ ownedBusinesses=Array.isArray(modes.data?.businesses)?modes.data.businesses:(Array.isArray(modes.data?.locals)?modes.data.locals:[]);
  managedDeliveries=Array.isArray(modes.data?.deliveries)?modes.data.deliveries:[];
 }
 async function loadPlans(){
  const r=await supabaseClient.rpc("my_plans_and_subscriptions");if(r.error)throw r.error;
- plansData=r.data||{deliveries:[],available_delivery_plans:[]};
+ const raw=r.data||{};
+ plansData={
+   ...raw,
+   deliveries:Array.isArray(raw.deliveries)?raw.deliveries:[],
+   available_delivery_plans:Array.isArray(raw.available_delivery_plans)?raw.available_delivery_plans:[],
+   businesses:Array.isArray(raw.businesses)?raw.businesses:(Array.isArray(raw.locals)?raw.locals:[]),
+   available_business_plans:Array.isArray(raw.available_business_plans)?raw.available_business_plans:(Array.isArray(raw.available_local_plans)?raw.available_local_plans:[]),
+   business_plans_status:raw.business_plans_status||raw.local_plans_status||"PENDING_DEFINITION"
+ };
 }
 function planBool(ent,key){return ent?.[key]===true?"Sí":"No"}
 function planScopeItems(ent={}){
@@ -274,7 +285,7 @@ function planScopeItems(ent={}){
 function renderPlanScopeList(ent={}){
  return '<ul class="plan-scope">'+planScopeItems(ent).map(([label,value])=>'<li><strong>'+esc(label)+':</strong> '+esc(value)+'</li>').join("")+'</ul>';
 }
-function localPlanScopeItems(ent={}){
+function businessPlanScopeItems(ent={}){
  const items=[];
  if(ent.max_products!=null)items.push(["Productos",ent.max_products]);
  if(ent["storefront.manage"]===true)items.push(["Página web y tienda","Sí"]);
@@ -286,15 +297,15 @@ function localPlanScopeItems(ent={}){
  if(ent["domain.custom.included"]===true)items.push(["Dominio propio","1 incluido"]);
  return items;
 }
-function renderLocalPlanScopeList(ent={}){
- const rows=localPlanScopeItems(ent);
+function renderBusinessPlanScopeList(ent={}){
+ const rows=businessPlanScopeItems(ent);
  return rows.length?'<ul class="plan-scope">'+rows.map(([label,value])=>'<li><strong>'+esc(label)+':</strong> '+esc(value)+'</li>').join("")+'</ul>':"";
 }
 function renderPlans(){
  const currentDelivery=Array.isArray(plansData.deliveries)?plansData.deliveries:[];
  const availableDelivery=Array.isArray(plansData.available_delivery_plans)?plansData.available_delivery_plans:[];
- const currentLocal=Array.isArray(plansData.locals)?plansData.locals:[];
- $("plansCount").textContent=currentDelivery.length+currentLocal.length;
+ const currentBusinesses=Array.isArray(plansData.businesses)?plansData.businesses:[];
+ $("plansCount").textContent=currentDelivery.length+currentBusinesses.length;
 
  const currentDeliveryHtml=currentDelivery.length
    ? currentDelivery.map(p=>
@@ -305,7 +316,7 @@ function renderPlans(){
         (p.ends_at?'<div class="muted" style="margin-top:10px">Vigente hasta '+esc(new Date(p.ends_at).toLocaleDateString("es-EC"))+'</div>':'')+
       '</div>'
     ).join("")
-   : '<div class="plan-local-empty">Todavía no tienes suscripciones DELIVERY activas.</div>';
+   : '<div class="plan-business-empty">Todavía no tienes suscripciones DELIVERY activas.</div>';
 
  const availableDeliveryHtml=availableDelivery.length
    ? '<div class="plan-option-grid">'+availableDelivery.map(p=>
@@ -315,31 +326,31 @@ function renderPlans(){
         renderPlanScopeList(p.entitlements||{})+
       '</div>'
      ).join("")+'</div>'
-   : '<div class="plan-local-empty">No hay planes DELIVERY disponibles.</div>';
+   : '<div class="plan-business-empty">No hay planes DELIVERY disponibles.</div>';
 
- const availableLocal=Array.isArray(plansData.available_local_plans)?plansData.available_local_plans:[];
- const currentLocalHtml=currentLocal.length
-   ? currentLocal.map(p=>{
+ const availableBusinesses=Array.isArray(plansData.available_business_plans)?plansData.available_business_plans:[];
+ const currentBusinessesHtml=currentBusinesses.length
+   ? currentBusinesses.map(p=>{
       const domain=p.domain||{};
       const request=domain.request||null;
       return '<div class="plan-current-card">'+
-        '<div class="plan-title-row"><div><strong>'+esc(p.local_name)+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div>'+
+        '<div class="plan-title-row"><div><strong>'+esc(p.business_name||p.local_name||"Negocio")+'</strong><div class="muted">'+esc(p.plan_name||"Sin plan")+' · '+esc(p.status||"")+'</div></div>'+
         (domain.included_in_plan?'<span class="pill">Dominio incluido</span>':'')+'</div>'+
-        renderLocalPlanScopeList(p.entitlements||{})+
+        renderBusinessPlanScopeList(p.entitlements||{})+
         (request?'<div class="muted" style="margin-top:10px">Dominio: '+esc(request.domain)+' · '+esc(request.status||"")+'</div>':'')+
         (p.ends_at?'<div class="muted" style="margin-top:8px">Vigente hasta '+esc(new Date(p.ends_at).toLocaleDateString("es-EC"))+'</div>':'')+
       '</div>';
     }).join("")
-   : '<div class="plan-local-empty">Todavía no tienes suscripciones LOCAL activas.</div>';
+   : '<div class="plan-business-empty">Todavía no tienes suscripciones de negocios activas.</div>';
 
- const availableLocalHtml=availableLocal.length
-   ? '<div class="plan-option-grid">'+availableLocal.map(p=>
+ const availableBusinessesHtml=availableBusinesses.length
+   ? '<div class="plan-option-grid">'+availableBusinesses.map(p=>
       '<div class="plan-option-card">'+
         '<div class="plan-title-row"><div><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div></div><strong>'+money(p.price)+'</strong></div>'+
-        renderLocalPlanScopeList(p.entitlements||{})+
+        renderBusinessPlanScopeList(p.entitlements||{})+
       '</div>'
      ).join("")+'</div>'
-   : '<div class="plan-local-empty">No hay planes LOCAL disponibles para contratación.</div>';
+   : '<div class="plan-business-empty">No hay planes de negocios disponibles para contratación.</div>';
 
  $("currentPlans").innerHTML=
    '<div class="plan-section">'+
@@ -352,11 +363,11 @@ function renderPlans(){
        '</div>'+
      '</section>'+
      '<section class="plan-group">'+
-       '<div class="plan-group-head"><div><h3>LOCAL</h3><p>Planes y alcance para negocios LOCAL. LOCAL Pro incluye 1 dominio propio administrado por HTPWEB.</p></div></div>'+
-       currentLocalHtml+
+       '<div class="plan-group-head"><div><h3>NEGOCIOS</h3><p>Planes y alcance para tus negocios. El plan Pro puede incluir dominio propio administrado por HTPWEB.</p></div></div>'+
+       currentBusinessesHtml+
        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb">'+
-         '<h4 style="margin:0 0 12px">Planes LOCAL disponibles</h4>'+
-         availableLocalHtml+
+         '<h4 style="margin:0 0 12px">Planes de negocios disponibles</h4>'+
+         availableBusinessesHtml+
        '</div>'+
      '</section>'+
    '</div>';
@@ -370,13 +381,14 @@ function renderPlans(){
 }
 function renderSummary(){$("ordersCount").textContent=orders.length;$("addressesCount").textContent=addresses.length;$("claimsCount").textContent=claims.length}
 function renderManagedEntities(){
- $("ownedLocalsList").innerHTML=ownedLocals.length?ownedLocals.map(l=>'<div class="delivery-row"><strong>'+esc(l.name)+'</strong><div class="muted">Administrador de LOCAL</div><div class="row-actions"><button class="btn btn-primary" data-open-local="'+esc(l.id)+'">Administrar</button><a class="btn btn-muted" href="../index.html">Ver en HTPWEB</a></div></div>').join(""):'<div class="empty">Todavía no administras ningún LOCAL.</div>';
+ $("ownedBusinessesList").innerHTML=ownedBusinesses.length?ownedBusinesses.map(b=>'<div class="delivery-row"><strong>'+esc(b.name)+'</strong><div class="muted">Administrador de negocio</div><div class="row-actions"><button class="btn btn-primary" data-open-business="'+esc(b.id)+'">Administrar</button><a class="btn btn-muted" href="../index.html">Ver en HTPWEB</a></div></div>').join(""):'<div class="empty">Todavía no administras ningún negocio.</div>';
  $("managedDeliveriesList").innerHTML=managedDeliveries.length?managedDeliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.role_code||"Acceso DELIVERY")+'</div><div class="row-actions"><button class="btn btn-primary" data-open-delivery="'+esc(d.id)+'">Administrar</button>'+(d.slug?'<a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Ver página pública</a>':'')+'</div></div>').join(""):'<div class="empty">Todavía no administras ningún DELIVERY.</div>';
- document.querySelectorAll("[data-open-local]").forEach(b=>b.onclick=()=>openWorkspace("LOCAL",b.dataset.openLocal));
- document.querySelectorAll("[data-open-delivery]").forEach(b=>b.onclick=()=>openWorkspace("DELIVERY",b.dataset.openDelivery));
+ document.querySelectorAll("[data-open-business]").forEach(button=>button.onclick=()=>openWorkspace("BUSINESS",button.dataset.openBusiness));
+ document.querySelectorAll("[data-open-delivery]").forEach(button=>button.onclick=()=>openWorkspace("DELIVERY",button.dataset.openDelivery));
 }
 async function openWorkspace(mode,resourceId){
- try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:mode,p_resource_id:resourceId});if(r.error)throw r.error;location.href="../admin/index.html"}
+ const backendMode=window.HTPBusinessDomain?.toLegacyTargetType(mode)||(mode==="BUSINESS"?"LOCAL":mode);
+ try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:backendMode,p_resource_id:resourceId});if(r.error)throw r.error;location.href="../admin/index.html"}
  catch(e){show(e.message||"No se pudo abrir el espacio administrativo.","error")}
 }
 async function switchClientMode(){
@@ -387,19 +399,19 @@ async function switchClientMode(){
 function renderDeliveries(){
  $("deliveriesList").innerHTML=deliveries.length?deliveries.map(d=>'<div class="delivery-row"><strong>'+esc(d.name)+'</strong><div class="muted">'+esc(d.relation?.relationship_source||"Compra realizada")+'</div>'+(d.slug?'<div class="row-actions"><a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Abrir DELIVERY</a></div>':"")+'</div>').join(""):'<div class="empty">Todavía no tienes DELIVERY vinculados.</div>';
  const selected=$("deliveryFilter").value;
- $("deliveryFilter").innerHTML='<option value="">Todos los pedidos</option><option value="__DIRECT__">Pedidos directos a LOCAL</option>'+deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
+ $("deliveryFilter").innerHTML='<option value="">Todos los pedidos</option><option value="__DIRECT__">Pedidos directos a negocios</option>'+deliveries.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join("");
  $("deliveryFilter").value=[...$("deliveryFilter").options].some(o=>o.value===selected)?selected:"";
 }
-function directLocalById(id){return directLocals.find(l=>l.id===id)||null}
+function directBusinessById(id){return directBusinesses.find(b=>b.id===id)||null}
 function renderOrders(){
  const filter=$("deliveryFilter").value;
  const rows=filter==="__DIRECT__"?orders.filter(o=>o.order_channel==="DIRECT_LOCAL"):(filter?orders.filter(o=>o.delivery_id===filter):orders);
  $("ordersList").innerHTML=rows.length?rows.map(o=>{
-   const direct=o.order_channel==="DIRECT_LOCAL",d=deliveryById(o.delivery_id),l=directLocalById(o.origin_local_id);
-   const source=direct?(l?.name||"LOCAL"):(d?.name||"DELIVERY");
+   const direct=o.order_channel==="DIRECT_LOCAL",d=deliveryById(o.delivery_id),business=directBusinessById(o.origin_local_id);
+   const source=direct?(business?.name||"Negocio"):(d?.name||"DELIVERY");
    const channel=direct?"Compra directa":"Mediante DELIVERY";
    const detail=direct?'<a class="btn btn-muted" href="pedido-directo.html?order='+encodeURIComponent(o.id)+'">Ver detalle</a>':(d?.slug?'<a class="btn btn-muted" href="'+esc(orderLink(o))+'">Ver detalle</a>':"");
-   const again=direct&&l?.slug?'<a class="btn btn-muted" href="tienda.html?local='+encodeURIComponent(l.slug)+'&src=htpweb">Comprar nuevamente</a>':(!direct&&d?.slug?'<a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Comprar nuevamente</a>':"");
+   const again=direct&&business?.slug?'<a class="btn btn-muted" href="tienda.html?local='+encodeURIComponent(business.slug)+'&src=htpweb">Comprar nuevamente</a>':(!direct&&d?.slug?'<a class="btn btn-muted" href="index.html?delivery='+encodeURIComponent(d.slug)+'">Comprar nuevamente</a>':"");
    return '<div class="order-row"><div class="section-title"><div><strong>Pedido '+esc(String(o.id).slice(0,8).toUpperCase())+'</strong><div class="muted">'+esc(source)+' · '+esc(channel)+' · '+esc(formatDate(o.created_at))+'</div></div><span class="pill">'+esc(statusNames[o.status]||o.status)+'</span></div><div><strong>Total '+money(o.total)+'</strong></div><div class="row-actions">'+detail+again+'</div></div>';
  }).join(""):'<div class="empty">No hay pedidos para mostrar.</div>';
 }
