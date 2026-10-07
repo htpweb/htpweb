@@ -3042,6 +3042,7 @@ function syncLocalPublicAccess(){
 function storefrontFamilyProfile(family){
   const profiles={
     FOOD:{kicker:"SABOR · EXPERIENCIA · PEDIDOS",services:["Especialidades","Menú destacado","Combos y promociones","Pedidos y delivery"],projects:["Plato insignia","Experiencia del local","Promoción del día"],trust:["Ingredientes y sabor","Atención rápida","Pedido directo"]},
+    RESTAURANT:{kicker:"MENÚ · SABOR · PEDIDOS",services:["Especialidades de la casa","Menú completo","Combos y promociones","Pedidos y delivery"],projects:["Plato recomendado","Favoritos del menú","Promoción del día"],trust:["Productos del menú","Pedido directo","Atención rápida"]},
     RETAIL:{kicker:"COMPRA · VARIEDAD · DISPONIBILIDAD",services:["Categorías destacadas","Promociones","Novedades","Compra rápida"],projects:["Más vendidos","Recomendados","Oferta especial"],trust:["Stock visible","Compra ágil","Atención directa"]},
     FASHION:{kicker:"COLECCIÓN · ESTILO · TENDENCIA",services:["Nueva colección","Looks destacados","Accesorios","Compra online"],projects:["Editorial","Colección cápsula","Tendencias"],trust:["Curaduría de estilo","Nuevos ingresos","Compra segura"]},
     BOOKS:{kicker:"LECTURA · IDEAS · DESCUBRIMIENTO",services:["Novedades editoriales","Escolar y oficina","Recomendados","Pedidos especiales"],projects:["Selección del mes","Autores destacados","Colecciones"],trust:["Catálogo curado","Reserva fácil","Atención personalizada"]},
@@ -3059,6 +3060,7 @@ function storefrontFamilyProfile(family){
 function storefrontPreviewMedia(family){
   const media={
     FOOD:{hero:"https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80"]},
+    RESTAURANT:{hero:"https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=900&q=80"]},
     PROFESSIONAL:{hero:"https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80"]},
     BOOKS:{hero:"https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1496104679561-38d3af73f9b0?auto=format&fit=crop&w=900&q=80"]},
     BEAUTY:{hero:"https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=2000&q=86",projects:["https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80","https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=80"]},
@@ -3251,7 +3253,7 @@ function renderLocalBuilderChoices(){
   const presetBox=$("localPresetCards"),themeBox=$("localThemeCards"),tabs=$("localPresetCategoryTabs");
   const all=state.localStorePresets||[];
   const families=[...new Set(all.map(p=>String(p.layout_family||"GENERAL")))];
-  const labels={FOOD:"Gastronomía",RETAIL:"Comercio & Retail",FASHION:"Moda & Boutique",BOOKS:"Librería & Papelería",FLOWERS:"Flores & Regalos",HEALTH:"Salud & Bienestar",HARDWARE:"Catálogo Técnico",SERVICES:"Servicios",PROFESSIONAL:"Ingeniería & Profesional",BEAUTY:"Belleza & Citas",GENERAL:"General"};
+  const labels={FOOD:"Gastronomía",RESTAURANT:"Restaurantes",RETAIL:"Comercio & Retail",FASHION:"Moda & Boutique",BOOKS:"Librería & Papelería",FLOWERS:"Flores & Regalos",HEALTH:"Salud & Bienestar",HARDWARE:"Catálogo Técnico",SERVICES:"Servicios",PROFESSIONAL:"Ingeniería & Profesional",BEAUTY:"Belleza & Citas",GENERAL:"General"};
   if(!families.includes(state.localStorePresetFamilyFilter))state.localStorePresetFamilyFilter=families.length===1?families[0]:"ALL";
   if(tabs){
     tabs.innerHTML=(families.length>1?'<button type="button" class="local-design-category '+(state.localStorePresetFamilyFilter==="ALL"?"active":"")+'" data-design-family="ALL">Todas</button>':"")+
@@ -3261,7 +3263,7 @@ function renderLocalBuilderChoices(){
   const filtered=state.localStorePresetFamilyFilter==="ALL"?all:all.filter(p=>String(p.layout_family||"GENERAL")===state.localStorePresetFamilyFilter);
   if($("localPresetCount"))$("localPresetCount").textContent=String(filtered.length);
   if(presetBox){
-    const palette={FOOD:["#b91c1c","#f59e0b"],RETAIL:["#0f766e","#14b8a6"],FASHION:["#111827","#d946ef"],BOOKS:["#92400e","#fbbf24"],FLOWERS:["#be185d","#f9a8d4"],HEALTH:["#0f766e","#38bdf8"],HARDWARE:["#111827","#f97316"],SERVICES:["#1d4ed8","#60a5fa"],PROFESSIONAL:["#0f172a","#64748b"],BEAUTY:["#7c3aed","#ec4899"],GENERAL:["#1466e8","#0b1730"]};
+    const palette={FOOD:["#b91c1c","#f59e0b"],RESTAURANT:["#c65d36","#f59e0b"],RETAIL:["#0f766e","#14b8a6"],FASHION:["#111827","#d946ef"],BOOKS:["#92400e","#fbbf24"],FLOWERS:["#be185d","#f9a8d4"],HEALTH:["#0f766e","#38bdf8"],HARDWARE:["#111827","#f97316"],SERVICES:["#1d4ed8","#60a5fa"],PROFESSIONAL:["#0f172a","#64748b"],BEAUTY:["#7c3aed","#ec4899"],GENERAL:["#1466e8","#0b1730"]};
     presetBox.innerHTML=filtered.map(p=>{
       const family=String(p.layout_family||"GENERAL"),colors=palette[family]||palette.GENERAL,meta=localPresetDesignMeta(p),active=$("localStorePreset")?.value===p.code;
       const thumb='<div class="local-template-thumb engineering-thumb family-'+esc(family)+' design-'+esc(meta.design)+'" style="--tpl-primary:'+colors[0]+';--tpl-secondary:'+colors[1]+'">'+professionalTemplateThumb(meta.design)+'</div>';

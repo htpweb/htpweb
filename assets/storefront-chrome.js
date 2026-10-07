@@ -26,6 +26,7 @@
     return {
       PROFESSIONAL:"Ingeniería & proyectos",
       FOOD:"Gastronomía",
+      RESTAURANT:"Restaurantes",
       RETAIL:"Productos & soluciones",
       FASHION:"Colección & estilo",
       BOOKS:"Lectura & conocimiento",
