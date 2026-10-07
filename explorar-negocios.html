@@ -1,34 +1,196 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Encuentra negocios disponibles en HTPWEB, revisa sus productos, servicios, promociones y formas de contacto.">
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Explora todos los locales activos de HTPWEB por provincia y ciudad y visita directamente su página de inicio.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://htpweb.github.io/htpweb/explorar-negocios.html">
-<title>Explorar negocios | HTPWEB</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./config/supabase.js"></script><script src="./config/cart.js"></script>
-<link rel="stylesheet" href="./assets/app.css?v=20261003-explore1"><link rel="stylesheet" href="./assets/public-account-menu.css?v=20261003-1">
+<title>Explorar locales | HTPWEB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config/supabase.js"></script>
+<link rel="stylesheet" href="./assets/app.css?v=20261003-explore1">
+<link rel="stylesheet" href="./assets/public-account-menu.css?v=20261003-1">
 <style>
-:root{--ink:#0b1730;--blue:#1466e8;--red:#ff2e2e;--muted:#68758b;--line:#e7ecf3}html{overflow-y:scroll;scrollbar-gutter:stable}body{overflow-x:hidden}@view-transition{navigation:auto}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f8fbff}.hidden{display:none!important}
-.top{height:92px;position:relative;display:block;width:100%;max-width:1660px;margin:0 auto;padding:0 34px;background:#fff;view-transition-name:public-header}.logo{position:absolute;left:34px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:13px;font-size:30px;font-weight:850;letter-spacing:-1.1px;text-decoration:none;color:var(--ink);white-space:nowrap}.logo>span{display:inline!important;color:var(--ink)!important;font-size:30px;line-height:1;font-weight:850}.logo-mark,.logo img{width:82px;height:66px;display:block;flex:0 0 auto;object-fit:contain}.nav{position:absolute;left:50%;top:0;height:92px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:30px;white-space:nowrap}.nav a{font-weight:700;color:#111d33;text-decoration:none;font-size:15px;position:relative}.nav a.active,.nav a[aria-current="page"]{color:var(--blue)}.nav a.active:after,.nav a[aria-current="page"]:after{content:"";position:absolute;left:0;right:0;bottom:-28px;height:3px;background:var(--blue)}.header-actions{position:absolute;right:34px;top:50%;transform:translateY(-50%);display:grid;grid-template-columns:112px 216px;gap:10px;align-items:center}.header-actions .btn{height:48px;border-radius:12px;padding:0 14px;text-decoration:none;font-weight:800;display:flex;align-items:center;justify-content:center;white-space:nowrap}.cart{background:var(--red);color:#fff}.cart-spacer{width:112px;height:48px;visibility:hidden}.access{background:#111827;color:#fff}.aux-actions{position:absolute;right:34px;top:98px;display:flex;gap:8px;z-index:20}.aux-actions .btn{border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:700}.hidden{display:none!important}
-.hero{max-width:1540px;margin:auto;padding:38px 30px 16px;text-align:center;background:#f8fbff!important;color:var(--ink)!important}.hero h1{font-size:42px;margin:0 0 8px;letter-spacing:-1.4px;color:var(--ink)!important;text-shadow:none!important}.hero p{margin:0;color:var(--muted);font-size:17px}
-.search-wrap{max-width:1180px;margin:24px auto 30px;padding:0 24px}.search-box{background:#fff;border:1px solid #dfe5ed;border-radius:18px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:10px;box-shadow:0 10px 30px rgba(16,24,40,.06)}.search-box input{border:0;outline:0;font-size:17px;padding:14px 16px;color:var(--ink);min-width:0}.search-box button{border:0;border-radius:12px;padding:0 24px;background:var(--blue);color:#fff;font-weight:900;font-size:15px;cursor:pointer}.search-meta{display:flex;justify-content:space-between;gap:12px;margin-top:12px;color:var(--muted);font-size:13px}
-.directory{max-width:1540px;margin:auto;padding:0 30px 65px}.directory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.directory-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 8px 22px rgba(16,24,40,.04)}.directory-cover{height:160px;background:#eef2f6}.directory-cover img{width:100%;height:100%;object-fit:cover}.directory-body{padding:15px}.directory-body h3{margin:0 0 5px;font-size:18px}.muted{color:var(--muted)}.directory-status{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#f1f4f8}.owner{background:#eafaf1}.delivery-badge{background:#edf4ff}.product-mini{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid #eef2f6;font-size:13px}.directory-actions{display:flex;gap:8px;margin-top:11px}.directory-actions a{flex:1;text-align:center}.empty{grid-column:1/-1;background:#fff;border:1px solid var(--line);border-radius:16px;padding:36px;text-align:center;color:var(--muted)}
-@media(max-width:1180px){.nav{display:none}.header-actions{right:20px}.directory-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.top{height:124px;padding:0 14px}.logo{left:14px;top:38px;font-size:24px}.logo>span{font-size:24px}.logo img{width:58px;height:46px}.header-actions{right:14px;top:88px;transform:none;grid-template-columns:112px 190px}.header-actions .btn{height:44px}.hero{padding:26px 14px 10px}.hero h1{font-size:34px}.search-wrap{padding:0 14px}.search-box{grid-template-columns:1fr}.search-box button{padding:14px}.directory{padding:0 14px 40px}.directory-grid{grid-template-columns:1fr}}
+:root{--ink:#0b1730;--blue:#1466e8;--red:#ff2e2e;--muted:#68758b;--line:#e7ecf3}
+html{overflow-y:scroll;scrollbar-gutter:stable}body{overflow-x:hidden}@view-transition{navigation:auto}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f8fbff}.hidden{display:none!important}
+.top{height:92px;position:relative;display:block;width:100%;max-width:1660px;margin:0 auto;padding:0 34px;background:#fff;view-transition-name:public-header}
+.logo{position:absolute;left:34px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:13px;font-size:30px;font-weight:850;letter-spacing:-1.1px;text-decoration:none;color:var(--ink);white-space:nowrap}
+.logo>span{display:inline!important;color:var(--ink)!important;font-size:30px;line-height:1;font-weight:850}.logo-mark,.logo img{width:82px;height:66px;display:block;flex:0 0 auto;object-fit:contain}
+.nav{position:absolute;left:50%;top:0;height:92px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:30px;white-space:nowrap}
+.nav a{font-weight:700;color:#111d33;text-decoration:none;font-size:15px;position:relative}.nav a[aria-current="page"]{color:var(--blue)}.nav a[aria-current="page"]:after{content:"";position:absolute;left:0;right:0;bottom:-28px;height:3px;background:var(--blue)}
+.header-actions{position:absolute;right:34px;top:50%;transform:translateY(-50%);display:flex;align-items:center}.header-actions .btn{height:48px;border-radius:12px;padding:0 18px;text-decoration:none;font-weight:800;display:flex;align-items:center;justify-content:center;white-space:nowrap}.access{background:#111827;color:#fff}
+.hero{max-width:1540px;margin:auto;padding:44px 30px 18px;text-align:center}.hero h1{font-size:44px;margin:0 0 9px;letter-spacing:-1.5px}.hero p{margin:0;color:var(--muted);font-size:17px}
+.search-wrap{max-width:1180px;margin:24px auto 28px;padding:0 24px}.search-box{background:#fff;border:1px solid #dfe5ed;border-radius:18px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:10px;box-shadow:0 10px 30px rgba(16,24,40,.06)}
+.search-box input{border:0;outline:0;font-size:17px;padding:14px 16px;color:var(--ink);min-width:0}.search-box button{border:0;border-radius:12px;padding:0 24px;background:var(--blue);color:#fff;font-weight:900;font-size:15px;cursor:pointer}
+.filters{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;margin-top:12px}.filter-field{background:#fff;border:1px solid #dfe5ed;border-radius:14px;padding:10px 12px}.filter-field label{display:block;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#667085;margin-bottom:5px}.filter-field select{width:100%;border:0;background:transparent;outline:0;color:#111827;font-weight:700}
+.clear-filter{border:1px solid #dfe5ed;background:#fff;border-radius:14px;padding:0 18px;font-weight:800;color:#344054;cursor:pointer}
+.search-meta{display:flex;justify-content:space-between;gap:12px;margin-top:12px;color:var(--muted);font-size:13px}
+.directory{max-width:1540px;margin:auto;padding:0 30px 36px}.directory-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.directory-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 8px 22px rgba(16,24,40,.04);display:flex;flex-direction:column}.directory-cover{height:170px;background:linear-gradient(135deg,#edf3f9,#f8fbff);position:relative}.directory-cover img{width:100%;height:100%;object-fit:cover}.directory-logo{position:absolute;left:14px;bottom:12px;width:52px;height:52px;border-radius:14px;background:#fff;border:2px solid #fff;box-shadow:0 6px 18px #10182826;object-fit:cover}
+.directory-body{padding:15px;display:flex;flex-direction:column;flex:1}.directory-body h3{margin:0 0 5px;font-size:18px}.directory-description{color:var(--muted);font-size:13px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
+.directory-meta{display:grid;gap:5px;margin:10px 0 4px}.directory-meta span{font-size:12px;color:#475467}.directory-meta strong{color:#17233a}
+.directory-status{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#f1f4f8}.owner{background:#eafaf1;color:#087443}.delivery-badge{background:#edf4ff;color:#1458b8}
+.directory-actions{display:flex;gap:8px;margin-top:auto;padding-top:12px}.directory-actions a{flex:1;text-align:center;text-decoration:none}.directory-actions .btn-primary{background:#111827;color:#fff;border-radius:10px;padding:10px 12px;font-weight:900;font-size:12px}.directory-actions .btn-muted{background:#f3f6fa;color:#17233a;border:1px solid #dfe5ed;border-radius:10px;padding:10px 12px;font-weight:800;font-size:12px}
+.empty{grid-column:1/-1;background:#fff;border:1px solid var(--line);border-radius:16px;padding:36px;text-align:center;color:var(--muted)}
+.business-entry{max-width:1180px;margin:0 auto 64px;padding:0 24px}.business-entry-card{background:linear-gradient(135deg,#0b1730,#162a4d);color:#fff;border-radius:22px;padding:26px 28px;display:flex;align-items:center;justify-content:space-between;gap:26px;box-shadow:0 18px 40px rgba(11,23,48,.18)}
+.business-entry-card h2{margin:0 0 7px;font-size:25px}.business-entry-card p{margin:0;color:#d6dfed;line-height:1.5}.business-entry-actions{display:flex;gap:10px;flex-wrap:wrap;flex:0 0 auto}.business-entry-actions a{text-decoration:none;border-radius:12px;padding:12px 15px;font-weight:900;font-size:13px}.business-register{background:#fff;color:#0b1730}.business-claim{background:#1466e8;color:#fff}
+@media(max-width:1180px){.nav{display:none}.header-actions{right:20px}.directory-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.top{height:96px;padding:0 14px}.logo{left:14px;font-size:24px}.logo>span{font-size:24px}.logo img{width:58px;height:46px}.header-actions{right:14px}.header-actions .btn{height:44px;padding:0 12px}.hero{padding:26px 14px 10px}.hero h1{font-size:34px}.search-wrap{padding:0 14px}.search-box{grid-template-columns:1fr}.search-box button{padding:14px}.filters{grid-template-columns:1fr}.clear-filter{padding:12px}.search-meta{align-items:flex-start;flex-direction:column}.directory{padding:0 14px 28px}.directory-grid{grid-template-columns:1fr}.business-entry{padding:0 14px}.business-entry-card{align-items:flex-start;flex-direction:column}.business-entry-actions{width:100%}.business-entry-actions a{flex:1;text-align:center}}
 ::view-transition-old(public-header),::view-transition-new(public-header){animation-duration:.01s;animation-timing-function:linear}
-</style></head><body>
+</style>
+</head>
+<body>
 <header class="top">
 <a class="logo" href="./index.html"><img class="logo-mark" src="./assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>
 <nav class="nav"><a href="./index.html">Inicio</a><a href="./como-funciona.html">Cómo funciona</a><a aria-current="page" href="./explorar-negocios.html">Explorar locales</a></nav>
-<div class="header-actions"><a class="btn cart" href="./app/carrito-general.html">Carrito <span id="cartCount">0</span></a><div class="account-menu-wrap"><a id="accountLink" class="btn access" href="./app/acceso.html?return=../explorar-negocios.html">Acceder / Crear cuenta</a><div id="publicAccountMenu" class="public-account-menu hidden"><button id="publicAccountTrigger" class="public-account-trigger" type="button"><span class="account-icon">&#128100;</span><span>Mi cuenta</span><span>&#9662;</span></button><div id="publicAccountDropdown" class="public-account-dropdown hidden"><div class="public-account-summary"><strong id="publicAccountName">Mi cuenta</strong><small id="publicAccountEmail"></small></div><a href="./app/mi-cuenta.html">Abrir mi cuenta</a><div class="public-account-separator"></div><a href="./app/crear-local.html">Crear negocio</a><a href="./app/crear-delivery.html">Crear delivery</a><div class="public-account-separator"></div><button id="publicAccountLogout" class="logout" type="button">Cerrar sesion</button></div></div></div></div>
+<div class="header-actions"><div class="account-menu-wrap"><a id="accountLink" class="btn access" href="./app/acceso.html?return=../explorar-negocios.html">Acceder / Crear cuenta</a><div id="publicAccountMenu" class="public-account-menu hidden"><button id="publicAccountTrigger" class="public-account-trigger" type="button"><span class="account-icon">&#128100;</span><span>Mi cuenta</span><span>&#9662;</span></button><div id="publicAccountDropdown" class="public-account-dropdown hidden"><div class="public-account-summary"><strong id="publicAccountName">Mi cuenta</strong><small id="publicAccountEmail"></small></div><a href="./app/mi-cuenta.html">Abrir mi cuenta</a><div class="public-account-separator"></div><a href="./app/crear-local.html">Crear negocio</a><a href="./app/crear-delivery.html">Crear delivery</a><div class="public-account-separator"></div><button id="publicAccountLogout" class="logout" type="button">Cerrar sesión</button></div></div></div></div>
 </header>
-<section class="hero"><h1>Explorar locales</h1><p>Busca negocios, productos o servicios disponibles en HTPWEB.</p></section>
-<section class="search-wrap"><form id="searchForm" class="search-box"><input id="searchInput" type="search" placeholder="Buscar negocio, producto o servicio…" autocomplete="off"><button type="submit">Buscar</button></form><div class="search-meta"><span id="queryLabel">Mostrando locales disponibles</span><span id="count"></span></div></section>
-<main class="directory"><div id="message" class="hidden"></div><div id="locals" class="directory-grid"></div></main>
+
+<section class="hero">
+<h1>Explorar locales</h1>
+<p>Descubre negocios activos en HTPWEB y visita directamente su página oficial.</p>
+</section>
+
+<section class="search-wrap">
+<form id="searchForm" class="search-box">
+<input id="searchInput" type="search" placeholder="Buscar local, producto, servicio o categoría…" autocomplete="off">
+<button type="submit">Buscar</button>
+</form>
+<div class="filters">
+<div class="filter-field"><label for="provinceFilter">Provincia</label><select id="provinceFilter"><option value="">Todas las provincias</option></select></div>
+<div class="filter-field"><label for="cityFilter">Ciudad</label><select id="cityFilter"><option value="">Todas las ciudades</option></select></div>
+<button id="clearFilters" class="clear-filter" type="button">Limpiar filtros</button>
+</div>
+<div class="search-meta"><span id="queryLabel">Mostrando todos los locales activos</span><span id="count"></span></div>
+</section>
+
+<main class="directory">
+<div id="message" class="hidden"></div>
+<div id="locals" class="directory-grid"></div>
+</main>
+
+<section class="business-entry">
+<div class="business-entry-card">
+<div><h2>¿Tienes un negocio y quieres aparecer aquí?</h2><p>Publica tu local en HTPWEB para tener tu propia página, mostrar tus productos y conectar con clientes. Si tu negocio ya aparece, puedes reclamarlo y administrarlo.</p></div>
+<div class="business-entry-actions"><a class="business-register" href="./app/crear-local.html">Regístrate aquí</a><a class="business-claim" href="./app/crear-local.html">Buscar / reclamar mi local</a></div>
+</div>
+</section>
+
 <script>
-const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));let items=[];
-function money(v){return "$"+Number(v||0).toFixed(2)}
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+let allItems=[],items=[],currentSearch="";
+
 async function loadSession(){await supabaseClient.auth.getSession()}
-async function loadDirectory(search=""){$("locals").innerHTML='<div class="empty">Cargando negocios…</div>';const {data,error}=await supabaseClient.rpc("public_htpweb_directory",{p_sector_id:null,p_category_id:null,p_search:search||null,p_limit:60,p_offset:0});if(error)throw error;items=Array.isArray(data?.items)?data.items:[];renderDirectory(search)}
-function renderDirectory(search){$("count").textContent=items.length+" resultado(s)";$("queryLabel").textContent=search?'Resultados para “'+search+'”':'Mostrando locales disponibles';$("locals").innerHTML=items.length?items.map(local=>{const products=Array.isArray(local.products)?local.products.slice(0,3):[];return '<article class="directory-card"><div class="directory-cover">'+(local.banner_url?'<img src="'+esc(local.banner_url)+'" alt="'+esc(local.name)+'">':'')+'</div><div class="directory-body"><h3>'+esc(local.name)+'</h3><div class="muted">'+esc(local.description||local.address||"")+'</div><div class="directory-status">'+(local.claimed?'<span class="badge owner">Administrado por el negocio</span>':'<span class="badge">No reclamado</span>')+(Number(local.delivery_count||0)>0?'<span class="badge delivery-badge">'+Number(local.delivery_count)+' DELIVERY disponible(s)</span>':'')+'</div>'+products.map(p=>'<div class="product-mini"><span>'+esc(p.name)+'</span><strong>'+money(p.price)+'</strong></div>').join("")+'<div class="directory-actions"><a class="btn btn-dark" href="./app/local-general.html?local='+encodeURIComponent(local.id)+'">Ver negocio</a>'+(local.claimed?'<a class="btn btn-muted" href="./app/tienda.html?local='+encodeURIComponent(local.slug||local.id)+'&src=htpweb">Comprar</a>':'')+'</div></div></article>'}).join(""):'<div class="empty">No encontramos negocios con esa búsqueda.</div>'}
-$("searchForm").addEventListener("submit",async e=>{e.preventDefault();try{await loadDirectory($("searchInput").value.trim())}catch(err){console.error(err);$("locals").innerHTML='<div class="empty">No se pudo realizar la búsqueda.</div>'}});
-function updateCartCount(){$("cartCount").textContent=carritoCantidad("HTPWEB")}window.addEventListener("htpweb:cart",updateCartCount);
-(async()=>{try{updateCartCount();await Promise.all([loadSession(),loadDirectory("")])}catch(e){console.error(e);$("locals").innerHTML='<div class="empty">No se pudieron cargar los negocios.</div>'}})();
-</script><script src="./config/public-account-menu.js?v=20261003-2"></script></body></html>
+
+function localHomeUrl(local){
+  const slug=String(local?.slug||"").trim();
+  return slug?"./"+encodeURIComponent(slug)+"/":"./app/local-general.html?local="+encodeURIComponent(local.id);
+}
+
+function uniqueSorted(values){
+  return [...new Set(values.map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es",{sensitivity:"base"}));
+}
+
+function populateProvinceFilter(){
+  const provinces=uniqueSorted(allItems.map(x=>x.province));
+  $("provinceFilter").innerHTML='<option value="">Todas las provincias</option>'+provinces.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+}
+
+function populateCityFilter(){
+  const province=$("provinceFilter").value;
+  const source=province?allItems.filter(x=>String(x.province||"")===province):allItems;
+  const cities=uniqueSorted(source.map(x=>x.city));
+  const previous=$("cityFilter").value;
+  $("cityFilter").innerHTML='<option value="">Todas las ciudades</option>'+cities.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+  $("cityFilter").value=[...$("cityFilter").options].some(o=>o.value===previous)?previous:"";
+}
+
+function filteredItems(){
+  const province=$("provinceFilter").value;
+  const city=$("cityFilter").value;
+  return items.filter(local=>(!province||String(local.province||"")===province)&&(!city||String(local.city||"")===city));
+}
+
+function renderDirectory(){
+  const visible=filteredItems();
+  const province=$("provinceFilter").value,city=$("cityFilter").value;
+  $("count").textContent=visible.length+" local(es)";
+  const parts=[];
+  if(currentSearch)parts.push('Búsqueda: “'+currentSearch+'”');
+  if(province)parts.push("Provincia: "+province);
+  if(city)parts.push("Ciudad: "+city);
+  $("queryLabel").textContent=parts.length?parts.join(" · "):"Mostrando todos los locales activos";
+
+  $("locals").innerHTML=visible.length?visible.map(local=>{
+    const location=[local.city,local.province].filter(Boolean).join(", ");
+    return '<article class="directory-card">'+
+      '<div class="directory-cover">'+
+        (local.banner_url?'<img src="'+esc(local.banner_url)+'" alt="'+esc(local.name)+'">':'')+
+        (local.logo_url?'<img class="directory-logo" src="'+esc(local.logo_url)+'" alt="Logo de '+esc(local.name)+'">':'')+
+      '</div>'+
+      '<div class="directory-body">'+
+        '<h3>'+esc(local.name)+'</h3>'+
+        '<div class="directory-description">'+esc(local.description||local.address||"Negocio activo en HTPWEB")+'</div>'+
+        '<div class="directory-meta">'+
+          (local.category_name?'<span><strong>Categoría:</strong> '+esc(local.category_name)+'</span>':'')+
+          (location?'<span><strong>Ubicación:</strong> '+esc(location)+'</span>':'')+
+        '</div>'+
+        '<div class="directory-status">'+
+          (local.claimed?'<span class="badge owner">Administrado por el negocio</span>':'<span class="badge">Disponible para reclamar</span>')+
+          (Number(local.delivery_count||0)>0?'<span class="badge delivery-badge">'+Number(local.delivery_count)+' DELIVERY disponible(s)</span>':'')+
+        '</div>'+
+        '<div class="directory-actions">'+
+          '<a class="btn-primary" href="'+localHomeUrl(local)+'">Ver página</a>'+
+          (!local.claimed?'<a class="btn-muted" href="./app/reclamar-local.html?local='+encodeURIComponent(local.id)+'">Reclamar este LOCAL</a>':'')+
+        '</div>'+
+      '</div></article>';
+  }).join(""):'<div class="empty">No encontramos locales con esos filtros.</div>';
+}
+
+async function fetchDirectory(search=""){
+  const {data,error}=await supabaseClient.rpc("public_htpweb_directory",{p_sector_id:null,p_category_id:null,p_search:search||null,p_limit:96,p_offset:0});
+  if(error)throw error;
+  return Array.isArray(data?.items)?data.items:[];
+}
+
+async function loadDirectory(){
+  $("locals").innerHTML='<div class="empty">Cargando locales…</div>';
+  allItems=await fetchDirectory("");
+  items=allItems.slice();
+  currentSearch="";
+  populateProvinceFilter();
+  populateCityFilter();
+  renderDirectory();
+}
+
+$("searchForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    currentSearch=$("searchInput").value.trim();
+    items=currentSearch?await fetchDirectory(currentSearch):allItems.slice();
+    renderDirectory();
+  }catch(err){
+    console.error(err);
+    $("locals").innerHTML='<div class="empty">No se pudo realizar la búsqueda.</div>';
+  }
+});
+
+$("provinceFilter").addEventListener("change",()=>{populateCityFilter();renderDirectory()});
+$("cityFilter").addEventListener("change",renderDirectory);
+$("clearFilters").addEventListener("click",()=>{
+  $("searchInput").value="";
+  currentSearch="";
+  items=allItems.slice();
+  $("provinceFilter").value="";
+  populateCityFilter();
+  $("cityFilter").value="";
+  renderDirectory();
+});
+
+(async()=>{try{await Promise.all([loadSession(),loadDirectory()])}catch(e){console.error(e);$("locals").innerHTML='<div class="empty">No se pudieron cargar los locales.</div>'}})();
+</script>
+<script src="./config/public-account-menu.js?v=20261003-2"></script>
+</body>
+</html>
