@@ -133,8 +133,34 @@
     if(category && !category.dataset.bound){ category.dataset.bound="1"; category.addEventListener("change",render); }
     if(design && !design.dataset.bound){ design.dataset.bound="1"; design.addEventListener("change",render); }
     if(refresh && !refresh.dataset.bound){ refresh.dataset.bound="1"; refresh.onclick=()=>load(true); }
-    document.getElementById("masterSitePreviewClose")?.addEventListener("click",closePreview,{once:true});
-    document.getElementById("masterSitePreviewModal")?.addEventListener("click",e=>{ if(e.target?.id==="masterSitePreviewModal") closePreview(); },{once:true});
+
+    const closeBtn = document.getElementById("masterSitePreviewClose");
+    if(closeBtn && !closeBtn.dataset.bound){
+      closeBtn.dataset.bound="1";
+      closeBtn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePreview();
+      };
+    }
+
+    const previewModal = document.getElementById("masterSitePreviewModal");
+    if(previewModal && !previewModal.dataset.bound){
+      previewModal.dataset.bound="1";
+      previewModal.onclick = e => {
+        if(e.target === previewModal) closePreview();
+      };
+    }
+
+    if(!document.body.dataset.masterSitesEscapeBound){
+      document.body.dataset.masterSitesEscapeBound="1";
+      document.addEventListener("keydown",e=>{
+        if(e.key==="Escape" && !document.getElementById("masterSitePreviewModal")?.classList.contains("hidden")){
+          closePreview();
+        }
+      });
+    }
+
     document.querySelectorAll("[data-master-sites-device]").forEach(btn => {
       if(btn.dataset.bound) return;
       btn.dataset.bound="1";
