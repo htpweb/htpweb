@@ -335,8 +335,8 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-internalarch4">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-apex1">
-<script src="../assets/storefront-architectures.js?v=20261007-apex1"></script>
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-page-editor2">
+<script src="../assets/storefront-architectures.js?v=20261007-page-editor2"></script>
 <script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 <!-- HTPWEB_AUTO_SEO_LOCAL -->
 </head>
@@ -882,6 +882,7 @@ function renderSharedArchitecturePage(){
  }).map(([section,label])=>({section,label,href:siteSectionUrl(section)}));
  const projectItems=(projects?.length?projects.slice(0,8):visual.projects.map((image,i)=>({image_url:image,title:"Proyecto "+String(i+1).padStart(2,"0")}))).map((p,i)=>({
    title:p.title||p.name||("Proyecto "+String(i+1).padStart(2,"0")),
+   description:p.description||"",
    image:p.image_url||visual.projects[i%visual.projects.length]
  }));
  const blogItems=(blogPosts||[]).slice(0,6).map((p,i)=>({
