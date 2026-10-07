@@ -12,7 +12,7 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261007-localpremium1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261007-master-sites1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-rebuild1">
@@ -51,6 +51,7 @@
       <button data-section="expressdemo">Express Demo</button>
       <button data-section="localsmaster">Locales</button>
       <button data-section="categoriesmaster">Categorías</button>
+      <button data-section="websites">Sitios web</button>
       <button data-section="zonesmaster">Zonas</button>
       <button data-section="users">Usuarios</button>
       <button data-section="fees">Tarifas</button>
@@ -2383,6 +2384,43 @@
       </div>
     </section>
 
+    <section id="section-websites" class="section">
+      <div class="card master-sites-hero">
+        <div>
+          <span class="master-sites-kicker">BIBLIOTECA GLOBAL</span>
+          <h2>Sitios web y plantillas</h2>
+          <p class="muted">Vista MASTER de todas las plantillas activas disponibles en todas las categorías. Aquí puedes comparar estilos, revisar su enfoque y previsualizarlos antes de usarlos en un LOCAL.</p>
+        </div>
+        <div class="master-sites-summary">
+          <div><strong id="masterSitesTotal">0</strong><span>Plantillas</span></div>
+          <div><strong id="masterSitesShown">0</strong><span>Visibles</span></div>
+        </div>
+      </div>
+
+      <div class="card master-sites-toolbar">
+        <div class="master-sites-filter">
+          <label for="masterSitesSearch">Buscar</label>
+          <input id="masterSitesSearch" placeholder="Nombre, código, categoría o tipo de diseño">
+        </div>
+        <div class="master-sites-filter">
+          <label for="masterSitesCategory">Categoría</label>
+          <select id="masterSitesCategory"><option value="ALL">Todas las categorías</option></select>
+        </div>
+        <div class="master-sites-filter">
+          <label for="masterSitesDesign">Diseño</label>
+          <select id="masterSitesDesign"><option value="ALL">Todos los diseños</option></select>
+        </div>
+        <div class="master-sites-toolbar-action">
+          <button id="masterSitesRefreshBtn" class="btn-muted" type="button">Actualizar biblioteca</button>
+        </div>
+      </div>
+
+      <div id="masterSitesStatus" class="master-sites-status">Cargando biblioteca completa de plantillas…</div>
+      <div id="masterSitesGrid" class="master-sites-grid">
+        <div class="master-sites-empty"><strong>Cargando plantillas…</strong><span>Un momento.</span></div>
+      </div>
+    </section>
+
     <section id="section-analytics" class="section">
       <div class="card">
         <div class="row between">
@@ -2427,6 +2465,23 @@
   </div>
 </div>
 
+<div id="masterSitePreviewModal" class="master-site-preview-modal hidden" aria-hidden="true">
+  <div class="master-site-preview-dialog">
+    <div class="master-site-preview-toolbar">
+      <div>
+        <strong id="masterSitePreviewTitle">Vista previa</strong>
+        <small id="masterSitePreviewMeta"></small>
+      </div>
+      <div class="master-site-preview-actions">
+        <button type="button" class="btn-muted active" data-master-sites-device="desktop">Escritorio</button>
+        <button type="button" class="btn-muted" data-master-sites-device="mobile">Móvil</button>
+        <button type="button" class="btn-muted" id="masterSitePreviewClose">Cerrar</button>
+      </div>
+    </div>
+    <div class="master-site-preview-stage"><div id="masterSitePreviewFrame" class="master-site-preview-frame desktop"></div></div>
+  </div>
+</div>
+
 <div id="localPreviewModal" class="local-preview-modal hidden" aria-hidden="true">
   <div class="local-preview-dialog">
     <div class="local-preview-toolbar">
@@ -2447,7 +2502,8 @@
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
 <script src="../assets/storefront-architectures.js?v=20261007-rebuild1"></script>
-<script src="./admin.js?v=20261007-templateux2"></script>
+<script src="./admin.js?v=20261007-master-sites1"></script>
+<script src="./master-websites.js?v=20261007-master-sites1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20261005-domain1"></script>
