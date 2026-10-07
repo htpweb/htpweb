@@ -14,7 +14,7 @@
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
 <link rel="stylesheet" href="../assets/admin.css?v=20261007-localpremium1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
+<link rel="stylesheet" href="../assets/local-workspace.css?v=20261007-localpremium2">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-premium3">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
@@ -42,7 +42,7 @@
       <button data-section="myplan">Mi Plan</button>
       <button data-section="share">Compartir</button>
       <button data-section="promotions">Promociones</button>
-      <button data-section="mylocal">Mi Local</button>
+      <button data-section="mylocal">Mi sitio web</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="drivers">Repartidores</button>
       <button data-section="driverorders">Mis entregas</button>
@@ -412,8 +412,8 @@
 
         <div class="card">
           <div>
-            <h3 style="margin:0">Galería del LOCAL</h3>
-            <p class="muted" style="margin:5px 0 0">Estas son las mismas fotos cargadas en la Galería del LOCAL. No se modifican ni se generan imágenes nuevas.</p>
+            <h3 style="margin:0">Galería del negocio</h3>
+            <p class="muted" style="margin:5px 0 0">Estas son las mismas fotos cargadas en la Galería del negocio. No se modifican ni se generan imágenes nuevas.</p>
           </div>
           <div id="shareGalleryGrid" class="share-gallery-grid" style="margin-top:14px"></div>
         </div>
@@ -424,7 +424,7 @@
       <div class="card">
         <div class="row between">
           <div>
-            <h2>Mi Local</h2>
+            <h2>Mi sitio web</h2>
             <p class="muted">Administra la información pública del LOCAL asignado a tu cuenta.</p>
           </div>
           <select id="profileLocal" style="max-width:340px"></select>
@@ -528,7 +528,7 @@
       <div class="card" id="localCommerceCard">
         <div class="row between" style="gap:12px;flex-wrap:wrap">
           <div>
-            <h3 style="margin:0">Mi página web HTPWEB</h3>
+            <h3 style="margin:0">Mi página web</h3>
             <p class="muted" id="localCommerceState" style="margin:5px 0 0">Cargando configuración comercial…</p>
           </div>
           <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -1958,7 +1958,7 @@
 
       <div class="card" id="storageLocalCard">
         <div class="row between">
-          <h3>Imágenes de LOCAL</h3>
+          <h3>Identidad visual</h3>
           <select id="storageLocal" style="max-width:340px"></select>
         </div>
         <div class="media-grid">
@@ -1994,7 +1994,7 @@
         <div style="margin-top:20px">
           <div class="row between">
             <div>
-              <h4 style="margin:0">Galería del LOCAL</h4>
+              <h4 style="margin:0">Galería del negocio</h4>
               <small class="muted">Fotos adicionales del establecimiento para enriquecer la página pública.</small>
             </div>
             <input id="localGalleryFiles" type="file" multiple accept="image/jpeg,image/png,image/webp">
@@ -2011,7 +2011,7 @@
 
       <div class="card" id="storageProductCard">
         <div class="row between">
-          <h3>Imagen de PRODUCTO</h3>
+          <h3>Imágenes de productos</h3>
           <select id="storageProduct" style="max-width:420px"></select>
         </div>
         <div class="media-editor">
@@ -2385,7 +2385,7 @@
     <section id="section-analytics" class="section">
       <div class="card">
         <div class="row between">
-          <h2>Analytics</h2>
+          <h2>Estadísticas</h2>
           <select id="analyticsScope" style="max-width:320px"></select>
         </div>
         <pre id="analyticsResult" class="json">{}</pre>
