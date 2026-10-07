@@ -334,8 +334,8 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-internalarch4">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-premium3">
-<script src="../assets/storefront-architectures.js?v=20261007-premium3"></script>
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-rebuild1">
+<script src="../assets/storefront-architectures.js?v=20261007-rebuild1"></script>
 <script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 <!-- HTPWEB_AUTO_SEO_LOCAL -->
 </head>
@@ -857,13 +857,14 @@ function applyMarketingMetadata(){
  node.textContent=JSON.stringify(schema);
 }
 
-function renderSharedArchitectureHome(){
- const root=document.getElementById("inicio");
- if(!root||pageSection!=="home"||!window.HTPWEBStorefrontArchitectures?.render){
-   document.body.classList.remove("architecture-home");
+function renderSharedArchitecturePage(){
+ const roots={home:"inicio",about:"aboutSection",services:"servicesSection",projects:"projectsSection",blog:"blogSection",contact:"contactSection"};
+ const root=document.getElementById(roots[pageSection]||"");
+ if(!root||pageSection==="shop"||!window.HTPWEBStorefrontArchitectures?.render){
+   document.body.classList.remove("architecture-home","architecture-page");
    return false;
  }
- const l=store?.local||{},cfg=pageContent(),style=getComputedStyle(document.documentElement);
+ const l=store?.local||{},cfg=pageContent(),style=getComputedStyle(document.documentElement),visual=templateVisuals();
  const design=String(store?.preset?.config?.design_system||"SIGNATURE").toUpperCase();
  const family=String(store?.preset?.layout_family||"GENERAL").toUpperCase();
  if(design==="REFERENCE")return false;
@@ -878,23 +879,49 @@ function renderSharedArchitectureHome(){
    if(section==="contact")return cfg.show_contact!==false;
    return true;
  }).map(([section,label])=>({section,label,href:siteSectionUrl(section)}));
- const projectItems=(projects||[]).slice(0,3).map((p,i)=>({
+ const projectItems=(projects?.length?projects.slice(0,8):visual.projects.map((image,i)=>({image_url:image,title:"Proyecto "+String(i+1).padStart(2,"0")}))).map((p,i)=>({
    title:p.title||p.name||("Proyecto "+String(i+1).padStart(2,"0")),
-   image:p.image_url||""
+   image:p.image_url||visual.projects[i%visual.projects.length]
  }));
+ const blogItems=(blogPosts||[]).slice(0,6).map((p,i)=>({
+   title:p.title||"Novedad",
+   excerpt:p.excerpt||p.body||"",
+   date:p.published_at?new Date(p.published_at).toLocaleDateString("es-EC"):"Actualidad",
+   image:p.image_url||visual.projects[i%visual.projects.length]
+ }));
+ const serviceItems=placeholderServices().map(([icon,title,copy],i)=>({icon,title,copy,index:i+1}));
+ const contactItems=[
+   {label:"Dirección",value:l.address,icon:"⌖"},
+   {label:"Teléfono",value:l.phone,icon:"☎"},
+   {label:"WhatsApp",value:l.whatsapp,icon:"◉"}
+ ].filter(x=>x.value);
+ const lat=Number(l.latitude),lng=Number(l.longitude),hasCoords=Number.isFinite(lat)&&Number.isFinite(lng);
+ const mapQuery=hasCoords?(lat+","+lng):(l.address||l.name||"");
+ const mapUrl="https://www.google.com/maps?q="+encodeURIComponent(mapQuery)+"&output=embed";
+ const directionsUrl=hasCoords
+   ? "https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(lat+","+lng)
+   : "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(l.address||l.name||"");
+ const mapHtml=mapQuery?'<div class="local-contact-map-card"><div class="local-contact-map-heading"><div><strong>Ubicación</strong><span>'+esc(l.address||"Ubicación del negocio")+'</span></div><a href="'+esc(directionsUrl)+'" target="_blank" rel="noopener noreferrer">Cómo llegar ↗</a></div><iframe title="Ubicación en Google Maps" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="'+esc(mapUrl)+'"></iframe></div>':"";
+ const waUrl=whatsappUrl(l);
+ const whatsappHtml=waUrl?'<div class="local-contact-whatsapp"><div><strong>¿Prefieres escribirnos?</strong><span>Conversa directamente con nosotros por WhatsApp.</span></div><a href="'+esc(waUrl)+'" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a></div>':"";
  root.innerHTML=window.HTPWEBStorefrontArchitectures.render({
-   design,family,
+   section:pageSection,design,family,
    name:l.name||"LOCAL",
    hero:cfg.hero_title||l.name||"LOCAL",
    subtitle:cfg.hero_subtitle||l.description||"",
    about:cfg.about_title||"Quiénes somos",
    aboutText:cfg.about_text||l.description||"",
+   aboutImage:visual.about||visual.hero,
    catalog:catalogLabel(),
    projects:cfg.projects_title||"Proyectos y portafolio",
+   projectsText:cfg.projects_text||"",
+   blog:cfg.blog_title||"Blog",
    contact:cfg.contact_title||"Contacto",
+   contactIntro:"Encuentra aquí nuestros datos, ubicación y canales de atención.",
    nav,links:true,
-   banner:l.banner_url||"",
-   projectItems,
+   banner:l.banner_url||visual.hero||"",
+   serviceItems,projectItems,blogItems,contactItems,mapHtml,
+   socialHtml:socials(l),whatsappHtml,
    primary:style.getPropertyValue("--local-accent").trim()||"#1466e8",
    secondary:style.getPropertyValue("--local-secondary").trim()||"#0b1730",
    background:style.getPropertyValue("--local-bg").trim()||"#f6f9ff",
@@ -902,7 +929,8 @@ function renderSharedArchitectureHome(){
    text:style.getPropertyValue("--local-text").trim()||"#0b1730",
    flags:{about:cfg.show_about!==false,catalog:cfg.show_catalog!==false,projects:cfg.show_projects!==false,blog:cfg.show_blog!==false,contact:cfg.show_contact!==false}
  });
- document.body.classList.add("architecture-home");
+ document.body.classList.toggle("architecture-home",pageSection==="home");
+ document.body.classList.toggle("architecture-page",pageSection!=="home");
  document.body.dataset.architectureVersion=window.HTPWEBStorefrontArchitectures.version||"shared";
  configureSiteNavigation();
  return true;
@@ -1210,7 +1238,7 @@ async function init(){
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
    products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];
-   configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitectureHome();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applySinglePageSection();updateCount();
+   configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitecturePage();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applySinglePageSection();updateCount();
    trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
    if(sharedProductId){
      const target=document.getElementById("product-"+sharedProductId);
