@@ -77,8 +77,8 @@ test('detalle guía al operador con siguiente acción y flujo visual',()=>{
   assert.match(css,/\.order-control-selected/);
 });
 
-test('LOCAL_ADMIN conserva vista compatible',()=>{
-  assert.match(admin,/state\.role==="LOCAL_ADMIN"/);
+test('BUSINESS_ADMIN conserva vista compatible',()=>{
+  assert.match(admin,/state\.role==="BUSINESS_ADMIN"/);
   assert.match(admin,/loadOrdersLegacy/);
   assert.match(admin,/orderControlToggleLegacy\(true\)/);
 });

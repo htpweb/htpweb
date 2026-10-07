@@ -4,9 +4,9 @@ const fs=require("node:fs");
 
 const admin=fs.readFileSync("admin/admin.js","utf8");
 const html=fs.readFileSync("admin/index.html","utf8");
-const categories=fs.readFileSync("admin/local-categories-master.js","utf8");
-const locals=fs.readFileSync("admin/locales-master.js","utf8");
-const bulk=fs.readFileSync("admin/locales-bulk.js","utf8");
+const categories=fs.readFileSync("admin/business-categories-master.js","utf8");
+const locals=fs.readFileSync("admin/negocios-master.js","utf8");
+const bulk=fs.readFileSync("admin/negocios-bulk.js","utf8");
 const sql=fs.readFileSync("supabase/migrations/20260920043000_local_business_categories.sql","utf8");
 
 test("MASTER tiene módulo independiente Categorías de LOCAL",()=>{
@@ -14,15 +14,15 @@ test("MASTER tiene módulo independiente Categorías de LOCAL",()=>{
   assert.match(html,/section-categoriesmaster/);
   assert.match(admin,/MASTER:\s*\[[^\]]*"categoriesmaster"/);
   assert.match(admin,/loadMasterLocalBusinessCategories/);
-  assert.match(categories,/Categorías de LOCAL — MASTER/);
-  assert.match(categories,/master_save_local_business_category/);
+  assert.match(categories,/Categorías de NEGOCIO — MASTER/);
+  assert.match(categories,/master_save_business_category/);
 });
 
 test("categoría central se reutiliza al crear un LOCAL manualmente",()=>{
   assert.match(locals,/masterLocalBusinessCategory/);
   assert.match(locals,/businessCategories/);
   assert.match(locals,/p_business_category_id/);
-  assert.match(locals,/master_save_local_v3/);
+  assert.match(locals,/master_save_business_v3/);
   assert.match(sql,/business_category_id uuid references public\.local_business_categories/);
 });
 

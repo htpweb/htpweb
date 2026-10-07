@@ -21,15 +21,15 @@ test("LOCAL workspace exposes domain request flow", () => {
   assert.match(html, /id="localDomainCard"/);
   assert.match(html, /id="localDomainName"/);
   assert.match(html, /id="requestLocalDomainBtn"/);
-  assert.match(js, /my_local_domain_snapshot/);
-  assert.match(js, /request_my_local_domain/);
-  assert.match(js, /cancel_my_local_domain_request/);
+  assert.match(js, /my_business_domain_snapshot/);
+  assert.match(js, /request_my_business_domain/);
+  assert.match(js, /cancel_my_business_domain_request/);
 });
 
 test("MASTER can manage LOCAL domain requests", () => {
-  const js = read("admin/locales-master.js");
-  assert.match(js, /master_list_local_domain_requests/);
-  assert.match(js, /master_update_local_domain_request/);
+  const js = read("admin/negocios-master.js");
+  assert.match(js, /master_list_business_domain_requests/);
+  assert.match(js, /master_update_business_domain_request/);
   assert.match(js, /masterLocalDomainRows/);
 });
 

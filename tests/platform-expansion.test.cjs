@@ -30,7 +30,7 @@ test("HTPWEB home is institutional and business exploration has its own page",()
 });
 
 test("MASTER has business sectors above categories",()=>{
- const js=read("admin/local-categories-master.js");
+ const js=read("admin/business-categories-master.js");
  const sql=read("supabase/migrations/20261003064016_platform_business_sectors_directory.sql");
  assert.match(js,/master_save_business_sector/);
  assert.match(js,/localBusinessCategorySector/);

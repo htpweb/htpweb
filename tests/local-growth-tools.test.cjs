@@ -46,8 +46,8 @@ test("LOCAL_ADMIN has Marketing, Analytics attribution and Inventory workspaces"
   assert.match(html,/data-section="inventory"/);
   assert.match(html,/Resultados · últimos 30 días/);
   assert.match(js,/analytics_local_growth_summary/);
-  assert.match(js,/save_my_local_social_content/);
-  assert.match(js,/save_my_local_inventory/);
+  assert.match(js,/save_my_business_social_content/);
+  assert.match(js,/save_my_business_inventory/);
 });
 
 test("DELIVERY can accept or reject LOCAL partnership requests",()=>{

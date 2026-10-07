@@ -24,7 +24,7 @@ test("branding sube a rutas estables y actualiza LOCAL por RPC", () => {
   assert.match(js, /mediaPathLocal\(local\.id, "logo"\)/);
   assert.match(js, /mediaPathLocal\(local\.id, "banner"\)/);
   assert.match(js, /subirImagenHTPWEB/);
-  assert.match(js, /rpc\("update_my_local_content"/);
+  assert.match(js, /rpc\("update_my_business_content"/);
   assert.match(js, /p_banner_url: nextBanner/);
   assert.match(js, /p_logo_url: nextLogo/);
 });

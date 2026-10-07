@@ -1,0 +1,740 @@
+(() => {
+  let activePage="home";
+  let activeDevice="desktop";
+  let pendingServiceImageId=null;
+  let pendingProjectReplaceId=null;
+  let projectReplaceInput=null;
+
+  const pageMeta={
+    home:["Inicio","Edita el mensaje principal y la portada directamente sobre la página."],
+    about:["Quiénes somos","Haz clic en los textos de la página o usa este panel para escribir con más espacio."],
+    services:["Productos / Servicios","Agrega, edita, ordena y añade fotos a tus servicios. El diseño permanece protegido."],
+    projects:["Proyectos","Agrega proyectos y fotografías como diapositivas: la plantilla los acomoda automáticamente."],
+    blog:["Blog","Edita el título de la página y administra las publicaciones del negocio."],
+    contact:["Contacto","La página usa los datos, mapa y redes guardados en la ficha del LOCAL."]
+  };
+
+  const $id=id=>document.getElementById(id);
+  const localId=()=> $id("profileLocal")?.value||state.localProfileRecord?.id||null;
+  const clean=v=>String(v??"").trim();
+  const servicePayload=()=> (state.localServices||[]).map((s,i)=>({
+    id:s.id||String(i+1),
+    title:clean(s.title),
+    description:clean(s.description),
+    image_url:s.image_url||"",
+    storage_path:s.storage_path||"",
+    display_order:Number.isFinite(Number(s.display_order))?Number(s.display_order):i
+  }));
+
+  function currentFamily(){
+    const preset=(state.localStorePresets||[]).find(p=>p.code===$id("localStorePreset")?.value)||{};
+    return String(preset.layout_family||"GENERAL").toUpperCase();
+  }
+
+  function currentDesign(){
+    const preset=(state.localStorePresets||[]).find(p=>p.code===$id("localStorePreset")?.value)||{};
+    return String(preset?.config?.design_system||"SIGNATURE").toUpperCase();
+  }
+
+  function ensureServices(){
+    if((state.localServices||[]).length)return;
+    const profile=window.HTPWEBStorefrontArchitectures?.profiles?.[currentFamily()];
+    const defaults=Array.isArray(profile?.services)&&profile.services.length?profile.services:["Servicio principal","Solución especializada","Asesoría profesional"];
+    state.localServices=defaults.slice(0,4).map((title,i)=>({
+      id:crypto.randomUUID(),title,description:"Describe brevemente este servicio y el valor que ofrece a tus clientes.",image_url:"",storage_path:"",display_order:i
+    }));
+  }
+
+  function visualContext(){
+    const preset=(state.localStorePresets||[]).find(p=>p.code===$id("localStorePreset")?.value)||{};
+    const theme=$id("localStoreTheme")?.selectedOptions?.[0];
+    const family=String(preset.layout_family||"GENERAL").toUpperCase();
+    const design=String(preset?.config?.design_system||"SIGNATURE").toUpperCase();
+    const primary=$id("localStoreAccent")?.value||theme?.dataset?.primary||"#1466e8";
+    const secondary=theme?.dataset?.secondary||"#0b1730";
+    const background=theme?.dataset?.background||"#f6f9ff";
+    const surface=theme?.dataset?.surface||"#fff";
+    const text=theme?.dataset?.text||"#0b1730";
+    const name=state.localProfileRecord?.name||"LOCAL";
+    const about=$id("localAboutTitle")?.value.trim()||"Quiénes somos";
+    const catalog=$id("localCatalogTitle")?.value.trim()||"Productos / Servicios";
+    const projects=$id("localProjectsTitle")?.value.trim()||"Proyectos";
+    const blog=$id("localBlogTitle")?.value.trim()||"Blog";
+    const contact=$id("localContactTitle")?.value.trim()||"Contacto";
+    const nav=[
+      {label:"Inicio",section:"home"},
+      ...($id("localShowAbout")?.checked?[{label:about,section:"about"}]:[]),
+      ...($id("localShowCatalog")?.checked?[{label:catalog,section:"services"}]:[]),
+      ...($id("localShowProjects")?.checked?[{label:projects,section:"projects"}]:[]),
+      ...($id("localShowBlog")?.checked?[{label:blog,section:"blog"}]:[]),
+      ...($id("localShowContact")?.checked?[{label:contact,section:"contact"}]:[])
+    ];
+    const profile=window.HTPWEBStorefrontArchitectures?.profiles?.[family];
+    const serviceItems=(state.localServices||[]).length
+      ? [...state.localServices].sort((a,b)=>(Number(a.display_order)||0)-(Number(b.display_order)||0)).map((s,i)=>({id:s.id,title:s.title||("Servicio "+(i+1)),copy:s.description||"",image:s.image_url||"",index:i+1}))
+      : (profile?.services||[]).map((title,i)=>({title,copy:"Solución profesional adaptada a las necesidades del cliente.",index:i+1}));
+    const projectItems=(state.localProjects||[]).map((p,i)=>({id:p.id,title:p.title||("Proyecto "+String(i+1).padStart(2,"0")),description:p.description||"",image:p.image_url||""}));
+    return {
+      section:activePage,design,family,name,
+      hero:$id("localHeroTitle")?.value.trim()||name,
+      subtitle:$id("localHeroSubtitle")?.value.trim()||"Una propuesta clara, profesional y lista para crecer.",
+      about,aboutText:$id("localAboutText")?.value.trim()||"",
+      catalog,projects,projectsText:$id("localProjectsText")?.value.trim()||"",
+      blog,contact,
+      nav,links:false,
+      banner:state.localProfileRecord?.banner_url||"",
+      serviceItems,projectItems,
+      blogItems:(state.localBlogPosts||[]).map(p=>({title:p.title,excerpt:p.excerpt||p.body||"",date:p.published_at?new Date(p.published_at).toLocaleDateString("es-EC"):"Actualidad",image:p.image_url||""})),
+      contactItems:[
+        {label:"Teléfono",value:state.localProfileRecord?.phone,icon:"☎"},
+        {label:"WhatsApp",value:state.localProfileRecord?.whatsapp,icon:"◉"}
+      ].filter(x=>x.value),
+      primary,secondary,background,surface,text,
+      flags:{
+        about:$id("localShowAbout")?.checked,
+        catalog:$id("localShowCatalog")?.checked,
+        projects:$id("localShowProjects")?.checked,
+        blog:$id("localShowBlog")?.checked,
+        contact:$id("localShowContact")?.checked
+      }
+    };
+  }
+
+  function setEditable(el,fieldId,kind="text"){
+    if(!el||!$id(fieldId))return;
+    el.setAttribute("contenteditable","true");
+    el.classList.add("local-canvas-inline-edit");
+    el.title="Haz clic para editar";
+    el.addEventListener("focus",()=>el.classList.add("editing"));
+    el.addEventListener("blur",()=>{
+      el.classList.remove("editing");
+      const value=clean(el.innerText);
+      $id(fieldId).value=value;
+      if(el.dataset.editorTextKey){overrides().text[el.dataset.editorTextKey]=value;persistOverrides(false);}
+      // No re-render here: keeping the selected element alive lets the user
+      // move directly from the canvas to the Format panel without losing selection.
+    });
+    el.addEventListener("keydown",e=>{
+      if(kind==="text"&&e.key==="Enter"){e.preventDefault();el.blur();}
+    });
+  }
+
+  function decorateServices(canvas){
+    const cards=[...canvas.querySelectorAll(".local-service-placeholder,.apex-internal-services>article")];
+    cards.forEach((card,index)=>{
+      const service=(state.localServices||[])[index];
+      if(!service)return;
+      card.dataset.editorItemId=service.id;
+      card.classList.add("local-canvas-edit-card");
+      const h=card.querySelector("h3,strong:not(.local-editor-control *)");
+      const p=card.querySelector("p");
+      if(h){
+        h.setAttribute("contenteditable","true");h.classList.add("local-canvas-inline-edit");
+        h.onblur=async()=>{service.title=clean(h.innerText);renderServicesInspector();await persistServices(false,false);};
+      }
+      if(p){
+        p.setAttribute("contenteditable","true");p.classList.add("local-canvas-inline-edit");
+        p.onblur=async()=>{service.description=clean(p.innerText);renderServicesInspector();await persistServices(false,false);};
+      }
+      const tools=document.createElement("div");
+      tools.className="local-canvas-card-tools";
+      tools.innerHTML='<button type="button" data-photo>+ Foto</button><button type="button" data-remove>Eliminar</button>';
+      tools.querySelector("[data-photo]").onclick=e=>{e.stopPropagation();chooseServiceImage(service.id);};
+      tools.querySelector("[data-remove]").onclick=e=>{e.stopPropagation();removeService(service.id);};
+      card.appendChild(tools);
+    });
+  }
+
+  function decorateProjects(canvas){
+    const cards=[...canvas.querySelectorAll(".local-project-card,.apex-internal-project")];
+    cards.forEach((card,index)=>{
+      const project=(state.localProjects||[])[index];
+      if(!project)return;
+      card.dataset.editorItemId=project.id;
+      card.classList.add("local-canvas-edit-card");
+      const title=card.querySelector("span,h3");
+      if(title){
+        title.setAttribute("contenteditable","true");
+        title.classList.add("local-canvas-inline-edit");
+        title.onblur=()=>saveProjectInline(project.id,clean(title.innerText),project.description||"");
+      }
+      let description=card.querySelector(".local-project-description");
+      if(!description){
+        description=document.createElement("p");
+        description.className="local-project-description local-project-description-placeholder";
+        description.textContent=project.description||"Haz clic para agregar una descripción";
+        card.appendChild(description);
+      }
+      description.setAttribute("contenteditable","true");
+      description.classList.add("local-canvas-inline-edit");
+      description.onfocus=()=>{if(description.classList.contains("local-project-description-placeholder"))description.textContent="";};
+      description.onblur=()=>saveProjectInline(project.id,project.title||"",clean(description.innerText));
+      const tools=document.createElement("div");
+      tools.className="local-canvas-card-tools";
+      tools.innerHTML='<button type="button" data-photo>Cambiar foto</button><button type="button" data-remove>Eliminar</button>';
+      tools.querySelector("[data-photo]").onclick=e=>{e.stopPropagation();chooseProjectReplacement(project.id);};
+      tools.querySelector("[data-remove]").onclick=e=>{e.stopPropagation();deleteProject(project.id);};
+      card.appendChild(tools);
+    });
+  }
+
+  function decorateCanvas(){
+    const canvas=$id("localVisualPageCanvas");
+    if(!canvas)return;
+    if(activePage==="home"){
+      setEditable(canvas.querySelector("h1,h2"),"localHeroTitle");
+      const hero=canvas.querySelector(".apex-hero-copy p,.arch-photo-hero p,.arch-min-main p,.arch-split-left p,.arch-ed-intro p,.arch-luxe-hero p,.arch-bold-hero p,.arch-mag-cover p,.arch-immersive-copy p,.arch-tech-intro p");
+      setEditable(hero,"localHeroSubtitle","multiline");
+    }else if(activePage==="about"){
+      setEditable(canvas.querySelector("h1,h2"),"localAboutTitle");
+      setEditable(canvas.querySelector(".local-about-copy p,.apex-internal-about>div>p"),"localAboutText","multiline");
+    }else if(activePage==="services"){
+      ensureServices();
+      setEditable(canvas.querySelector("h1,h2"),"localCatalogTitle");
+      decorateServices(canvas);
+    }else if(activePage==="projects"){
+      setEditable(canvas.querySelector("h1,h2"),"localProjectsTitle");
+      setEditable(canvas.querySelector(".local-project-intro,.apex-internal-head+p"),"localProjectsText","multiline");
+      decorateProjects(canvas);
+    }else if(activePage==="blog"){
+      setEditable(canvas.querySelector("h1,h2"),"localBlogTitle");
+    }else if(activePage==="contact"){
+      setEditable(canvas.querySelector("h1,h2"),"localContactTitle");
+    }
+  }
+
+  let selectedVisualTarget=null;
+
+  let editorBaseline=null;
+  const baselineFieldIds=[
+    "localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText",
+    "localCatalogTitle","localProjectsTitle","localProjectsText","localBlogTitle",
+    "localContactTitle","localStoreAccent","localStorePreset","localStoreTheme",
+    "localShowAbout","localShowCatalog","localShowProjects","localShowBlog",
+    "localShowContact","localShowPromotions"
+  ];
+
+  function cloneData(value){
+    try{return JSON.parse(JSON.stringify(value??null));}catch{return value;}
+  }
+
+  function captureEditorBaseline(){
+    const lid=localId();if(!lid)return;
+    const fields={};
+    baselineFieldIds.forEach(id=>{
+      const el=$id(id);if(!el)return;
+      fields[id]=el.type==="checkbox"?{checked:!!el.checked}:{value:el.value};
+    });
+    editorBaseline={
+      localId:lid,
+      overrides:cloneData(state.localEditorOverrides||{}),
+      services:cloneData(state.localServices||[]),
+      fields
+    };
+  }
+
+  async function cancelEditorChanges(){
+    if(!editorBaseline||editorBaseline.localId!==localId()){
+      message("No hay una versión anterior disponible para restaurar.","error");return;
+    }
+    if(!confirm("¿Cancelar los cambios realizados desde que abriste este editor?"))return;
+    state.localEditorOverrides=cloneData(editorBaseline.overrides||{});
+    state.localServices=cloneData(editorBaseline.services||[]);
+    Object.entries(editorBaseline.fields||{}).forEach(([id,snap])=>{
+      const el=$id(id);if(!el)return;
+      if(Object.prototype.hasOwnProperty.call(snap,"checked"))el.checked=!!snap.checked;
+      else el.value=snap.value??"";
+    });
+    try{
+      await rpc("save_my_business_editor_overrides",{p_business_id:localId(),p_editor_overrides:state.localEditorOverrides||{}});
+      await rpc("save_my_business_services",{p_business_id:localId(),p_services:servicePayload()});
+      renderServicesInspector();
+      renderCanvas();
+      message("Cambios cancelados. Volviste al estado con el que abriste el editor.");
+    }catch(e){message(e.message||"No se pudieron cancelar todos los cambios.","error");}
+  }
+
+  async function saveEditorChanges(){
+    try{
+      await persistOverrides(false);
+      if(typeof saveLocalCommerce==="function")await saveLocalCommerce();
+      captureEditorBaseline();
+      message("Cambios guardados.");
+    }catch(e){message(e.message||"No se pudieron guardar los cambios.","error");}
+  }
+
+  function overrides(){
+    if(!state.localEditorOverrides||typeof state.localEditorOverrides!=="object")state.localEditorOverrides={};
+    state.localEditorOverrides.text=state.localEditorOverrides.text||{};
+    state.localEditorOverrides.style=state.localEditorOverrides.style||{};
+    state.localEditorOverrides.image=state.localEditorOverrides.image||{};
+    return state.localEditorOverrides;
+  }
+
+  async function persistOverrides(showMessage=false){
+    const lid=localId();if(!lid)return;
+    try{
+      const saved=await rpc("save_my_business_editor_overrides",{p_business_id:lid,p_editor_overrides:overrides()});
+      state.localEditorOverrides=(saved&&typeof saved==="object")?saved:overrides();
+      if(showMessage)message("Diseño guardado.");
+    }catch(e){message(e.message||"No se pudo guardar el cambio visual.","error");}
+  }
+
+  function rgbToHex(value){
+    const m=String(value||"").match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if(!m)return /^#[0-9a-f]{6}$/i.test(value||"")?value:"#111827";
+    return "#"+[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,"0")).join("");
+  }
+
+  function clearVisualSelection(){
+    document.querySelectorAll(".local-editor-selected,.local-editor-image-selected").forEach(el=>el.classList.remove("local-editor-selected","local-editor-image-selected"));
+    selectedVisualTarget=null;
+    $id("localTextFormatControls")?.classList.add("hidden");
+    $id("localImageFormatControls")?.classList.add("hidden");
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent="Selecciona un texto o una imagen";
+  }
+
+  function selectTextTarget(el){
+    clearVisualSelection();
+    const key=el?.dataset?.editorTextKey;if(!key)return;
+    selectedVisualTarget={type:"text",key,el};
+    el.classList.add("local-editor-selected");
+    $id("localTextFormatControls")?.classList.remove("hidden");
+    const cs=getComputedStyle(el),saved=overrides().style[key]||{};
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent="Texto · "+clean(el.textContent).slice(0,42);
+    const font=$id("localFormatFontFamily");
+    if(font){
+      const wanted=saved.fontFamily||"";
+      [...font.options].forEach(o=>o.selected=o.value===wanted);
+      if(!font.value)font.value="";
+    }
+    if($id("localFormatFontSize"))$id("localFormatFontSize").value=parseFloat(saved.fontSize||cs.fontSize)||16;
+    if($id("localFormatColor"))$id("localFormatColor").value=rgbToHex(saved.color||cs.color);
+    if($id("localFormatLineHeight")){
+      const lh=parseFloat(saved.lineHeight||cs.lineHeight);
+      $id("localFormatLineHeight").value=Number.isFinite(lh)&&lh<10?lh:"";
+    }
+    $id("localFormatBold")?.classList.toggle("active",String(saved.fontWeight||cs.fontWeight)==="700"||Number(saved.fontWeight||cs.fontWeight)>=600);
+    $id("localFormatItalic")?.classList.toggle("active",String(saved.fontStyle||cs.fontStyle)==="italic");
+  }
+
+  function imageUrlFromElement(el,type){
+    if(type==="image")return el?.src||"";
+    const bg=el?.style?.backgroundImage||getComputedStyle(el||document.body).backgroundImage||"";
+    const m=bg.match(/url\(["']?(.*?)["']?\)/i);return m?.[1]||"";
+  }
+
+  function selectImageTarget(el,type){
+    clearVisualSelection();
+    const key=type==="image"?el?.dataset?.editorImageKey:el?.dataset?.editorBackgroundKey;
+    if(!key)return;
+    selectedVisualTarget={type,key,el};
+    el.classList.add("local-editor-image-selected");
+    $id("localImageFormatControls")?.classList.remove("hidden");
+    if($id("localFormatSelectionLabel"))$id("localFormatSelectionLabel").textContent=type==="background"?"Imagen de fondo":"Imagen";
+    const url=overrides().image[key]||imageUrlFromElement(el,type);
+    const preview=$id("localFormatImagePreview");
+    if(preview){preview.style.backgroundImage=url?'url("'+String(url).replace(/"/g,"%22")+'")':"";preview.textContent=url?"":"Sin imagen";}
+  }
+
+  function decorateGenericEditor(indexed){
+    indexed.textNodes.forEach(el=>{
+      el.addEventListener("click",e=>{e.stopPropagation();selectTextTarget(el);});
+      if(!el.classList.contains("local-canvas-inline-edit")){
+        el.setAttribute("contenteditable","true");
+        el.classList.add("local-canvas-inline-edit");
+        el.addEventListener("blur",async()=>{
+          const key=el.dataset.editorTextKey;
+          overrides().text[key]=clean(el.innerText);
+          await persistOverrides(false);
+        });
+      }
+    });
+    indexed.imageNodes.forEach(el=>el.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();selectImageTarget(el,"image");}));
+    indexed.bgNodes.forEach(el=>{
+      el.title=el.title||"Haz clic en el fondo para cambiar su imagen";
+      el.classList.add("local-editor-bg-target");
+      const badge=document.createElement("button");
+      badge.type="button";badge.className="local-editor-bg-button";badge.textContent="📷 Cambiar fondo";
+      badge.onclick=e=>{e.preventDefault();e.stopPropagation();selectImageTarget(el,"background");};
+      el.appendChild(badge);
+      el.addEventListener("click",e=>{if(e.target===el){e.preventDefault();e.stopPropagation();selectImageTarget(el,"background");}});
+    });
+  }
+
+  function applySelectedTextStyle(prop,value){
+    if(selectedVisualTarget?.type!=="text")return;
+    const {key,el}=selectedVisualTarget;
+    const map=overrides().style;
+    map[key]=map[key]||{};
+    if(value===null||value==="")delete map[key][prop];else map[key][prop]=value;
+    el.style[prop]=value||"";
+    persistOverrides(false);
+  }
+
+  function bindFormatPanel(){
+    const clear=$id("localFormatClearSelection");if(clear&&!clear.dataset.bound){clear.dataset.bound="1";clear.onclick=clearVisualSelection;}
+    const font=$id("localFormatFontFamily");if(font&&!font.dataset.bound){font.dataset.bound="1";font.onchange=()=>applySelectedTextStyle("fontFamily",font.value);}
+    const size=$id("localFormatFontSize");if(size&&!size.dataset.bound){size.dataset.bound="1";size.oninput=()=>applySelectedTextStyle("fontSize",size.value?Math.max(8,Math.min(160,Number(size.value)))+"px":"");}
+    const color=$id("localFormatColor");if(color&&!color.dataset.bound){color.dataset.bound="1";color.oninput=()=>applySelectedTextStyle("color",color.value);}
+    const lh=$id("localFormatLineHeight");if(lh&&!lh.dataset.bound){lh.dataset.bound="1";lh.oninput=()=>applySelectedTextStyle("lineHeight",lh.value?String(Math.max(.8,Math.min(3,Number(lh.value)))):"");}
+    const bold=$id("localFormatBold");if(bold&&!bold.dataset.bound){bold.dataset.bound="1";bold.onclick=()=>{const active=!bold.classList.contains("active");bold.classList.toggle("active",active);applySelectedTextStyle("fontWeight",active?"700":"400");};}
+    const italic=$id("localFormatItalic");if(italic&&!italic.dataset.bound){italic.dataset.bound="1";italic.onclick=()=>{const active=!italic.classList.contains("active");italic.classList.toggle("active",active);applySelectedTextStyle("fontStyle",active?"italic":"normal");};}
+    document.querySelectorAll("[data-local-align]").forEach(btn=>{if(btn.dataset.bound)return;btn.dataset.bound="1";btn.onclick=()=>applySelectedTextStyle("textAlign",btn.dataset.localAlign);});
+    const resetText=$id("localFormatResetText");if(resetText&&!resetText.dataset.bound){resetText.dataset.bound="1";resetText.onclick=async()=>{if(selectedVisualTarget?.type!=="text")return;delete overrides().style[selectedVisualTarget.key];selectedVisualTarget.el.removeAttribute("style");await persistOverrides(false);renderCanvas();};}
+    const change=$id("localFormatChangeImage");if(change&&!change.dataset.bound){change.dataset.bound="1";change.onclick=()=>{if(selectedVisualTarget&&selectedVisualTarget.type!=="text"){$id("localFormatImageFile").value="";$id("localFormatImageFile").click();}};}
+    const imageFile=$id("localFormatImageFile");if(imageFile&&!imageFile.dataset.bound){imageFile.dataset.bound="1";imageFile.onchange=uploadSelectedVisualImage;}
+    const resetImage=$id("localFormatResetImage");if(resetImage&&!resetImage.dataset.bound){resetImage.dataset.bound="1";resetImage.onclick=async()=>{if(!selectedVisualTarget||selectedVisualTarget.type==="text")return;delete overrides().image[selectedVisualTarget.key];await persistOverrides(false);renderCanvas();clearVisualSelection();};}
+  }
+
+  async function uploadSelectedVisualImage(){
+    const file=$id("localFormatImageFile")?.files?.[0],target=selectedVisualTarget,lid=localId();
+    if(!file||!target||target.type==="text"||!lid)return;
+    try{
+      message("Subiendo imagen…");
+      const uploaded=await subirImagenHTPWEB(mediaPathLocalPageAsset(lid,activePage,target.key),file);
+      overrides().image[target.key]=uploaded.url;
+      await persistOverrides(false);
+      renderCanvas();
+      message("Imagen actualizada.");
+    }catch(e){message(e.message||"No se pudo cambiar la imagen.","error");}
+    finally{if($id("localFormatImageFile"))$id("localFormatImageFile").value="";}
+  }
+
+  function renderCanvas(){
+    const canvas=$id("localVisualPageCanvas");
+    if(!canvas||!window.HTPWEBStorefrontArchitectures?.render)return;
+    const ctx=visualContext();
+    canvas.innerHTML=window.HTPWEBStorefrontArchitectures.render(ctx);
+    canvas.classList.toggle("mobile",activeDevice==="mobile");
+    canvas.classList.toggle("desktop",activeDevice!=="mobile");
+    clearVisualSelection();
+    const indexed=window.HTPWEBStorefrontArchitectures.applyOverrides(canvas,activePage,overrides());
+    decorateCanvas();
+    decorateGenericEditor(indexed);
+    const label=$id("localVisualPageLabel");
+    if(label)label.textContent=pageMeta[activePage]?.[0]||"Página";
+    const add=$id("localVisualAddBtn");
+    if(add){
+      const canAdd=activePage==="services"||activePage==="projects";
+      add.classList.toggle("hidden",!canAdd);
+      add.textContent=activePage==="services"?"+ Agregar servicio":activePage==="projects"?"+ Agregar proyecto":"+ Agregar";
+      add.onclick=()=>activePage==="services"?addService():$id("localProjectEditorFiles")?.click();
+    }
+  }
+
+  function openTab(name){
+    activePage=pageMeta[name]?name:"home";
+    if(activePage==="services")ensureServices();
+    document.querySelectorAll("[data-local-page-tab]").forEach(b=>b.classList.toggle("active",b.dataset.localPageTab===activePage));
+    document.querySelectorAll("[data-local-page-pane]").forEach(p=>p.classList.toggle("active",p.dataset.localPagePane===activePage));
+    const meta=pageMeta[activePage];
+    if($id("localPageEditorTitle"))$id("localPageEditorTitle").textContent=meta[0];
+    if($id("localPageEditorHelp"))$id("localPageEditorHelp").textContent=meta[1];
+    if(activePage==="projects")loadProjects();
+    if(activePage==="services")renderServicesInspector();
+    renderCanvas();
+  }
+
+  function bindTabs(){
+    document.querySelectorAll("[data-local-page-tab]").forEach(btn=>{
+      if(btn.dataset.pageEditorBound)return;
+      btn.dataset.pageEditorBound="1";
+      btn.addEventListener("click",()=>openTab(btn.dataset.localPageTab));
+    });
+    document.querySelectorAll("[data-local-editor-device]").forEach(btn=>{
+      if(btn.dataset.bound)return;
+      btn.dataset.bound="1";
+      btn.onclick=()=>{
+        activeDevice=btn.dataset.localEditorDevice==="mobile"?"mobile":"desktop";
+        document.querySelectorAll("[data-local-editor-device]").forEach(x=>x.classList.toggle("active",x===btn));
+        renderCanvas();
+      };
+    });
+    const backBtn=$id("localEditorBackBtn");
+    if(backBtn&&!backBtn.dataset.bound){backBtn.dataset.bound="1";backBtn.onclick=()=>showSection("overview");}
+    const cancelBtn=$id("localEditorCancelBtn");
+    if(cancelBtn&&!cancelBtn.dataset.bound){cancelBtn.dataset.bound="1";cancelBtn.onclick=cancelEditorChanges;}
+    const saveBtn=$id("localEditorSaveBtn");
+    if(saveBtn&&!saveBtn.dataset.bound){saveBtn.dataset.bound="1";saveBtn.onclick=saveEditorChanges;}
+
+    const goBanner=$id("localEditorGoBanner");
+    if(goBanner&&!goBanner.dataset.bound){goBanner.dataset.bound="1";goBanner.onclick=()=>showSection("storage");}
+    const goCatalog=$id("localEditorGoCatalog");
+    if(goCatalog&&!goCatalog.dataset.bound){goCatalog.dataset.bound="1";goCatalog.onclick=()=>showSection("catalog");}
+    const goBlog=$id("localEditorGoBlog");
+    if(goBlog&&!goBlog.dataset.bound){
+      goBlog.dataset.bound="1";
+      goBlog.onclick=()=>{$id("localBlogPostTitle")?.scrollIntoView({behavior:"smooth",block:"center"});$id("localBlogPostTitle")?.focus();};
+    }
+    const addServiceBtn=$id("localAddServiceBtn");
+    if(addServiceBtn&&!addServiceBtn.dataset.bound){addServiceBtn.dataset.bound="1";addServiceBtn.onclick=addService;}
+    const serviceFile=$id("localServiceImageFile");
+    if(serviceFile&&!serviceFile.dataset.bound){serviceFile.dataset.bound="1";serviceFile.onchange=uploadServiceImage;}
+    const files=$id("localProjectEditorFiles");
+    if(files&&!files.dataset.bound){files.dataset.bound="1";files.onchange=uploadProjects;}
+
+    for(const id of ["localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText","localCatalogTitle","localProjectsTitle","localProjectsText","localBlogTitle","localContactTitle","localStorePreset","localStoreTheme","localStoreAccent"]){
+      const el=$id(id);
+      if(el&&!el.dataset.visualBound){
+        el.dataset.visualBound="1";
+        el.addEventListener(el.tagName==="SELECT"?"change":"input",()=>renderCanvas());
+      }
+    }
+    for(const id of ["localShowAbout","localShowCatalog","localShowProjects","localShowBlog","localShowContact"]){
+      const el=$id(id);
+      if(el&&!el.dataset.visualBound){el.dataset.visualBound="1";el.addEventListener("change",()=>renderCanvas());}
+    }
+
+    bindFormatPanel();
+
+    if(!projectReplaceInput){
+      projectReplaceInput=document.createElement("input");
+      projectReplaceInput.type="file";
+      projectReplaceInput.accept="image/png,image/jpeg,image/webp";
+      projectReplaceInput.hidden=true;
+      projectReplaceInput.onchange=replaceProjectImage;
+      document.body.appendChild(projectReplaceInput);
+    }
+  }
+
+  async function persistServices(showMessage=true,rerender=true){
+    const id=localId();
+    if(!id)return;
+    try{
+      const saved=await rpc("save_my_business_services",{p_business_id:id,p_services:servicePayload()});
+      state.localServices=Array.isArray(saved)?saved:servicePayload();
+      renderServicesInspector();
+      if(rerender)renderCanvas();
+      if(typeof renderLocalStorePreview==="function")renderLocalStorePreview();
+      if(showMessage)message("Servicios actualizados.");
+    }catch(e){message(e.message||"No se pudieron guardar los servicios.","error");}
+  }
+
+  function renderServicesInspector(){
+    const grid=$id("localServiceEditorGrid");
+    if(!grid)return;
+    ensureServices();
+    const rows=state.localServices||[];
+    grid.innerHTML=rows.map((s,index)=>{
+      const image=s.image_url?'<img src="'+esc(s.image_url)+'" alt="">':'<div class="local-service-image-placeholder">+ Foto</div>';
+      return '<article class="local-project-edit-card" data-service-id="'+esc(s.id)+'">'+
+        image+
+        '<div class="local-project-edit-body">'+
+          '<label>Nombre del servicio<input data-service-title maxlength="120" value="'+esc(s.title||"")+'"></label>'+
+          '<label>Descripción<textarea data-service-description rows="3" maxlength="700">'+esc(s.description||"")+'</textarea></label>'+
+          '<div class="local-project-edit-actions">'+
+            '<label>Posición<input data-service-order type="number" min="0" max="99" value="'+(Number(s.display_order)||index)+'"></label>'+
+            '<button type="button" class="btn-muted" data-service-photo>'+(s.image_url?"Cambiar foto":"+ Foto")+'</button>'+
+            '<button type="button" class="btn-danger" data-service-delete>Eliminar</button>'+
+          '</div>'+
+          '<button type="button" class="btn-primary" data-service-save>Guardar servicio</button>'+
+        '</div>'+
+      '</article>';
+    }).join("");
+    grid.querySelectorAll("[data-service-id]").forEach(card=>{
+      const id=card.dataset.serviceId;
+      card.querySelector("[data-service-save]").onclick=async()=>{
+        const s=(state.localServices||[]).find(x=>x.id===id);if(!s)return;
+        s.title=clean(card.querySelector("[data-service-title]")?.value);
+        s.description=clean(card.querySelector("[data-service-description]")?.value);
+        s.display_order=Math.max(0,Math.min(99,Number(card.querySelector("[data-service-order]")?.value)||0));
+        await persistServices();
+      };
+      card.querySelector("[data-service-photo]").onclick=()=>chooseServiceImage(id);
+      card.querySelector("[data-service-delete]").onclick=()=>removeService(id);
+    });
+  }
+
+  async function addService(){
+    ensureServices();
+    if((state.localServices||[]).length>=24)return message("Puedes mostrar hasta 24 servicios.","error");
+    const id=crypto.randomUUID();
+    state.localServices.push({id,title:"Nuevo servicio",description:"Describe este servicio.",image_url:"",storage_path:"",display_order:state.localServices.length});
+    renderServicesInspector();
+    renderCanvas();
+    await persistServices(false);
+    requestAnimationFrame(()=>{
+      const card=document.querySelector('[data-service-id="'+id+'"]');
+      card?.scrollIntoView({behavior:"smooth",block:"center"});
+      card?.querySelector("[data-service-title]")?.select();
+    });
+  }
+
+  function chooseServiceImage(id){
+    pendingServiceImageId=id;
+    const input=$id("localServiceImageFile");
+    if(input){input.value="";input.click();}
+  }
+
+  async function uploadServiceImage(){
+    const input=$id("localServiceImageFile");
+    const file=input?.files?.[0];
+    const id=pendingServiceImageId;
+    const lid=localId();
+    if(!file||!id||!lid)return;
+    const service=(state.localServices||[]).find(x=>x.id===id);
+    if(!service)return;
+    let uploaded=null;
+    const oldPath=service.storage_path||null;
+    try{
+      const path=mediaPathLocalService(lid,id);
+      uploaded=await subirImagenHTPWEB(path,file);
+      service.image_url=uploaded.url;
+      service.storage_path=uploaded.path;
+      await persistServices(false);
+      if(oldPath&&oldPath!==uploaded.path)await eliminarObjetoMediaHTPWEB(oldPath).catch(()=>{});
+      message("Foto del servicio actualizada.");
+    }catch(e){if(uploaded?.path)await eliminarObjetoMediaHTPWEB(uploaded.path).catch(()=>{});message(e.message||"No se pudo subir la foto.","error");}
+    finally{pendingServiceImageId=null;if(input)input.value="";}
+  }
+
+  async function removeService(id){
+    const service=(state.localServices||[]).find(x=>x.id===id);
+    if(!service)return;
+    if(!confirm("¿Eliminar este servicio?"))return;
+    state.localServices=state.localServices.filter(x=>x.id!==id).map((s,i)=>({...s,display_order:i}));
+    await persistServices(false);
+    if(service.storage_path)await eliminarObjetoMediaHTPWEB(service.storage_path).catch(()=>{});
+    message("Servicio eliminado.");
+  }
+
+  async function loadProjects(){
+    const grid=$id("localProjectEditorGrid");
+    const lid=localId();
+    if(!lid){state.localProjects=[];if(grid)grid.innerHTML='<div class="muted">Selecciona un LOCAL.</div>';renderCanvas();return;}
+    try{
+      const data=await rpc("list_business_gallery",{p_business_id:lid});
+      state.localProjects=Array.isArray(data)?data:[];
+      renderProjects();
+      renderCanvas();
+      if(typeof renderLocalStorePreview==="function")renderLocalStorePreview();
+    }catch(e){
+      state.localProjects=[];
+      if(grid)grid.innerHTML='<div class="message error">'+esc(e.message||"No se pudieron cargar los proyectos.")+'</div>';
+    }
+  }
+
+  function renderProjects(){
+    const grid=$id("localProjectEditorGrid");
+    if(!grid)return;
+    const rows=state.localProjects||[];
+    if(!rows.length){grid.innerHTML='<div class="local-project-editor-empty"><strong>Aún no tienes proyectos</strong><span>Haz clic en “Agregar proyecto” y selecciona una o varias fotografías.</span></div>';return;}
+    grid.innerHTML=rows.map((item,index)=>{
+      const order=Number.isFinite(Number(item.display_order))?Number(item.display_order):index;
+      return '<article class="local-project-edit-card" data-project-id="'+esc(item.id)+'">'+
+        '<img src="'+esc(item.image_url)+'" alt="">'+
+        '<div class="local-project-edit-body">'+
+          '<label>Nombre del proyecto<input data-project-title maxlength="120" value="'+esc(item.title||"")+'" placeholder="Ej. Edificio Corporativo Delta"></label>'+
+          '<label>Descripción<textarea data-project-description rows="3" maxlength="500" placeholder="Qué se hizo, dónde y cuál fue el resultado.">'+esc(item.description||"")+'</textarea></label>'+
+          '<div class="local-project-edit-actions">'+
+            '<label>Posición<input data-project-order type="number" min="0" max="99" value="'+order+'"></label>'+
+            '<button type="button" class="btn-muted" data-project-photo>Cambiar foto</button>'+
+            '<button type="button" class="btn-danger" data-project-delete>Eliminar</button>'+
+          '</div>'+
+          '<button type="button" class="btn-primary" data-project-save>Guardar proyecto</button>'+
+        '</div>'+
+      '</article>';
+    }).join("");
+    grid.querySelectorAll(".local-project-edit-card").forEach(card=>{
+      card.querySelector("[data-project-save]").onclick=()=>saveProject(card);
+      card.querySelector("[data-project-photo]").onclick=()=>chooseProjectReplacement(card.dataset.projectId);
+      card.querySelector("[data-project-delete]").onclick=()=>deleteProject(card.dataset.projectId);
+    });
+  }
+
+  async function uploadProjects(){
+    const input=$id("localProjectEditorFiles");
+    const files=[...(input?.files||[])];
+    const lid=localId();
+    if(!lid)return message("Selecciona un LOCAL.","error");
+    if(!files.length)return;
+    if(files.length>12)return message("Puedes agregar hasta 12 fotografías por operación.","error");
+    if((state.localProjects?.length||0)+files.length>24)return message("Puedes mostrar hasta 24 proyectos en tu portafolio.","error");
+    try{
+      input.disabled=true;message("Subiendo proyectos…");
+      for(const file of files){
+        const imageId=crypto.randomUUID(),path=mediaPathLocalGallery(lid,imageId);
+        let uploaded=null;
+        try{
+          uploaded=await subirImagenHTPWEB(path,file);
+          await rpc("save_business_gallery_image",{p_business_id:lid,p_image_id:imageId,p_image_url:uploaded.url,p_storage_path:uploaded.path,p_display_order:(state.localProjects?.length||0)});
+          state.localProjects.push({id:imageId,image_url:uploaded.url,storage_path:uploaded.path,display_order:state.localProjects.length,title:"",description:""});
+        }catch(e){if(uploaded?.path)await eliminarObjetoMediaHTPWEB(uploaded.path).catch(()=>{});throw e;}
+      }
+      input.value="";await loadProjects();message("Proyecto(s) agregado(s). Haz clic sobre el título o la descripción para editarlos.");
+    }catch(e){message(e.message||"No se pudieron subir las fotografías.","error");}
+    finally{input.disabled=false;}
+  }
+
+  async function saveProject(card){
+    const id=card?.dataset?.projectId;
+    const project=(state.localProjects||[]).find(x=>x.id===id);
+    if(!project)return;
+    project.title=clean(card.querySelector("[data-project-title]")?.value);
+    project.description=clean(card.querySelector("[data-project-description]")?.value);
+    project.display_order=Math.max(0,Math.min(99,Number(card.querySelector("[data-project-order]")?.value)||0));
+    await saveProjectRecord(project,true);
+  }
+
+  async function saveProjectInline(id,title,description){
+    const project=(state.localProjects||[]).find(x=>x.id===id);if(!project)return;
+    project.title=title;project.description=description;
+    await saveProjectRecord(project,false,false);
+  }
+
+  async function saveProjectRecord(project,showMessage,rerender=true){
+    const lid=localId();if(!lid||!project?.id)return;
+    try{
+      await rpc("update_business_gallery_project",{p_business_id:lid,p_image_id:project.id,p_title:project.title||null,p_description:project.description||null,p_display_order:Number(project.display_order)||0});
+      if(showMessage)message("Proyecto actualizado.");
+      if(rerender)await loadProjects();
+      else renderProjects();
+    }catch(e){message(e.message||"No se pudo guardar el proyecto.","error");}
+  }
+
+  function chooseProjectReplacement(id){
+    pendingProjectReplaceId=id;
+    if(projectReplaceInput){projectReplaceInput.value="";projectReplaceInput.click();}
+  }
+
+  async function replaceProjectImage(){
+    const file=projectReplaceInput?.files?.[0];
+    const project=(state.localProjects||[]).find(x=>x.id===pendingProjectReplaceId);
+    const lid=localId();
+    if(!file||!project||!lid)return;
+    let uploaded=null;
+    try{
+      const path=project.storage_path||mediaPathLocalGallery(lid,project.id);
+      uploaded=await subirImagenHTPWEB(path,file);
+      await rpc("save_business_gallery_image",{p_business_id:lid,p_image_id:project.id,p_image_url:uploaded.url,p_storage_path:uploaded.path,p_display_order:Number(project.display_order)||0});
+      project.image_url=uploaded.url;project.storage_path=uploaded.path;
+      await rpc("update_business_gallery_project",{p_business_id:lid,p_image_id:project.id,p_title:project.title||null,p_description:project.description||null,p_display_order:Number(project.display_order)||0});
+      await loadProjects();message("Foto del proyecto actualizada.");
+    }catch(e){message(e.message||"No se pudo cambiar la foto.","error");}
+    finally{pendingProjectReplaceId=null;if(projectReplaceInput)projectReplaceInput.value="";}
+  }
+
+  async function deleteProject(imageId){
+    const lid=localId();if(!lid||!imageId)return;
+    if(!confirm("¿Eliminar este proyecto y su fotografía?"))return;
+    try{
+      const item=(state.localProjects||[]).find(x=>x.id===imageId);
+      const path=await rpc("delete_business_gallery_image",{p_business_id:lid,p_image_id:imageId});
+      if(path||item?.storage_path)await eliminarObjetoMediaHTPWEB(path||item.storage_path).catch(()=>{});
+      await loadProjects();message("Proyecto eliminado.");
+    }catch(e){message(e.message||"No se pudo eliminar el proyecto.","error");}
+  }
+
+  function init(){
+    bindTabs();
+    renderServicesInspector();
+    renderCanvas();
+  }
+
+  init();
+  setTimeout(init,600);
+  window.openLocalPageEditorTab=openTab;
+  window.loadLocalProjectEditor=async()=>{renderServicesInspector();await loadProjects();captureEditorBaseline();renderCanvas();};
+  window.renderLocalVisualPageEditor=renderCanvas;
+})();

@@ -42,16 +42,16 @@ test("LOCAL panel exposes design QR and DELIVERY partnership controls",()=>{
   assert.match(html,/Tarjetas de productos/);
   assert.match(html,/Menú visual/);
   assert.match(html,/Híbrido · menú \+ tarjetas/);
-  assert.match(js,/save_my_local_commerce_settings/);
-  assert.match(js,/request_local_delivery_partnership/);
+  assert.match(js,/save_my_business_commerce_settings/);
+  assert.match(js,/request_business_delivery_partnership/);
   assert.match(js,/QRCode/);
 });
 
 test("MASTER list visibly locks owner-managed LOCAL and supports LOCAL plan assignment",()=>{
-  const js=read("admin/locales-master.js");
+  const js=read("admin/negocios-master.js");
   assert.match(js,/Propietario/);
   assert.match(js,/Bloqueado/);
-  assert.match(js,/master_assign_local_plan/);
+  assert.match(js,/master_assign_business_plan/);
 });
 
 test("Inventory social content and LOCAL plans are provisioned without changing DELIVERY plans",()=>{

@@ -11,7 +11,7 @@ test('concave polygon does not accept empty corner',()=>{
  assert.equal(maps.contains(ring,2,2),false);assert.equal(maps.contains(ring,2,.5),true);
 });
 test('one local editor embeds schedules catalog and local-only media',()=>{
- const js=fs.readFileSync('admin/locales-master.js','utf8');
+ const js=fs.readFileSync('admin/negocios-master.js','utf8');
  assert.match(js,/restoreLocalPanels/);assert.match(js,/await loadSchedules/);assert.match(js,/await loadCatalog/);
  assert.match(js,/await refreshLocalMediaPreview/);assert.match(js,/await refreshLocalGallery/);
  assert.doesNotMatch(js,/tab==="images"\?\[\$\("storageLocalCard"\),\$\("storageProductCard"\)\]/);
@@ -19,7 +19,7 @@ test('one local editor embeds schedules catalog and local-only media',()=>{
  assert.match(js,/p_zone_id/);assert.match(js,/data-edit-local/);
 });
 test('OpenStreetMap is primary and zone is derived from coordinates',()=>{
- const js=fs.readFileSync('admin/locales-master.js','utf8');
+ const js=fs.readFileSync('admin/negocios-master.js','utf8');
  const mapJs=fs.readFileSync('admin/zone-maps.js','utf8');
  const sql=fs.readFileSync('supabase/migrations/20260922005000_local_import_without_google.sql','utf8');
  assert.match(js,/OpenStreetMap activo/);assert.match(js,/detectLocalZone/);

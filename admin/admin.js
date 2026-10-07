@@ -55,18 +55,18 @@ const roleSections = {
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
-  LOCAL_ADMIN: ["overview","mylocal","localplan","orders","catalog","schedules","storage","marketing","inventory","analytics"]
+  BUSINESS_ADMIN: ["overview","mylocal","localplan","orders","catalog","schedules","storage","marketing","inventory","analytics"]
 };
 
-// El nombre canónico del administrador de negocio se resuelve desde la capa de dominio.
-// El rol histórico permanece encapsulado allí hasta completar la migración de Supabase.
 const BUSINESS_DOMAIN = window.HTPBusinessDomain;
+// Compatibilidad inversa: cualquier código legacy que todavía consulte LOCAL_ADMIN
+// obtiene exactamente las mismas secciones, pero el estado canónico usa BUSINESS_ADMIN.
 if (BUSINESS_DOMAIN) {
-  roleSections[BUSINESS_DOMAIN.canonical.adminRole] = roleSections[BUSINESS_DOMAIN.legacy.adminRole];
+  roleSections[BUSINESS_DOMAIN.legacy.adminRole] = roleSections.BUSINESS_ADMIN;
 }
 
 const isBusinessAdminRole = role =>
-  BUSINESS_DOMAIN?.isBusinessAdminRole(role) ?? role === ["LOCAL","ADMIN"].join("_");
+  BUSINESS_DOMAIN?.isBusinessAdminRole(role) ?? ["BUSINESS_ADMIN","LOCAL_ADMIN"].includes(role);
 
 Object.defineProperties(state, {
   businesses: {
@@ -227,7 +227,7 @@ async function init() {
     const { data: role, error: roleError } = await supabaseClient.rpc("current_role_code");
     if (roleError) throw roleError;
 
-    state.role = role;
+    state.role = BUSINESS_DOMAIN?.toCanonicalRole(role) || role;
     configureHtpwebWorkspaceHeader();
 
     try {
@@ -469,16 +469,16 @@ function showSection(name) {
 
 async function loadScopes() {
   if (state.role === "MASTER") {
-    const [dRes, lRes] = await Promise.all([
+    const [dRes, businessRes] = await Promise.all([
       supabaseClient.from("deliveries").select("id,name,slug,public_share_path,description,logo_url,phone,whatsapp,active,city_id").order("name"),
-      supabaseClient.from("locals").select("id,name,active").order("name")
+      supabaseClient.from("businesses").select("id,business_id,name,active").order("name")
     ]);
 
     if (dRes.error) throw dRes.error;
-    if (lRes.error) throw lRes.error;
+    if (businessRes.error) throw businessRes.error;
 
     state.deliveries = dRes.data || [];
-    state.locals = lRes.data || [];
+    state.businesses = businessRes.data || [];
   }
 
   if (["DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)) {
@@ -516,26 +516,26 @@ async function loadScopes() {
     })).filter(d=>d.id);
   }
 
-  if (state.role === "LOCAL_ADMIN") {
+  if (state.role === "BUSINESS_ADMIN") {
     const rel = await supabaseClient
-      .from("user_locals")
-      .select("local_id")
+      .from("user_businesses")
+      .select("business_id")
       .eq("user_id", state.user.id)
       .eq("active", true);
 
     if (rel.error) throw rel.error;
 
-    const ids = (rel.data || []).map(x => x.local_id);
+    const ids = (rel.data || []).map(x => x.business_id);
 
     if (ids.length) {
-      const lRes = await supabaseClient
-        .from("locals")
-        .select("id,name,slug,active")
+      const businessRes = await supabaseClient
+        .from("businesses")
+        .select("id,business_id,name,slug,active")
         .in("id", ids)
         .order("name");
 
-      if (lRes.error) throw lRes.error;
-      state.locals = lRes.data || [];
+      if (businessRes.error) throw businessRes.error;
+      state.businesses = businessRes.data || [];
     }
   }
 
@@ -552,7 +552,7 @@ function renderScopeSelectors() {
   ).join("");
 
   if ($("orderScope")) {
-    if (state.role === "LOCAL_ADMIN") {
+    if (state.role === "BUSINESS_ADMIN") {
       $("orderScope").innerHTML = '<option value="">Todos mis locales</option>' + localOptions;
     } else {
       $("orderScope").innerHTML = '<option value="">Todos mis deliveries</option>' + deliveryOptions;
@@ -580,13 +580,13 @@ function renderScopeSelectors() {
     } else if (state.role === "DELIVERY_ADMIN") {
       $("analyticsScope").innerHTML =
         state.deliveries.map(d => `<option value="DELIVERY:${d.id}">${esc(d.name)}</option>`).join("");
-    } else if (state.role === "LOCAL_ADMIN") {
+    } else if (state.role === "BUSINESS_ADMIN") {
       $("analyticsScope").innerHTML =
         state.locals.map(l => `<option value="LOCAL:${l.id}">${esc(l.name)}</option>`).join("");
     }
   }
 
-  if(state.role==="LOCAL_ADMIN")syncLocalPublicAccess();
+  if(state.role==="BUSINESS_ADMIN")syncLocalPublicAccess();
 
   if ($("scopeInfo")) {
     const deliveryCount = state.deliveries.length;
@@ -600,7 +600,7 @@ function renderScopeSelectors() {
     } else if (state.role === "DELIVERY_DRIVER") {
       $("scopeInfo").textContent =
         "Repartidor · " + deliveryCount + " DELIVERY asignado" + (deliveryCount === 1 ? "" : "s");
-    } else if (state.role === "LOCAL_ADMIN") {
+    } else if (state.role === "BUSINESS_ADMIN") {
       const localName=localCount===1?(state.locals[0]?.name||"Mi negocio"):"Mis negocios";
       $("scopeInfo").textContent = localName + " · Panel de administración";
       const brand=document.querySelector(".sidebar .brand");
@@ -1284,7 +1284,7 @@ function renderOverviewQuickActions() {
       ["orders","Revisar pedidos","Operación y estados de pedidos"],
       ["drivers","Repartidores","Asignación y seguimiento de entregas"]
     ];
-  }else if(state.role==="LOCAL_ADMIN"){
+  }else if(state.role==="BUSINESS_ADMIN"){
     actions=[
       ["mylocal","Editar sitio web","Diseño, contenido y publicación"],
       ["orders","Revisar pedidos","Pedidos recibidos por tu negocio"],
@@ -1303,7 +1303,7 @@ function renderOverviewQuickActions() {
 
 function overviewSetModeLabels(){
   const deliveryMode=state.role==="DELIVERY_ADMIN";
-  const localMode=state.role==="LOCAL_ADMIN";
+  const localMode=state.role==="BUSINESS_ADMIN";
   if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode
     ?"Estado de mi operación"
     :localMode?"Estado de mi negocio":"Estado de HTPWEB";
@@ -1653,7 +1653,7 @@ async function loadOverview() {
     await loadDeliveryAdminOverview(todayIso);
     return;
   }
-  if(state.role==="LOCAL_ADMIN"){
+  if(state.role==="BUSINESS_ADMIN"){
     await loadLocalAdminOverview(todayIso);
     return;
   }
@@ -2950,7 +2950,7 @@ function renderLocalSocialPreview(){
   }).join("");
 }
 async function loadLocalProfile() {
-  if (state.role !== "LOCAL_ADMIN") return;
+  if (state.role !== "BUSINESS_ADMIN") return;
 
   const select = $("profileLocal");
   if (!select) return;
@@ -2968,7 +2968,7 @@ async function loadLocalProfile() {
 }
 
 async function loadLocalProfileRecord() {
-  if (state.role !== "LOCAL_ADMIN") return;
+  if (state.role !== "BUSINESS_ADMIN") return;
 
   const localId = $("profileLocal")?.value || null;
   if (!localId) {
@@ -3020,8 +3020,8 @@ async function saveLocalProfile() {
     const local = state.localProfileRecord;
     if (!local?.id) throw new Error("Selecciona un LOCAL.");
 
-    await rpc("update_my_local_content", {
-      p_local_id: local.id,
+    await rpc("update_my_business_content", {
+      p_business_id: local.id,
       p_description: $("profileLocalDescription").value.trim() || null,
       p_banner_url: local.banner_url || null,
       p_logo_url: local.logo_url || null,
@@ -3054,7 +3054,7 @@ function localStoreUrl(){
 }
 
 function syncLocalPublicAccess(){
-  if(state.role!=="LOCAL_ADMIN")return "";
+  if(state.role!=="BUSINESS_ADMIN")return "";
   const url=localStoreUrl();
   const sidebar=$("deliveryPublicSiteLink");
   if(sidebar){
@@ -3352,19 +3352,19 @@ function renderLocalBlogPosts(){
 async function loadLocalBlogPosts(){
   const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
   if(!localId){state.localBlogPosts=[];renderLocalBlogPosts();return}
-  try{state.localBlogPosts=await rpc("list_my_local_blog_posts",{p_local_id:localId})||[];renderLocalBlogPosts();}
+  try{state.localBlogPosts=await rpc("list_my_business_blog_posts",{p_business_id:localId})||[];renderLocalBlogPosts();}
   catch(e){state.localBlogPosts=[];if($("localBlogPostsList"))$("localBlogPostsList").innerHTML='<div class="error">'+esc(e.message||"No se pudo cargar el blog.")+'</div>';}
 }
 async function saveLocalBlogPost(){
   try{
     const localId=$("profileLocal")?.value||state.localProfileRecord?.id;if(!localId)throw new Error("Selecciona un LOCAL.");
-    await rpc("save_my_local_blog_post",{p_local_id:localId,p_post_id:$("localBlogPostId").value||null,p_title:$("localBlogPostTitle").value.trim(),p_excerpt:$("localBlogPostExcerpt").value.trim()||null,p_body:$("localBlogPostBody").value.trim()||null,p_image_url:$("localBlogPostImage").value.trim()||null,p_published:$("localBlogPostPublished").checked});
+    await rpc("save_my_business_blog_post",{p_business_id:localId,p_post_id:$("localBlogPostId").value||null,p_title:$("localBlogPostTitle").value.trim(),p_excerpt:$("localBlogPostExcerpt").value.trim()||null,p_body:$("localBlogPostBody").value.trim()||null,p_image_url:$("localBlogPostImage").value.trim()||null,p_published:$("localBlogPostPublished").checked});
     message("Entrada del blog guardada.");clearLocalBlogEditor();await loadLocalBlogPosts();
   }catch(e){message(e.message||"No se pudo guardar la entrada.","error");}
 }
 async function deleteLocalBlogPost(id){
   if(!id||!confirm("¿Eliminar esta entrada del blog?"))return;
-  try{const localId=$("profileLocal")?.value||state.localProfileRecord?.id;await rpc("delete_my_local_blog_post",{p_local_id:localId,p_post_id:id});message("Entrada eliminada.");await loadLocalBlogPosts();}
+  try{const localId=$("profileLocal")?.value||state.localProfileRecord?.id;await rpc("delete_my_business_blog_post",{p_business_id:localId,p_post_id:id});message("Entrada eliminada.");await loadLocalBlogPosts();}
   catch(e){message(e.message||"No se pudo eliminar la entrada.","error");}
 }
 
@@ -3449,8 +3449,8 @@ async function requestLocalDomain(){
     if(!localId)throw new Error("Selecciona un LOCAL.");
     const domain=$("localDomainName").value.trim();
     if(!domain)throw new Error("Escribe el dominio que deseas.");
-    const result=await rpc("request_my_local_domain",{
-      p_local_id:localId,
+    const result=await rpc("request_my_business_domain",{
+      p_business_id:localId,
       p_domain:domain,
       p_request_type:$("localDomainRequestType").value
     });
@@ -3465,7 +3465,7 @@ async function cancelLocalDomain(){
   try{
     const requestId=state.localDomainSnapshot?.request?.id;
     if(!requestId)throw new Error("No hay una solicitud pendiente.");
-    const result=await rpc("cancel_my_local_domain_request",{p_request_id:requestId});
+    const result=await rpc("cancel_my_business_domain_request",{p_request_id:requestId});
     renderLocalDomain(result);
     message("Solicitud de dominio cancelada.");
   }catch(e){message(e.message||"No se pudo cancelar la solicitud.","error");}
@@ -3767,15 +3767,15 @@ function clearLocalImportedDesign(){
 }
 
 async function loadLocalCommerce(){
-  if(state.role!=="LOCAL_ADMIN")return;
+  if(state.role!=="BUSINESS_ADMIN")return;
   const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
   if(!localId)return;
   const [snapshot,designOptions,themeRes,deliveryOptions,domainSnapshot]=await Promise.all([
-    rpc("local_commerce_snapshot",{p_local_id:localId}),
-    rpc("my_local_storefront_design_options",{p_local_id:localId}),
+    rpc("business_commerce_snapshot",{p_business_id:localId}),
+    rpc("my_business_storefront_design_options",{p_business_id:localId}),
     supabaseClient.from("local_storefront_themes").select("code,name,business_fit,primary_color,secondary_color,background_color,surface_color,text_color").eq("active",true).order("display_order"),
-    rpc("my_local_delivery_options",{p_local_id:localId}),
-    rpc("my_local_domain_snapshot",{p_local_id:localId})
+    rpc("my_business_delivery_options",{p_business_id:localId}),
+    rpc("my_business_domain_snapshot",{p_business_id:localId})
   ]);
   if(themeRes.error)throw themeRes.error;
   const settings=snapshot?.settings||{};
@@ -3846,8 +3846,8 @@ async function saveLocalCommerce(){
   try{
     const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
     if(!localId)throw new Error("Selecciona un LOCAL.");
-    const result=await rpc("save_my_local_commerce_settings",{
-      p_local_id:localId,
+    const result=await rpc("save_my_business_commerce_settings",{
+      p_business_id:localId,
       p_storefront_enabled:$("localStoreEnabled").checked,
       p_preset_code:$("localStorePreset").value,
       p_catalog_mode:$("localStoreCatalogMode").value,
@@ -3860,8 +3860,8 @@ async function saveLocalCommerce(){
       p_accent_color:$("localStoreAccent").value||null,
       p_surface_style:$("localStoreSurfaceStyle").value
     });
-    await rpc("save_my_local_storefront_content",{
-      p_local_id:localId,
+    await rpc("save_my_business_storefront_content",{
+      p_business_id:localId,
       p_theme_code:$("localStoreTheme").value||"HTPWEB_BLUE",
       p_content_config:{
         hero_title:$("localHeroTitle").value.trim(),
@@ -3895,7 +3895,7 @@ async function requestLocalDelivery(){
     const localId=$("profileLocal")?.value||state.localProfileRecord?.id;
     const deliveryId=$("localStoreDeliveryOptions").value;
     if(!localId||!deliveryId)throw new Error("Selecciona un DELIVERY.");
-    await rpc("request_local_delivery_partnership",{p_local_id:localId,p_delivery_id:deliveryId,p_note:null});
+    await rpc("request_business_delivery_partnership",{p_business_id:localId,p_delivery_id:deliveryId,p_note:null});
     message("Solicitud de vinculación enviada al DELIVERY.");
     await loadLocalCommerce();
   }catch(e){message(e.message||"No se pudo solicitar el DELIVERY.","error");}
@@ -3936,7 +3936,7 @@ async function loadLocalGrowthAnalytics(localId){
 }
 
 async function loadLocalMarketing(){
-  if(state.role!=="LOCAL_ADMIN")return;
+  if(state.role!=="BUSINESS_ADMIN")return;
   const select=$("marketingLocal");if(!select)return;
   const previous=select.value;
   select.innerHTML=localAdminSelectOptions();
@@ -3945,8 +3945,8 @@ async function loadLocalMarketing(){
   if(!localId){$("marketingResult").innerHTML='<div class="muted">No tienes LOCAL asignados.</div>';return;}
   select.value=localId;
   const [productsRes,content]=await Promise.all([
-    supabaseClient.from("products").select("id,name").eq("local_id",localId).eq("active",true).order("name"),
-    rpc("my_local_social_content",{p_local_id:localId})
+    supabaseClient.from("business_products").select("id,name").eq("business_id",localId).eq("active",true).order("name"),
+    rpc("my_business_social_content",{p_business_id:localId})
   ]);
   if(productsRes.error)throw productsRes.error;
   $("marketingProduct").innerHTML='<option value="">Sin producto específico</option>'+(productsRes.data||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
@@ -3959,8 +3959,8 @@ async function loadLocalMarketing(){
 async function saveLocalMarketing(){
   try{
     const localId=$("marketingLocal").value;if(!localId)throw new Error("Selecciona un LOCAL.");
-    await rpc("save_my_local_social_content",{
-      p_local_id:localId,p_content_id:null,p_platform:$("marketingPlatform").value,
+    await rpc("save_my_business_social_content",{
+      p_business_id:localId,p_content_id:null,p_platform:$("marketingPlatform").value,
       p_external_url:$("marketingExternalUrl").value.trim()||null,p_product_id:$("marketingProduct").value||null,
       p_promotion_id:null,p_campaign_code:$("marketingCampaign").value.trim()||null,
       p_title:$("marketingTitle").value.trim()||null,p_active:true
@@ -3972,7 +3972,7 @@ async function saveLocalMarketing(){
 
 async function localMarketingTrackedUrl(){
   const localId=$("marketingLocal").value;if(!localId)throw new Error("Selecciona un LOCAL.");
-  const snapshot=await rpc("local_commerce_snapshot",{p_local_id:localId});
+  const snapshot=await rpc("business_commerce_snapshot",{p_business_id:localId});
   const key=snapshot?.slug||localId;
   const url=new URL("https://htpweb.github.io/htpweb/app/tienda.html");
   url.searchParams.set("local",key);
@@ -3988,7 +3988,7 @@ async function copyLocalMarketingLink(){
 }
 
 async function loadLocalInventory(){
-  if(state.role!=="LOCAL_ADMIN")return;
+  if(state.role!=="BUSINESS_ADMIN")return;
   const select=$("inventoryLocal");if(!select)return;
   const previous=select.value;select.innerHTML=localAdminSelectOptions();
   if(previous&&(state.locals||[]).some(l=>l.id===previous))select.value=previous;
@@ -3997,9 +3997,9 @@ async function loadLocalInventory(){
   select.value=localId;
   try{
     const [pRes,vRes,current]=await Promise.all([
-      supabaseClient.from("products").select("id,name,sku").eq("local_id",localId).eq("active",true).order("name"),
+      supabaseClient.from("business_products").select("id,name,sku").eq("business_id",localId).eq("active",true).order("name"),
       supabaseClient.from("product_variants").select("id,product_id,name").eq("active",true).order("name"),
-      rpc("my_local_inventory_snapshot",{p_local_id:localId})
+      rpc("my_business_inventory_snapshot",{p_business_id:localId})
     ]);
     if(pRes.error)throw pRes.error;if(vRes.error)throw vRes.error;
     const products=pRes.data||[],ids=new Set(products.map(p=>p.id)),variants=(vRes.data||[]).filter(v=>ids.has(v.product_id)),map=new Map((current||[]).map(x=>[x.product_id+":"+(x.variant_id||""),x]));
@@ -4023,8 +4023,8 @@ async function loadLocalInventory(){
 
 async function saveInventoryRow(localId,row){
   try{
-    await rpc("save_my_local_inventory",{
-      p_local_id:localId,p_product_id:row.dataset.product,p_variant_id:row.dataset.variant||null,
+    await rpc("save_my_business_inventory",{
+      p_business_id:localId,p_product_id:row.dataset.product,p_variant_id:row.dataset.variant||null,
       p_track_stock:row.querySelector("[data-track]").checked,p_available_qty:Number(row.querySelector("[data-qty]").value||0),
       p_low_stock_threshold:Number(row.querySelector("[data-low]").value||0)
     });
@@ -4199,7 +4199,7 @@ async function loadOrdersLegacy(){
 
 function orderControlDeliveryIds(){
   const scope=$("orderScope")?.value||"";
-  if(scope&&state.role!=="LOCAL_ADMIN")return [scope];
+  if(scope&&state.role!=="BUSINESS_ADMIN")return [scope];
   return (state.deliveries||[]).filter(d=>d.active!==false).map(d=>d.id);
 }
 
@@ -4237,7 +4237,7 @@ function orderControlClearView(){
 
 function orderControlCurrentDeliveryId(){
   const scoped=$("orderScope")?.value||"";
-  if(scoped&&state.role!=="LOCAL_ADMIN")return scoped;
+  if(scoped&&state.role!=="BUSINESS_ADMIN")return scoped;
   const selected=(state.orders||[]).find(o=>o.id===orderControlState.selectedId);
   if(selected?.delivery_id)return selected.delivery_id;
   const ids=orderControlDeliveryIds();
@@ -5280,7 +5280,7 @@ async function loadOrderControlCenter({silent=false}={}){
 
 async function loadOrders(options={}) {
   if (!roleSections[state.role]?.includes("orders")) return;
-  if(state.role==="LOCAL_ADMIN"){
+  if(state.role==="BUSINESS_ADMIN"){
     orderControlToggleLegacy(true);
     return loadOrdersLegacy();
   }
@@ -5297,7 +5297,7 @@ function renderOrder(order) {
 
   const locals = (order.order_locals || []).map(ol => {
     const canManageLocal = ["MASTER","DELIVERY_ADMIN","DELIVERY_OPERATOR"].includes(state.role)
-      || (state.role === "LOCAL_ADMIN" && state.locals.some(l => l.id === ol.local_id));
+      || (state.role === "BUSINESS_ADMIN" && state.locals.some(l => l.id === ol.local_id));
     const buttons = canManageLocal
       ? (localTransitions[ol.status] || []).map(next =>
           `<button class="${next === "CANCELLED" ? "btn-danger" : "btn"}" onclick="changeLocalOrder('${order.id}','${ol.local_id}','${next}')">${next}</button>`
@@ -5862,11 +5862,11 @@ async function reviewRequest(id, status, type) {
       duplicateId = prompt("Si es duplicado, escribe el UUID del LOCAL existente. Si no, deja vacío:") || null;
     }
 
-    await rpc("master_review_local_request", {
+    await rpc("master_review_business_request", {
       p_request_id: id,
       p_status: status,
       p_review_note: note,
-      p_possible_duplicate_local_id: duplicateId
+      p_possible_duplicate_business_id: duplicateId
     });
 
     message("Solicitud revisada.");
@@ -5884,9 +5884,9 @@ async function applyRequest(id, type) {
       convert = true;
     }
 
-    await rpc("master_apply_local_request", {
+    await rpc("master_apply_business_request", {
       p_request_id: id,
-      p_convert_customer_to_local_admin: convert
+      p_convert_customer_to_business_admin: convert
     });
 
     message("Solicitud aplicada.");
@@ -6095,9 +6095,9 @@ async function assignLocalUser() {
 
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
-    await rpc("master_assign_local_admin", {
+    await rpc("master_assign_business_admin", {
       p_user_id: user.user_id,
-      p_local_id: localId,
+      p_business_id: localId,
       p_convert_customer: convertCustomer
     });
 
@@ -6128,9 +6128,9 @@ async function unassignLocalUser(userId, localId) {
   if (!confirm("¿Desvincular esta cuenta del LOCAL? El rol global de la cuenta no se elimina automáticamente.")) return;
 
   try {
-    await rpc("master_unassign_local_admin", {
+    await rpc("master_unassign_business_admin", {
       p_user_id: userId,
-      p_local_id: localId
+      p_business_id: localId
     });
     message("Cuenta desvinculada del LOCAL.");
     await loadUsersModule();
@@ -7781,8 +7781,8 @@ async function enableCatalogManagement() {
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
     for (const capability of ["categories.manage","products.manage","variants.manage"]) {
-      await rpc("master_set_local_capability", {
-        p_local_id: localId,
+      await rpc("master_set_business_capability", {
+        p_business_id: localId,
         p_capability_code: capability,
         p_enabled: true
       });
@@ -7956,8 +7956,8 @@ async function enableScheduleManagement() {
     const localId = selectedScheduleLocalId();
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
-    await rpc("master_set_local_capability", {
-      p_local_id: localId,
+    await rpc("master_set_business_capability", {
+      p_business_id: localId,
       p_capability_code: "schedules.manage",
       p_enabled: true
     });
@@ -8710,8 +8710,8 @@ async function importBrandingFolder(fileList) {
           newBannerPath = uploaded.path;
         }
 
-        await rpc("update_my_local_content", {
-          p_local_id: local.id,
+        await rpc("update_my_business_content", {
+          p_business_id: local.id,
           p_description: local.description || null,
           p_banner_url: nextBanner,
           p_logo_url: nextLogo,
@@ -8941,8 +8941,8 @@ async function saveLocalMediaUrl(local, field, value) {
 
   next[field] = value || null;
 
-  await rpc("update_my_local_content", {
-    p_local_id: local.id,
+  await rpc("update_my_business_content", {
+    p_business_id: local.id,
     p_description: local.description || null,
     p_banner_url: next.banner_url,
     p_logo_url: next.logo_url,
@@ -9111,8 +9111,8 @@ async function enableLocalMedia() {
     if (!localId) throw new Error("Selecciona un LOCAL.");
 
     for (const capability of ["images.manage","local.info.manage","categories.manage","products.manage","variants.manage","schedules.manage"]) {
-      await rpc("master_set_local_capability", {
-        p_local_id: localId,
+      await rpc("master_set_business_capability", {
+        p_business_id: localId,
         p_capability_code: capability,
         p_enabled: true
       });

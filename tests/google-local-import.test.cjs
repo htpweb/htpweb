@@ -2,8 +2,8 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 
-const locals=fs.readFileSync("admin/locales-master.js","utf8");
-const bulk=fs.readFileSync("admin/locales-bulk.js","utf8");
+const locals=fs.readFileSync("admin/negocios-master.js","utf8");
+const bulk=fs.readFileSync("admin/negocios-bulk.js","utf8");
 const maps=fs.readFileSync("admin/zone-maps.js","utf8");
 const importSql=fs.readFileSync("supabase/migrations/20260922005000_local_import_without_google.sql","utf8");
 

@@ -4,8 +4,8 @@ const fs=require("node:fs");
 
 const admin=fs.readFileSync("admin/admin.js","utf8");
 const html=fs.readFileSync("admin/index.html","utf8");
-const locals=fs.readFileSync("admin/locales-master.js","utf8");
-const bulk=fs.readFileSync("admin/locales-bulk.js","utf8");
+const locals=fs.readFileSync("admin/negocios-master.js","utf8");
+const bulk=fs.readFileSync("admin/negocios-bulk.js","utf8");
 const maps=fs.readFileSync("admin/zone-maps.js","utf8");
 const storage=fs.readFileSync("config/storage.js","utf8");
 const gallerySql=fs.readFileSync("supabase/migrations/20260920040000_local_gallery.sql","utf8");
@@ -16,7 +16,7 @@ test("MASTER no muestra Storage como módulo independiente",()=>{
   assert.ok(match);
   assert.doesNotMatch(match[1],/"storage"/);
   assert.match(admin,/DELIVERY_ADMIN:[^\n]*"storage"/);
-  assert.match(admin,/LOCAL_ADMIN:[^\n]*"storage"/);
+  assert.match(admin,/BUSINESS_ADMIN:[^\n]*"storage"/);
 });
 
 test("Imágenes del LOCAL contiene logo banner y galería, no producto",()=>{
@@ -47,14 +47,14 @@ test("galería usa Supabase Storage y RPC seguro",()=>{
   assert.match(gallerySql,/can_manage_local_gallery/);
 });
 
-test("Locales muestra carga masiva Excel completa sin depender de Google",()=>{
+test("Negocios muestra carga masiva Excel completa sin depender de Google",()=>{
   assert.match(locals,/masterLocalBulkBtn/);
-  assert.match(locals,/Descargar plantilla completa de locales/);
+  assert.match(locals,/Descargar plantilla completa de negocios/);
   assert.match(html,/xlsx\.full\.min\.js/);
   assert.match(bulk,/HTPWEB_Plantilla_Carga_Masiva_Locales\.xlsx/);
   assert.match(bulk,/validateBulkLocalFile/);
   assert.match(bulk,/bulkLocalZoneFor/);
-  assert.match(bulk,/master_save_local_import_v1/);
+  assert.match(bulk,/master_save_business_import_v1/);
   assert.match(bulk,/importados como borrador sin consultar Google Maps/);
 });
 
