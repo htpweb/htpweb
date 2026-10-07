@@ -12,10 +12,10 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261007-master-sites1">
+<link rel="stylesheet" href="../assets/admin.css?v=20261007-page-editor2">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-apex1">
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-page-editor2">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
 </head>
@@ -678,20 +678,100 @@
             </div>
           </section>
 
-          <section class="local-builder-panel">
+          <section class="local-builder-panel local-page-editor">
             <div class="local-builder-heading">
-              <div><span>4</span><div><h4>Contenido principal</h4><p>Escribe los textos que verá el cliente.</p></div></div>
+              <div><span>4</span><div><h4>Editor por páginas</h4><p>Edita tu web como una presentación: una página a la vez, sin tocar código.</p></div></div>
             </div>
-            <div class="form-grid">
-              <div><label>Título principal</label><input id="localHeroTitle" maxlength="120" placeholder="Ej. Construimos ideas que perduran"></div>
-              <div><label>Subtítulo principal</label><input id="localHeroSubtitle" maxlength="260" placeholder="Resume en una frase lo mejor de tu negocio"></div>
-              <div><label>Título Quiénes somos</label><input id="localAboutTitle" maxlength="80" value="Quiénes somos"></div>
-              <div><label>Productos / Servicios</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Soluciones…"></div>
-              <div style="grid-column:1/-1"><label>Quiénes somos</label><textarea id="localAboutText" rows="4" maxlength="1600" placeholder="Cuenta tu historia, experiencia y qué hace diferente a tu negocio."></textarea></div>
-              <div><label>Título Proyectos</label><input id="localProjectsTitle" maxlength="80" value="Proyectos"></div>
-              <div><label>Título Blog</label><input id="localBlogTitle" maxlength="80" value="Blog"></div>
-              <div style="grid-column:1/-1"><label>Texto de Proyectos / Portafolio</label><textarea id="localProjectsText" rows="2" maxlength="600" placeholder="Una breve introducción a tus trabajos, obras, casos o galería."></textarea></div>
-              <div><label>Título Contacto</label><input id="localContactTitle" maxlength="80" value="Contacto"></div>
+
+            <div class="local-page-tabs" id="localPageEditorTabs" role="tablist" aria-label="Páginas del sitio">
+              <button type="button" class="active" data-local-page-tab="home">🏠 Inicio</button>
+              <button type="button" data-local-page-tab="about">👥 Quiénes somos</button>
+              <button type="button" data-local-page-tab="services">🛍️ Productos / Servicios</button>
+              <button type="button" data-local-page-tab="projects">🖼️ Proyectos</button>
+              <button type="button" data-local-page-tab="blog">✍️ Blog</button>
+              <button type="button" data-local-page-tab="contact">📍 Contacto</button>
+            </div>
+
+            <div class="local-page-editor-shell">
+              <aside class="local-page-editor-help">
+                <strong id="localPageEditorTitle">Inicio</strong>
+                <p id="localPageEditorHelp">Edita el mensaje principal que verá el cliente al entrar.</p>
+                <div class="local-editor-tip">Los cambios se reflejan en la vista previa. Guarda cuando termines.</div>
+              </aside>
+
+              <div class="local-page-editor-stage">
+                <div class="local-page-pane active" data-local-page-pane="home">
+                  <div class="form-grid">
+                    <div><label>Título principal</label><input id="localHeroTitle" maxlength="120" placeholder="Ej. Construimos ideas que perduran"></div>
+                    <div><label>Subtítulo principal</label><input id="localHeroSubtitle" maxlength="260" placeholder="Resume en una frase lo mejor de tu negocio"></div>
+                  </div>
+                  <div class="local-editor-callout">
+                    <strong>Imagen de portada</strong>
+                    <span>La portada usa el banner de tu LOCAL. Puedes cambiarlo desde Multimedia sin perder el diseño.</span>
+                    <button type="button" class="btn-muted" id="localEditorGoBanner">Cambiar portada</button>
+                  </div>
+                </div>
+
+                <div class="local-page-pane" data-local-page-pane="about">
+                  <div class="form-grid">
+                    <div><label>Título de la página</label><input id="localAboutTitle" maxlength="80" value="Quiénes somos"></div>
+                    <div style="grid-column:1/-1"><label>Historia y presentación</label><textarea id="localAboutText" rows="7" maxlength="1600" placeholder="Cuenta tu historia, experiencia y qué hace diferente a tu negocio."></textarea></div>
+                  </div>
+                </div>
+
+                <div class="local-page-pane" data-local-page-pane="services">
+                  <div class="form-grid">
+                    <div><label>Título de la página</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Soluciones…"></div>
+                  </div>
+                  <div class="local-editor-callout">
+                    <strong>Contenido automático desde tu catálogo</strong>
+                    <span>Los productos o servicios se administran en Catálogo y aquí conservan el diseño de la plantilla.</span>
+                    <button type="button" class="btn-muted" id="localEditorGoCatalog">Editar catálogo</button>
+                  </div>
+                </div>
+
+                <div class="local-page-pane" data-local-page-pane="projects">
+                  <div class="form-grid">
+                    <div><label>Título de la página</label><input id="localProjectsTitle" maxlength="80" value="Proyectos"></div>
+                    <div style="grid-column:1/-1"><label>Introducción</label><textarea id="localProjectsText" rows="3" maxlength="600" placeholder="Una breve introducción a tus trabajos, obras, casos o galería."></textarea></div>
+                  </div>
+
+                  <div class="local-project-editor-head">
+                    <div>
+                      <strong>Proyectos y fotografías</strong>
+                      <span>Sube fotos, ponles nombre y una breve descripción. La plantilla se encarga del diseño.</span>
+                    </div>
+                    <label class="btn-primary local-project-upload-btn">
+                      + Agregar proyecto
+                      <input id="localProjectEditorFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+                    </label>
+                  </div>
+                  <div id="localProjectEditorGrid" class="local-project-editor-grid">
+                    <div class="muted">Cargando proyectos…</div>
+                  </div>
+                </div>
+
+                <div class="local-page-pane" data-local-page-pane="blog">
+                  <div class="form-grid">
+                    <div><label>Título de la página</label><input id="localBlogTitle" maxlength="80" value="Blog"></div>
+                  </div>
+                  <div class="local-editor-callout">
+                    <strong>Publicaciones del negocio</strong>
+                    <span>Usa el editor de Blog que aparece más abajo para crear noticias, proyectos o novedades.</span>
+                    <button type="button" class="btn-muted" id="localEditorGoBlog">Ir al editor de Blog</button>
+                  </div>
+                </div>
+
+                <div class="local-page-pane" data-local-page-pane="contact">
+                  <div class="form-grid">
+                    <div><label>Título de la página</label><input id="localContactTitle" maxlength="80" value="Contacto"></div>
+                  </div>
+                  <div class="local-editor-callout">
+                    <strong>Datos de contacto y ubicación</strong>
+                    <span>Teléfono, WhatsApp, dirección, mapa y redes se toman de la ficha de tu LOCAL para evitar escribirlos dos veces.</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -2501,8 +2581,9 @@
 <script src="../config/storage.js"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="../assets/storefront-architectures.js?v=20261007-apex1"></script>
-<script src="./admin.js?v=20261007-master-sites1"></script>
+<script src="../assets/storefront-architectures.js?v=20261007-page-editor2"></script>
+<script src="./admin.js?v=20261007-page-editor2"></script>
+<script src="./local-page-editor.js?v=20261007-page-editor2"></script>
 <script src="./master-websites.js?v=20261007-master-sites2"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>

@@ -583,3 +583,8 @@ body.architecture-home .local-site-footer{margin-top:0!important}
  .arch-APEX .apex-footer{padding:30px 18px}
  .arch-APEX.apex-internal main{padding:60px 18px 80px}
 }
+
+.local-project-card .local-project-description{position:absolute;left:12px;right:12px;bottom:12px;margin:0;padding:9px 11px;border-radius:10px;background:rgba(15,23,42,.78);color:#e2e8f0;font-size:.75rem;line-height:1.35;max-height:3.9em;overflow:hidden}
+.local-project-card:has(.local-project-description)>span{bottom:70px}
+.arch-MINIMAL .local-project-card .local-project-description{position:static!important;background:transparent!important;color:#64748b!important;padding:3px 0!important;max-height:none!important}
+.arch-MINIMAL .local-project-card:has(.local-project-description)>span{bottom:auto!important}

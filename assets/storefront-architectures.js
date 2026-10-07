@@ -93,7 +93,7 @@ function renderInternalSection(ctx,design,family,profile,media){
  const blogItems=(ctx.blogItems?.length?ctx.blogItems:[{title:"Novedades de "+name,excerpt:"Muy pronto compartiremos novedades y contenido de interés.",date:"Actualidad",image:media.projects[0]}]).slice(0,6);
  const contacts=ctx.contactItems||[];
  const serviceCards=services.map((x,i)=>'<article class="local-service-placeholder"><div class="icon">'+String(i+1).padStart(2,"0")+'</div><h3>'+e(x.title||"Servicio")+'</h3><p>'+e(x.copy||"")+'</p></article>').join("");
- const projectCards=projectItems.map((x,i)=>'<article class="local-project-card"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><span>'+e(x.title||("Proyecto "+String(i+1).padStart(2,"0")))+'</span></article>').join("");
+ const projectCards=projectItems.map((x,i)=>'<article class="local-project-card"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><span>'+e(x.title||("Proyecto "+String(i+1).padStart(2,"0")))+'</span>'+(x.description?'<p class="local-project-description">'+e(x.description)+'</p>':'')+'</article>').join("");
  const blogCards=blogItems.map((x,i)=>'<article class="local-blog-card"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><div class="local-blog-card-body"><small>'+e(x.date||"")+'</small><h3>'+e(x.title||"")+'</h3><p>'+e(x.excerpt||"")+'</p></div></article>').join("");
  const contactCards=contacts.map(x=>'<div class="local-contact-info-card"><div class="local-contact-info-icon">'+e(x.icon||"•")+'</div><div><small>'+e(x.label||"")+'</small><strong>'+e(x.value||"")+'</strong></div></div>').join("");
  const map=ctx.mapHtml||"",social=ctx.socialHtml||"",wa=ctx.whatsappHtml||"";

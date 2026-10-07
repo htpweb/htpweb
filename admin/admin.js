@@ -16,6 +16,7 @@ const state = {
   localProfileRecord: null,
   localStorePresets: [],
   localStoreThemes: [],
+  localProjects: [],
   localPublishedPresetCode: null,
   localImportedDesign: null,
   localBlogPosts: [],
@@ -3079,6 +3080,8 @@ function professionalStorefrontPreviewMarkup(ctx){
       banner:bannerCss||"",
       name:state.localProfileRecord?.name||"LOCAL",
       aboutText:$("localAboutText")?.value.trim()||"",
+      projectItems:(state.localProjects||[]).map((p,i)=>({title:p.title||("Proyecto "+String(i+1).padStart(2,"0")),image:p.image_url||""})),
+      projectsText:$("localProjectsText")?.value.trim()||"",
       flags:{about:$("localShowAbout")?.checked,catalog:$("localShowCatalog")?.checked,projects:$("localShowProjects")?.checked,blog:$("localShowBlog")?.checked,contact:$("localShowContact")?.checked}
     });
   }
@@ -3795,6 +3798,7 @@ async function loadLocalCommerce(){
   renderLocalBuilderChoices();
   renderLocalDesignImportSummary();
   await loadLocalBlogPosts();
+  if(window.loadLocalProjectEditor) await window.loadLocalProjectEditor();
 }
 
 async function saveLocalCommerce(){
