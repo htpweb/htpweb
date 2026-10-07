@@ -14,7 +14,7 @@ test("self-service business claim is authenticated and still MASTER-reviewed",()
  assert.match(sql,/v_role<>'CLIENT'/);
  assert.ok(sql.includes("values('CLAIM_LOCAL',null,p_local_id,auth.uid(),'PENDING'"));
  assert.match(sql,/reclamaci.n en revisi.n/);
- assert.match(page,/submit_local_claim/);
+ assert.match(page,/submit_business_claim/);
  assert.match(page,/nuestro equipo revisará/i);
  assert.match(page,/plazo máximo de <strong>3 días<\/strong>/);
 });
@@ -34,7 +34,7 @@ test("claim onboarding starts inside each unclaimed DELIVERY-visible business",(
  const business=read("app/local.html");
  assert.doesNotMatch(landing,/Reclamar mi LOCAL/);
  assert.match(business,/Reclamar este negocio/);
- assert.match(business,/public_local_claim_state/);
+ assert.match(business,/public_business_claim_state/);
  assert.match(business,/reclamar-negocio\.html\?business=/);
 });
 

@@ -9,7 +9,7 @@ function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\
 
 test("LOCAL claim flow originates from the LOCAL page and hides once claimed or pending",()=>{
  const html=read("app/local.html");
- assert.match(html,/public_local_claim_state/);
+ assert.match(html,/public_business_claim_state/);
  assert.match(html,/Reclamar este negocio/);
  assert.match(html,/Información administrada por el negocio/);
  assert.match(html,/proceso de verificación/);
@@ -26,7 +26,7 @@ test("claim form collects ownership evidence and keeps LOCAL context through aut
  assert.match(html,/Compartir mi ubicación/);
  assert.match(html,/Solicitar código/);
  assert.match(html,/irAAcceso\(rutaActualRelativa\(\)\)/);
- assert.match(html,/claim_local_context/);
+ assert.match(html,/business_claim_context/);
 });
 
 test("backend enriches claims with challenge and WhatsApp match",()=>{

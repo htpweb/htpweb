@@ -23,7 +23,7 @@
    try{
     const [role,modes]=await Promise.all([
       supabaseClient.rpc("current_role_code"),
-      supabaseClient.rpc("my_account_modes")
+      supabaseClient.rpc("my_business_account_modes")
     ]);
     if(!role.error)roleCode=role.data||"";
     if(!modes.error)accountModes=modes.data||null;
@@ -44,9 +44,9 @@
       const on=active.mode==="DELIVERY"&&active.resource_id===d.id;
       items.push('<button type="button" class="public-profile-option '+(on?"active":"")+'" data-public-profile-mode="DELIVERY" data-public-profile-resource="'+esc(d.id)+'">'+(d.logo_url?'<img class="public-profile-avatar" src="'+esc(d.logo_url)+'" alt="">':'<span class="public-profile-avatar">D</span>')+'<span><strong>'+esc(d.name)+'</strong><small>Perfil DELIVERY</small></span>'+(on?'<b class="public-profile-check">✓</b>':'')+'</button>');
     });
-    (accountModes.locals||[]).forEach(l=>{
-      const on=active.mode==="LOCAL"&&active.resource_id===l.id;
-      items.push('<button type="button" class="public-profile-option '+(on?"active":"")+'" data-public-profile-mode="LOCAL" data-public-profile-resource="'+esc(l.id)+'">'+(l.logo_url?'<img class="public-profile-avatar" src="'+esc(l.logo_url)+'" alt="">':'<span class="public-profile-avatar">L</span>')+'<span><strong>'+esc(l.name)+'</strong><small>Perfil LOCAL</small></span>'+(on?'<b class="public-profile-check">✓</b>':'')+'</button>');
+    (accountModes.businesses||[]).forEach(business=>{
+      const on=active.mode==="BUSINESS"&&active.resource_id===business.id;
+      items.push('<button type="button" class="public-profile-option '+(on?"active":"")+'" data-public-profile-mode="BUSINESS" data-public-profile-resource="'+esc(business.id)+'">'+(business.logo_url?'<img class="public-profile-avatar" src="'+esc(business.logo_url)+'" alt="">':'<span class="public-profile-avatar">N</span>')+'<span><strong>'+esc(business.name)+'</strong><small>Perfil negocio</small></span>'+(on?'<b class="public-profile-check">✓</b>':'')+'</button>');
     });
     const wrap=document.createElement("div");
     wrap.className="public-profile-switcher";
@@ -59,7 +59,7 @@
         const mode=button.dataset.publicProfileMode;
         const resource=button.dataset.publicProfileResource||null;
         button.disabled=true;
-        const result=await supabaseClient.rpc("switch_my_account_mode",{p_mode:mode,p_resource_id:resource});
+        const result=await supabaseClient.rpc("switch_my_business_account_mode",{p_mode:mode,p_resource_id:resource});
         if(result.error){button.disabled=false;alert(result.error.message||"No se pudo cambiar de perfil.");return}
         location.href=mode==="CLIENT"?"./index.html":"./admin/index.html";
       };

@@ -36,7 +36,7 @@ test("Mi cuenta reuses protected profile customer address and claim flows",()=>{
  assert.match(page,/listarMisDireccionesCliente/);
  assert.match(page,/guardarMiDireccionCliente/);
  assert.match(page,/desactivarMiDireccionCliente/);
- assert.match(page,/my_local_claims/);
+ assert.match(page,/my_business_claims/);
  assert.match(page,/claim_delivery_referral/);
 });
 

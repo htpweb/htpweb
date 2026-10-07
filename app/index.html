@@ -216,8 +216,8 @@ async function loadCatalog() {
 
   try {
     const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
-      "public_locals_order_availability",
-      { p_local_ids: ids }
+      "public_businesses_order_availability",
+      { p_business_ids: ids }
     );
 
     if (availabilityError) throw availabilityError;

@@ -88,7 +88,7 @@
               <button id="visualMenuMobileOpen" class="visual-menu-mobile-open" type="button">Ver menú grande</button>
             </div>
             <button id="visualMenuImageButton" type="button" class="visual-menu-image-button" aria-label="Abrir menú ampliado">
-              <img id="visualMenuImage" class="visual-menu-image" alt="Menú del local">
+              <img id="visualMenuImage" class="visual-menu-image" alt="Menú del negocio">
             </button>
           </div>
 
@@ -99,7 +99,7 @@
                 <span class="muted">Abre una categoría o busca un producto.</span>
               </div>
               <div id="visualMenuClosedNotice" class="visual-menu-closed-notice hidden">
-                LOCAL CERRADO · Puedes consultar el menú, pero no agregar productos en este momento.
+                NEGOCIO CERRADO · Puedes consultar el menú, pero no agregar productos en este momento.
               </div>
               <div class="visual-menu-search-wrap">
                 <span class="visual-menu-search-icon" aria-hidden="true">⌕</span>
@@ -802,11 +802,24 @@
     return total;
   }
 
+  function currentBusinessContext() {
+    const id =
+      (typeof businessId !== "undefined" && businessId) ||
+      (typeof localId !== "undefined" && localId) ||
+      "";
+    const business =
+      (typeof businessActual !== "undefined" && businessActual) ||
+      (typeof localActual !== "undefined" && localActual) ||
+      null;
+    return { id, business };
+  }
+
   function compactMenuIsActive() {
     try {
       const preview = new URLSearchParams(location.search).get("menu_preview");
+      const { business } = currentBusinessContext();
       return String(preview || "").toUpperCase() === "COMPACT" ||
-        (typeof localActual !== "undefined" && String(localActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT");
+        String(business?.menu_design || "CURRENT").toUpperCase() === "COMPACT";
     } catch {
       return false;
     }
@@ -815,21 +828,20 @@
   async function loadMenuPages() {
     if (compactMenuIsActive()) return;
     if (loaded) return;
+    const { id: currentBusinessId, business } = currentBusinessContext();
     if (
-      typeof localId === "undefined" ||
-      !localId ||
+      !currentBusinessId ||
       typeof supabaseClient === "undefined" ||
-      typeof localActual === "undefined" ||
-      !localActual?.id ||
-      localActual.id !== localId ||
+      !business?.id ||
+      business.id !== currentBusinessId ||
       typeof products === "undefined" ||
       !Array.isArray(products) ||
       products.length === 0
     ) return;
 
     try {
-      const { data, error } = await supabaseClient.rpc("public_local_menu_pages", {
-        p_local_id: localId
+      const { data, error } = await supabaseClient.rpc("public_business_menu_pages", {
+        p_business_id: currentBusinessId
       });
       if (error) throw error;
 
@@ -860,17 +872,18 @@
       pageIndex = 0;
 
       window.dispatchEvent(new CustomEvent("htpweb:visual-menu-ready", {
-        detail: { local_id: localId }
+        detail: { business_id: currentBusinessId, local_id: currentBusinessId }
       }));
 
       const requestedPromotion = new URLSearchParams(location.search).get("promotion");
       currentView = requestedPromotion ? "promotions" : "menu";
       showView(currentView);
     } catch (error) {
-      console.warn("No se pudo cargar el menú visual del LOCAL:", error?.message || error);
+      console.warn("No se pudo cargar el menú visual del negocio:", error?.message || error);
     }
   }
 
+  window.addEventListener("htpweb:business-ready", loadMenuPages);
   window.addEventListener("htpweb:local-ready", loadMenuPages);
   window.addEventListener("htpweb:cart", syncAllMenuQuantities);
 

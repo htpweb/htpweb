@@ -28,8 +28,8 @@ test("Storefront supports cards visual menu and hybrid with predefined layouts",
 
 test("Standalone LOCAL storefront and WhatsApp cart exist",()=>{
   const shop=read("app/tienda.html"),cart=read("app/tienda-carrito.html");
-  assert.match(shop,/public_local_storefront/);
-  assert.match(shop,/public_local_menu_pages/);
+  assert.match(shop,/public_business_storefront/);
+  assert.match(shop,/public_business_menu_pages/);
   assert.match(shop,/carritoAgregar/);
   assert.match(cart,/public_local_delivery_choices/);
   assert.match(cart,/wa\.me/);

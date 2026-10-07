@@ -26,34 +26,34 @@
 <section class="card"><h2>Productos</h2><div id="products" class="product-grid"></div></section>
 </main>
 <script>
-const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),localId=params.get("local")||"";
+const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),businessId=params.get("business")||params.get("local")||"";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
-let local=null,claim=null,deliveries=[],products=[];
+let business=null,claim=null,deliveries=[],products=[];
 async function session(){
  const {data}=await supabaseClient.auth.getSession();if(data?.session){$("accountLink").textContent="Mi cuenta";$("accountLink").href="mi-cuenta.html"}
 }
 
 async function load(){
- if(!localId)throw new Error("No se especificó el negocio.");
+ if(!businessId)throw new Error("No se especificó el negocio.");
  const [l,c,d,p]=await Promise.all([
-  supabaseClient.from("locals").select("id,name,slug,description,address,banner_url,logo_url,phone,whatsapp,active").eq("id",localId).eq("active",true).single(),
-  supabaseClient.rpc("public_local_claim_state",{p_local_id:localId}),
-  supabaseClient.rpc("public_local_delivery_choices",{p_local_id:localId}),
-  supabaseClient.from("products").select("id,name,description,price,image_url,display_order").eq("local_id",localId).eq("active",true).eq("catalog_visible",true).order("display_order").limit(30)
+  supabaseClient.from("businesses").select("id,business_id,name,slug,description,address,banner_url,logo_url,phone,whatsapp,active").eq("id",businessId).eq("active",true).single(),
+  supabaseClient.rpc("public_business_claim_state",{p_business_id:businessId}),
+  supabaseClient.rpc("public_business_delivery_choices",{p_business_id:businessId}),
+  supabaseClient.from("business_products").select("id,business_id,name,description,price,image_url,display_order").eq("business_id",businessId).eq("active",true).eq("catalog_visible",true).order("display_order").limit(30)
  ]);
  if(l.error)throw l.error;if(c.error)throw c.error;if(d.error)throw d.error;if(p.error)throw p.error;
- local=l.data;claim=c.data||{};deliveries=Array.isArray(d.data)?d.data:[];products=p.data||[];render();
+ business=l.data;claim=c.data||{};deliveries=Array.isArray(d.data)?d.data:[];products=p.data||[];render();
 }
 function render(){
- document.title=local.name+" | HTPWEB";
- $("hero").innerHTML=(local.banner_url?'<img src="'+esc(local.banner_url)+'" alt="'+esc(local.name)+'">':'')+
-  '<div style="padding-top:12px"><div class="row between"><h1 style="margin:0">'+esc(local.name)+'</h1><span class="badge '+(claim.claimed?"owner":"")+'">'+(claim.claimed?"Administrado por el negocio":"No reclamado")+'</span></div>'+
-  '<p class="muted">'+esc(local.description||"")+'</p>'+(local.address?'<p><strong>Dirección:</strong> '+esc(local.address)+'</p>':'')+
-  (!claim.claimed&&!claim.pending?'<div style="margin-top:12px"><a class="btn btn-muted" href="reclamar-negocio.html?local='+encodeURIComponent(local.id)+'">¿Administras este negocio? Reclamar LOCAL</a></div>':'')+'</div>';
+ document.title=business.name+" | HTPWEB";
+ $("hero").innerHTML=(business.banner_url?'<img src="'+esc(business.banner_url)+'" alt="'+esc(business.name)+'">':'')+
+  '<div style="padding-top:12px"><div class="row between"><h1 style="margin:0">'+esc(business.name)+'</h1><span class="badge '+(claim.claimed?"owner":"")+'">'+(claim.claimed?"Administrado por el negocio":"No reclamado")+'</span></div>'+
+  '<p class="muted">'+esc(business.description||"")+'</p>'+(business.address?'<p><strong>Dirección:</strong> '+esc(business.address)+'</p>':'')+
+  (!claim.claimed&&!claim.pending?'<div style="margin-top:12px"><a class="btn btn-muted" href="reclamar-negocio.html?business='+encodeURIComponent(business.id)+'">¿Administras este negocio? Reclamar negocio</a></div>':'')+'</div>';
  const rows=[];
- if(claim.claimed)rows.push('<div class="channel"><h3>Compra directa</h3><p class="muted">El pedido es gestionado directamente por '+esc(local.name)+'.</p><a class="btn btn-primary" href="tienda.html?local='+encodeURIComponent(local.slug||local.id)+'&src=htpweb">Comprar directo al negocio</a></div>');
- deliveries.forEach(d=>rows.push('<div class="channel"><h3>'+esc(d.name)+'</h3><p class="muted">Compra mediante este DELIVERY y continúa con su flujo de pedido y entrega.</p><a class="btn btn-dark" href="local.html?delivery='+encodeURIComponent(d.slug)+'&local='+encodeURIComponent(local.id)+'">Comprar con '+esc(d.name)+'</a></div>'));
+ if(claim.claimed)rows.push('<div class="channel"><h3>Compra directa</h3><p class="muted">El pedido es gestionado directamente por '+esc(business.name)+'.</p><a class="btn btn-primary" href="tienda.html?business='+encodeURIComponent(business.slug||business.id)+'&src=htpweb">Comprar directo al negocio</a></div>');
+ deliveries.forEach(d=>rows.push('<div class="channel"><h3>'+esc(d.name)+'</h3><p class="muted">Compra mediante este DELIVERY y continúa con su flujo de pedido y entrega.</p><a class="btn btn-dark" href="local.html?delivery='+encodeURIComponent(d.slug)+'&business='+encodeURIComponent(business.id)+'">Comprar con '+esc(d.name)+'</a></div>'));
  if(!claim.claimed&&deliveries.length)rows.unshift('<div class="channel"><h3>Compra mediante DELIVERY</h3><p class="muted">Este negocio todavía no está reclamado. Los pedidos se gestionan únicamente mediante un DELIVERY vinculado.</p></div>');
  $("channels").innerHTML=rows.length?rows.join(""):'<div class="error">Este negocio todavía no tiene un canal de compra disponible.</div>';
  $("products").innerHTML=products.length?products.map(p=>'<article class="product">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="'+esc(p.name)+'">':'')+'<div class="body"><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div><div style="margin-top:8px"><strong>'+money(p.price)+'</strong></div></div></article>').join(""):'<div class="muted">Este negocio todavía no tiene productos visibles.</div>';

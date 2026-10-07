@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reclamar LOCAL | HTPWEB</title>
+<title>Reclamar negocio | HTPWEB</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js"></script>
@@ -23,11 +23,11 @@
 <body>
 <main class="claim-shell">
   <div class="row between" style="gap:12px;flex-wrap:wrap">
-    <div><h1>Reclamar este LOCAL</h1><p class="muted">Verificaremos que realmente administras el negocio antes de entregarte el control.</p></div>
-    <div class="row"><a class="btn-muted" href="mis-reclamaciones.html">Mis reclamaciones</a><button id="backBtn" class="btn-muted">Volver al LOCAL</button></div>
+    <div><h1>Reclamar este negocio</h1><p class="muted">Verificaremos que realmente administras el negocio antes de entregarte el control.</p></div>
+    <div class="row"><a class="btn-muted" href="mis-reclamaciones.html">Mis reclamaciones</a><button id="backBtn" class="btn-muted">Volver al negocio</button></div>
   </div>
   <div id="message" class="hidden"></div>
-  <section id="localCard" class="claim-card"><div class="muted">Cargando LOCAL…</div></section>
+  <section id="localCard" class="claim-card"><div class="muted">Cargando negocio…</div></section>
   <section id="statusCard" class="claim-card hidden"></section>
   <section id="formCard" class="claim-card hidden">
     <h2>1. Datos del responsable</h2>
@@ -39,7 +39,7 @@
 
     <h2 style="margin-top:22px">2. Verifica la propiedad</h2>
     <div class="grid2">
-      <div id="whatsappChoice" class="verify-choice active" tabindex="0"><strong>WhatsApp registrado</strong><p class="muted">Recibe un código en el número que HTPWEB ya tiene para este LOCAL.</p></div>
+      <div id="whatsappChoice" class="verify-choice active" tabindex="0"><strong>WhatsApp registrado</strong><p class="muted">Recibe un código en el número que HTPWEB ya tiene para este negocio.</p></div>
       <div id="documentChoice" class="verify-choice" tabindex="0"><strong>Ya no tengo ese número</strong><p class="muted">Verificación manual con documentos, fotos y ubicación.</p></div>
     </div>
 
@@ -57,11 +57,11 @@
       <div class="grid2" style="margin-top:14px">
         <div><label>RUC / RIMPE / documento comercial (PDF) *</label><input id="rucPdf" type="file" accept="application/pdf"><div class="file-help">Máximo 8 MB.</div></div>
         <div><label>Cédula o identificación del responsable (PDF) *</label><input id="identityPdf" type="file" accept="application/pdf"><div class="file-help">Máximo 8 MB.</div></div>
-        <div><label>Foto exterior del LOCAL *</label><input id="exteriorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
-        <div><label>Foto interior del LOCAL *</label><input id="interiorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+        <div><label>Foto exterior del negocio *</label><input id="exteriorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+        <div><label>Foto interior del negocio *</label><input id="interiorPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div><label>Foto interior mostrando el código HTPWEB *</label><input id="codePhoto" type="file" accept="image/jpeg,image/png,image/webp"></div>
         <div style="grid-column:1/-1">
-          <label>Ubicación del LOCAL *</label>
+          <label>Ubicación del negocio *</label>
           <div id="registeredLocation" class="file-help">Cargando ubicación registrada…</div>
           <div id="claimLocationMap" class="claim-map"></div>
           <div class="claim-map-legend">
@@ -174,7 +174,7 @@ function fillExisting(p){
 }
 async function ensureChallenge(){
   if(challengeCode)return challengeCode;
-  const {data,error}=await supabaseClient.rpc("prepare_local_claim_challenge",{p_local_id:businessId});if(error)throw error;
+  const {data,error}=await supabaseClient.rpc("prepare_business_claim_challenge",{p_business_id:businessId});if(error)throw error;
   challengeCode=data;$("challengeCode").textContent=data;return data;
 }
 async function invokeOtp(action,code=null){
@@ -262,7 +262,7 @@ async function submit(){
       const {error}=await supabaseClient.rpc("update_local_claim_evidence",{p_request_id:context.request.id,p_evidence:payload});if(error)throw error;
       show("Información adicional enviada. La revisión continuará y podrás seguirla desde Mis reclamaciones.","success");
     }else{
-      const {error}=await supabaseClient.rpc("submit_local_claim",{p_local_id:businessId,p_evidence:payload});if(error)throw error;
+      const {error}=await supabaseClient.rpc("submit_business_claim",{p_business_id:businessId,p_evidence:payload});if(error)throw error;
       show(method==="DOCUMENT_LOCATION"?"Solicitud recibida. Revisaremos la información y te daremos respuesta en un plazo máximo de 3 días.":"WhatsApp validado. Tu reclamación fue enviada correctamente.","success");
     }
     await load();
@@ -272,7 +272,7 @@ async function submit(){
 async function load(){
   if(!businessId)throw new Error("La reclamación debe iniciarse desde la página de un negocio.");
   currentUser=await obtenerUsuarioActual();if(!currentUser){irAAcceso(rutaActualRelativa());return}
-  const {data,error}=await supabaseClient.rpc("claim_local_context",{p_local_id:businessId});if(error)throw error;if(!data)throw new Error("Negocio no disponible.");
+  const {data,error}=await supabaseClient.rpc("business_claim_context",{p_business_id:businessId});if(error)throw error;if(!data)throw new Error("Negocio no disponible.");
   context=data;renderState();
 }
 $("backBtn").onclick=()=>location.href=backUrl();

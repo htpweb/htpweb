@@ -77,18 +77,18 @@
       } catch (_) {}
     }
 
-    let localId = text(row, ["local_id"]);
+    let localId = text(row, ["business_id", "local_id"]);
     let productId = text(row, ["product_id"]);
 
     if (productId && !localId) {
       const { data, error } = await supabaseClient
-        .from("products")
-        .select("id,local_id,active")
+        .from("business_products")
+        .select("id,business_id,active")
         .eq("id", productId)
         .eq("active", true)
         .maybeSingle();
       if (error || !data) return null;
-      localId = data.local_id;
+      localId = data.business_id;
     }
 
     if (contextMode === "local") {
@@ -100,16 +100,16 @@
 
     if (localId) {
       const { data: relation, error } = await supabaseClient
-        .from("local_deliveries")
-        .select("local_id")
+        .from("business_deliveries")
+        .select("business_id")
         .eq("delivery_id", delivery.id)
-        .eq("local_id", localId)
+        .eq("business_id", localId)
         .eq("active", true)
         .maybeSingle();
 
       if (error || !relation) return null;
 
-      const params = { local: localId };
+      const params = { business: localId };
       if (productId) params.product = productId;
       return urlDelivery("local.html", params);
     }
@@ -127,7 +127,7 @@
       description: String(text(row, ["description", "subtitle", "body", "message"], "")),
       image: String(text(row, ["image_url", "banner_url", "media_url"], "")),
       priority: Number(text(row, ["priority", "display_order", "weight"], 0)) || 0,
-      localId: text(row, ["local_id"]) || null,
+      localId: text(row, ["business_id", "local_id"]) || null,
       productId: text(row, ["product_id"]) || null,
       href
     };
@@ -390,11 +390,11 @@
         const pathParts = location.pathname.split("/").filter(Boolean);
         const htpIndex = pathParts.indexOf("htpweb");
         const cleanKey = htpIndex >= 0 ? (pathParts[htpIndex + 1] || "") : "";
-        const key = params.get("local") || cleanKey;
+        const key = params.get("business") || params.get("local") || cleanKey;
         if (!key || key === "app") return;
-        const result = await supabaseClient.rpc("public_local_storefront", { p_local_key: key });
-        if (result.error || !result.data?.local?.id) return;
-        localStore = result.data.local;
+        const result = await supabaseClient.rpc("public_business_storefront", { p_business_key: key });
+        if (result.error || !result.data?.business?.id) return;
+        localStore = result.data.business;
       }
 
       const speedResult = await supabaseClient.rpc("advertising_carousel_speed");
@@ -406,7 +406,7 @@
       }
 
       const { data, error } = contextMode === "local"
-        ? await supabaseClient.rpc("public_local_advertisements", { p_local_id: localStore.id })
+        ? await supabaseClient.rpc("public_business_advertisements", { p_business_id: localStore.id })
         : await supabaseClient.rpc("public_delivery_advertisements", { p_delivery_id: delivery.id });
 
       if (error) {

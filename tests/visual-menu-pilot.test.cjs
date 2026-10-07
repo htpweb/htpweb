@@ -8,7 +8,7 @@ const migration=fs.readFileSync("supabase/migrations/20260927003957_pilot_visual
 
 test("piloto de menú visual está habilitado en la página del LOCAL",()=>{
   assert.match(local,/config\/menu-viewer\.js/);
-  assert.match(menu,/public_local_menu_pages/);
+  assert.match(menu,/public_business_menu_pages/);
   assert.match(menu,/Productos de esta hoja/);
   assert.match(menu,/MENÚ/);
   assert.match(menu,/PROMOCIONES/);
@@ -109,7 +109,7 @@ test("pestaña PRODUCTOS se reemplaza por PROMOCIONES en locales con menú visua
 
 test("promociones programadas pueden mostrarse bloqueadas fuera de vigencia",()=>{
   const promotions=fs.readFileSync("config/promotions.js","utf8");
-  assert.match(promotions,/public_local_promotions_catalog/);
+  assert.match(promotions,/public_business_promotions_catalog/);
   assert.match(promotions,/available_now/);
   assert.match(promotions,/promotionDisabled/);
   assert.match(promotions,/Disponible los/);
@@ -200,7 +200,7 @@ test("LOCAL cerrado sigue permitiendo consultar pero explica por qué no se pued
   assert.match(local,/id="localOrderStatusNotice"/);
   assert.match(local,/Este negocio está CERRADO en este momento/);
   assert.match(menu,/visualMenuClosedNotice/);
-  assert.match(menu,/LOCAL CERRADO/);
+  assert.match(menu,/NEGOCIO CERRADO/);
 });
 
 test("LOCAL cerrado reemplaza los controles de compra por candado y aviso",()=>{

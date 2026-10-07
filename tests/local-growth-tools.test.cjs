@@ -25,7 +25,7 @@ test("LOCAL store preserves social attribution into cart and WhatsApp",()=>{
   const cart=read("app/tienda-carrito.html");
   assert.match(shop,/params\.get\("src"\)/);
   assert.match(shop,/params\.get\("campaign"\)/);
-  assert.match(shop,/record_local_storefront_event/);
+  assert.match(shop,/record_business_storefront_event/);
   assert.match(cart,/WHATSAPP_ORDER/);
   assert.match(cart,/CHECKOUT_VIEW/);
   assert.match(cart,/p_source:source/);
@@ -33,10 +33,10 @@ test("LOCAL store preserves social attribution into cart and WhatsApp",()=>{
 
 test("LOCAL standalone page surfaces promotions and hybrid catalogue",()=>{
   const shop=read("app/tienda.html");
-  assert.match(shop,/public_local_promotions_catalog/);
+  assert.match(shop,/public_business_promotions_catalog/);
   assert.match(shop,/renderPromotions/);
   assert.match(shop,/PROMOTION_VIEW/);
-  assert.match(shop,/public_local_menu_pages/);
+  assert.match(shop,/public_business_menu_pages/);
 });
 
 test("LOCAL_ADMIN has Marketing, Analytics attribution and Inventory workspaces",()=>{

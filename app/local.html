@@ -110,8 +110,8 @@ async function init() {
 
     try {
       const { data: claimData, error: claimError } = await supabaseClient.rpc(
-        "public_local_claim_state",
-        { p_local_id: businessId }
+        "public_business_claim_state",
+        { p_business_id: businessId }
       );
       if (claimError) throw claimError;
       claimState = claimData || null;
@@ -122,8 +122,8 @@ async function init() {
 
     try {
       const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
-        "public_locals_order_availability",
-        { p_local_ids: [businessId] }
+        "public_businesses_order_availability",
+        { p_business_ids: [businessId] }
       );
 
       if (availabilityError) throw availabilityError;
@@ -165,7 +165,7 @@ async function init() {
         .eq("active", true)
         .order("display_order")
         .order("name"),
-      supabaseClient.rpc("public_local_inventory", { p_local_id: businessId })
+      supabaseClient.rpc("public_business_inventory", { p_business_id: businessId })
     ]);
     if (categoryRes.error) throw categoryRes.error;
     categories = categoryRes.data || [];
@@ -173,6 +173,7 @@ async function init() {
 
     render();
     applyCompactMenuIfNeeded();
+    window.dispatchEvent(new CustomEvent("htpweb:business-ready"));
     window.dispatchEvent(new CustomEvent("htpweb:local-ready"));
 
     if (sharedProductId) {
@@ -231,7 +232,7 @@ function applyCompactMenuIfNeeded() {
   if (compactMenuController?.destroy) compactMenuController.destroy();
   compactMenuController = window.HTPWEBCompactMenu?.mount({
     root,
-    local: businessActual,
+    business: businessActual,
     products,
     variants,
     categories,

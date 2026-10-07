@@ -18,18 +18,34 @@
   const mixSelections = new Map();
   let promotionViewerCard = null;
 
-  function currentLocalId() {
+  function currentBusinessId() {
     const params = new URLSearchParams(location.search);
-    return params.get("local") || params.get("id") || "";
+    return (
+      (typeof businessId !== "undefined" && businessId) ||
+      params.get("business") ||
+      params.get("local") ||
+      params.get("id") ||
+      ""
+    );
   }
 
-  function localIsClosed() {
+  function currentBusiness() {
+    return (
+      (typeof businessActual !== "undefined" && businessActual) ||
+      (typeof localActual !== "undefined" && localActual) ||
+      null
+    );
+  }
+
+  function businessIsClosed() {
     return typeof availability !== "undefined" && availability && availability.is_open !== true;
   }
 
   function promotionMatcher(promotionId, promotionItemId = null) {
+    const businessIdValue = currentBusinessId();
     return {
-      local_id: currentLocalId(),
+      business_id: businessIdValue,
+      local_id: businessIdValue,
       promotion_id: promotionId,
       promotion_item_id: promotionItemId || null
     };
@@ -91,11 +107,11 @@
     if (!promotion) return "No disponible";
 
     if (promotionIsAvailableNow(promotion)) {
-      if (localIsClosed()) {
+      if (businessIsClosed()) {
         const info = typeof availabilityMessage === "function"
           ? availabilityMessage()
           : null;
-        return info?.text || "Local cerrado";
+        return info?.text || "Negocio cerrado";
       }
       return "Disponible ahora";
     }
@@ -123,7 +139,7 @@
   }
 
   function promotionDisabled(promotion) {
-    return !promotionIsAvailableNow(promotion) || localIsClosed();
+    return !promotionIsAvailableNow(promotion) || businessIsClosed();
   }
 
   function promotionMixConfig(promotion) {
@@ -186,9 +202,9 @@
       throw new Error(promotionAvailabilityText(promotion));
     }
 
-    if (localIsClosed()) {
+    if (businessIsClosed()) {
       const info = typeof availabilityMessage === "function" ? availabilityMessage() : null;
-      throw new Error(info?.text || "Este LOCAL no está disponible para pedidos en este momento.");
+      throw new Error(info?.text || "Este negocio no está disponible para pedidos en este momento.");
     }
 
     const items = Array.isArray(promotion.items) ? promotion.items : [];
@@ -214,11 +230,11 @@
 
       carritoAgregar(negocioActual.slug, {
         kind: "PROMOTION",
-        local_id: currentLocalId(),
+        local_id: currentBusinessId(),
         promotion_id: promotion.id,
         promotion_item_id: option?.id || null,
         snapshot: {
-          local_name: typeof localActual !== "undefined" ? localActual?.name || null : null,
+          local_name: currentBusiness()?.name || null,
           promotion_title: promotion.title,
           promotion_type: promotion.promotion_type,
           promotion_image_url: promotion.image_url || null,
@@ -317,11 +333,11 @@
 
       carritoAgregar(negocioActual.slug, {
         kind: "PROMOTION",
-        local_id: currentLocalId(),
+        local_id: currentBusinessId(),
         promotion_id: promotion.id,
         promotion_item_id: null,
         snapshot: {
-          local_name: typeof localActual !== "undefined" ? localActual?.name || null : null,
+          local_name: currentBusiness()?.name || null,
           promotion_title: promotion.title,
           promotion_type: promotion.promotion_type,
           promotion_image_url: promotion.image_url || null,
@@ -692,7 +708,7 @@
     if (!card || !list) return;
 
     if (!publicPromotions.length) {
-      list.innerHTML = '<div class="empty">Este local no tiene promociones programadas.</div>';
+      list.innerHTML = '<div class="empty">Este negocio no tiene promociones programadas.</div>';
       if (!tabManaged) card.classList.add("hidden");
       return;
     }
@@ -708,10 +724,10 @@
   }
 
   async function loadPublicPromotions(forceCatalog = false) {
-    const localId = currentLocalId();
+    const businessIdValue = currentBusinessId();
     const card = document.getElementById("promotionsCard");
     const list = document.getElementById("promotionsListPublic");
-    if (!localId || !card || !list || typeof supabaseClient === "undefined") return;
+    if (!businessIdValue || !card || !list || typeof supabaseClient === "undefined") return;
 
     const useCatalog = Boolean(
       forceCatalog ||
@@ -721,11 +737,11 @@
 
     try {
       const rpcName = useCatalog
-        ? "public_local_promotions_catalog"
-        : "public_active_local_promotions";
+        ? "public_business_promotions_catalog"
+        : "public_active_business_promotions";
 
       const { data, error } = await supabaseClient.rpc(rpcName, {
-        p_local_id: localId
+        p_business_id: businessIdValue
       });
       if (error) throw error;
 
@@ -784,6 +800,7 @@
   };
 
   window.addEventListener("htpweb:cart", syncPromotionCounts);
+  window.addEventListener("htpweb:business-ready", renderPublicPromotions);
   window.addEventListener("htpweb:local-ready", renderPublicPromotions);
   window.addEventListener("htpweb:visual-menu-ready", () => setTabManaged(true));
 

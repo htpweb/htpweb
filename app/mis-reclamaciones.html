@@ -44,16 +44,16 @@ function timeline(row){
     ((!pending&&!needs&&!approved&&!rejected)?'<span>'+esc(end)+'</span>':'')+'</div>';
 }
 function render(rows){
-  if(!rows.length){$("list").innerHTML='<div class="claim-item"><h2>Aún no tienes reclamaciones</h2><p class="muted">Cuando reclames un LOCAL, podrás seguir aquí todo el proceso.</p></div>';return}
+  if(!rows.length){$("list").innerHTML='<div class="claim-item"><h2>Aún no tienes reclamaciones</h2><p class="muted">Cuando reclames un negocio, podrás seguir aquí todo el proceso.</p></div>';return}
   $("list").innerHTML=rows.map(row=>{
     const p=row.payload||{},status=label(row);
     const deadline=p.review_deadline?new Date(p.review_deadline).toLocaleString():"—";
     const method=p.verification_method==="REGISTERED_WHATSAPP"?"WhatsApp registrado":p.verification_method==="DOCUMENT_LOCATION"?"Documentos + ubicación":p.verification_method||"—";
     const action=row.status==="NEEDS_INFO"&&!row.applied_at
-      ?'<a class="btn btn-primary" href="reclamar-negocio.html?local='+encodeURIComponent(row.local_id)+(p.source_delivery_slug?'&delivery='+encodeURIComponent(p.source_delivery_slug):'')+'">Completar información</a>':"";
+      ?'<a class="btn btn-primary" href="reclamar-negocio.html?business='+encodeURIComponent(row.business_id)+(p.source_delivery_slug?'&delivery='+encodeURIComponent(p.source_delivery_slug):'')+'">Completar información</a>':"";
     return '<section class="claim-item"><div class="claim-head">'+
-      (row.local_logo_url?'<img class="claim-logo" src="'+esc(row.local_logo_url)+'" alt="">':'<div class="claim-logo"></div>')+
-      '<div><h2 style="margin:0">'+esc(row.local_name)+'</h2><div class="muted">'+new Date(row.created_at).toLocaleString()+'</div></div></div>'+
+      (row.business_logo_url?'<img class="claim-logo" src="'+esc(row.business_logo_url)+'" alt="">':'<div class="claim-logo"></div>')+
+      '<div><h2 style="margin:0">'+esc(row.business_name||"Negocio")+'</h2><div class="muted">'+new Date(row.created_at).toLocaleString()+'</div></div></div>'+
       timeline(row)+'<div class="meta"><div><strong>Estado:</strong> '+esc(status)+'</div><div><strong>Método:</strong> '+esc(method)+'</div>'+
       '<div><strong>Plazo informado:</strong> '+esc(deadline)+'</div><div><strong>Código:</strong> '+esc(p.challenge_code||"—")+'</div></div>'+
       (row.review_note?'<div class="note" style="margin-top:12px"><strong>Comentario de HTPWEB</strong><p style="margin-bottom:0">'+esc(row.review_note)+'</p></div>':'')+
@@ -65,7 +65,7 @@ async function init(){
   const user=await obtenerUsuarioActual();if(!user){irAAcceso(rutaActualRelativa());return}
   const {data:role,error:roleError}=await supabaseClient.rpc("current_role_code");if(roleError)throw roleError;
   if(role!=="CLIENT")throw new Error("Esta sección corresponde a cuentas CLIENT.");
-  const {data,error}=await supabaseClient.rpc("my_local_claims");if(error)throw error;
+  const {data,error}=await supabaseClient.rpc("my_business_claims");if(error)throw error;
   render(Array.isArray(data)?data:[]);
 }
 $("backBtn").onclick=()=>history.length>1?history.back():location.href="../index.html";

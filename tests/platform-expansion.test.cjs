@@ -224,7 +224,7 @@ test("Mi cuenta exposes plans subscriptions and visual configuration",()=>{
   const account=read("app/mi-cuenta.html");
   assert.match(account,/id="plans"/);
   assert.match(account,/Planes y suscripciones/);
-  assert.match(account,/my_plans_and_subscriptions/);
+  assert.match(account,/my_business_plans_and_subscriptions/);
   assert.match(account,/id="settings"/);
   assert.match(account,/Configuración/);
   assert.match(account,/accountTheme/);

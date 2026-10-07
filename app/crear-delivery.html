@@ -105,7 +105,7 @@ async function submit(){
   $("submitBtn").disabled=true;$("submitBtn").textContent="Creando DELIVERY…";
   const {data,error}=await supabaseClient.rpc("create_my_delivery",{p_name:name,p_description:$("description").value.trim(),p_phone:$("phone").value.trim(),p_whatsapp:whatsapp,p_zone_id:selectedZoneId});
   if(error)throw error;
-  const sw=await supabaseClient.rpc("switch_my_account_mode",{p_mode:"DELIVERY",p_resource_id:data});if(sw.error)throw sw.error;
+  const sw=await supabaseClient.rpc("switch_my_business_account_mode",{p_mode:"DELIVERY",p_resource_id:data});if(sw.error)throw sw.error;
   msg("DELIVERY creado. Abriendo tu panel…");setTimeout(()=>location.href="../admin/index.html",500);
  }catch(e){msg(e.message||"No se pudo crear el DELIVERY.","error");$("submitBtn").disabled=false;$("submitBtn").textContent="Crear mi DELIVERY"}
 }

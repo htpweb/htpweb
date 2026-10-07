@@ -53,7 +53,7 @@ test("account history reads canonical BUSINESS orders",()=>{
 test("canonical business claim route accepts business and legacy local query params",()=>{
   const claim=read("app/reclamar-negocio.html");
   assert.match(claim,/params\.get\("business"\)\|\|params\.get\("local"\)/);
-  assert.match(claim,/p_local_id:businessId/);
+  assert.match(claim,/p_business_id:businessId/);
 });
 
 test("modified business pages keep valid inline JavaScript",()=>{

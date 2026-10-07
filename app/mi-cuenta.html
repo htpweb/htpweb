@@ -242,14 +242,14 @@ async function loadCustomer(){
  deliveries=deliveryRows.map(d=>({...d,relation:(delRes.data||[]).find(r=>r.delivery_id===d.id)||null}));directBusinesses=businessRows;
 }
 async function loadAddresses(){if(!customerId){addresses=[];return}addresses=await listarMisDireccionesCliente({soloActivas:true})}
-async function loadClaims(){const r=await supabaseClient.rpc("my_local_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
+async function loadClaims(){const r=await supabaseClient.rpc("my_business_claims");if(r.error)throw r.error;claims=Array.isArray(r.data)?r.data:[]}
 async function loadManagedEntities(){
- const modes=await supabaseClient.rpc("my_account_modes");if(modes.error)throw modes.error;
+ const modes=await supabaseClient.rpc("my_business_account_modes");if(modes.error)throw modes.error;
  ownedBusinesses=Array.isArray(modes.data?.businesses)?modes.data.businesses:(Array.isArray(modes.data?.locals)?modes.data.locals:[]);
  managedDeliveries=Array.isArray(modes.data?.deliveries)?modes.data.deliveries:[];
 }
 async function loadPlans(){
- const r=await supabaseClient.rpc("my_plans_and_subscriptions");if(r.error)throw r.error;
+ const r=await supabaseClient.rpc("my_business_plans_and_subscriptions");if(r.error)throw r.error;
  const raw=r.data||{};
  plansData={
    ...raw,
@@ -387,12 +387,11 @@ function renderManagedEntities(){
  document.querySelectorAll("[data-open-delivery]").forEach(button=>button.onclick=()=>openWorkspace("DELIVERY",button.dataset.openDelivery));
 }
 async function openWorkspace(mode,resourceId){
- const backendMode=window.HTPBusinessDomain?.toLegacyTargetType(mode)||(mode==="BUSINESS"?"LOCAL":mode);
- try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:backendMode,p_resource_id:resourceId});if(r.error)throw r.error;location.href="../admin/index.html"}
+ try{const r=await supabaseClient.rpc("switch_my_business_account_mode",{p_mode:mode,p_resource_id:resourceId});if(r.error)throw r.error;location.href="../admin/index.html"}
  catch(e){show(e.message||"No se pudo abrir el espacio administrativo.","error")}
 }
 async function switchClientMode(){
- try{const r=await supabaseClient.rpc("switch_my_account_mode",{p_mode:"CLIENT",p_resource_id:null});if(r.error)throw r.error;location.href="../index.html"}
+ try{const r=await supabaseClient.rpc("switch_my_business_account_mode",{p_mode:"CLIENT",p_resource_id:null});if(r.error)throw r.error;location.href="../index.html"}
  catch(e){show(e.message||"No se pudo cambiar al modo cliente.","error")}
 }
 
@@ -450,7 +449,7 @@ async function saveAddress(){
  }catch(e){show(e.message||"No se pudo guardar la dirección.","error")}
 }
 function renderClaims(){
- const rows=claims.slice(0,3);$("claimsList").innerHTML=rows.length?rows.map(c=>'<div class="claim-row"><strong>'+esc(c.local_name)+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[c.status]||c.status)+'</span></div></div>').join(""):'<div class="empty">No tienes reclamaciones activas.</div>';
+ const rows=claims.slice(0,3);$("claimsList").innerHTML=rows.length?rows.map(c=>'<div class="claim-row"><strong>'+esc(c.business_name||"Negocio")+'</strong><div><span class="pill">'+esc(({PENDING:"En revisión",NEEDS_INFO:"Información requerida",APPROVED:"Aprobada",REJECTED:"Rechazada"})[c.status]||c.status)+'</span></div></div>').join(""):'<div class="empty">No tienes reclamaciones activas.</div>';
 }
 async function setDefaultAddress(id){
  const a=addresses.find(x=>x.id===id);if(!a)return;

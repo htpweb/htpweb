@@ -132,7 +132,7 @@ function _htpwebAuthActiveHref() {
 
 async function _htpwebAccountModes(){
   try{
-    const result=await supabaseClient.rpc("my_account_modes");
+    const result=await supabaseClient.rpc("my_business_account_modes");
     return result.error?null:(result.data||null);
   }catch{return null}
 }
@@ -180,10 +180,9 @@ function _htpwebBindProfileSwitcher(root,{clientHref,workspaceHref}){
     button.addEventListener("click",async()=>{
       const mode=button.dataset.htpProfileMode;
       const resource=button.dataset.htpProfileResource||null;
-      const backendMode=window.HTPBusinessDomain?.toLegacyTargetType(mode)||(mode==="BUSINESS"?"LOCAL":mode);
       button.disabled=true;
       try{
-        const result=await supabaseClient.rpc("switch_my_account_mode",{p_mode:backendMode,p_resource_id:resource});
+        const result=await supabaseClient.rpc("switch_my_business_account_mode",{p_mode:mode,p_resource_id:resource});
         if(result.error)throw result.error;
         location.href=mode==="CLIENT"?clientHref:workspaceHref;
       }catch(error){

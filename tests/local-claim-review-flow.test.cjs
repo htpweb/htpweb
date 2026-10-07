@@ -37,7 +37,7 @@ test("CLIENT can track claim progress and MASTER gets private evidence links",()
  const account=read("app/mi-cuenta.html");
  const admin=read("admin/admin.js");
  const sql=read("supabase/migrations/20261003041848_local_claim_review_flow.sql");
- assert.match(panel,/my_local_claims/);
+ assert.match(panel,/my_business_claims/);
  assert.match(panel,/INFORMACIÓN ADICIONAL REQUERIDA/);
  assert.match(panel,/Comentario de HTPWEB/);
  assert.match(account,/Mis reclamaciones/);

@@ -262,8 +262,8 @@ async function previewMasterMenuDesign(){
      supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,image_url,featured,display_order").eq("local_id",local.id).eq("active",true).eq("catalog_visible",true).order("display_order").order("name"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
      supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",local.id).eq("active",true).order("display_order").order("name"),
-     supabaseClient.rpc("public_local_inventory",{p_local_id:local.id}),
-     supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[local.id]})
+     supabaseClient.rpc("public_business_inventory",{p_business_id:local.id}),
+     supabaseClient.rpc("public_businesses_order_availability",{p_business_ids:[local.id]})
    ]);
    if(pRes.error)throw pRes.error;if(vRes.error)throw vRes.error;if(cRes.error)throw cRes.error;
    const products=pRes.data||[],ids=new Set(products.map(x=>x.id)),variants=(vRes.data||[]).filter(x=>ids.has(x.product_id));

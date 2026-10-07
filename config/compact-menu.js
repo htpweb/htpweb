@@ -31,11 +31,11 @@ function stockFor(state,p,v){
  return state.inventory.find(x=>String(x.product_id)===String(p.id)&&String(x.variant_id||"")===String(v?.id||""))||null;
 }
 async function loadReferences(state){
- if(!window.supabaseClient||!state.local?.id)return;
+ if(!window.supabaseClient||!state.business?.id)return;
  try{
   const [m,g]=await Promise.all([
-   window.supabaseClient.rpc("public_local_menu_pages",{p_local_id:state.local.id}),
-   window.supabaseClient.rpc("public_list_local_gallery",{p_local_id:state.local.id})
+   window.supabaseClient.rpc("public_business_menu_pages",{p_business_id:state.business.id}),
+   window.supabaseClient.rpc("public_list_business_gallery",{p_business_id:state.business.id})
   ]);
   state.menuPages=Array.isArray(m.data)?m.data:[];
   state.gallery=Array.isArray(g.data)?g.data:[];
@@ -93,7 +93,7 @@ function render(state,opts={}){
  const groups=categoryGroups(state.products,state.categories);
  const visibleGroups=groups.map(g=>({...g,products:g.products.filter(p=>(!state.category||state.category===g.id)&&(!q||[p.name,p.description,p.short_description].some(v=>String(v||"").toLowerCase().includes(q))))})).filter(g=>g.products.length);
  const featured=state.products.filter(p=>p.featured&&p.image_url&&(!state.category||String(p.category_id||"__OTHER__")===state.category)&&(!q||[p.name,p.description,p.short_description].some(v=>String(v||"").toLowerCase().includes(q))));
- const initial=String(state.local?.name||"Restaurante").trim().charAt(0).toUpperCase()||"R";
+ const initial=String(state.business?.name||"Restaurante").trim().charAt(0).toUpperCase()||"R";
  const canOrder=!state.preview&&a.open&&state.cart?.canOrder!==false;
  const categoryButtons=['<button class="cm-chip '+(!state.category?"active":"")+'" data-cm-category="">Todo</button>'].concat(groups.map(g=>'<button class="cm-chip '+(state.category===g.id?"active":"")+'" data-cm-category="'+esc(g.id)+'">'+esc(g.name)+'</button>')).join("");
  const productMarkup=visibleGroups.map(g=>'<section class="cm-group" id="cm-cat-'+esc(g.id)+'"><h2>'+esc(g.name)+'</h2><div class="cm-products">'+g.products.map(p=>{
@@ -110,8 +110,8 @@ function render(state,opts={}){
     '</div><div class="cm-qty" aria-label="Cantidad de '+esc(p.name)+'"><button type="button" data-cm-change="-1" data-product="'+esc(p.id)+'" '+(!canOrder?"disabled":"")+' aria-label="Quitar">−</button><span data-cm-qty="'+esc(p.id)+'">'+Number(state.cart?.getQuantity?.(p,v)||0)+'</span><button type="button" data-cm-change="1" data-product="'+esc(p.id)+'" '+(!canOrder||sold?"disabled":"")+' aria-label="Agregar">+</button></div></article>';
  }).join("")+'</div></section>').join("");
  state.root.innerHTML='<div class="htp-compact-menu">'+
-  '<header class="cm-head">'+(state.local?.logo_url?'<img class="cm-logo" src="'+esc(state.local.logo_url)+'" alt="'+esc(state.local.name||"Restaurante")+'">':'<span class="cm-logo-fallback">'+esc(initial)+'</span>')+
-   '<div class="cm-head-copy"><h1>'+esc(state.local?.name||"Restaurante")+'</h1><div class="cm-availability '+(a.open?"":"is-closed")+'"><span class="cm-availability-dot"></span><span>'+esc(a.text)+'</span></div></div></header>'+
+  '<header class="cm-head">'+(state.business?.logo_url?'<img class="cm-logo" src="'+esc(state.business.logo_url)+'" alt="'+esc(state.business.name||"Restaurante")+'">':'<span class="cm-logo-fallback">'+esc(initial)+'</span>')+
+   '<div class="cm-head-copy"><h1>'+esc(state.business?.name||"Restaurante")+'</h1><div class="cm-availability '+(a.open?"":"is-closed")+'"><span class="cm-availability-dot"></span><span>'+esc(a.text)+'</span></div></div></header>'+
   (state.preview?'<div class="cm-preview-note">Vista previa de MASTER. Los controles de compra están desactivados y no modifican el carrito.</div>':"")+
   '<div class="cm-toolbar"><div class="cm-search-wrap"><span class="cm-search-icon">⌕</span><input class="cm-search" data-cm-search type="search" placeholder="Buscar en el menú" aria-label="Buscar en el menú"></div><div class="cm-categories">'+categoryButtons+'</div></div>'+
   (featured.length?'<section class="cm-featured"><h2 class="cm-section-title">Destacados</h2><div class="cm-featured-scroll">'+featured.map(p=>'<article class="cm-featured-card"><img src="'+esc(p.image_url)+'" alt="'+esc(p.name)+'" loading="lazy"><div class="cm-featured-copy"><strong>'+esc(p.name)+'</strong><span>'+money(variantFor(state,p)?.price??p.price)+'</span></div></article>').join("")+'</div></section>':"")+
@@ -125,7 +125,7 @@ function render(state,opts={}){
 function mount(opts){
  const root=typeof opts.root==="string"?document.querySelector(opts.root):opts.root;
  if(!root)throw new Error("No se encontró el contenedor del Menú compacto.");
- const state={root,local:opts.local||{},products:Array.isArray(opts.products)?opts.products:[],variants:Array.isArray(opts.variants)?opts.variants:[],categories:Array.isArray(opts.categories)?opts.categories:[],inventory:Array.isArray(opts.inventory)?opts.inventory:[],availability:opts.availability||null,cart:opts.cart||{},preview:!!opts.preview,onError:opts.onError||null,query:"",category:"",selectedVariants:new Map(),menuPages:[],gallery:[]};
+ const state={root,business:opts.business||opts.local||{},products:Array.isArray(opts.products)?opts.products:[],variants:Array.isArray(opts.variants)?opts.variants:[],categories:Array.isArray(opts.categories)?opts.categories:[],inventory:Array.isArray(opts.inventory)?opts.inventory:[],availability:opts.availability||null,cart:opts.cart||{},preview:!!opts.preview,onError:opts.onError||null,query:"",category:"",selectedVariants:new Map(),menuPages:[],gallery:[]};
  state.products.forEach(p=>{const v=state.variants.find(x=>String(x.product_id)===String(p.id));if(v)state.selectedVariants.set(String(p.id),String(v.id));});
  render(state);loadReferences(state);
  const handler=()=>refresh(state);window.addEventListener("htpweb:cart",handler);
