@@ -1455,6 +1455,154 @@ async function loadDeliveryAdminOverview(todayIso){
   bindOverviewActions();
 }
 
+
+async function loadLocalAdminOverview(todayIso){
+  overviewSetModeLabels();
+
+  const localIds=(state.locals||[]).map(l=>l.id).filter(Boolean);
+  if(!localIds.length){
+    if($("metrics"))$("metrics").innerHTML='<div class="message error">No tienes un LOCAL activo asignado.</div>';
+    renderOverviewAttention([]);
+    renderOverviewHealth([]);
+    renderOverviewRecentOrders([]);
+    renderOverviewQuickActions();
+    bindOverviewActions();
+    return;
+  }
+
+  const openStatuses=["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"];
+  const [productsRes,promotionsRes,ordersRes]=await Promise.all([
+    supabaseClient.from("products").select("id,local_id,active,image_url").in("local_id",localIds),
+    supabaseClient.from("local_promotions").select("id,local_id,active").in("local_id",localIds),
+    supabaseClient.from("orders")
+      .select("id,status,total,customer_name,created_at,order_locals(local_id,subtotal,status)")
+      .order("created_at",{ascending:false})
+      .limit(250)
+  ]);
+
+  if(productsRes.error)throw productsRes.error;
+  if(promotionsRes.error)throw promotionsRes.error;
+  if(ordersRes.error)throw ordersRes.error;
+
+  const products=productsRes.data||[];
+  const promotions=promotionsRes.data||[];
+  const localSet=new Set(localIds);
+  const localOrders=(ordersRes.data||[]).filter(order=>
+    (order.order_locals||[]).some(row=>localSet.has(row.local_id))
+  );
+
+  const todayStart=new Date(todayIso).getTime();
+  const ordersToday=localOrders.filter(order=>new Date(order.created_at).getTime()>=todayStart);
+  const openOrders=localOrders.filter(order=>openStatuses.includes(order.status));
+  const deliveredToday=ordersToday.filter(order=>order.status==="DELIVERED");
+  const deliveredValue=deliveredToday.reduce((sum,order)=>{
+    const localSubtotal=(order.order_locals||[])
+      .filter(row=>localSet.has(row.local_id))
+      .reduce((subtotal,row)=>subtotal+Number(row.subtotal||0),0);
+    return sum+localSubtotal;
+  },0);
+
+  const productsTotal=products.length;
+  const productsActive=products.filter(p=>p.active!==false).length;
+  const productsWithImage=products.filter(p=>String(p.image_url||"").trim()!=="").length;
+  const productsWithoutImage=Math.max(0,productsTotal-productsWithImage);
+  const inactiveProducts=Math.max(0,productsTotal-productsActive);
+  const activeLocals=(state.locals||[]).filter(l=>l.active!==false).length;
+  const activePromotions=promotions.filter(p=>p.active!==false).length;
+  const recentOrders=localOrders.slice(0,5);
+
+  const kpis=[
+    {
+      label:"Pedidos hoy",
+      value:ordersToday.length,
+      detail:openOrders.length+" abierto"+(openOrders.length===1?"":"s")+" ahora",
+      tone:openOrders.length>0?"attention":"neutral"
+    },
+    {
+      label:"Ventas entregadas hoy",
+      value:overviewMoney(deliveredValue),
+      detail:deliveredToday.length+" pedido"+(deliveredToday.length===1?"":"s")+" entregado"+(deliveredToday.length===1?"":"s"),
+      tone:"success"
+    },
+    {
+      label:"Productos publicados",
+      value:productsActive,
+      detail:"de "+productsTotal+" productos de tu LOCAL",
+      tone:inactiveProducts>0?"attention":"success"
+    },
+    {
+      label:"Productos con foto",
+      value:productsWithImage,
+      detail:productsTotal?Math.round((productsWithImage/productsTotal)*100)+"% de cobertura visual":"Sin productos cargados",
+      tone:productsWithoutImage>0?"attention":"success"
+    }
+  ];
+
+  if($("metrics")){
+    $("metrics").innerHTML=kpis.map(kpi=>`
+      <div class="overview-kpi overview-kpi-${esc(kpi.tone)}">
+        <span>${esc(kpi.label)}</span>
+        <strong>${esc(kpi.value)}</strong>
+        <small>${esc(kpi.detail)}</small>
+      </div>
+    `).join("");
+  }
+
+  renderOverviewAttention([
+    {
+      label:"Pedidos abiertos",
+      detail:"Pedidos de tu negocio que todavía requieren seguimiento.",
+      value:openOrders.length,
+      action:"orders"
+    },
+    {
+      label:"Productos sin foto",
+      detail:"Añade imágenes para mejorar la presentación y conversión del catálogo.",
+      value:productsWithoutImage,
+      action:"catalog"
+    },
+    {
+      label:"Productos inactivos",
+      detail:"Productos existentes que actualmente no se muestran al cliente.",
+      value:inactiveProducts,
+      action:"catalog"
+    }
+  ]);
+
+  renderOverviewHealth([
+    {
+      label:"Productos con foto",
+      value:productsWithImage,
+      total:productsTotal,
+      detail:"Cobertura visual del catálogo de tu negocio."
+    },
+    {
+      label:"Productos publicados",
+      value:productsActive,
+      total:productsTotal,
+      detail:"Productos disponibles actualmente para clientes."
+    },
+    {
+      label:"Sitio publicado",
+      value:activeLocals,
+      total:(state.locals||[]).length,
+      detail:activeLocals===localIds.length?"Tu sitio está visible para clientes.":"Revisa la publicación de tu LOCAL."
+    }
+  ]);
+
+  renderOverviewRecentOrders(recentOrders);
+  renderOverviewQuickActions();
+
+  if($("overviewUpdatedAt")){
+    $("overviewUpdatedAt").textContent=
+      "Actualizado "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+
+      " · "+activePromotions+" promoción"+(activePromotions===1?" activa":"es activas");
+  }
+
+  bindOverviewActions();
+}
+
+
 async function loadOverview() {
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -1462,6 +1610,10 @@ async function loadOverview() {
 
   if(state.role==="DELIVERY_ADMIN"){
     await loadDeliveryAdminOverview(todayIso);
+    return;
+  }
+  if(state.role==="LOCAL_ADMIN"){
+    await loadLocalAdminOverview(todayIso);
     return;
   }
 
