@@ -8,6 +8,7 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
 <script src="../config/cart.js"></script>
+<script src="../assets/restaurant-menu.js?v=20261006-menu1"></script>
 <script src="../config/ads.js?v=20261004-localshop1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
 <style>
@@ -329,6 +330,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-mobile2">
 <script src="../assets/storefront-architectures.js?v=20261007-page-editor2"></script>
 <script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
+<link rel="stylesheet" href="../assets/restaurant-menu.css?v=20261006-menu1">
 </head>
 <body class="local-store theme-pending">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
@@ -437,6 +439,7 @@ let pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
 const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
 sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
 let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="";
+let restaurantController=null,restaurantOriginals=[],restaurantAvailability=null;
 const promotionMixSelections=new Map();
 const productCardQuantities=new Map();
 async function trackLocal(eventType,productId=null,metadata={}){
@@ -532,7 +535,7 @@ function scope(){return source==="htpweb"?"HTPWEB":(store?.local?.id?"LOCAL:"+st
 function money(v){return "$"+Number(v||0).toFixed(2);}
 function itemMatcher(p,v=null){return{local_id:store.local.id,product_id:p.id,variant_id:v?.id||null};}
 function stockFor(p,v=null){return inventory.find(x=>x.product_id===p.id&&(x.variant_id||null)===(v?.id||null));}
-function updateCount(){$("cartCount").textContent=carritoCantidad(scope());}
+function updateCount(){$("cartCount").textContent=carritoCantidad(scope());restaurantController?.refresh();}
 function safeExternalUrl(value){
  const raw=String(value||"").trim();
  if(!raw)return "";
@@ -997,6 +1000,7 @@ function setProductCardQty(productId,value){
  if(el)el.textContent=String(productCardQty(productId));
 }
 function renderProducts(){
+ if(store?.preset?.layout_family==="FOOD" && window.HTPWEBRestaurantMenu){renderRestaurantCatalog();return;}
  const q=$("search").value.trim().toLowerCase();
  const promotedProductIds=new Set(
    promotions.filter(p=>p.available_now).flatMap(p=>(Array.isArray(p.items)?p.items:[]).map(item=>item.product_id).filter(Boolean))
@@ -1108,6 +1112,26 @@ function renderProducts(){
    b.classList.toggle("active",!active);
  });
 }
+function renderRestaurantCatalog(){
+ document.body.classList.add("restaurant-menu-page");
+ $("products").className="restaurant-digital-menu";
+ const closed=restaurantAvailability && restaurantAvailability.is_open!==true;
+ const options={products,variants,categories,menuPages:restaurantOriginals,gallery:projects,
+  disabledReason:closed?"El restaurante está cerrado. Puedes consultar el menú y pedir cuando vuelva a abrir.":"",
+  quantity:(p,v)=>carritoCantidadItem(scope(),itemMatcher(p,v)),
+  canAdd:(p,v)=>{const st=stockFor(p,v);return !st?.track_stock || carritoCantidadItem(scope(),itemMatcher(p,v))<Number(st.available_qty||0)},
+  onChange:(p,v,delta)=>{
+    const match=itemMatcher(p,v),count=carritoCantidadItem(scope(),match),st=stockFor(p,v);
+    if(delta>0){if(closed || (st?.track_stock&&count>=Number(st.available_qty||0)))return;carritoAgregar(scope(),{...match,snapshot:{name:p.name,variant_name:v?.name||null,price:Number(v?.price??p.price),image_url:p.image_url||null}},1);trackLocal("CART_VIEW",p.id,{action:"add",quantity:1})}
+    else carritoCambiarCantidad(scope(),match,Math.max(0,count-1));
+    updateCount();
+  },
+  cartSummary:()=>{const items=carritoObtener(scope()).filter(i=>i.local_id===store.local.id);return {quantity:items.reduce((s,i)=>s+Number(i.quantity||0),0),total:HTPWEBRestaurantMenu.subtotal(items,products,variants)}},
+  onCart:()=>$("cartBtn").click()
+ };
+ if(restaurantController)restaurantController.update(options);else restaurantController=HTPWEBRestaurantMenu.mount($("products"),options);
+}
+window.addEventListener("htpweb:cart",()=>restaurantController?.refresh());
 function promotionMixConfig(p){
  const items=Array.isArray(p?.items)?p.items:[];
  if(p?.promotion_type!=="COMBO"||items.length!==1)return null;
@@ -1181,6 +1205,13 @@ function renderPromotions(){
 }
 async function loadMenu(){
  const mode=store.settings.catalog_mode;
+ if(store?.preset?.layout_family==="FOOD"){
+   const {data,error}=await supabaseClient.rpc("public_local_menu_pages",{p_local_id:store.local.id});
+   if(error)throw error;
+   restaurantOriginals=Array.isArray(data)?data:[];
+   $("menuSection").classList.add("hidden");$("productsSection").classList.remove("hidden");
+   renderRestaurantCatalog();return;
+ }
  $("menuSection").classList.toggle("hidden",mode==="CARDS");
  $("productsSection").classList.toggle("hidden",mode==="VISUAL_MENU");
  if(mode==="CARDS")return;
@@ -1206,7 +1237,17 @@ async function init(){
  try{
    if(!key)throw new Error("No se especificó el LOCAL.");
    const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});
-   if(error)throw error;if(!data)throw new Error("Esta tienda no está disponible.");
+   if(error)throw error;
+   if(!data){
+     // Unclaimed restaurants keep their existing delivery checkout; never enable direct orders here.
+     const column=/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(key)?"id":"slug";
+     const localResult=await supabaseClient.from("locals").select("id").eq(column,key).eq("active",true).maybeSingle();
+     if(localResult.error)throw localResult.error;
+     if(!localResult.data)throw new Error("Esta tienda no está disponible.");
+     const next=new URL("/htpweb/app/local-general.html",location.origin);next.searchParams.set("local",localResult.data.id);
+     if(sharedProductId)next.searchParams.set("product",sharedProductId);
+     location.replace(next.href);return;
+   }
    store=data;document.title=store.local.name+" | Sitio oficial";
    history.replaceState({section:pageSection},"",siteSectionUrl(pageSection));
    document.body.dataset.presetCode=String(store?.settings?.preset_code||"GENERAL_MODERN");
@@ -1219,17 +1260,20 @@ async function init(){
    }
    applyStoreTheme();
    if(document.body.dataset.designSystem==="REFERENCE")applyImportedReferenceLayout();
-   const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes]=await Promise.all([
+   const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes,availabilityRes]=await Promise.all([
      supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
      supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",store.local.id).eq("active",true).order("display_order"),
      supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_local_promotions_catalog",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_list_local_gallery",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_local_blog_posts",{p_local_id:store.local.id})
+     supabaseClient.rpc("public_local_blog_posts",{p_local_id:store.local.id}),
+     supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[store.local.id]})
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
    products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];
+   if(store?.preset?.layout_family==="FOOD" && (iRes.error||availabilityRes.error))throw (iRes.error||availabilityRes.error);
+   restaurantAvailability=availabilityRes.data?.[0]||null;
    configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitecturePage();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applySinglePageSection();updateCount();
    trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
    if(sharedProductId){

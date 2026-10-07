@@ -7,41 +7,54 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261004-profiles2"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261003-platform1">
+<link rel="stylesheet" href="../assets/restaurant-menu.css?v=20261006-menu1">
+<script src="../config/cart.js"></script>
+<script src="../assets/restaurant-menu.js?v=20261006-menu1"></script>
 <style>
 .shell{max-width:1080px;margin:auto;padding:18px 14px 50px}.hero{overflow:hidden}.hero img{width:100%;max-height:310px;object-fit:cover;border-radius:14px}
 .channel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.channel{border:1px solid #e5e7eb;border-radius:14px;padding:14px}
-.product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.product{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff}.product img{width:100%;aspect-ratio:4/3;object-fit:cover}.product .body{padding:12px}
+.product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.product-grid.restaurant-digital-menu{display:block}.product{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff}.product img{width:100%;aspect-ratio:4/3;object-fit:cover}.product .body{padding:12px}
 .badge{display:inline-block;padding:5px 8px;border-radius:999px;background:#f1f5f9;font-size:.8rem}.owner{background:#ecfdf5}
 @media(max-width:720px){.channel-grid,.product-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.channel-grid,.product-grid{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
+<body class="restaurant-menu-page">
 <main class="shell">
 <div class="row between"><a class="btn btn-muted" href="../index.html">← HTPWEB</a><a id="accountLink" class="btn btn-dark" href="acceso.html?return=../index.html">Acceder</a></div>
 <div id="message" class="hidden" style="margin-top:12px"></div>
 <section id="hero" class="card hero"><div class="muted">Cargando negocio…</div></section>
-<section class="card"><h2>Cómo comprar</h2><div id="channels" class="channel-grid"></div></section>
-<section class="card"><h2>Productos</h2><div id="products" class="product-grid"></div></section>
+<section class="card"><h2>Cómo comprar</h2><div id="channels" class="channel-grid"></div><label id="deliveryChoiceLabel" hidden>Delivery para tu pedido<select id="menuDeliveryChoice"></select></label></section>
+<section class="card"><div id="products" class="product-grid"></div></section>
 </main>
 <script>
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),localId=params.get("local")||"";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const money=v=>"$"+Number(v||0).toFixed(2);
-let local=null,claim=null,deliveries=[],products=[];
+let local=null,claim=null,deliveries=[],products=[],variants=[],categories=[],menuPages=[],gallery=[],inventory=[],availability=null,menuController=null,selectedDelivery=null;
 async function session(){
  const {data}=await supabaseClient.auth.getSession();if(data?.session){$("accountLink").textContent="Mi cuenta";$("accountLink").href="mi-cuenta.html"}
 }
 
 async function load(){
  if(!localId)throw new Error("No se especificó el negocio.");
- const [l,c,d,p]=await Promise.all([
-  supabaseClient.from("locals").select("id,name,slug,description,address,banner_url,logo_url,phone,whatsapp,active").eq("id",localId).eq("active",true).single(),
+ const l=await supabaseClient.from("locals").select("id,name,slug,description,address,banner_url,logo_url,phone,whatsapp,active").eq("id",localId).eq("active",true).single();
+ if(l.error)throw l.error;local=l.data;
+ const [c,d,p,v,cat,m,g,inv,a]=await Promise.all([
   supabaseClient.rpc("public_local_claim_state",{p_local_id:localId}),
   supabaseClient.rpc("public_local_delivery_choices",{p_local_id:localId}),
-  supabaseClient.from("products").select("id,name,description,price,image_url,display_order").eq("local_id",localId).eq("active",true).eq("catalog_visible",true).order("display_order").limit(30)
+  supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,featured,image_url,display_order").eq("local_id",localId).eq("active",true).eq("catalog_visible",true).order("display_order"),
+  supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
+  supabaseClient.from("categories").select("id,name,display_order").eq("local_id",localId).eq("active",true).order("display_order"),
+  supabaseClient.rpc("public_local_menu_pages",{p_local_id:localId}),
+  supabaseClient.rpc("public_list_local_gallery",{p_local_id:localId}),
+  supabaseClient.rpc("public_local_inventory",{p_local_id:localId}),
+  supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[localId]})
  ]);
- if(l.error)throw l.error;if(c.error)throw c.error;if(d.error)throw d.error;if(p.error)throw p.error;
- local=l.data;claim=c.data||{};deliveries=Array.isArray(d.data)?d.data:[];products=p.data||[];render();
+ for(const result of [c,d,p,v,cat,m,g,inv,a])if(result.error)throw result.error;
+ claim=c.data||{};deliveries=Array.isArray(d.data)?d.data:[];products=p.data||[];const ids=new Set(products.map(p=>p.id));variants=(v.data||[]).filter(v=>ids.has(v.product_id));categories=cat.data||[];menuPages=m.data||[];gallery=g.data||[];inventory=inv.data||[];availability=a.data?.[0]||null;
+ const requested=params.get("delivery");selectedDelivery=deliveries.find(d=>d.slug===requested)||(deliveries.length===1?deliveries[0]:null);
+ render();
+ const shared=params.get("product");if(shared)document.getElementById("product-"+shared)?.scrollIntoView({block:"center"});
 }
 function render(){
  document.title=local.name+" | HTPWEB";
@@ -54,8 +67,32 @@ function render(){
  deliveries.forEach(d=>rows.push('<div class="channel"><h3>'+esc(d.name)+'</h3><p class="muted">Compra mediante este DELIVERY y continúa con su flujo de pedido y entrega.</p><a class="btn btn-dark" href="local.html?delivery='+encodeURIComponent(d.slug)+'&local='+encodeURIComponent(local.id)+'">Comprar con '+esc(d.name)+'</a></div>'));
  if(!claim.claimed&&deliveries.length)rows.unshift('<div class="channel"><h3>Compra mediante DELIVERY</h3><p class="muted">Este negocio todavía no está reclamado. Los pedidos se gestionan únicamente mediante un DELIVERY vinculado.</p></div>');
  $("channels").innerHTML=rows.length?rows.join(""):'<div class="error">Este negocio todavía no tiene un canal de compra disponible.</div>';
- $("products").innerHTML=products.length?products.map(p=>'<article class="product">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="'+esc(p.name)+'">':'')+'<div class="body"><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||"")+'</div><div style="margin-top:8px"><strong>'+money(p.price)+'</strong></div></div></article>').join(""):'<div class="muted">Este negocio todavía no tiene productos visibles.</div>';
+ $("deliveryChoiceLabel").hidden=!deliveries.length||claim.claimed;
+ $("menuDeliveryChoice").innerHTML='<option value="">Selecciona un delivery</option>'+deliveries.map(d=>'<option value="'+esc(d.slug)+'">'+esc(d.name)+'</option>').join("");
+ $("menuDeliveryChoice").value=selectedDelivery?.slug||"";
+ $("menuDeliveryChoice").onchange=()=>{selectedDelivery=deliveries.find(d=>d.slug===$("menuDeliveryChoice").value)||null;renderMenu()};
+ renderMenu();
 }
+function menuMatcher(p,v){return {local_id:local.id,product_id:p.id,variant_id:v?.id||null}}
+function renderMenu(){
+ const closed=availability && availability.is_open!==true;
+ const disabledReason=claim.claimed?"Para pedir directamente, abre la tienda del negocio desde Cómo comprar.":closed?"El local está cerrado. Puedes consultar el menú y pedir cuando vuelva a abrir.":!selectedDelivery?(deliveries.length?"Selecciona un delivery para añadir productos a tu pedido.":"Este local aún no tiene un canal de pedidos disponible."):"";
+ const options={products,variants,categories,menuPages,gallery,disabledReason,
+   notice:!disabledReason&&selectedDelivery?"Pedido con "+selectedDelivery.name:"",
+   quantity:(p,v)=>selectedDelivery?carritoCantidadItem(selectedDelivery.slug,menuMatcher(p,v)):0,
+   canAdd:(p,v)=>{const s=inventory.find(s=>s.product_id===p.id&&(s.variant_id||null)===(v?.id||null));return !s?.track_stock||!selectedDelivery||carritoCantidadItem(selectedDelivery.slug,menuMatcher(p,v))<Number(s.available_qty||0)},
+   onChange:(p,v,delta)=>{
+     if(!selectedDelivery)return;
+     const match=menuMatcher(p,v),count=carritoCantidadItem(selectedDelivery.slug,match);
+     if(delta>0){if(disabledReason)return;const st=inventory.find(s=>s.product_id===p.id&&(s.variant_id||null)===(v?.id||null));if(st?.track_stock&&count>=Number(st.available_qty||0))return;carritoAgregar(selectedDelivery.slug,{...match,snapshot:{local_name:local.name,product_name:p.name,variant_name:v?.name||null,price:Number(v?.price??p.price)}},1)}
+     else carritoCambiarCantidad(selectedDelivery.slug,match,Math.max(0,count-1));
+   },
+   cartSummary:()=>{const items=selectedDelivery?carritoObtener(selectedDelivery.slug).filter(i=>i.local_id===local.id):[];return {quantity:items.reduce((s,i)=>s+Number(i.quantity||0),0),total:HTPWEBRestaurantMenu.subtotal(items,products,variants)}},
+   onCart:()=>{if(selectedDelivery)location.href="carrito.html?delivery="+encodeURIComponent(selectedDelivery.slug)}
+ };
+ if(menuController)menuController.update(options);else menuController=HTPWEBRestaurantMenu.mount($("products"),options);
+}
+window.addEventListener("htpweb:cart",()=>menuController?.refresh());
 Promise.all([session(),load()]).catch(e=>{$("message").textContent=e.message||"No se pudo cargar el negocio.";$("message").className="error"});
 </script>
 </body></html>

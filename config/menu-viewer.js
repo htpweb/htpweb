@@ -1,4 +1,6 @@
 (() => {
+  // The digital menu already exposes all products and original menu sheets.
+  if (window.HTPWEBRestaurantMenu && document.querySelector(".restaurant-digital-menu")) return;
   const $m = id => document.getElementById(id);
   const scopes = ["inline", "viewer"];
 
@@ -803,6 +805,7 @@
   }
 
   async function loadMenuPages() {
+    if (document.querySelector(".restaurant-digital-menu")) return;
     if (loaded) return;
     if (
       typeof localId === "undefined" ||

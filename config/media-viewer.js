@@ -286,6 +286,7 @@
   }
 
   async function loadGallery() {
+    if (document.querySelector(".restaurant-digital-menu")) return;
     ensureUi();
     try {
       if (typeof localId === "undefined" || !localId || typeof supabaseClient === "undefined") return;
