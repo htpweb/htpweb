@@ -583,3 +583,292 @@ body.architecture-home .local-site-footer{margin-top:0!important}
  .arch-APEX .apex-footer{padding:30px 18px}
  .arch-APEX.apex-internal main{padding:60px 18px 80px}
 }
+
+
+/* ==========================================================================
+   HTPWEB MOBILE POLISH · all storefront families
+   Scope: responsive QA fixes only. No functional changes.
+   ========================================================================== */
+@media(max-width:760px){
+  .eng-architecture,
+  .eng-architecture section,
+  .eng-architecture article,
+  .eng-architecture main,
+  .eng-architecture header,
+  .eng-architecture footer,
+  .eng-architecture div{min-width:0}
+
+  .eng-architecture h1,
+  .eng-architecture h2,
+  .eng-architecture h3,
+  .eng-architecture p,
+  .eng-architecture strong,
+  .eng-architecture span,
+  .eng-architecture small,
+  .eng-architecture a{
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+
+  .eng-architecture img,
+  .eng-architecture video,
+  .eng-architecture iframe{
+    max-width:100%!important;
+  }
+
+  /* Keep navigation fully visible on phones instead of implying missing items. */
+  .eng-architecture header nav,
+  .arch-mag-head nav{
+    display:flex!important;
+    width:100%!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    white-space:normal!important;
+    gap:6px 14px!important;
+    padding-top:8px;
+  }
+  .eng-architecture header nav a,
+  .eng-architecture header nav span,
+  .arch-mag-head nav a,
+  .arch-mag-head nav span{
+    flex:0 1 auto!important;
+    white-space:normal!important;
+    padding:5px 0!important;
+  }
+
+  /* Sidebar architecture: replace horizontal strip with a compact wrapped header. */
+  .arch-SIDEBAR .arch-side-nav{
+    display:flex!important;
+    width:100%!important;
+    flex-direction:row!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    gap:6px 14px!important;
+    padding:15px 18px!important;
+  }
+  .arch-SIDEBAR .arch-side-nav>strong{
+    width:100%;
+    margin:0 0 4px!important;
+    white-space:normal!important;
+  }
+  .arch-SIDEBAR .arch-side-nav>span:not(.arch-cta),
+  .arch-SIDEBAR .arch-side-nav>a:not(.arch-cta),
+  .arch-SIDEBAR .arch-side-nav .arch-cta{
+    flex:0 1 auto!important;
+    white-space:normal!important;
+  }
+
+  /* Bold uses a div as its navigation container. */
+  .arch-BOLD .arch-bold-head{
+    height:auto!important;
+    min-height:68px!important;
+    align-items:flex-start!important;
+    flex-wrap:wrap!important;
+    padding:14px 18px!important;
+  }
+  .arch-BOLD .arch-bold-head>strong{
+    width:100%;
+    flex:0 0 auto!important;
+  }
+  .arch-BOLD .arch-bold-head>div{
+    width:100%;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    gap:5px 12px!important;
+  }
+  .arch-BOLD .arch-bold-head>div>a,
+  .arch-BOLD .arch-bold-head>div>span{
+    flex:0 1 auto!important;
+    white-space:normal!important;
+  }
+
+  /* Internal Magazine navigation should never disappear off-screen. */
+  .arch-MAGAZINE .internal-mag-nav{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    gap:6px 14px!important;
+    padding:10px 18px!important;
+  }
+  .arch-MAGAZINE .internal-mag-nav a,
+  .arch-MAGAZINE .internal-mag-nav span{
+    white-space:normal!important;
+    flex:0 1 auto!important;
+  }
+  .arch-MAGAZINE .internal-mag-mast{
+    align-items:flex-start!important;
+    gap:8px!important;
+    flex-wrap:wrap!important;
+  }
+
+  /* Generic internal page cards */
+  .internal-architecture .local-page-card,
+  .internal-architecture .local-service-placeholder,
+  .internal-architecture .local-project-card,
+  .internal-architecture .local-blog-card,
+  .internal-architecture .local-contact-info-card,
+  .internal-architecture .local-contact-map-card{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .internal-architecture .local-project-card img,
+  .internal-architecture .local-blog-card img{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    object-fit:cover!important;
+  }
+  .internal-architecture .local-contact-map-card iframe{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:300px!important;
+  }
+  .internal-architecture .local-contact-info-grid,
+  .internal-architecture .local-contact-left{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+
+  /* Minimal internal cards keep their editorial identity without forcing desktop columns. */
+  .arch-MINIMAL .local-project-card,
+  .arch-MINIMAL .local-blog-card{
+    display:block!important;
+  }
+  .arch-MINIMAL .local-project-card img,
+  .arch-MINIMAL .local-blog-card img{
+    width:100%!important;
+    height:190px!important;
+    margin-bottom:12px;
+  }
+  .arch-MINIMAL .local-service-placeholder{
+    grid-template-columns:42px minmax(0,1fr)!important;
+  }
+
+  /* Decorative Luxe elements stay decorative and never cover readable content. */
+  .arch-LUXE .arch-orbit{
+    right:-115px!important;
+    top:70px!important;
+    opacity:.35!important;
+    pointer-events:none!important;
+  }
+  .arch-LUXE .internal-luxe-glow{
+    width:360px!important;
+    height:360px!important;
+    right:-180px!important;
+    top:-80px!important;
+    opacity:.55;
+    pointer-events:none!important;
+  }
+
+  /* Compact technical headers must wrap instead of truncating long business names. */
+  .arch-COMPACT .internal-tech-bar{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:5px 12px!important;
+    padding:12px 14px!important;
+  }
+  .arch-COMPACT .internal-tech-bar strong{
+    width:100%;
+  }
+
+  /* APEX: mobile must expose the existing navigation instead of hiding it. */
+  .arch-APEX .apex-nav{
+    height:auto!important;
+    min-height:0!important;
+    padding:15px 18px!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:flex-start!important;
+    gap:8px 12px!important;
+  }
+  .arch-APEX .apex-nav>strong{
+    max-width:calc(100% - 105px);
+    overflow-wrap:anywhere;
+  }
+  .arch-APEX .apex-nav nav{
+    display:flex!important;
+    width:100%!important;
+    order:3;
+    flex-wrap:wrap!important;
+    gap:5px 13px!important;
+    padding-top:8px!important;
+    border-top:1px solid #ffffff24;
+  }
+  .arch-APEX .apex-nav nav a,
+  .arch-APEX .apex-nav nav span{
+    flex:0 1 auto!important;
+    white-space:normal!important;
+    padding:4px 0!important;
+  }
+  .arch-APEX .apex-nav-cta{
+    margin-left:auto;
+    flex:0 0 auto;
+  }
+  .arch-APEX .apex-hero{
+    min-height:520px!important;
+    padding:48px 18px!important;
+  }
+  .arch-APEX .apex-hero h1{
+    font-size:clamp(2.9rem,14vw,3.8rem)!important;
+    max-width:100%!important;
+  }
+  .arch-APEX .apex-stats{
+    padding:0!important;
+  }
+  .arch-APEX .apex-stats>div{
+    padding:22px 16px!important;
+  }
+  .arch-APEX .apex-section-head h2,
+  .arch-APEX .apex-about-copy h2,
+  .arch-APEX .apex-contact h2,
+  .arch-APEX .apex-internal-head h1{
+    font-size:clamp(2.65rem,12vw,3.5rem)!important;
+    max-width:100%!important;
+  }
+  .arch-APEX .apex-mini-stats{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+  .arch-APEX .apex-mini-stats strong{
+    font-size:1.75rem!important;
+  }
+  .arch-APEX .apex-internal-project img,
+  .arch-APEX .apex-internal-project:first-child img{
+    height:240px!important;
+    width:100%!important;
+  }
+  .arch-APEX .apex-contact-actions,
+  .arch-APEX .apex-contact-meta{
+    width:100%!important;
+    min-width:0!important;
+  }
+}
+
+/* Narrow phones */
+@media(max-width:380px){
+  .eng-architecture header strong{max-width:100%;overflow-wrap:anywhere}
+  .arch-SIGNATURE .arch-photo-hero h2,
+  .arch-MINIMAL .arch-min-main h2,
+  .arch-SPLIT .arch-split-left h2,
+  .arch-EDITORIAL .arch-ed-intro h2,
+  .arch-LUXE .arch-luxe-hero h2,
+  .arch-BOLD .arch-bold-hero h2,
+  .arch-MAGAZINE .arch-mag-cover h2,
+  .arch-IMMERSIVE .arch-immersive-copy h2{
+    font-size:clamp(2.6rem,13vw,3.25rem)!important;
+  }
+  .arch-SIDEBAR .arch-side-hero h2{font-size:2.8rem!important}
+  .arch-SIDEBAR .arch-blue-grid>div,
+  .arch-SIDEBAR .arch-blue-projects>div{
+    grid-template-columns:1fr!important;
+  }
+  .arch-APEX .apex-stats{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
