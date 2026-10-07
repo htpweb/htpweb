@@ -16,6 +16,7 @@ const state = {
   localProfileRecord: null,
   localStorePresets: [],
   localStoreThemes: [],
+  localServices: [],
   localProjects: [],
   localPublishedPresetCode: null,
   localImportedDesign: null,
@@ -3763,6 +3764,7 @@ async function loadLocalCommerce(){
   $("localStoreHtpDelivery").checked=settings.htpweb_delivery_enabled!==false;
   const content=settings.content_config||{};
   state.localImportedDesign=content.imported_design||null;
+  state.localServices=Array.isArray(content.services)?content.services.map((s,i)=>({id:s.id||crypto.randomUUID(),title:s.title||"",description:s.description||"",image_url:s.image_url||"",storage_path:s.storage_path||"",display_order:Number.isFinite(Number(s.display_order))?Number(s.display_order):i})):[];
   $("localHeroTitle").value=content.hero_title||"";
   $("localHeroSubtitle").value=content.hero_subtitle||"";
   $("localAboutTitle").value=content.about_title||"Quiénes somos";
@@ -3838,6 +3840,7 @@ async function saveLocalCommerce(){
         show_blog:$("localShowBlog").checked,
         show_contact:$("localShowContact").checked,
         show_promotions:$("localShowPromotions").checked,
+        services:(state.localServices||[]).map((s,i)=>({id:s.id||String(i+1),title:s.title||"",description:s.description||"",image_url:s.image_url||"",storage_path:s.storage_path||"",display_order:Number.isFinite(Number(s.display_order))?Number(s.display_order):i})),
         imported_design:state.localImportedDesign||null
       }
     });

@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="../assets/admin.css?v=20261007-real-preview1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-mobile2">
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-visual-editor2">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../config/maps.js"></script>
 </head>
@@ -692,6 +692,23 @@
               <button type="button" data-local-page-tab="contact">📍 Contacto</button>
             </div>
 
+            <div class="local-visual-editor-card">
+              <div class="local-visual-editor-toolbar">
+                <div>
+                  <strong id="localVisualPageLabel">Inicio</strong>
+                  <span>Haz clic sobre textos y tarjetas para editarlos.</span>
+                </div>
+                <div class="local-visual-editor-actions">
+                  <button type="button" class="btn-muted active" data-local-editor-device="desktop">Escritorio</button>
+                  <button type="button" class="btn-muted" data-local-editor-device="mobile">Móvil</button>
+                  <button type="button" class="btn-primary hidden" id="localVisualAddBtn">+ Agregar</button>
+                </div>
+              </div>
+              <div class="local-visual-editor-stage">
+                <div id="localVisualPageCanvas" class="local-visual-page-canvas desktop"></div>
+              </div>
+            </div>
+
             <div class="local-page-editor-shell">
               <aside class="local-page-editor-help">
                 <strong id="localPageEditorTitle">Inicio</strong>
@@ -723,10 +740,19 @@
                   <div class="form-grid">
                     <div><label>Título de la página</label><input id="localCatalogTitle" maxlength="80" placeholder="Productos, Servicios, Menú, Soluciones…"></div>
                   </div>
+                  <div class="local-project-editor-head">
+                    <div>
+                      <strong>Servicios de esta página</strong>
+                      <span>Agrega tarjetas, textos e imágenes. La plantilla conserva automáticamente su diseño.</span>
+                    </div>
+                    <button type="button" class="btn-primary" id="localAddServiceBtn">+ Agregar servicio</button>
+                  </div>
+                  <div id="localServiceEditorGrid" class="local-project-editor-grid"></div>
+                  <input id="localServiceImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
                   <div class="local-editor-callout">
-                    <strong>Contenido automático desde tu catálogo</strong>
-                    <span>Los productos o servicios se administran en Catálogo y aquí conservan el diseño de la plantilla.</span>
-                    <button type="button" class="btn-muted" id="localEditorGoCatalog">Editar catálogo</button>
+                    <strong>Catálogo comercial</strong>
+                    <span>Si también vendes productos, se siguen administrando en Catálogo. Este bloque controla la página visual de Servicios.</span>
+                    <button type="button" class="btn-muted" id="localEditorGoCatalog">Abrir catálogo</button>
                   </div>
                 </div>
 
@@ -2578,12 +2604,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
-<script src="../config/storage.js"></script>
+<script src="../config/storage.js?v=20261007-visual-editor2"></script>
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
-<script src="../assets/storefront-architectures.js?v=20261007-page-editor2"></script>
-<script src="./admin.js?v=20261007-page-editor2"></script>
-<script src="./local-page-editor.js?v=20261007-page-editor2"></script>
+<script src="../assets/storefront-architectures.js?v=20261007-visual-editor2"></script>
+<script src="./admin.js?v=20261007-visual-editor2"></script>
+<script src="./local-page-editor.js?v=20261007-visual-editor2"></script>
 <script src="./master-websites.js?v=20261007-real-preview1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
