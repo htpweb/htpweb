@@ -1290,9 +1290,9 @@ async function init(){
    applyStoreTheme();
    if(document.body.dataset.designSystem==="REFERENCE")applyImportedReferenceLayout();
    const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes,availabilityRes]=await Promise.all([
-     supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("local_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
+     supabaseClient.from("business_products").select("id,business_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("business_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
-     supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",store.local.id).eq("active",true).order("display_order"),
+     supabaseClient.from("business_categories").select("id,business_id,name,display_order").eq("business_id",store.local.id).eq("active",true).order("display_order"),
      supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_local_promotions_catalog",{p_local_id:store.local.id}),
      supabaseClient.rpc("public_list_local_gallery",{p_local_id:store.local.id}),
