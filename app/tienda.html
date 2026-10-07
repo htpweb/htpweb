@@ -323,15 +323,15 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-accountmenu1">
+<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-publicqa1">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-premium3">
 <script src="../assets/storefront-architectures.js?v=20261007-premium3"></script>
-<script src="../assets/storefront-chrome.js?v=20261006-shared1"></script>
+<script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 </head>
 <body class="local-store">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
 <header class="local-store-header"><div class="local-store-header-inner">
-  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial · by HTPWEB</small></div></div>
+  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial</small></div></div>
   <nav id="siteNav" class="local-site-nav">
     <a id="homeNav" data-site-section="home" href="#">Inicio</a>
     <a id="aboutNav" data-site-section="about" href="#">Quiénes somos</a>
@@ -497,6 +497,10 @@ function configureSiteNavigation(){
    a.onclick=e=>{
      e.preventDefault();
      e.stopPropagation();
+     if(pageSection===section){
+       location.reload();
+       return false;
+     }
      navigateSiteSection(section);
      return false;
    };

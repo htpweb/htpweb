@@ -21,6 +21,22 @@
   function labelFor(design){
     return {SIGNATURE:"Signature",MINIMAL:"Minimal",SPLIT:"Split",SIDEBAR:"Sidebar",EDITORIAL:"Editorial",LUXE:"Luxe",BOLD:"Bold",MAGAZINE:"Magazine",IMMERSIVE:"Immersive",COMPACT:"Compact",REFERENCE:"Reference"}[design]||design;
   }
+  function familyKicker(store){
+    const family=cleanToken(store?.preset?.layout_family||"GENERAL");
+    return {
+      PROFESSIONAL:"Ingeniería & proyectos",
+      FOOD:"Gastronomía",
+      RETAIL:"Productos & soluciones",
+      FASHION:"Colección & estilo",
+      BOOKS:"Lectura & conocimiento",
+      FLOWERS:"Diseño floral",
+      HEALTH:"Bienestar & cuidado",
+      HARDWARE:"Herramientas & soluciones",
+      SERVICES:"Servicios profesionales",
+      BEAUTY:"Belleza & cuidado",
+      GENERAL:"Sitio oficial"
+    }[family]||"Sitio oficial";
+  }
   function decorateHeader(design,store){
     const header=document.querySelector(".local-store-header");
     const inner=document.querySelector(".local-store-header-inner");
@@ -34,7 +50,7 @@
       const kicker=document.createElement("div");
       kicker.className="chrome-magazine-kicker";
       kicker.dataset.htpChromeGenerated="1";
-      kicker.textContent=String(store?.preset?.name||"Magazine").replace(/Magazine/i,"").trim()||"Edición";
+      kicker.textContent=familyKicker(store);
       brand.insertAdjacentElement("beforebegin",kicker);
     }
     if(design==="EDITORIAL"){
@@ -76,7 +92,7 @@
     purge(body);removeGenerated();
     body.dataset.designSystem=design;
     body.dataset.layoutFamily=family;
-    body.dataset.chromeVersion="20261006.2";
+    body.dataset.chromeVersion="20261007.3";
     body.classList.add("family-"+family,"chrome-"+design,"surface-"+cleanToken(store?.settings?.surface_style||"SOFT"));
     if(design!=="REFERENCE")body.classList.add("design-"+design);
     else body.classList.add("imported-reference");
@@ -84,5 +100,5 @@
     decorateFooter(design,store);
     return {design,family,reference:ref,label:labelFor(design)};
   }
-  window.HTPWEBStorefrontChrome={apply,resolve,version:"20261006.2"};
+  window.HTPWEBStorefrontChrome={apply,resolve,version:"20261007.3"};
 })();
