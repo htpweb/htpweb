@@ -1,12 +1,12 @@
 (() => {
   const familyLabels = {
-    FOOD: "Gastronomía", RETAIL: "Comercio & Retail", FASHION: "Moda & Boutique",
+    FOOD: "Gastronomía", RESTAURANT: "Restaurantes", RETAIL: "Comercio & Retail", FASHION: "Moda & Boutique",
     BOOKS: "Librería & Papelería", FLOWERS: "Flores & Regalos", HEALTH: "Salud & Bienestar",
     HARDWARE: "Catálogo Técnico", SERVICES: "Servicios", PROFESSIONAL: "Ingeniería & Profesional",
     BEAUTY: "Belleza & Citas", GENERAL: "General"
   };
   const palette = {
-    FOOD:["#b91c1c","#f59e0b"], RETAIL:["#0f766e","#14b8a6"], FASHION:["#111827","#d946ef"],
+    FOOD:["#b91c1c","#f59e0b"], RESTAURANT:["#c65d36","#f59e0b"], RETAIL:["#0f766e","#14b8a6"], FASHION:["#111827","#d946ef"],
     BOOKS:["#92400e","#fbbf24"], FLOWERS:["#be185d","#f9a8d4"], HEALTH:["#0f766e","#38bdf8"],
     HARDWARE:["#111827","#f97316"], SERVICES:["#1d4ed8","#60a5fa"], PROFESSIONAL:["#0f172a","#64748b"],
     BEAUTY:["#7c3aed","#ec4899"], GENERAL:["#1466e8","#0b1730"]
