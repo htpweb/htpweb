@@ -522,3 +522,41 @@ body.chrome-COMPACT .local-site-footer a,body.chrome-COMPACT .local-site-footer 
   body.chrome-EDITORIAL .local-store-header-inner>.htp-auth-account-menu,body.chrome-MAGAZINE .local-store-header-inner>.htp-auth-account-menu,
   body.chrome-EDITORIAL .local-store-header-inner>.htp-compact-profile-menu,body.chrome-MAGAZINE .local-store-header-inner>.htp-compact-profile-menu{position:static!important}
 }
+
+
+/* ============================================================
+   PREMIUM LOCAL ACCOUNT MENU — viewport-safe admin experience.
+   Keeps the account panel below the full storefront header so it
+   never covers navigation labels such as Novedades or Contacto.
+   ============================================================ */
+body.local-store .local-store-header{overflow:visible!important;z-index:1300!important}
+body.local-store .local-store-header-inner{position:relative!important;overflow:visible!important}
+body.local-store .local-store-header-inner>.htp-auth-account-menu,
+body.local-store .local-store-header-inner>.htp-compact-profile-menu{z-index:1700!important}
+body.local-store .htp-auth-account-dropdown{
+  z-index:1900!important;
+  width:min(320px,calc(100vw - 24px))!important;
+  max-height:min(72vh,620px)!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  border:1px solid rgba(15,23,42,.10)!important;
+  border-radius:18px!important;
+  box-shadow:0 24px 70px rgba(15,23,42,.22)!important;
+  backdrop-filter:blur(18px);
+}
+body.local-store .htp-auth-account[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(20,102,232,.14)}
+@media(min-width:821px){
+  body.chrome-MAGAZINE .local-store-header-inner>.htp-auth-account-menu .htp-auth-account-dropdown,
+  body.chrome-MAGAZINE .local-store-header-inner>.htp-compact-profile-menu .htp-auth-account-dropdown{
+    top:118px!important;right:0!important;
+  }
+  body.chrome-EDITORIAL .local-store-header-inner>.htp-auth-account-menu .htp-auth-account-dropdown,
+  body.chrome-EDITORIAL .local-store-header-inner>.htp-compact-profile-menu .htp-auth-account-dropdown{
+    top:116px!important;right:0!important;
+  }
+}
+@media(max-width:820px){
+  body.local-store .local-store-header-inner>.htp-auth-account-menu,
+  body.local-store .local-store-header-inner>.htp-compact-profile-menu{position:relative!important;right:auto!important;top:auto!important}
+  body.local-store .htp-auth-account-dropdown{top:calc(100% + 10px)!important;right:0!important;max-height:68dvh!important}
+}
