@@ -1,4 +1,4 @@
-const masterLocalsState={items:[],zones:[],businessCategories:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],menuPanels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false,productBulkRows:[],productBulkErrors:[],productBulkFileName:"",productBulkBusy:false};
+const masterLocalsState={items:[],zones:[],businessCategories:[],bound:false,map:null,dirty:false,source:"MANUAL",panels:[],menuPanels:[],busy:false,googlePlace:null,googleSearch:null,geocoder:null,geocodeSeq:0,googleScheduleDraft:null,googleScheduleDraftLocalId:null,googleScheduleWarnings:[],bulkRows:[],bulkFileName:"",bulkBusy:false,productBulkRows:[],productBulkErrors:[],productBulkFileName:"",productBulkBusy:false,menuDesignPreviewed:"",compactPreviewController:null};
 function masterLocalSelected(){return masterLocalsState.items.find(l=>l.id===$("masterLocalId")?.value)||null;}
 function localOptions(items,label,selected=""){return '<option value="">Seleccionar…</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(label(x))+'</option>').join("");}
 function bindMasterLocals(){
@@ -64,6 +64,23 @@ function bindMasterLocals(){
      <button id="refreshLocalDomainsBtn" class="btn-muted" type="button">Actualizar</button>
    </div>
    <div id="masterLocalDomainRows" style="margin-top:14px"><div class="muted">Cargando solicitudes...</div></div>
+ </div>
+ <div id="masterRestaurantMenuDesign" class="card">
+   <div class="row between" style="gap:12px;flex-wrap:wrap">
+     <div><h3 style="margin:0">Diseño del menú de restaurantes</h3><p class="muted" style="margin:5px 0 0">Selecciona por restaurante entre <strong>Menú actual</strong> y <strong>Menú compacto</strong>. El cambio solo afecta al restaurante elegido.</p></div>
+   </div>
+   <div class="form-grid" style="margin-top:14px">
+     <div><label for="masterMenuDesignLocal">Restaurante</label><select id="masterMenuDesignLocal"></select></div>
+     <div><label for="masterMenuDesignChoice">Diseño</label><select id="masterMenuDesignChoice"><option value="CURRENT">Menú actual</option><option value="COMPACT">Menú compacto</option></select></div>
+   </div>
+   <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
+     <button id="masterMenuDesignPreviewBtn" class="btn-muted" type="button">Previsualizar diseño</button>
+     <button id="masterMenuDesignSaveBtn" class="btn-primary" type="button" disabled>Guardar y publicar</button>
+   </div>
+   <p id="masterMenuDesignStatus" class="muted" style="margin:10px 0 0">Selecciona un restaurante.</p>
+   <div id="masterMenuDesignPreviewShell" class="hidden" style="margin-top:14px;border:1px solid #d9e2ec;border-radius:16px;overflow:auto;max-height:760px;background:#fff">
+     <div id="masterMenuDesignPreview" class="cm-admin-preview"></div>
+   </div>
  </div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
@@ -85,6 +102,10 @@ function bindMasterLocals(){
    if(a===null||b===null)throw new Error("Completa ambas coordenadas.");setLocalPoint(a,b,true);}catch(e){message(e.message,"error");}};
  if(typeof bindMasterLocalBulk==="function")bindMasterLocalBulk();
  if($("refreshLocalDomainsBtn"))$("refreshLocalDomainsBtn").onclick=loadMasterLocalDomains;
+ if($("masterMenuDesignLocal"))$("masterMenuDesignLocal").onchange=syncMasterMenuDesignSelection;
+ if($("masterMenuDesignChoice"))$("masterMenuDesignChoice").onchange=syncMasterMenuDesignSelection;
+ if($("masterMenuDesignPreviewBtn"))$("masterMenuDesignPreviewBtn").onclick=previewMasterMenuDesign;
+ if($("masterMenuDesignSaveBtn"))$("masterMenuDesignSaveBtn").onclick=saveMasterMenuDesign;
  window.addEventListener("beforeunload",e=>{if(masterLocalsState.dirty){e.preventDefault();e.returnValue="";}});
 }
 function discardLocalChanges(){return !masterLocalsState.dirty||confirm("Hay cambios sin guardar. ¿Deseas descartarlos?");}
@@ -155,11 +176,12 @@ function renderMasterLocalList(){
  '</div>'+
  '<div class="table-wrap"><table><thead><tr>'+
  '<th><input id="selectAllVisibleLocals" type="checkbox" aria-label="Seleccionar todos los locales visibles"></th>'+
- '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Gestión</th><th>Acciones</th></tr></thead><tbody>'+
+ '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Diseño menú</th><th>Estado</th><th>Gestión</th><th>Acciones</th></tr></thead><tbody>'+
  items.map(l=>'<tr>'+
    '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'" '+(l.owner_managed?'disabled':'')+'></td>'+
    '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
-   '<td>'+esc(Array.isArray(l.business_category_names)&&l.business_category_names.length?l.business_category_names.join(" · "):(l.business_category_name||"Sin categoría"))+'</td><td>'+esc(l.name)+'</td>'+
+   '<td>'+esc(Array.isArray(l.business_category_names)&&l.business_category_names.length?l.business_category_names.join(" · "):(l.business_category_name||"Sin categoría"))+'</td><td>'+esc(l.name)+'</td>'+ 
+   '<td>'+(l.is_restaurant?esc((l.menu_design||"CURRENT")==="COMPACT"?"Menú compacto":"Menú actual"):"—")+'</td>'+
    '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td>'+
    '<td>'+(l.owner_managed?'<strong>Propietario</strong><small class="muted" style="display:block">'+esc(l.local_plan?.name||"Plan LOCAL vigente")+'</small>':(l.claimed?'Reclamado · sin plan vigente':'HTPWEB'))+'</td>'+
    '<td>'+(l.owner_managed?'<button disabled title="El propietario controla este LOCAL mientras su plan esté vigente">Bloqueado</button>':'<button data-edit-local="'+esc(l.id)+'">Editar</button>')+
@@ -188,6 +210,101 @@ function renderMasterLocalList(){
  summary.querySelectorAll("[data-local-plan]").forEach(b=>b.onclick=()=>assignMasterLocalPlan(b.dataset.localPlan));
  refreshBulkButtons();
 }
+function masterRestaurantMenuItems(){
+ return masterLocalsState.items.filter(x=>x.is_restaurant);
+}
+function renderMasterMenuDesignControls(preferredId=""){
+ const select=$("masterMenuDesignLocal"),choice=$("masterMenuDesignChoice");
+ if(!select||!choice)return;
+ const rows=masterRestaurantMenuItems();
+ const keep=preferredId||select.value;
+ select.innerHTML=rows.length?rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join(""):'<option value="">No hay restaurantes</option>';
+ if(keep&&rows.some(x=>x.id===keep))select.value=keep;
+ syncMasterMenuDesignSelection();
+}
+function syncMasterMenuDesignSelection(){
+ const select=$("masterMenuDesignLocal"),choice=$("masterMenuDesignChoice"),save=$("masterMenuDesignSaveBtn"),status=$("masterMenuDesignStatus");
+ if(!select||!choice||!save||!status)return;
+ const local=masterLocalsState.items.find(x=>x.id===select.value);
+ if(!local){
+   save.disabled=true;status.textContent="No hay un restaurante seleccionado.";return;
+ }
+ const current=String(local.menu_design||"CURRENT").toUpperCase();
+ if(document.activeElement===select||!choice.dataset.userChanged){
+   choice.value=current;
+ }
+ const selected=String(choice.value||"CURRENT").toUpperCase();
+ choice.dataset.userChanged="1";
+ const changed=selected!==current;
+ const previewReady=masterLocalsState.menuDesignPreviewed===local.id+":"+selected;
+ save.disabled=!changed||(selected==="COMPACT"&&!previewReady);
+ status.textContent="Publicado: "+(current==="COMPACT"?"Menú compacto":"Menú actual")+
+   (changed?(selected==="COMPACT"&&!previewReady?" · Previsualiza el Menú compacto antes de publicarlo.":" · Cambio listo para guardar."):" · Sin cambios pendientes.");
+ if(masterLocalsState.compactPreviewController?.destroy)masterLocalsState.compactPreviewController.destroy();
+ masterLocalsState.compactPreviewController=null;
+ $("masterMenuDesignPreviewShell")?.classList.add("hidden");
+}
+async function previewMasterMenuDesign(){
+ const localId=$("masterMenuDesignLocal")?.value,design=String($("masterMenuDesignChoice")?.value||"CURRENT").toUpperCase();
+ const local=masterLocalsState.items.find(x=>x.id===localId);
+ if(!local)return message("Selecciona un restaurante.","error");
+ const shell=$("masterMenuDesignPreviewShell"),host=$("masterMenuDesignPreview");
+ shell.classList.remove("hidden");host.innerHTML='<div class="muted" style="padding:20px">Cargando vista previa real…</div>';
+ if(design==="CURRENT"){
+   masterLocalsState.menuDesignPreviewed=local.id+":CURRENT";
+   host.innerHTML='<div style="padding:22px"><h3 style="margin-top:0">Menú actual</h3><p class="muted">El diseño actual no se modifica. Para revisar la experiencia publicada completa, usa el canal público del restaurante o del DELIVERY.</p></div>';
+   syncMasterMenuDesignSelection();
+   shell.classList.remove("hidden");
+   return;
+ }
+ try{
+   const [pRes,vRes,cRes,iRes,aRes]=await Promise.all([
+     supabaseClient.from("products").select("id,local_id,category_id,name,description,short_description,price,image_url,featured,display_order").eq("local_id",local.id).eq("active",true).eq("catalog_visible",true).order("display_order").order("name"),
+     supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
+     supabaseClient.from("categories").select("id,local_id,name,display_order").eq("local_id",local.id).eq("active",true).order("display_order").order("name"),
+     supabaseClient.rpc("public_local_inventory",{p_local_id:local.id}),
+     supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[local.id]})
+   ]);
+   if(pRes.error)throw pRes.error;if(vRes.error)throw vRes.error;if(cRes.error)throw cRes.error;
+   const products=pRes.data||[],ids=new Set(products.map(x=>x.id)),variants=(vRes.data||[]).filter(x=>ids.has(x.product_id));
+   host.innerHTML="";
+   if(masterLocalsState.compactPreviewController?.destroy)masterLocalsState.compactPreviewController.destroy();
+   masterLocalsState.compactPreviewController=window.HTPWEBCompactMenu.mount({
+     root:host,
+     local,
+     products,
+     variants,
+     categories:cRes.data||[],
+     inventory:Array.isArray(iRes.data)?iRes.data:[],
+     availability:Array.isArray(aRes.data)?aRes.data[0]||null:null,
+     preview:true,
+     cart:{canOrder:false,getQuantity:()=>0,getSummary:()=>({count:0,subtotal:0})},
+     onError:text=>message(text,"error")
+   });
+   masterLocalsState.menuDesignPreviewed=local.id+":COMPACT";
+   $("masterMenuDesignStatus").textContent="Vista previa cargada con el catálogo, variantes, horarios, stock, menú original y galería reales del restaurante.";
+   const current=String(local.menu_design||"CURRENT").toUpperCase();
+   $("masterMenuDesignSaveBtn").disabled=design===current;
+ }catch(e){
+   host.innerHTML='<div class="error" style="margin:16px">'+esc(e.message||"No se pudo generar la vista previa.")+'</div>';
+   message(e.message||"No se pudo generar la vista previa.","error");
+ }
+}
+async function saveMasterMenuDesign(){
+ const localId=$("masterMenuDesignLocal")?.value,design=String($("masterMenuDesignChoice")?.value||"CURRENT").toUpperCase();
+ const local=masterLocalsState.items.find(x=>x.id===localId);
+ if(!local)return message("Selecciona un restaurante.","error");
+ if(design==="COMPACT"&&masterLocalsState.menuDesignPreviewed!==local.id+":COMPACT")return message("Previsualiza el Menú compacto antes de publicarlo.","error");
+ const button=$("masterMenuDesignSaveBtn");button.disabled=true;
+ try{
+   await rpc("master_set_local_menu_design",{p_local_id:local.id,p_menu_design:design});
+   masterLocalsState.menuDesignPreviewed="";
+   await loadMasterLocals();
+   renderMasterMenuDesignControls(local.id);
+   message("Diseño publicado para "+local.name+": "+(design==="COMPACT"?"Menú compacto":"Menú actual")+".");
+ }catch(e){message(e.message||"No se pudo guardar el diseño del menú.","error");button.disabled=false;}
+}
+
 async function assignMasterLocalPlan(localId){
  try{
    const local=masterLocalsState.items.find(x=>x.id===localId);
@@ -278,7 +395,7 @@ async function loadMasterLocals(){
    for(const [id,data,label] of [["localFilterProvince",provinces.map(p=>({id:p})),p=>p.id],["localFilterCity",state.cities,c=>c.name],["localFilterZone",zones,z=>z.code+" — "+z.name]]){
      const value=$(id).value;$(id).innerHTML='<option value="">Todos</option>'+localOptions(data,label,value).replace('<option value="">Seleccionar…</option>',"");
    }
-   renderMasterLocalList();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
+   renderMasterLocalList();renderMasterMenuDesignControls();if(!masterLocalsState.dirty){const id=$("masterLocalId").value;fillMasterLocalForm(items.find(l=>l.id===id)||null);}
    await loadMasterLocalDomains();
  }catch(e){message(e.message||"No se pudieron cargar los locales.","error");}
 }
