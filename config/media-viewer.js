@@ -285,8 +285,22 @@
     }
   }
 
+  function compactMenuIsActive() {
+    try {
+      const preview = new URLSearchParams(location.search).get("menu_preview");
+      return String(preview || "").toUpperCase() === "COMPACT" ||
+        (typeof localActual !== "undefined" && String(localActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT");
+    } catch {
+      return false;
+    }
+  }
+
   async function loadGallery() {
     ensureUi();
+    if (compactMenuIsActive()) {
+      $v("clientLocalGallery")?.classList.add("hidden");
+      return;
+    }
     try {
       if (typeof localId === "undefined" || !localId || typeof supabaseClient === "undefined") return;
       const { data, error } = await supabaseClient.rpc("public_list_local_gallery", { p_local_id: localId });
