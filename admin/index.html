@@ -12,7 +12,7 @@
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261007-editorfix2">
+<link rel="stylesheet" href="../assets/admin.css?v=20261007-localplans1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-powerpoint1">
@@ -44,6 +44,7 @@
       <button data-section="share">Compartir</button>
       <button data-section="promotions">Promociones</button>
       <button data-section="mylocal">Mi Local</button>
+      <button data-section="localplan">Mi Plan</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="drivers">Repartidores</button>
       <button data-section="driverorders">Mis entregas</button>
@@ -360,6 +361,78 @@
         <h3>Funciones incluidas</h3>
         <p class="muted">Prestaciones incluidas en tu contrato. Esta sección es informativa; utiliza el menú lateral para operar cada módulo.</p>
         <div id="myPlanFeatures"></div>
+      </div>
+    </section>
+
+    <section id="section-localplan" class="section">
+      <div class="card local-plan-hero">
+        <div>
+          <span class="local-plan-kicker">SUSCRIPCIÓN DEL LOCAL</span>
+          <h2>Mi Plan</h2>
+          <p class="muted">Revisa tu plan actual, compara beneficios y renueva sin salir de HTPWEB.</p>
+        </div>
+        <select id="localPlanLocal" style="max-width:340px"></select>
+      </div>
+
+      <div id="localPlanCurrent" class="card">
+        <div class="workspace-note">Consultando tu suscripción…</div>
+      </div>
+
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin-bottom:6px">Planes para tu negocio</h3>
+            <p class="muted" style="margin:0">Elige el nivel que necesitas. MASTER puede ajustar precios y prestaciones sin tocar esta pantalla.</p>
+          </div>
+          <span class="badge">USD · mensual</span>
+        </div>
+        <div id="localPlanCards" class="local-plan-grid" style="margin-top:16px"></div>
+      </div>
+
+      <div id="localPlanCheckout" class="card hidden">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <span class="local-plan-kicker">CENTRO DE PAGO</span>
+            <h3 id="localCheckoutTitle" style="margin:4px 0">Completar suscripción</h3>
+            <p id="localCheckoutSummary" class="muted" style="margin:0"></p>
+          </div>
+          <button type="button" class="btn-muted" id="localCheckoutClose">Cerrar</button>
+        </div>
+
+        <div class="local-payment-methods">
+          <article class="local-payment-method">
+            <div class="local-payment-icon">💳</div>
+            <div>
+              <h4>Tarjeta de crédito o débito</h4>
+              <p>Pago automático mediante PayPhone. Al aprobarse, HTPWEB activa el plan automáticamente.</p>
+              <div id="localCardProviderState" class="workspace-note"></div>
+            </div>
+            <button type="button" class="btn-primary" id="localPayCardBtn">Pagar con tarjeta</button>
+          </article>
+
+          <article class="local-payment-method">
+            <div class="local-payment-icon">🏦</div>
+            <div>
+              <h4>Transferencia bancaria</h4>
+              <p>Sin costo de integración. HTPWEB genera una referencia única para identificar el pago.</p>
+              <div id="localTransferAccount" class="workspace-note"></div>
+            </div>
+            <button type="button" class="btn-muted" id="localPayTransferBtn">Generar datos de transferencia</button>
+          </article>
+        </div>
+
+        <div id="localPaymentResult" class="hidden"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between" style="gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin-bottom:6px">Historial de pagos</h3>
+            <p class="muted" style="margin:0">Últimos intentos, transferencias y renovaciones.</p>
+          </div>
+          <button class="btn-muted" id="localPlanRefresh" type="button">Actualizar</button>
+        </div>
+        <div id="localPlanPayments" style="margin-top:14px"></div>
       </div>
     </section>
 
@@ -2656,6 +2729,7 @@
 <script src="../config/compact-menu.js?v=20261007-compact1"></script>
 <script src="./admin.js?v=20261007-restaurant1"></script>
 <script src="./local-page-editor.js?v=20261007-editorfix2"></script>
+<script src="./local-subscriptions.js?v=20261007-localplans1"></script>
 <script src="./master-websites.js?v=20261007-restaurant1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>

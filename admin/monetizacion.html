@@ -27,6 +27,7 @@
     <button type="button" data-tab="subscriptions">Suscripciones</button>
     <button type="button" data-tab="expirations">Vencimientos</button>
     <button type="button" data-tab="overrides">Excepciones</button>
+    <button type="button" data-tab="payments">Cobros LOCAL</button>
   </div>
 
   <section id="tab-catalog" class="monetization-tab">
@@ -40,6 +41,7 @@
       </div>
       <input id="planId" type="hidden">
       <div class="form-grid">
+        <div><label>Tipo</label><select id="targetType"><option value="DELIVERY">DELIVERY</option><option value="LOCAL">LOCAL</option></select></div>
         <div><label>Código</label><input id="code" placeholder="PRO_3M"></div>
         <div><label>Nombre</label><input id="name" placeholder="Profesional"></div>
         <div><label>Precio</label><input id="price" type="number" min="0" step=".01" value="0"></div>
@@ -131,7 +133,30 @@
       <div id="overrideUsage" style="margin-top:16px"></div>
     </section>
   </section>
+
+  <section id="tab-payments" class="monetization-tab hidden">
+    <section class="card">
+      <h2>Configuración de cobros LOCAL</h2>
+      <p class="muted">La tarjeta se procesa con PayPhone. La transferencia usa tu cuenta bancaria y una referencia única de HTPWEB.</p>
+      <div class="form-grid">
+        <div><label><input id="billingCardEnabled" type="checkbox" style="width:auto"> Habilitar tarjeta</label><div class="workspace-note">Activa esto solo después de cargar PAYPHONE_TOKEN y PAYPHONE_STORE_ID en Supabase.</div></div>
+        <div><label><input id="billingTransferEnabled" type="checkbox" style="width:auto"> Habilitar transferencia</label></div>
+        <div><label>Banco</label><input id="billingBankName" placeholder="Ej. Banco Pichincha"></div>
+        <div><label>Tipo de cuenta</label><input id="billingAccountType" placeholder="Ahorros / Corriente"></div>
+        <div><label>Número de cuenta</label><input id="billingAccountNumber"></div>
+        <div><label>Titular</label><input id="billingAccountHolder"></div>
+        <div><label>Cédula / RUC titular</label><input id="billingAccountHolderId"></div>
+        <div style="grid-column:1/-1"><label>Instrucciones</label><textarea id="billingTransferInstructions" rows="3" placeholder="Ej. En el concepto escribe la referencia HTPWEB generada."></textarea></div>
+      </div>
+      <button id="saveBillingSettings" class="btn-primary" type="button">Guardar configuración</button>
+    </section>
+
+    <section class="card">
+      <div class="row between"><div><h2>Pagos y transferencias</h2><p class="muted">Aprueba aquí las transferencias recibidas. Los pagos con tarjeta se activan automáticamente.</p></div><button id="refreshLocalPayments" class="btn-muted" type="button">Actualizar</button></div>
+      <div id="masterLocalPayments" style="margin-top:14px"></div>
+    </section>
+  </section>
 </main>
-<script src="./monetization.js?v=20260925-1204"></script>
+<script src="./monetization.js?v=20261007-localplans1"></script>
 </body>
 </html>

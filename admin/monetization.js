@@ -35,23 +35,23 @@ function updateFeatureCount(){let count=0;document.querySelectorAll("[data-featu
 function collectEntitlements(){return state.features.map(f=>{const value=featureCurrentValue(f.code);return{type:f.type,code:f.code,value:f.type==="CAPABILITY"?Boolean(value):Math.max(0,Number(value||0))};}).filter(x=>x.type==="CAPABILITY"?x.value===true:x.value>0);}
 
 function clearPlan(){
-  $("planId").value="";$("code").value="";$("name").value="";$("description").value="";$("price").value="0";$("currency").value="USD";$("durationMonths").value="1";$("order").value="0";$("active").value="true";renderFeatureBuilder();
+  $("planId").value="";$("targetType").value="DELIVERY";$("code").value="";$("name").value="";$("description").value="";$("price").value="0";$("currency").value="USD";$("durationMonths").value="1";$("order").value="0";$("active").value="true";renderFeatureBuilder();
 }
 function editPlan(id){
   const p=state.plans.find(x=>x.id===id);if(!p)return;
-  $("planId").value=p.id;$("code").value=p.code;$("name").value=p.name;$("description").value=p.description||"";$("price").value=p.price;$("currency").value=p.currency||"USD";$("durationMonths").value=String(p.duration_months||1);
+  $("planId").value=p.id;$("targetType").value=p.target_type||"DELIVERY";$("code").value=p.code;$("name").value=p.name;$("description").value=p.description||"";$("price").value=p.price;$("currency").value=p.currency||"USD";$("durationMonths").value=String(p.duration_months||1);
   if(![...$("durationMonths").options].some(o=>o.value===$("durationMonths").value)){$("durationMonths").insertAdjacentHTML("beforeend",'<option value="'+esc(p.duration_months)+'">'+esc(p.duration_months)+' meses</option>');$("durationMonths").value=String(p.duration_months);}
   $("order").value=p.display_order||0;$("active").value=String(p.active);renderFeatureBuilder(p);tab("catalog");scrollTo({top:0,behavior:"smooth"});
 }
 function planSummary(p){
   const limits=(p.entitlements||[]).filter(e=>e.type==="LIMIT"&&Number(e.value)>0);
   const caps=(p.entitlements||[]).filter(e=>e.type==="CAPABILITY"&&e.value===true);
-  return '<article class="plan-card"><div class="row between"><h3>'+esc(p.name)+'</h3><span class="badge">'+(p.active?"Activo":"Inactivo")+'</span></div><strong>'+money(p.price)+' '+esc(p.currency||"USD")+' · '+esc(p.duration_months)+' mes(es)</strong><p>'+esc(p.description||"Sin descripción")+'</p><small>'+(limits.map(x=>esc(x.label||x.code)+": "+esc(x.value)+(x.unit?" "+esc(x.unit):"")).join(" · ")||"Sin límites configurados")+'</small><small>'+caps.length+' funciones habilitadas · versión '+esc(p.plan_version||1)+'</small><button data-edit-plan="'+esc(p.id)+'" class="btn-muted" type="button">Editar plan</button></article>';
+  return '<article class="plan-card"><div class="row between"><h3>'+esc(p.name)+'</h3><span class="badge">'+esc(p.target_type||"DELIVERY")+' · '+(p.active?"Activo":"Inactivo")+'</span></div><strong>'+money(p.price)+' '+esc(p.currency||"USD")+' · '+esc(p.duration_months)+' mes(es)</strong><p>'+esc(p.description||"Sin descripción")+'</p><small>'+(limits.map(x=>esc(x.label||x.code)+": "+esc(x.value)+(x.unit?" "+esc(x.unit):"")).join(" · ")||"Sin límites configurados")+'</small><small>'+caps.length+' funciones habilitadas · versión '+esc(p.plan_version||1)+'</small><button data-edit-plan="'+esc(p.id)+'" class="btn-muted" type="button">Editar plan</button></article>';
 }
 function renderPlans(){
   $("plans").innerHTML=state.plans.length?'<div class="plan-grid">'+state.plans.map(planSummary).join("")+'</div>':'<p class="muted">Todavía no existen planes comerciales.</p>';
   document.querySelectorAll("[data-edit-plan]").forEach(b=>b.onclick=()=>editPlan(b.dataset.editPlan));
-  $("assignmentPlan").innerHTML=state.plans.filter(p=>p.active).map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.duration_months)+' mes(es) · '+money(p.price)+' '+esc(p.currency||"USD")+'</option>').join("");
+  $("assignmentPlan").innerHTML=state.plans.filter(p=>p.active&&p.target_type==="DELIVERY").map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.duration_months)+' mes(es) · '+money(p.price)+' '+esc(p.currency||"USD")+'</option>').join("");
 }
 function renderDeliveryOptions(){const options=state.deliveries.map(d=>'<option value="'+d.id+'">'+esc(d.name)+'</option>').join("");$("assignmentDelivery").innerHTML=options;$("overrideDelivery").innerHTML=options;}
 function selectedSubscription(){return state.subscriptions.find(x=>x.delivery_id===$("assignmentDelivery").value)||null;}
@@ -81,15 +81,15 @@ async function loadAll(){
   const user=await obtenerUsuarioActual();if(!user){location.href="../app/acceso.html";return;}
   state.role=await rpc("current_role_code");
   if(state.role!=="MASTER"){document.body.innerHTML='<main class="monetization-shell"><div class="card"><h1>Acceso exclusivo de MASTER</h1><a href="./index.html">Volver</a></div></main>';return;}
-  const [features,plans,subscriptions,dRes]=await Promise.all([rpc("master_list_plan_feature_catalog"),rpc("master_list_commercial_plans"),rpc("master_list_delivery_subscriptions"),supabaseClient.from("deliveries").select("id,name,active").order("name")]);
+  const [features,plans,subscriptions,dRes]=await Promise.all([rpc("master_list_plan_feature_catalog"),rpc("master_list_all_commercial_plans"),rpc("master_list_delivery_subscriptions"),supabaseClient.from("deliveries").select("id,name,active").order("name")]);
   if(dRes.error)throw dRes.error;
   state.features=Array.isArray(features)?features:[];state.plans=Array.isArray(plans)?plans:[];state.subscriptions=Array.isArray(subscriptions)?subscriptions:[];state.deliveries=(dRes.data||[]).filter(d=>d.active!==false);
-  renderPlans();renderDeliveryOptions();renderFeatureBuilder();renderOverrideFeatures();renderSubscriptionDetail();renderAssignmentPreview();renderExpirations();
+  renderPlans();renderDeliveryOptions();renderFeatureBuilder();renderOverrideFeatures();renderSubscriptionDetail();renderAssignmentPreview();renderExpirations();await loadBillingModule();
 }
 
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 $("newPlan").onclick=clearPlan;
-$("savePlan").onclick=async()=>{try{const currency=$("currency").value.trim().toUpperCase();if(!/^[A-Z]{3}$/.test(currency))throw new Error("La moneda debe tener 3 letras, por ejemplo USD.");const id=await rpc("master_save_commercial_plan",{p_plan_id:$("planId").value||null,p_code:$("code").value.trim(),p_name:$("name").value.trim(),p_description:$("description").value.trim(),p_price:Number($("price").value),p_currency:currency,p_duration_months:Number($("durationMonths").value),p_active:$("active").value==="true",p_display_order:Number($("order").value||0),p_entitlements:collectEntitlements()});msg("Plan comercial guardado.");await loadAll();editPlan(id);}catch(e){msg(e.message||"No se pudo guardar el plan.",true);}};
+$("savePlan").onclick=async()=>{try{const currency=$("currency").value.trim().toUpperCase();if(currency!=="USD")throw new Error("Por ahora HTPWEB cobra suscripciones en USD.");const id=await rpc("master_save_commercial_plan_v2",{p_plan_id:$("planId").value||null,p_target_type:$("targetType").value,p_code:$("code").value.trim(),p_name:$("name").value.trim(),p_description:$("description").value.trim(),p_price:Number($("price").value),p_duration_months:Number($("durationMonths").value),p_active:$("active").value==="true",p_display_order:Number($("order").value||0),p_entitlements:collectEntitlements()});msg("Plan comercial guardado.");await loadAll();editPlan(id);}catch(e){msg(e.message||"No se pudo guardar el plan.",true);}};
 $("assignmentDelivery").onchange=()=>{renderSubscriptionDetail();renderAssignmentPreview();};
 $("assignmentPlan").onchange=renderAssignmentPreview;
 $("assignPlan").onclick=async()=>{try{const deliveryId=$("assignmentDelivery").value,planId=$("assignmentPlan").value;if(!deliveryId||!planId)throw new Error("Selecciona DELIVERY y plan.");const result=await rpc("master_assign_commercial_plan",{p_delivery_id:deliveryId,p_plan_id:planId,p_effective_mode:"AUTO"});msg("Plan aplicado: "+(result?.change_type||"OK")+" · vigencia "+(result?.effective_mode||"AUTO")+".");await loadAll();$("assignmentDelivery").value=deliveryId;renderSubscriptionDetail();renderAssignmentPreview();}catch(e){msg(e.message||"No se pudo asignar el plan.",true);}};
@@ -98,4 +98,53 @@ $("overrideFeature").onchange=syncOverrideValue;
 $("overrideDelivery").onchange=async()=>{try{const id=$("overrideDelivery").value;$("overrideUsage").innerHTML=id?'<pre>'+esc(JSON.stringify(await rpc("plan_usage_snapshot",{p_delivery_id:id,p_local_id:null}),null,2))+'</pre>':"";}catch(e){msg(e.message,true);}};
 $("saveOverride").onclick=async()=>{try{const o=$("overrideFeature").selectedOptions[0],type=o?.dataset.type;if(!type)throw new Error("Selecciona una prestación.");const raw=$("overrideValue").value.trim(),value=type==="CAPABILITY"?raw.toLowerCase()==="true":Number(raw);if(type==="LIMIT"&&(!Number.isFinite(value)||value<0))throw new Error("El límite debe ser un número no negativo.");await rpc("master_set_plan_override",{p_delivery_id:$("overrideDelivery").value,p_local_id:null,p_entitlement_type:type,p_code:$("overrideFeature").value,p_value:value,p_reason:$("overrideReason").value.trim()});msg("Excepción guardada.");$("overrideDelivery").dispatchEvent(new Event("change"));}catch(e){msg(e.message||"No se pudo guardar la excepción.",true);}};
 
+if($("saveBillingSettings"))$("saveBillingSettings").onclick=async()=>{try{
+  await rpc("master_set_subscription_payment_settings",{
+    p_card_enabled:$("billingCardEnabled").checked,
+    p_transfer_enabled:$("billingTransferEnabled").checked,
+    p_bank_name:$("billingBankName").value.trim()||null,
+    p_account_type:$("billingAccountType").value.trim()||null,
+    p_account_number:$("billingAccountNumber").value.trim()||null,
+    p_account_holder:$("billingAccountHolder").value.trim()||null,
+    p_account_holder_id:$("billingAccountHolderId").value.trim()||null,
+    p_transfer_instructions:$("billingTransferInstructions").value.trim()||null
+  });
+  msg("Configuración de cobros guardada.");await loadBillingModule();
+}catch(e){msg(e.message||"No se pudo guardar la configuración de cobros.",true);}};
+if($("refreshLocalPayments"))$("refreshLocalPayments").onclick=()=>loadBillingModule().catch(e=>msg(e.message,true));
+
 loadAll().catch(e=>msg(e.message||"No se pudo abrir Planes y Suscripciones.",true));
+async function loadBillingModule(){
+  if(!$("billingBankName"))return;
+  const [settings,payments]=await Promise.all([
+    rpc("local_subscription_payment_settings"),
+    rpc("master_list_local_subscription_payments")
+  ]);
+  const s=settings||{};
+  $("billingCardEnabled").checked=!!s.card_enabled;
+  $("billingTransferEnabled").checked=!!s.transfer_enabled;
+  $("billingBankName").value=s.bank_name||"";
+  $("billingAccountType").value=s.account_type||"";
+  $("billingAccountNumber").value=s.account_number||"";
+  $("billingAccountHolder").value=s.account_holder||"";
+  $("billingAccountHolderId").value=s.account_holder_id||"";
+  $("billingTransferInstructions").value=s.transfer_instructions||"";
+  renderMasterLocalPayments(Array.isArray(payments)?payments:[]);
+}
+function renderMasterLocalPayments(rows){
+  const box=$("masterLocalPayments");if(!box)return;
+  if(!rows.length){box.innerHTML='<div class="muted">Aún no hay pagos LOCAL.</div>';return;}
+  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>LOCAL</th><th>Plan</th><th>Método</th><th>Referencia</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+
+    rows.map(r=>'<tr><td>'+esc(fmtDate(r.created_at))+'</td><td><strong>'+esc(r.local_name||"LOCAL")+'</strong></td><td>'+esc(r.plan_name||"Plan")+'</td><td>'+esc(r.method==="CARD"?"Tarjeta":"Transferencia")+'</td><td><code>'+esc(r.transfer_reference||r.client_reference||"—")+'</code></td><td>'+money(r.amount)+' '+esc(r.currency||"USD")+'</td><td>'+esc(r.status||"—")+'</td><td>'+(r.method==="TRANSFER"&&r.status==="AWAITING_TRANSFER"?'<button class="btn-primary" data-approve-transfer="'+esc(r.id)+'" type="button">Aprobar</button> <button class="btn-muted" data-reject-transfer="'+esc(r.id)+'" type="button">Rechazar</button>':'')+'</td></tr>').join('')+
+    '</tbody></table></div>';
+  box.querySelectorAll("[data-approve-transfer]").forEach(b=>b.onclick=()=>reviewTransfer(b.dataset.approveTransfer,true));
+  box.querySelectorAll("[data-reject-transfer]").forEach(b=>b.onclick=()=>reviewTransfer(b.dataset.rejectTransfer,false));
+}
+async function reviewTransfer(id,approve){
+  try{
+    const note=approve?"Transferencia verificada por MASTER":prompt("Motivo del rechazo:","Pago no identificado")||"Pago rechazado";
+    await rpc("master_review_local_transfer_payment",{p_payment_id:id,p_approve:approve,p_note:note});
+    msg(approve?"Transferencia aprobada y plan activado.":"Transferencia rechazada.");
+    await loadBillingModule();
+  }catch(e){msg(e.message||"No se pudo revisar el pago.",true);}
+}

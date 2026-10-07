@@ -55,7 +55,7 @@ const roleSections = {
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
-  LOCAL_ADMIN: ["overview","mylocal","orders","catalog","schedules","storage","marketing","inventory","analytics"]
+  LOCAL_ADMIN: ["overview","mylocal","localplan","orders","catalog","schedules","storage","marketing","inventory","analytics"]
 };
 
 function completeAdminRoleBoot() {
@@ -407,6 +407,7 @@ function showSection(name) {
   if (name === "share") loadShareModule();
   if (name === "promotions" && window.loadDeliveryPromotionsPanel) window.loadDeliveryPromotionsPanel();
   if (name === "mylocal") loadLocalProfile();
+  if (name === "localplan" && window.loadLocalSubscriptionPlan) window.loadLocalSubscriptionPlan();
   if (name === "marketing") loadLocalMarketing();
   if (name === "inventory") loadLocalInventory();
   if (name === "orders") loadOrders();
