@@ -58,3 +58,7 @@ body.cm-preview-embed main{padding-top:0!important}
  .cm-bottom{bottom:8px;width:calc(100% - 16px);grid-template-columns:auto minmax(0,1fr) auto;padding:9px 10px}
  .cm-bottom button{padding:8px 10px}
 }
+
+.cm-admin-preview .htp-compact-menu{max-width:720px;padding-bottom:24px}
+.cm-admin-preview .cm-toolbar{position:relative;top:auto}
+.cm-admin-preview .cm-bottom{position:sticky;left:auto;bottom:8px;transform:none;width:calc(100% - 8px);margin:18px 4px 4px}
