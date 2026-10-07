@@ -443,7 +443,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const params=new URLSearchParams(location.search);
-const key=params.get("local")||document.documentElement.dataset.localSlug||"";
+const key=params.get("business")||params.get("local")||document.documentElement.dataset.businessSlug||document.documentElement.dataset.localSlug||"";
 const source=(params.get("src")||"direct").toLowerCase();
 const campaign=params.get("campaign")||"";
 const sharedProductId=params.get("product")||"";
@@ -451,19 +451,19 @@ const menuPreview=(params.get("menu_preview")||"").toUpperCase();
 const menuPreviewEmbed=params.get("menu_preview_embed")==="1";
 const rawPageSection=(params.get("section")||document.documentElement.dataset.initialSection||"home").toLowerCase();
 let pageSection=rawPageSection==="catalog"?"shop":rawPageSection;
-const localAnalyticsSession=sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
-sessionStorage.setItem("HTPWEB_LOCAL_ANALYTICS_SESSION",localAnalyticsSession);
+const businessAnalyticsSession=sessionStorage.getItem("HTPWEB_BUSINESS_ANALYTICS_SESSION")||sessionStorage.getItem("HTPWEB_LOCAL_ANALYTICS_SESSION")||crypto.randomUUID();
+sessionStorage.setItem("HTPWEB_BUSINESS_ANALYTICS_SESSION",businessAnalyticsSession);
 let store=null,products=[],variants=[],categories=[],inventory=[],promotions=[],projects=[],blogPosts=[],activeCategory="",availability=null,compactMenuController=null;
 const promotionMixSelections=new Map();
 const productCardQuantities=new Map();
-async function trackLocal(eventType,productId=null,metadata={}){
+async function trackBusiness(eventType,productId=null,metadata={}){
  try{
-  if(!store?.local?.id)return;
-  await supabaseClient.rpc("record_local_storefront_event",{
-   p_event_type:eventType,p_local_id:store.local.id,p_product_id:productId,
-   p_session_id:localAnalyticsSession,p_source:source,p_metadata:{campaign,...metadata}
+  if(!store?.business?.id)return;
+  await supabaseClient.rpc("record_business_storefront_event",{
+   p_event_type:eventType,p_business_id:store.business.id,p_product_id:productId,
+   p_session_id:businessAnalyticsSession,p_source:source,p_metadata:{campaign,...metadata}
   });
- }catch(e){console.warn("Analytics LOCAL:",e?.message||e);}
+ }catch(e){console.warn("Analytics negocio:",e?.message||e);}
 }
 const SECTION_PATHS={
  home:"",
@@ -488,7 +488,7 @@ function sectionFromLocation(){
  return PATH_SECTIONS[segment]||"home";
 }
 function siteSectionUrl(section){
- const slug=store?.local?.slug||key;
+ const slug=store?.business?.slug||key;
  if(!slug)return location.href;
  const cleanSection=section==="catalog"?"shop":section;
  const segment=SECTION_PATHS[cleanSection]||"";
@@ -545,9 +545,9 @@ function applySinglePageSection(){
  const cart=$("cartBtn");
  if(cart)cart.classList.toggle("hidden",pageSection!=="shop");
 }
-function scope(){return source==="htpweb"?"HTPWEB":(store?.local?.id?"LOCAL:"+store.local.id:"LOCAL:UNKNOWN");}
+function scope(){return source==="htpweb"?"HTPWEB":(store?.business?.id?"LOCAL:"+store.business.id:"LOCAL:UNKNOWN");}
 function money(v){return "$"+Number(v||0).toFixed(2);}
-function itemMatcher(p,v=null){return{local_id:store.local.id,product_id:p.id,variant_id:v?.id||null};}
+function itemMatcher(p,v=null){return{local_id:store.business.id,product_id:p.id,variant_id:v?.id||null};}
 function stockFor(p,v=null){return inventory.find(x=>x.product_id===p.id&&(x.variant_id||null)===(v?.id||null));}
 function updateCount(){$("cartCount").textContent=carritoCantidad(scope());}
 function safeExternalUrl(value){
@@ -704,7 +704,7 @@ function applyImportedReferenceLayout(){
    const c=document.createElement("a");
    c.className="imported-reference-contact";
    c.textContent="WhatsApp";
-   c.href=whatsappUrl(store?.local)||siteSectionUrl("contact");
+   c.href=whatsappUrl(store?.business)||siteSectionUrl("contact");
    if(c.href.includes("wa.me")){c.target="_blank";c.rel="noopener noreferrer";}
    const cart=header.querySelector("#cartBtn");
    cart?.insertAdjacentElement("beforebegin",c);
@@ -713,7 +713,7 @@ function applyImportedReferenceLayout(){
  if(top&&ref.topbar){
    top.classList.remove("hidden");
    const phone=document.getElementById("topbarPhone");
-   if(phone)phone.textContent=store?.local?.phone||store?.local?.whatsapp||store?.local?.name||"";
+   if(phone)phone.textContent=store?.business?.phone||store?.business?.whatsapp||store?.business?.name||"";
    const cta=document.getElementById("topbarCta");
    if(cta){cta.textContent="Contacto";cta.href=siteSectionUrl("contact");}
  }
@@ -746,7 +746,7 @@ function whatsappUrl(local){
  return "https://wa.me/"+number+"?text="+encodeURIComponent(message);
 }
 function renderPageSections(){
- const l=store.local,cfg=pageContent(),label=catalogLabel(),visual=templateVisuals();
+ const l=store.business,cfg=pageContent(),label=catalogLabel(),visual=templateVisuals();
  $("aboutTitle").textContent=cfg.about_title||"Quiénes somos";
  $("aboutText").textContent=cfg.about_text||l.description||"";
  const aboutVisible=cfg.show_about!==false;
@@ -828,7 +828,7 @@ function renderPageSections(){
  applySinglePageSection();
 }
 function applyMarketingMetadata(){
- const l=store?.local||{},cfg=pageContent(),visual=templateVisuals();
+ const l=store?.business||{},cfg=pageContent(),visual=templateVisuals();
  const title=(l.name||"Negocio")+" | Sitio oficial";
  const description=(cfg.hero_subtitle||l.description||("Conoce "+(l.name||"nuestro negocio")+", nuestros productos, servicios y formas de contacto.")).slice(0,160);
  document.title=title;
@@ -872,7 +872,7 @@ function renderSharedArchitecturePage(){
    document.body.classList.remove("architecture-home","architecture-page");
    return false;
  }
- const l=store?.local||{},cfg=pageContent(),style=getComputedStyle(document.documentElement),visual=templateVisuals();
+ const l=store?.business||{},cfg=pageContent(),style=getComputedStyle(document.documentElement),visual=templateVisuals();
  const design=String(store?.preset?.config?.design_system||"SIGNATURE").toUpperCase();
  const family=String(store?.preset?.layout_family||"GENERAL").toUpperCase();
  if(design==="REFERENCE")return false;
@@ -948,7 +948,7 @@ function renderSharedArchitecturePage(){
 }
 
 function renderHero(){
- const l=store.local,cfg=pageContent(),visual=templateVisuals();
+ const l=store.business,cfg=pageContent(),visual=templateVisuals();
  $("brandName").textContent=l.name;
  if(l.logo_url){$("brandLogo").src=l.logo_url;$("brandLogo").classList.remove("hidden");}
  const title=cfg.hero_title||l.name,subtitle=cfg.hero_subtitle||l.description||"";
@@ -1117,7 +1117,7 @@ function renderProducts(){
    }
    carritoAgregar(scope(),{...matcher,snapshot:{name:p.name,variant_name:v?.name||null,price:Number(v?.price??p.price),image_url:p.image_url||null}},qty);
    $("error").classList.add("hidden");
-   trackLocal("CART_VIEW",p.id,{action:"add",quantity:qty});
+   trackBusiness("CART_VIEW",p.id,{action:"add",quantity:qty});
    setProductCardQty(p.id,1);
    updateCount();
  });
@@ -1143,12 +1143,12 @@ function promotionMixTotal(p){const s=promotionMixState(p);return s?[...s.quanti
 function addStandalonePromotion(p,option=null){
  const price=Number(option?.promo_price??p.promotion_price??0);
  carritoAgregar(scope(),{
-  kind:"PROMOTION",local_id:store.local.id,promotion_id:p.id,promotion_item_id:option?.id||null,
-  snapshot:{local_name:store.local.name,promotion_title:p.title,promotion_type:p.promotion_type,
+  kind:"PROMOTION",local_id:store.business.id,promotion_id:p.id,promotion_item_id:option?.id||null,
+  snapshot:{local_name:store.business.name,promotion_title:p.title,promotion_type:p.promotion_type,
    promotion_image_url:p.image_url||null,option_name:option?(option.product_name+(option.variant_name?" · "+option.variant_name:"")):null,
    price}
  },1);
- trackLocal("CART_VIEW",null,{action:"add_promotion",promotion_id:p.id});updateCount();
+ trackBusiness("CART_VIEW",null,{action:"add_promotion",promotion_id:p.id});updateCount();
 }
 function changePromotionMix(p,variantId,delta){
  const s=promotionMixState(p);if(!s)return;
@@ -1160,10 +1160,10 @@ function addMixedPromotion(p){
  const s=promotionMixState(p);if(!s)return;
  if(promotionMixTotal(p)!==s.cfg.required){$("error").textContent="Selecciona exactamente "+s.cfg.required+" opciones para "+p.title+".";$("error").classList.remove("hidden");return;}
  const selection=s.cfg.variants.map(v=>({product_id:s.cfg.item.product_id,product_name:s.cfg.item.product_name,variant_id:v.id,variant_name:v.name,quantity:Number(s.quantities.get(v.id)||0)})).filter(x=>x.quantity>0);
- carritoAgregar(scope(),{kind:"PROMOTION",local_id:store.local.id,promotion_id:p.id,promotion_item_id:null,
-  snapshot:{local_name:store.local.name,promotion_title:p.title,promotion_type:p.promotion_type,promotion_image_url:p.image_url||null,
+ carritoAgregar(scope(),{kind:"PROMOTION",local_id:store.business.id,promotion_id:p.id,promotion_item_id:null,
+  snapshot:{local_name:store.business.name,promotion_title:p.title,promotion_type:p.promotion_type,promotion_image_url:p.image_url||null,
    promotion_selection:selection,promotion_selection_required:s.cfg.required,price:Number(p.promotion_price||0)}},1);
- $("error").classList.add("hidden");trackLocal("CART_VIEW",null,{action:"add_promotion",promotion_id:p.id});updateCount();
+ $("error").classList.add("hidden");trackBusiness("CART_VIEW",null,{action:"add_promotion",promotion_id:p.id});updateCount();
 }
 function renderPromotions(){
  const available=promotions.filter(p=>p.available_now);
@@ -1192,14 +1192,14 @@ function renderPromotions(){
  }).join("");
  $("promotions").querySelectorAll("[data-promo-add]").forEach(b=>b.onclick=()=>{
    const p=promotions.find(x=>x.id===b.dataset.promoAdd),option=p?.items?.find(x=>x.id===b.dataset.option)||null;
-   if(p){trackLocal("PROMOTION_VIEW",null,{promotion_id:p.id,title:p.title});addStandalonePromotion(p,option);}
+   if(p){trackBusiness("PROMOTION_VIEW",null,{promotion_id:p.id,title:p.title});addStandalonePromotion(p,option);}
  });
  $("promotions").querySelectorAll("[data-mix-minus]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixMinus);if(p)changePromotionMix(p,b.dataset.var,-1)});
  $("promotions").querySelectorAll("[data-mix-plus]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixPlus);if(p)changePromotionMix(p,b.dataset.var,1)});
- $("promotions").querySelectorAll("[data-mix-add]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixAdd);if(p){trackLocal("PROMOTION_VIEW",null,{promotion_id:p.id,title:p.title});addMixedPromotion(p);}});
+ $("promotions").querySelectorAll("[data-mix-add]").forEach(b=>b.onclick=()=>{const p=promotions.find(x=>x.id===b.dataset.mixAdd);if(p){trackBusiness("PROMOTION_VIEW",null,{promotion_id:p.id,title:p.title});addMixedPromotion(p);}});
 }
 function compactStoreCartSummary(){
- const rows=carritoObtener(scope()).filter(item=>String(item.local_id)===String(store?.local?.id)&&!item.promotion_id);
+ const rows=carritoObtener(scope()).filter(item=>String(item.local_id)===String(store?.business?.id)&&!item.promotion_id);
  let count=0,subtotal=0;
  rows.forEach(item=>{
   const p=products.find(x=>String(x.id)===String(item.product_id));if(!p)return;
@@ -1223,7 +1223,7 @@ function compactStoreChangeQuantity(p,v,delta){
  return carritoCantidadItem(scope(),matcher);
 }
 function openStoreCart(){
- trackLocal("CART_VIEW",null,{action:"open"});
+ trackBusiness("CART_VIEW",null,{action:"open"});
  if(source==="htpweb"){location.href="/htpweb/app/carrito-general.html";return;}
  const next=new URL("/htpweb/app/tienda-carrito.html",location.origin);
  next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
@@ -1239,7 +1239,7 @@ function applyCompactStorefrontMenu(){
  if(menuPreviewEmbed)document.body.classList.add("cm-preview-embed");
  if(compactMenuController?.destroy)compactMenuController.destroy();
  compactMenuController=window.HTPWEBCompactMenu?.mount({
-  root,local:store.local,products,variants,categories,inventory,availability,preview:previewCompact,
+  root,business:store.business,products,variants,categories,inventory,availability,preview:previewCompact,
   cart:{
    canOrder:availability?.is_open!==false,
    getQuantity:(p,v)=>carritoCantidadItem(scope(),itemMatcher(p,v)),
@@ -1255,7 +1255,7 @@ async function loadMenu(){
  $("menuSection").classList.toggle("hidden",mode==="CARDS");
  $("productsSection").classList.toggle("hidden",mode==="VISUAL_MENU");
  if(mode==="CARDS")return;
- const {data,error}=await supabaseClient.rpc("public_local_menu_pages",{p_local_id:store.local.id});
+ const {data,error}=await supabaseClient.rpc("public_business_menu_pages",{p_business_id:store.business.id});
  if(error){console.warn(error);return;}
  const rows=Array.isArray(data)?data:[];
  $("menuPages").innerHTML=rows.length?rows.map(x=>'<article class="menu-page"><strong>'+esc(x.title||"Menú")+'</strong><img src="'+esc(x.image_url||"")+'" alt=""></article>').join(""):'<div class="empty">Este LOCAL todavía no tiene hojas de menú visual.</div>';
@@ -1276,9 +1276,9 @@ window.addEventListener("popstate",()=>{
 async function init(){
  try{
    if(!key)throw new Error("No se especificó el LOCAL.");
-   const {data,error}=await supabaseClient.rpc("public_local_storefront",{p_local_key:key});
+   const {data,error}=await supabaseClient.rpc("public_business_storefront",{p_business_key:key});
    if(error)throw error;if(!data)throw new Error("Esta tienda no está disponible.");
-   store=data;document.title=store.local.name+" | Sitio oficial";
+   store=data;document.title=store.business.name+" | Sitio oficial";
    history.replaceState({section:pageSection},"",siteSectionUrl(pageSection));
    document.body.dataset.presetCode=String(store?.settings?.preset_code||"GENERAL_MODERN");
    document.body.dataset.surfaceStyle=String(store?.settings?.surface_style||"SOFT");
@@ -1291,22 +1291,22 @@ async function init(){
    applyStoreTheme();
    if(document.body.dataset.designSystem==="REFERENCE")applyImportedReferenceLayout();
    const [pRes,vRes,cRes,iRes,promoRes,projectsRes,blogRes,availabilityRes]=await Promise.all([
-     supabaseClient.from("business_products").select("id,business_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("business_id",store.local.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
+     supabaseClient.from("business_products").select("id,business_id,category_id,name,description,short_description,price,compare_price,badge_type,badge_text,featured,image_url,display_order,sku").eq("business_id",store.business.id).eq("active",true).eq("catalog_visible",true).order("display_order"),
      supabaseClient.from("product_variants").select("id,product_id,name,price,display_order").eq("active",true).order("display_order"),
-     supabaseClient.from("business_categories").select("id,business_id,name,display_order").eq("business_id",store.local.id).eq("active",true).order("display_order"),
-     supabaseClient.rpc("public_local_inventory",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_local_promotions_catalog",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_list_local_gallery",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_local_blog_posts",{p_local_id:store.local.id}),
-     supabaseClient.rpc("public_locals_order_availability",{p_local_ids:[store.local.id]})
+     supabaseClient.from("business_categories").select("id,business_id,name,display_order").eq("business_id",store.business.id).eq("active",true).order("display_order"),
+     supabaseClient.rpc("public_business_inventory",{p_business_id:store.business.id}),
+     supabaseClient.rpc("public_business_promotions_catalog",{p_business_id:store.business.id}),
+     supabaseClient.rpc("public_list_business_gallery",{p_business_id:store.business.id}),
+     supabaseClient.rpc("public_business_blog_posts",{p_business_id:store.business.id}),
+     supabaseClient.rpc("public_businesses_order_availability",{p_business_ids:[store.business.id]})
    ]);
    if(pRes.error)throw pRes.error;if(cRes.error)throw cRes.error;
    products=pRes.data||[];const ids=new Set(products.map(p=>p.id));variants=(vRes.data||[]).filter(v=>ids.has(v.product_id));categories=cRes.data||[];inventory=Array.isArray(iRes.data)?iRes.data:[];promotions=Array.isArray(promoRes.data)?promoRes.data:[];projects=Array.isArray(projectsRes.data)?projectsRes.data:[];blogPosts=Array.isArray(blogRes.data)?blogRes.data:[];availability=Array.isArray(availabilityRes.data)?availabilityRes.data[0]||null:null;
    configureSiteNavigation();renderHero();renderPageSections();renderSharedArchitecturePage();applyMarketingMetadata();renderCats();renderPromotions();renderProducts();await loadMenu();applyCompactStorefrontMenu();applySinglePageSection();updateCount();
-   trackLocal("LOCAL_VIEW",null,{preset:store.settings.preset_code});
+   trackBusiness("BUSINESS_VIEW",null,{preset:store.settings.preset_code});
    if(sharedProductId){
      const target=document.getElementById("product-"+sharedProductId);
-     if(target){trackLocal("PRODUCT_VIEW",sharedProductId,{deep_link:true});target.scrollIntoView({behavior:"smooth",block:"center"});}
+     if(target){trackBusiness("PRODUCT_VIEW",sharedProductId,{deep_link:true});target.scrollIntoView({behavior:"smooth",block:"center"});}
    }
    $("search").oninput=renderProducts;
    $("cartBtn").onclick=openStoreCart;
