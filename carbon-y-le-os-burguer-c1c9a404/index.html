@@ -23,6 +23,8 @@
 :root{--local-accent:#111827;--local-secondary:#475467;--local-bg:#f6f7f9;--local-surface:#fff;--local-text:#111827;--local-radius:18px;--local-gap:18px}
 html{scroll-behavior:smooth;scrollbar-gutter:stable}
 body.local-store{background:var(--local-bg);color:var(--local-text)}
+body.local-store.theme-pending{background:#fff!important}
+body.local-store.theme-pending> *{visibility:hidden!important}
 .local-store-shell{max-width:1180px;margin:0 auto;padding:18px}
 .local-store-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid #e5e7eb}
 .local-store-header-inner{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
@@ -338,7 +340,7 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 <script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 <!-- HTPWEB_AUTO_SEO_LOCAL -->
 </head>
-<body class="local-store">
+<body class="local-store theme-pending">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
 <header class="local-store-header"><div class="local-store-header-inner">
   <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial</small></div></div>
@@ -719,6 +721,8 @@ function applyStoreTheme(){
  root.setProperty("--local-bg",valid(imported.background,t.background_color||"#f6f7f9"));
  root.setProperty("--local-surface",valid(imported.surface,t.surface_color||"#fff"));
  root.setProperty("--local-text",valid(imported.text,t.text_color||"#111827"));
+ document.body.classList.remove("theme-pending");
+ document.body.classList.add("theme-ready");
 }
 function normalizeWhatsAppNumber(value){
  let digits=String(value||"").replace(/\D/g,"");
@@ -1224,7 +1228,7 @@ async function init(){
      next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
      location.href=next.toString();
    };
- }catch(e){$("error").textContent=e.message||"No se pudo abrir la tienda.";$("error").classList.remove("hidden");}
+ }catch(e){document.body.classList.remove("theme-pending");document.body.classList.add("theme-ready");$("error").textContent=e.message||"No se pudo abrir la tienda.";$("error").classList.remove("hidden");}
 }
 init();
 </script>
