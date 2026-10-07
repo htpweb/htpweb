@@ -225,7 +225,15 @@ async function init() {
       return;
     }
 
-    $("roleText").textContent = state.role;
+    const roleLabels={
+      MASTER:"Administración general",
+      DELIVERY_ADMIN:"Administrador DELIVERY",
+      DELIVERY_OPERATOR:"Operador DELIVERY",
+      DELIVERY_DRIVER:"Repartidor",
+      LOCAL_ADMIN:"Administrador del LOCAL"
+    };
+    $("roleText").textContent = roleLabels[state.role] || state.role;
+    document.body.classList.toggle("local-admin-workspace",state.role==="LOCAL_ADMIN");
     $("userMail").textContent = state.user.email || state.user.id;
 
     configureNavigation();
@@ -314,6 +322,48 @@ function organizeDeliveryAdminNavigation() {
   });
 }
 
+
+function organizeLocalAdminNavigation(){
+  if(state.role!=="LOCAL_ADMIN")return;
+  const nav=$("nav");
+  if(!nav)return;
+
+  nav.querySelectorAll(".local-nav-group").forEach(group=>group.remove());
+
+  const labels={
+    mylocal:"Mi sitio web",
+    storage:"Multimedia",
+    analytics:"Estadísticas"
+  };
+  Object.entries(labels).forEach(([section,label])=>{
+    const button=nav.querySelector('button[data-section="'+section+'"]');
+    if(button)button.textContent=label;
+  });
+
+  const layout=[
+    {label:"Principal",sections:["overview","mylocal"]},
+    {label:"Operación",sections:["orders","catalog","inventory","schedules"]},
+    {label:"Contenido y marca",sections:["storage","marketing"]},
+    {label:"Resultados",sections:["analytics"]}
+  ];
+
+  layout.forEach(group=>{
+    const buttons=group.sections
+      .map(section=>nav.querySelector('button[data-section="'+section+'"]'))
+      .filter(button=>button&&!button.classList.contains("hidden"));
+    if(!buttons.length)return;
+
+    const host=document.createElement("div");
+    host.className="workspace-nav-group local-nav-group";
+    const title=document.createElement("div");
+    title.className="workspace-nav-group-title";
+    title.textContent=group.label;
+    host.appendChild(title);
+    buttons.forEach(button=>host.appendChild(button));
+    nav.appendChild(host);
+  });
+}
+
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
   const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
@@ -331,6 +381,7 @@ function configureNavigation() {
   });
 
   organizeDeliveryAdminNavigation();
+  organizeLocalAdminNavigation();
   showSection(roleSections[state.role][0]);
   completeAdminRoleBoot();
 }
@@ -510,8 +561,10 @@ function renderScopeSelectors() {
       $("scopeInfo").textContent =
         "Repartidor · " + deliveryCount + " DELIVERY asignado" + (deliveryCount === 1 ? "" : "s");
     } else if (state.role === "LOCAL_ADMIN") {
-      $("scopeInfo").textContent =
-        "Ámbito LOCAL · " + localCount + " asignado" + (localCount === 1 ? "" : "s");
+      const localName=localCount===1?(state.locals[0]?.name||"Mi negocio"):"Mis negocios";
+      $("scopeInfo").textContent = localName + " · Panel de administración";
+      const brand=document.querySelector(".sidebar .brand");
+      if(brand)brand.textContent=localCount===1?(localName+" · ADMIN"):"MIS LOCALES · ADMIN";
     } else {
       $("scopeInfo").textContent = "Ámbito de operación actual";
     }
@@ -1193,8 +1246,10 @@ function renderOverviewQuickActions() {
     ];
   }else if(state.role==="LOCAL_ADMIN"){
     actions=[
-      ["orders","Revisar pedidos","Pedidos de tus LOCAL"],
-      ["catalog","Gestionar catálogo","Productos y contenido de tus LOCAL"]
+      ["mylocal","Editar sitio web","Diseño, contenido y publicación"],
+      ["orders","Revisar pedidos","Pedidos recibidos por tu negocio"],
+      ["catalog","Gestionar catálogo","Productos, servicios y precios"],
+      ["analytics","Ver estadísticas","Visitas, actividad y crecimiento"]
     ];
   }
 
@@ -1208,16 +1263,24 @@ function renderOverviewQuickActions() {
 
 function overviewSetModeLabels(){
   const deliveryMode=state.role==="DELIVERY_ADMIN";
-  if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode?"Estado de mi operación":"Estado de HTPWEB";
+  const localMode=state.role==="LOCAL_ADMIN";
+  if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode
+    ?"Estado de mi operación"
+    :localMode?"Estado de mi negocio":"Estado de HTPWEB";
   if($("overviewAttentionSubtitle"))$("overviewAttentionSubtitle").textContent=deliveryMode
     ?"Pendientes que requieren acción del DELIVERY."
+    :localMode?"Pendientes que requieren atención en tu negocio."
     :"Pendientes que pueden afectar la operación o la calidad del catálogo.";
-  if($("overviewHealthTitle"))$("overviewHealthTitle").textContent=deliveryMode?"Capacidad operativa":"Salud de la plataforma";
+  if($("overviewHealthTitle"))$("overviewHealthTitle").textContent=deliveryMode
+    ?"Capacidad operativa"
+    :localMode?"Preparación comercial":"Salud de la plataforma";
   if($("overviewHealthSubtitle"))$("overviewHealthSubtitle").textContent=deliveryMode
     ?"Uso actual frente a los límites de tu plan."
+    :localMode?"Qué tan completo, actualizado y listo para vender está tu LOCAL."
     :"Qué tan completo y publicado está HTPWEB.";
   if($("overviewQuickActionsSubtitle"))$("overviewQuickActionsSubtitle").textContent=deliveryMode
     ?"Accesos frecuentes de la operación DELIVERY."
+    :localMode?"Accesos frecuentes para administrar tu negocio."
     :"Tareas frecuentes del MASTER.";
 }
 
