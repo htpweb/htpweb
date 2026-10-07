@@ -42,3 +42,269 @@ body.architecture-home .local-site-footer{margin-top:0!important}
  .arch-mag-head nav{display:flex!important;order:3;width:100%;overflow:auto;gap:14px!important;padding-top:8px;border-top:1px solid #e5e7eb}
  .arch-mag-head nav a{white-space:nowrap}
 }
+
+/* ==========================================================================
+   HTPWEB 2026 PREMIUM ARCHITECTURE UPGRADE
+   Purpose: make every storefront preset feel like a distinct high-end site.
+   Shared by LOCAL live preview and public storefront.
+   ========================================================================== */
+.eng-architecture{
+  --ink:var(--text,#0b1730);
+  --muted:#64748b;
+  --line:color-mix(in srgb,var(--ink) 14%,transparent);
+  --soft:color-mix(in srgb,var(--a) 7%,var(--bg));
+  --shadow:0 26px 70px rgba(15,23,42,.16);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.012em;
+  min-height:680px;
+  isolation:isolate;
+}
+.eng-architecture header strong{letter-spacing:-.035em}
+.eng-architecture nav{gap:24px;font-size:.76rem;font-weight:750;letter-spacing:.015em}
+.eng-architecture nav a,.eng-architecture nav span{position:relative;padding:8px 0}
+.eng-architecture nav a:after,.eng-architecture nav span:after{content:"";position:absolute;left:0;right:100%;bottom:2px;height:1px;background:currentColor;transition:right .22s ease}
+.eng-architecture nav a:hover:after,.eng-architecture nav span:hover:after{right:0}
+.eng-architecture .arch-cta,.eng-architecture .arch-outline{min-height:42px;align-items:center;justify-content:center;padding:11px 17px;letter-spacing:.01em;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+.eng-architecture .arch-cta:hover,.eng-architecture .arch-outline:hover{transform:translateY(-2px)}
+.eng-architecture .arch-cta{box-shadow:0 12px 26px color-mix(in srgb,var(--a) 24%,transparent)}
+.eng-architecture .arch-photo-card{min-height:180px!important;position:relative;overflow:hidden;border:0!important;transition:transform .28s ease,box-shadow .28s ease}
+.eng-architecture .arch-photo-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 38%,rgba(0,0,0,.48));pointer-events:none}
+.eng-architecture .arch-photo-card>*{position:relative;z-index:1}
+.eng-architecture .arch-photo-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.eng-architecture h2,.eng-architecture h3{letter-spacing:-.05em}
+.eng-architecture p{line-height:1.65}
+
+/* SIGNATURE — international corporate / engineering flagship */
+.arch-SIGNATURE{background:#f7f9fc}
+.arch-SIGNATURE .arch-header{height:84px;padding:0 clamp(24px,5vw,72px);background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-bottom:1px solid rgba(15,23,42,.07)}
+.arch-SIGNATURE .arch-header>strong{font-size:1.18rem;font-weight:900}
+.arch-SIGNATURE .arch-photo-hero{min-height:560px;padding:80px clamp(28px,8vw,120px);position:relative;background-position:center 45%}
+.arch-SIGNATURE .arch-photo-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(2,8,23,.82) 0%,rgba(2,8,23,.56) 48%,rgba(2,8,23,.08) 100%);pointer-events:none}
+.arch-SIGNATURE .arch-photo-hero>div{position:relative;z-index:1;max-width:760px}
+.arch-SIGNATURE .arch-photo-hero small{display:inline-flex;align-items:center;gap:10px;letter-spacing:.22em}
+.arch-SIGNATURE .arch-photo-hero small:before{content:"";width:42px;height:1px;background:var(--a)}
+.arch-SIGNATURE .arch-photo-hero h2{font-size:clamp(3.6rem,7vw,6.5rem);max-width:9.2ch;font-weight:760;line-height:.88;letter-spacing:-.075em}
+.arch-SIGNATURE .arch-photo-hero p{font-size:1.08rem;max-width:52ch;color:#e2e8f0}
+.arch-SIGNATURE .arch-trust{width:min(88%,1220px);margin:-54px auto 0;border-radius:18px;overflow:hidden;box-shadow:0 26px 70px rgba(15,23,42,.16);border:1px solid rgba(15,23,42,.06)}
+.arch-SIGNATURE .arch-trust>div{padding:28px 30px;background:rgba(255,255,255,.98)}
+.arch-SIGNATURE .arch-trust strong{font-size:.93rem}
+.arch-SIGNATURE .arch-footer{padding:52px clamp(28px,8vw,120px);background:#07111f}
+
+/* MINIMAL — Swiss precision / consulting */
+.arch-MINIMAL{background:#fbfbfa}
+.arch-MINIMAL .arch-min-head{height:88px;padding:0 clamp(24px,6vw,84px);background:transparent;border-bottom:1px solid #d9dde2}
+.arch-MINIMAL .arch-min-head>strong{font-size:.92rem;text-transform:uppercase;letter-spacing:.16em}
+.arch-MINIMAL .arch-min-main{grid-template-columns:70px minmax(0,1fr);max-width:1340px;padding:86px clamp(24px,7vw,96px);gap:54px}
+.arch-MINIMAL .arch-min-main>aside{padding-top:8px;border-right:1px solid #d9dde2;min-height:100%;gap:30px}
+.arch-MINIMAL .arch-min-main>aside span:first-child{color:var(--a);font-weight:900}
+.arch-MINIMAL .arch-min-main small{font-size:.7rem;letter-spacing:.19em;font-weight:800}
+.arch-MINIMAL .arch-min-main h2{font-size:clamp(4rem,8vw,7.8rem);font-weight:430;line-height:.86;max-width:9ch;margin:22px 0 26px}
+.arch-MINIMAL .arch-min-main p{font-size:1.05rem;max-width:48ch}
+.arch-MINIMAL .arch-min-rule{margin:58px 0 32px;background:#111827}
+.arch-MINIMAL .arch-min-stats{padding-bottom:52px}
+.arch-MINIMAL .arch-min-stats strong{font-size:1.8rem;font-weight:560;letter-spacing:-.05em}
+.arch-MINIMAL .arch-min-stats span{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:#7c8798}
+.arch-MINIMAL .arch-min-services{gap:0;background:transparent;border-top:1px solid #d9dde2}
+.arch-MINIMAL .arch-min-services article{padding:30px 22px;background:transparent;border-bottom:1px solid #d9dde2}
+.arch-MINIMAL .arch-min-services article:nth-child(odd){border-right:1px solid #d9dde2}
+.arch-MINIMAL .arch-min-projects{gap:16px;background:transparent}
+.arch-MINIMAL .arch-min-projects article{padding:0}
+
+/* SPLIT — architecture studio / technical capabilities */
+.arch-SPLIT .arch-split{min-height:720px;grid-template-columns:minmax(420px,43%) 1fr}
+.arch-SPLIT .arch-split-left{padding:38px clamp(34px,5vw,76px);background:#f5f4ef}
+.arch-SPLIT .arch-split-left header{padding-bottom:35px;border-bottom:1px solid rgba(15,23,42,.14)}
+.arch-SPLIT .arch-split-left>small{margin-top:auto;letter-spacing:.2em}
+.arch-SPLIT .arch-split-left h2{font-size:clamp(3.9rem,6vw,6.2rem);max-width:9ch;margin:20px 0;line-height:.86}
+.arch-SPLIT .arch-split-left p{font-size:1.02rem}
+.arch-SPLIT .arch-split-stats{margin-top:48px;border-top:1px solid rgba(15,23,42,.18)}
+.arch-SPLIT .arch-split-stats>div{padding:19px 0}
+.arch-SPLIT .arch-split-stats strong{font-size:1.45rem}
+.arch-SPLIT .arch-split-right{padding:34px;background-position:center;position:relative}
+.arch-SPLIT .arch-split-right:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,12,24,.04),rgba(4,12,24,.38))}
+.arch-SPLIT .arch-project-stack{position:relative;z-index:1;max-width:520px;margin-left:auto}
+.arch-SPLIT .arch-project-stack article{padding:18px 20px;border-radius:12px!important;background:rgba(255,255,255,.92)!important;backdrop-filter:blur(12px);color:#111827!important;text-shadow:none!important;min-height:auto!important;display:grid!important;grid-template-columns:110px 1fr;align-items:center}
+.arch-SPLIT .arch-project-stack article:after{display:none}
+.arch-SPLIT .arch-project-stack small,.arch-SPLIT .arch-project-stack strong{color:#111827!important}
+
+/* SIDEBAR — blueprint / engineering documentation */
+.arch-SIDEBAR{background:#eef5f8}
+.arch-SIDEBAR .arch-side-shell{grid-template-columns:240px 1fr;min-height:720px}
+.arch-SIDEBAR .arch-side-nav{padding:36px 28px;background:#061a28;position:relative;overflow:hidden}
+.arch-SIDEBAR .arch-side-nav:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.06) 1px,transparent 1px);background-size:24px 24px}
+.arch-SIDEBAR .arch-side-nav>*{position:relative;z-index:1}
+.arch-SIDEBAR .arch-side-nav>strong{font-size:1.16rem;margin-bottom:18px}
+.arch-SIDEBAR .arch-side-nav>a,.arch-SIDEBAR .arch-side-nav>span:not(.arch-cta){padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09)}
+.arch-SIDEBAR .arch-side-hero{min-height:390px;padding:72px clamp(34px,6vw,88px);position:relative}
+.arch-SIDEBAR .arch-side-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,24,39,.88),rgba(3,24,39,.18))}
+.arch-SIDEBAR .arch-side-hero>*{position:relative;z-index:1}
+.arch-SIDEBAR .arch-side-hero h2{font-size:clamp(3.5rem,6vw,5.7rem);max-width:10ch;line-height:.88}
+.arch-SIDEBAR .arch-side-stats{background:white;border-bottom:1px solid #d8e4ea}
+.arch-SIDEBAR .arch-side-stats>div{padding:22px 26px}
+.arch-SIDEBAR .arch-blue-grid,.arch-SIDEBAR .arch-blue-projects{padding:42px clamp(26px,5vw,70px)}
+.arch-SIDEBAR .arch-blue-grid>div{gap:12px}
+.arch-SIDEBAR .arch-blue-grid article{background:#fff;border:1px solid #cddce4;border-radius:8px;padding:22px}
+
+/* EDITORIAL — architecture / design journal */
+.arch-EDITORIAL{background:#f7f4ef}
+.arch-EDITORIAL .arch-ed-head{height:82px;padding:0 clamp(24px,5vw,70px);background:#f7f4ef;border-bottom:1px solid #1f293722}
+.arch-EDITORIAL .arch-ed-head>strong{font:600 1.05rem Georgia,serif}
+.arch-EDITORIAL .arch-editorial{grid-template-columns:120px 1fr 1.08fr;min-height:720px}
+.arch-EDITORIAL .arch-ed-number{font:400 6.8rem/1 Georgia,serif;color:#b8b3aa;padding:50px 24px}
+.arch-EDITORIAL .arch-ed-intro{padding:72px 52px}
+.arch-EDITORIAL .arch-ed-intro small{letter-spacing:.18em;font-size:.68rem}
+.arch-EDITORIAL .arch-ed-intro h2{font:400 clamp(4rem,7vw,6.6rem)/.9 Georgia,serif;max-width:8.6ch;margin:20px 0 28px}
+.arch-EDITORIAL .arch-ed-intro p{font-size:1.02rem;max-width:40ch}
+.arch-EDITORIAL .arch-ed-feature{min-height:500px}
+.arch-EDITORIAL .arch-ed-feature span{left:26px;bottom:26px;padding:11px 14px;letter-spacing:.12em}
+.arch-EDITORIAL .arch-ed-project-list{grid-template-columns:170px repeat(3,1fr);padding:0;background:#1f2937;gap:1px}
+.arch-EDITORIAL .arch-ed-project-list>*{background:#f7f4ef;padding:24px}
+.arch-EDITORIAL .arch-ed-about{padding:54px;max-width:920px}
+
+/* LUXE — technology / premium systems */
+.arch-LUXE{background:#05080e}
+.arch-LUXE .arch-luxe-shell{min-height:740px;background:radial-gradient(circle at 78% 18%,color-mix(in srgb,var(--a) 18%,transparent),transparent 34%),#05080e}
+.arch-LUXE .arch-luxe-shell header{height:86px;padding:0 clamp(26px,5vw,72px);backdrop-filter:blur(14px)}
+.arch-LUXE .arch-luxe-shell header>strong{font-size:1.05rem;letter-spacing:.08em}
+.arch-LUXE .arch-luxe-hero{padding:94px clamp(28px,8vw,120px) 78px}
+.arch-LUXE .arch-luxe-hero:before{content:"SYSTEMS / STRATEGY / DELIVERY";position:absolute;right:5%;top:52%;transform:rotate(90deg) translateX(50%);transform-origin:right center;font-size:.62rem;letter-spacing:.25em;color:#ffffff55}
+.arch-LUXE .arch-luxe-hero h2{font:400 clamp(4.3rem,8vw,7.6rem)/.86 Georgia,serif;letter-spacing:-.065em;max-width:9.5ch}
+.arch-LUXE .arch-luxe-hero p{font-size:1.03rem;max-width:50ch}
+.arch-LUXE .arch-orbit{width:410px;height:410px;right:7%;top:30px;border-color:color-mix(in srgb,var(--a) 55%,transparent);box-shadow:0 0 0 55px color-mix(in srgb,var(--a) 5%,transparent),0 0 0 110px color-mix(in srgb,var(--a) 3%,transparent)}
+.arch-LUXE .arch-luxe-actions span{padding:12px 18px;border-color:color-mix(in srgb,var(--a) 65%,#fff);font-size:.78rem}
+.arch-LUXE .arch-luxe-stats>div{padding:24px clamp(16px,4vw,58px)}
+.arch-LUXE .arch-luxe-stats strong{font-size:1.5rem}
+.arch-LUXE .arch-luxe-services,.arch-LUXE .arch-luxe-projects{padding-left:clamp(28px,7vw,105px);padding-right:clamp(28px,7vw,105px)}
+.arch-LUXE .arch-luxe-services article{padding:22px;border-radius:10px}
+
+/* BOLD — industrial / construction */
+.arch-BOLD{background:#f1efe9;color:#101010}
+.arch-BOLD .arch-bold-head{height:78px;padding:0 clamp(24px,4vw,60px);background:#101010}
+.arch-BOLD .arch-bold-head>strong{font-size:1.15rem;text-transform:uppercase;letter-spacing:.08em}
+.arch-BOLD .arch-bold-hero{grid-template-columns:1fr minmax(180px,24%);min-height:430px;background:#ece9e1}
+.arch-BOLD .arch-bold-hero>div:first-child{padding:64px clamp(30px,6vw,90px)}
+.arch-BOLD .arch-bold-hero small{font-size:.7rem;font-weight:950;letter-spacing:.16em}
+.arch-BOLD .arch-bold-hero h2{font-size:clamp(4rem,8vw,7.7rem);font-weight:950;line-height:.78;max-width:9ch;letter-spacing:-.08em}
+.arch-BOLD .arch-bold-hero p{max-width:46ch;font-size:1rem}
+.arch-BOLD .arch-bold-mark{font-size:clamp(6rem,11vw,11rem);font-weight:1000;background:var(--a);color:#111}
+.arch-BOLD .arch-bold-band>div{padding:22px clamp(12px,3vw,42px)}
+.arch-BOLD .arch-bold-band strong{font-size:1.4rem}
+.arch-BOLD .arch-bold-services{grid-template-columns:210px repeat(4,1fr);border-top:1px solid #111}
+.arch-BOLD .arch-bold-services>*{padding:26px}
+.arch-BOLD .arch-bold-projects{padding:46px clamp(26px,5vw,72px)}
+
+/* MAGAZINE — project publication / case studies */
+.arch-MAGAZINE{background:#faf9f6;color:#111}
+.arch-MAGAZINE .arch-mag-head{height:88px;padding:0 clamp(24px,5vw,72px);background:#faf9f6;border-bottom:5px solid #111}
+.arch-MAGAZINE .arch-mag-head>strong{font:700 1.08rem Georgia,serif}
+.arch-MAGAZINE .arch-mag-head>span{font-size:.68rem;letter-spacing:.18em}
+.arch-MAGAZINE .arch-mag-grid{grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);grid-template-rows:470px auto auto}
+.arch-MAGAZINE .arch-mag-cover{padding:42px clamp(28px,5vw,70px);background-position:center}
+.arch-MAGAZINE .arch-mag-cover small{letter-spacing:.18em;font-weight:900}
+.arch-MAGAZINE .arch-mag-cover h2{font:400 clamp(4.1rem,7vw,7rem)/.86 Georgia,serif;max-width:9ch;margin:12px 0}
+.arch-MAGAZINE .arch-mag-index{padding:42px 34px;border-left:1px solid #111;gap:0}
+.arch-MAGAZINE .arch-mag-index b{padding-bottom:22px;border-bottom:3px solid #111}
+.arch-MAGAZINE .arch-mag-index span{padding:18px 0;border-bottom:1px solid #bfc1c4;font-size:.82rem}
+.arch-MAGAZINE .arch-mag-story{padding:54px clamp(28px,6vw,88px);display:grid;grid-template-columns:160px 1fr 1fr;gap:28px;align-items:start}
+.arch-MAGAZINE .arch-mag-story h3{font:400 3.4rem/.95 Georgia,serif;margin:0}
+.arch-MAGAZINE .arch-mag-story p{margin:0;max-width:46ch}
+.arch-MAGAZINE .arch-mag-projects article{padding:24px;min-height:220px!important}
+
+/* IMMERSIVE — cinematic infrastructure / hero-first */
+.arch-IMMERSIVE{background:#07101a}
+.arch-IMMERSIVE .arch-immersive-hero{min-height:680px;background-position:center 42%}
+.arch-IMMERSIVE .arch-immersive-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(2,6,15,.82),rgba(2,6,15,.22) 58%,rgba(2,6,15,.04))}
+.arch-IMMERSIVE .arch-immersive-hero header{height:92px;padding:0 clamp(26px,5vw,76px);background:linear-gradient(180deg,rgba(0,0,0,.52),transparent);position:relative;z-index:2}
+.arch-IMMERSIVE .arch-immersive-copy{left:clamp(28px,7vw,110px);bottom:110px;z-index:2}
+.arch-IMMERSIVE .arch-immersive-copy h2{font-size:clamp(4.4rem,8vw,8rem);max-width:8.4ch;letter-spacing:-.075em}
+.arch-IMMERSIVE .arch-immersive-copy p{font-size:1.05rem;max-width:48ch;color:#e2e8f0}
+.arch-IMMERSIVE .arch-immersive-scroll{z-index:2;right:36px;bottom:32px}
+.arch-IMMERSIVE .arch-immersive-float{width:min(86%,1180px);margin:-46px auto 0;border-radius:14px;overflow:hidden;box-shadow:0 26px 70px #0005}
+.arch-IMMERSIVE .arch-immersive-float>div{padding:24px 28px}
+.arch-IMMERSIVE .arch-immersive-projects{padding:70px clamp(28px,7vw,110px);background:#07101a;color:#fff}
+.arch-IMMERSIVE .arch-immersive-projects article{min-height:230px!important;border-radius:12px}
+
+/* COMPACT — technical command center / information dense */
+.arch-COMPACT{background:#e9eef4}
+.arch-COMPACT .arch-tech-head{height:72px;padding:0 clamp(22px,4vw,58px);background:#07111f;border-bottom:1px solid #ffffff1a}
+.arch-COMPACT .arch-tech-head>strong{font-size:.96rem;letter-spacing:.08em;text-transform:uppercase}
+.arch-COMPACT .arch-tech-head>span{font:700 .66rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.15em;color:#7dd3fc}
+.arch-COMPACT .arch-tech-grid{grid-template-columns:1.18fr .82fr;gap:12px;padding:12px;background:#dfe7ef}
+.arch-COMPACT .arch-tech-grid>section{padding:26px;border:1px solid #c7d2df;border-radius:8px;box-shadow:0 8px 18px rgba(15,23,42,.04)}
+.arch-COMPACT .arch-tech-intro{background:linear-gradient(135deg,#fff,#f8fbfd)}
+.arch-COMPACT .arch-tech-intro small{font:700 .68rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;color:#517089}
+.arch-COMPACT .arch-tech-intro h2{font-size:clamp(3rem,5vw,4.8rem);max-width:11ch;letter-spacing:-.06em}
+.arch-COMPACT .arch-tech-kpis{gap:10px}
+.arch-COMPACT .arch-tech-kpis>div{border-radius:7px;border:1px solid #d8e1ea;background:#f7f9fb;padding:18px}
+.arch-COMPACT .arch-tech-kpis strong{font-size:1.5rem}
+.arch-COMPACT .arch-tech-panel h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em}
+.arch-COMPACT .arch-tech-panel article{border-radius:6px;background:#f8fafc;padding:15px}
+.arch-COMPACT .arch-tech-tags span{border-radius:5px;font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+.arch-COMPACT .arch-tech-projects{gap:10px!important}
+.arch-COMPACT .arch-tech-projects article{min-height:150px!important;border-radius:7px}
+
+/* Professional family finishing */
+.eng-architecture.family-PROFESSIONAL .arch-cta{background:var(--a)}
+.eng-architecture.family-PROFESSIONAL small{font-weight:800}
+.eng-architecture.family-PROFESSIONAL .arch-photo-card strong{font-size:1rem}
+
+/* Better preview scaling inside admin without changing public proportions */
+.local-store-preview-root.eng-architecture{border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.13);border:1px solid rgba(15,23,42,.08)}
+
+/* Responsive: keep identity of each architecture instead of collapsing into generic blocks */
+@media(max-width:900px){
+ .arch-SIGNATURE .arch-photo-hero{min-height:500px}
+ .arch-SPLIT .arch-split{grid-template-columns:1fr}
+ .arch-SPLIT .arch-split-right{min-height:360px}
+ .arch-EDITORIAL .arch-editorial{grid-template-columns:80px 1fr}
+ .arch-EDITORIAL .arch-ed-feature{grid-column:1/3}
+ .arch-EDITORIAL .arch-ed-project-list,.arch-EDITORIAL .arch-ed-about{grid-column:1/3}
+ .arch-MAGAZINE .arch-mag-story{grid-template-columns:1fr 1fr}
+ .arch-MAGAZINE .arch-mag-story small{grid-column:1/3}
+}
+@media(max-width:760px){
+ .eng-architecture{min-height:0}
+ .eng-architecture .arch-cta,.eng-architecture .arch-outline{min-height:40px;padding:10px 13px}
+ .arch-SIGNATURE .arch-header,.arch-MINIMAL .arch-min-head,.arch-EDITORIAL .arch-ed-head,.arch-MAGAZINE .arch-mag-head,.arch-COMPACT .arch-tech-head{padding-left:16px;padding-right:16px}
+ .arch-SIGNATURE .arch-photo-hero{min-height:470px;padding:54px 22px}
+ .arch-SIGNATURE .arch-photo-hero h2{font-size:3.4rem}
+ .arch-SIGNATURE .arch-trust{margin-top:-26px;width:92%;border-radius:12px}
+ .arch-MINIMAL .arch-min-main{display:block;padding:54px 22px}
+ .arch-MINIMAL .arch-min-main>aside{display:none}
+ .arch-MINIMAL .arch-min-main h2{font-size:3.65rem}
+ .arch-MINIMAL .arch-min-stats{grid-template-columns:1fr 1fr;gap:18px}
+ .arch-SPLIT .arch-split-left{padding:28px 22px 42px;min-height:530px}
+ .arch-SPLIT .arch-split-left h2{font-size:3.6rem}
+ .arch-SIDEBAR .arch-side-shell{display:block}
+ .arch-SIDEBAR .arch-side-nav{display:flex;min-height:auto;padding:20px;flex-direction:row;align-items:center;overflow:auto}
+ .arch-SIDEBAR .arch-side-nav>span:not(.arch-cta),.arch-SIDEBAR .arch-side-nav>a{display:none}
+ .arch-SIDEBAR .arch-side-nav .arch-cta{margin:0 0 0 auto;white-space:nowrap}
+ .arch-SIDEBAR .arch-side-hero{padding:50px 22px}
+ .arch-SIDEBAR .arch-side-stats{grid-template-columns:1fr 1fr}
+ .arch-EDITORIAL .arch-editorial{display:block}
+ .arch-EDITORIAL .arch-ed-number{display:none}
+ .arch-EDITORIAL .arch-ed-intro{padding:54px 22px}
+ .arch-EDITORIAL .arch-ed-intro h2{font-size:3.8rem}
+ .arch-EDITORIAL .arch-ed-feature{min-height:340px}
+ .arch-LUXE .arch-luxe-hero{padding:64px 22px}
+ .arch-LUXE .arch-luxe-hero h2{font-size:3.9rem}
+ .arch-LUXE .arch-orbit{width:250px;height:250px;right:-80px;opacity:.65}
+ .arch-LUXE .arch-luxe-stats{grid-template-columns:1fr 1fr}
+ .arch-BOLD .arch-bold-hero{grid-template-columns:1fr 92px}
+ .arch-BOLD .arch-bold-hero>div:first-child{padding:46px 22px}
+ .arch-BOLD .arch-bold-hero h2{font-size:3.6rem}
+ .arch-BOLD .arch-bold-mark{font-size:3.5rem}
+ .arch-BOLD .arch-bold-band{grid-template-columns:1fr 1fr}
+ .arch-MAGAZINE .arch-mag-grid{display:block}
+ .arch-MAGAZINE .arch-mag-cover{min-height:430px}
+ .arch-MAGAZINE .arch-mag-cover h2{font-size:3.7rem}
+ .arch-MAGAZINE .arch-mag-story{display:block;padding:38px 22px}
+ .arch-MAGAZINE .arch-mag-story h3{font-size:2.8rem;margin:12px 0 20px}
+ .arch-IMMERSIVE .arch-immersive-hero{min-height:560px}
+ .arch-IMMERSIVE .arch-immersive-copy{left:22px;right:22px;bottom:72px}
+ .arch-IMMERSIVE .arch-immersive-copy h2{font-size:3.8rem}
+ .arch-IMMERSIVE .arch-immersive-float{width:92%;grid-template-columns:1fr 1fr}
+ .arch-COMPACT .arch-tech-grid{display:block;padding:8px}
+ .arch-COMPACT .arch-tech-grid>section{margin-bottom:8px}
+ .arch-COMPACT .arch-tech-panel.wide{grid-column:auto}
+}
