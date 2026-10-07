@@ -1,3 +1,14 @@
+const _htpwebAuthRoot=(()=>{
+  try{
+    const scriptUrl=document.currentScript?.src||"";
+    if(scriptUrl)return new URL("../",scriptUrl).href;
+  }catch{}
+  const parts=location.pathname.split("/").filter(Boolean);
+  const base=parts[0]==="htpweb"?"/htpweb/":"/";
+  return location.origin+base;
+})();
+function _htpwebRootUrl(path=""){return new URL(String(path||"").replace(/^\/+/, ""),_htpwebAuthRoot).href;}
+
 async function obtenerSesionActual() {
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) throw error;
@@ -219,7 +230,7 @@ async function instalarSelectorPerfilesCompacto(){
   if(!document.querySelector('link[href*="authenticated-shell.css"]')){
     const link=document.createElement("link");
     link.rel="stylesheet";
-    link.href="../assets/authenticated-shell.css?v=20261004-profiles2";
+    link.href=_htpwebRootUrl("assets/authenticated-shell.css?v=20261007-cleanroutes1");
     document.head.appendChild(link);
   }
 
@@ -231,11 +242,11 @@ async function instalarSelectorPerfilesCompacto(){
     '<div class="htp-auth-account-dropdown hidden">'+
       '<div class="htp-auth-account-summary"><strong>'+_htpwebEsc(session.user.user_metadata?.full_name||session.user.user_metadata?.name||"Mi cuenta")+'</strong><small>'+_htpwebEsc(session.user.email||"")+'</small></div>'+
       _htpwebProfileSwitcherHtml(modes)+
-      '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
-      '<a href="configuracion.html">Configuración</a>'+
+      '<a href="'+_htpwebRootUrl("app/mi-cuenta.html")+'">Abrir mi cuenta</a>'+
+      '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
       '<div class="htp-auth-account-separator"></div>'+
-      '<a href="crear-local.html">Crear negocio</a>'+
-      '<a href="crear-delivery.html">Crear delivery</a>'+
+      '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+      '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
       '<div class="htp-auth-account-separator"></div>'+
       '<button class="logout" type="button">Cerrar sesión</button>'+
     '</div>';
@@ -249,8 +260,8 @@ async function instalarSelectorPerfilesCompacto(){
   const trigger=wrap.querySelector(".htp-auth-account");
   const dropdown=wrap.querySelector(".htp-auth-account-dropdown");
   _htpwebBindAccountDropdown(wrap,trigger,dropdown);
-  _htpwebBindProfileSwitcher(wrap,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
-  wrap.querySelector(".logout").onclick=async()=>{await cerrarSesion();location.href="../index.html"};
+  _htpwebBindProfileSwitcher(wrap,{clientHref:_htpwebRootUrl("index.html"),workspaceHref:_htpwebRootUrl("admin/index.html")});
+  wrap.querySelector(".logout").onclick=async()=>{await cerrarSesion();location.href=_htpwebRootUrl("index.html")};
 
   const legacy=document.getElementById("authLink");
   if(legacy)legacy.classList.add("hidden");
@@ -266,7 +277,7 @@ async function instalarEncabezadoHTPWEB() {
   if (!document.querySelector('link[href*="authenticated-shell.css"]')) {
     const link=document.createElement("link");
     link.rel="stylesheet";
-    link.href="../assets/authenticated-shell.css?v=20261004-shell3";
+    link.href=_htpwebRootUrl("assets/authenticated-shell.css?v=20261007-cleanroutes1");
     document.head.appendChild(link);
   }
 
@@ -278,7 +289,7 @@ async function instalarEncabezadoHTPWEB() {
     accountModes=await _htpwebAccountModes();
   }catch{}
   const masterAdminLink=accountRole==="MASTER"
-    ? '<a href="../admin/index.html">Administración</a><div class="htp-auth-account-separator"></div>'
+    ? '<a href="'+_htpwebRootUrl("admin/index.html")+'">Administración</a><div class="htp-auth-account-separator"></div>'
     : "";
 
   const active=_htpwebAuthActiveHref();
@@ -289,23 +300,23 @@ async function instalarEncabezadoHTPWEB() {
   const displayName=user.user_metadata?.full_name||user.user_metadata?.name||"Mi cuenta";
   header.innerHTML=
     '<div class="htp-auth-header-inner">'+
-      '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
+      '<a class="htp-auth-brand" href="'+_htpwebRootUrl("index.html")+'"><img src="'+_htpwebRootUrl("assets/brand/Logo1-header.png")+'" alt="HTPWEB"><span>HTPWEB</span></a>'+
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
-        '<a href="../index.html">Inicio</a>'+
-        '<a href="../como-funciona.html">Cómo funciona</a>'+
-        '<a href="../explorar-negocios.html">Explorar locales</a>'+
+        '<a href="'+_htpwebRootUrl("index.html")+'">Inicio</a>'+
+        '<a href="'+_htpwebRootUrl("como-funciona.html")+'">Cómo funciona</a>'+
+        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar locales</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="htpAuthAccountTrigger" class="htp-auth-account '+(active==="account"?"active":"")+'" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
         '<div id="htpAuthAccountDropdown" class="htp-auth-account-dropdown hidden">'+
           '<div class="htp-auth-account-summary"><strong>'+_htpwebEsc(displayName)+'</strong><small>'+_htpwebEsc(user.email||"")+'</small></div>'+
           _htpwebProfileSwitcherHtml(accountModes)+
-          '<a href="mi-cuenta.html">Abrir mi cuenta</a>'+
-          '<a href="configuracion.html">Configuración</a>'+
+          '<a href="'+_htpwebRootUrl("app/mi-cuenta.html")+'">Abrir mi cuenta</a>'+
+          '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
           masterAdminLink+
           '<div class="htp-auth-account-separator"></div>'+
-          '<a href="crear-local.html">Crear negocio</a>'+
-          '<a href="crear-delivery.html">Crear delivery</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
           '<div class="htp-auth-account-separator"></div>'+
           '<button id="htpAuthLogout" class="logout" type="button">Cerrar sesión</button>'+
         '</div>'+
@@ -316,9 +327,9 @@ async function instalarEncabezadoHTPWEB() {
   const trigger=header.querySelector("#htpAuthAccountTrigger");
   const dropdown=header.querySelector("#htpAuthAccountDropdown");
   _htpwebBindAccountDropdown(menu,trigger,dropdown);
-  _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"../admin/index.html"});
+  _htpwebBindProfileSwitcher(header,{clientHref:_htpwebRootUrl("index.html"),workspaceHref:_htpwebRootUrl("admin/index.html")});
   const logout=header.querySelector("#htpAuthLogout");
-  logout?.addEventListener("click",async()=>{await cerrarSesion();location.href="../index.html"});
+  logout?.addEventListener("click",async()=>{await cerrarSesion();location.href=_htpwebRootUrl("index.html")});
 }
 
 async function prepararEncabezadoDeliveryAdmin(){
@@ -336,7 +347,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   if(!document.querySelector('link[href*="authenticated-shell.css"]')){
     const link=document.createElement("link");
     link.rel="stylesheet";
-    link.href="../assets/authenticated-shell.css?v=20261004-shell4";
+    link.href=_htpwebRootUrl("assets/authenticated-shell.css?v=20261007-cleanroutes1");
     document.head.appendChild(link);
   }
 
@@ -346,22 +357,22 @@ async function prepararEncabezadoDeliveryAdmin(){
   header.className="htp-auth-header";
   header.innerHTML=
     '<div class="htp-auth-header-inner">'+
-      '<a class="htp-auth-brand" href="../index.html"><img src="../assets/brand/Logo1-header.png" alt="HTPWEB"><span>HTPWEB</span></a>'+
+      '<a class="htp-auth-brand" href="'+_htpwebRootUrl("index.html")+'"><img src="'+_htpwebRootUrl("assets/brand/Logo1-header.png")+'" alt="HTPWEB"><span>HTPWEB</span></a>'+
       '<nav class="htp-auth-nav" aria-label="Navegación HTPWEB">'+
-        '<a href="../index.html">Inicio</a>'+
-        '<a href="../como-funciona.html">Cómo funciona</a>'+
-        '<a href="../explorar-negocios.html">Explorar locales</a>'+
+        '<a href="'+_htpwebRootUrl("index.html")+'">Inicio</a>'+
+        '<a href="'+_htpwebRootUrl("como-funciona.html")+'">Cómo funciona</a>'+
+        '<a href="'+_htpwebRootUrl("explorar-negocios.html")+'">Explorar locales</a>'+
       '</nav>'+
       '<div class="htp-auth-account-menu">'+
         '<button id="adminHtpAccountTrigger" class="htp-auth-account" type="button"><span class="htp-auth-account-icon">👤</span><span>Mi cuenta</span><span>⌄</span></button>'+
         '<div id="adminHtpAccountDropdown" class="htp-auth-account-dropdown hidden">'+
           '<div class="htp-auth-account-summary"><strong>'+escText(displayName)+'</strong><small>'+escText(user.email)+'</small></div>'+
           _htpwebProfileSwitcherHtml(accountModes)+
-          '<a href="../app/mi-cuenta.html">Abrir mi cuenta</a>'+
-          '<a href="../app/configuracion.html">Configuración</a>'+
+          '<a href="'+_htpwebRootUrl("app/mi-cuenta.html")+'">Abrir mi cuenta</a>'+
+          '<a href="'+_htpwebRootUrl("app/configuracion.html")+'">Configuración</a>'+
           '<div class="htp-auth-account-separator"></div>'+
-          '<a href="../app/crear-local.html">Crear negocio</a>'+
-          '<a href="../app/crear-delivery.html">Crear delivery</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-local.html")+'">Crear negocio</a>'+
+          '<a href="'+_htpwebRootUrl("app/crear-delivery.html")+'">Crear delivery</a>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -370,7 +381,7 @@ async function prepararEncabezadoDeliveryAdmin(){
   const trigger=header.querySelector("#adminHtpAccountTrigger");
   const dropdown=header.querySelector("#adminHtpAccountDropdown");
   _htpwebBindAccountDropdown(menu,trigger,dropdown);
-  _htpwebBindProfileSwitcher(header,{clientHref:"../index.html",workspaceHref:"./index.html"});
+  _htpwebBindProfileSwitcher(header,{clientHref:_htpwebRootUrl("index.html"),workspaceHref:_htpwebRootUrl("admin/index.html")});
 }
 
 if (document.readyState === "loading") {
