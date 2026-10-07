@@ -225,7 +225,15 @@ async function init() {
       return;
     }
 
-    $("roleText").textContent = state.role;
+    const roleLabels={
+      MASTER:"Administración general",
+      DELIVERY_ADMIN:"Administrador DELIVERY",
+      DELIVERY_OPERATOR:"Operador DELIVERY",
+      DELIVERY_DRIVER:"Repartidor",
+      LOCAL_ADMIN:"Administrador del LOCAL"
+    };
+    $("roleText").textContent = roleLabels[state.role] || state.role;
+    document.body.classList.toggle("local-admin-workspace",state.role==="LOCAL_ADMIN");
     $("userMail").textContent = state.user.email || state.user.id;
 
     configureNavigation();
@@ -314,6 +322,48 @@ function organizeDeliveryAdminNavigation() {
   });
 }
 
+
+function organizeLocalAdminNavigation(){
+  if(state.role!=="LOCAL_ADMIN")return;
+  const nav=$("nav");
+  if(!nav)return;
+
+  nav.querySelectorAll(".local-nav-group").forEach(group=>group.remove());
+
+  const labels={
+    mylocal:"Mi sitio web",
+    storage:"Multimedia",
+    analytics:"Estadísticas"
+  };
+  Object.entries(labels).forEach(([section,label])=>{
+    const button=nav.querySelector('button[data-section="'+section+'"]');
+    if(button)button.textContent=label;
+  });
+
+  const layout=[
+    {label:"Principal",sections:["overview","mylocal"]},
+    {label:"Operación",sections:["orders","catalog","inventory","schedules"]},
+    {label:"Contenido y marca",sections:["storage","marketing"]},
+    {label:"Resultados",sections:["analytics"]}
+  ];
+
+  layout.forEach(group=>{
+    const buttons=group.sections
+      .map(section=>nav.querySelector('button[data-section="'+section+'"]'))
+      .filter(button=>button&&!button.classList.contains("hidden"));
+    if(!buttons.length)return;
+
+    const host=document.createElement("div");
+    host.className="workspace-nav-group local-nav-group";
+    const title=document.createElement("div");
+    title.className="workspace-nav-group-title";
+    title.textContent=group.label;
+    host.appendChild(title);
+    buttons.forEach(button=>host.appendChild(button));
+    nav.appendChild(host);
+  });
+}
+
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
   const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
@@ -331,6 +381,7 @@ function configureNavigation() {
   });
 
   organizeDeliveryAdminNavigation();
+  organizeLocalAdminNavigation();
   showSection(roleSections[state.role][0]);
   completeAdminRoleBoot();
 }
@@ -510,8 +561,10 @@ function renderScopeSelectors() {
       $("scopeInfo").textContent =
         "Repartidor · " + deliveryCount + " DELIVERY asignado" + (deliveryCount === 1 ? "" : "s");
     } else if (state.role === "LOCAL_ADMIN") {
-      $("scopeInfo").textContent =
-        "Ámbito LOCAL · " + localCount + " asignado" + (localCount === 1 ? "" : "s");
+      const localName=localCount===1?(state.locals[0]?.name||"Mi negocio"):"Mis negocios";
+      $("scopeInfo").textContent = localName + " · Panel de administración";
+      const brand=document.querySelector(".sidebar .brand");
+      if(brand)brand.textContent=localCount===1?(localName+" · ADMIN"):"MIS LOCALES · ADMIN";
     } else {
       $("scopeInfo").textContent = "Ámbito de operación actual";
     }
@@ -1193,8 +1246,10 @@ function renderOverviewQuickActions() {
     ];
   }else if(state.role==="LOCAL_ADMIN"){
     actions=[
-      ["orders","Revisar pedidos","Pedidos de tus LOCAL"],
-      ["catalog","Gestionar catálogo","Productos y contenido de tus LOCAL"]
+      ["mylocal","Editar sitio web","Diseño, contenido y publicación"],
+      ["orders","Revisar pedidos","Pedidos recibidos por tu negocio"],
+      ["catalog","Gestionar catálogo","Productos, servicios y precios"],
+      ["analytics","Ver estadísticas","Visitas, actividad y crecimiento"]
     ];
   }
 
@@ -1208,16 +1263,24 @@ function renderOverviewQuickActions() {
 
 function overviewSetModeLabels(){
   const deliveryMode=state.role==="DELIVERY_ADMIN";
-  if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode?"Estado de mi operación":"Estado de HTPWEB";
+  const localMode=state.role==="LOCAL_ADMIN";
+  if($("overviewHeadingTitle"))$("overviewHeadingTitle").textContent=deliveryMode
+    ?"Estado de mi operación"
+    :localMode?"Estado de mi negocio":"Estado de HTPWEB";
   if($("overviewAttentionSubtitle"))$("overviewAttentionSubtitle").textContent=deliveryMode
     ?"Pendientes que requieren acción del DELIVERY."
+    :localMode?"Pendientes que requieren atención en tu negocio."
     :"Pendientes que pueden afectar la operación o la calidad del catálogo.";
-  if($("overviewHealthTitle"))$("overviewHealthTitle").textContent=deliveryMode?"Capacidad operativa":"Salud de la plataforma";
+  if($("overviewHealthTitle"))$("overviewHealthTitle").textContent=deliveryMode
+    ?"Capacidad operativa"
+    :localMode?"Preparación comercial":"Salud de la plataforma";
   if($("overviewHealthSubtitle"))$("overviewHealthSubtitle").textContent=deliveryMode
     ?"Uso actual frente a los límites de tu plan."
+    :localMode?"Qué tan completo, actualizado y listo para vender está tu LOCAL."
     :"Qué tan completo y publicado está HTPWEB.";
   if($("overviewQuickActionsSubtitle"))$("overviewQuickActionsSubtitle").textContent=deliveryMode
     ?"Accesos frecuentes de la operación DELIVERY."
+    :localMode?"Accesos frecuentes para administrar tu negocio."
     :"Tareas frecuentes del MASTER.";
 }
 
@@ -1233,6 +1296,154 @@ function overviewUsageAggregate(snapshots,key){
   }
   return {used,max:hasMax?max:null};
 }
+
+async function loadLocalAdminOverview(todayIso){
+  overviewSetModeLabels();
+
+  const localIds=(state.locals||[]).map(l=>l.id).filter(Boolean);
+  if(!localIds.length){
+    if($("metrics"))$("metrics").innerHTML='<div class="message error">No tienes un LOCAL activo asignado.</div>';
+    renderOverviewAttention([]);
+    renderOverviewHealth([]);
+    renderOverviewRecentOrders([]);
+    renderOverviewQuickActions();
+    bindOverviewActions();
+    return;
+  }
+
+  const openStatuses=["PENDING","CONFIRMED","PREPARING","READY","EN_ROUTE"];
+  const [productsRes,promotionsRes,ordersRes]=await Promise.all([
+    supabaseClient.from("products").select("id,local_id,active,image_url").in("local_id",localIds),
+    supabaseClient.from("local_promotions").select("id,local_id,active").in("local_id",localIds),
+    supabaseClient.from("orders")
+      .select("id,status,total,customer_name,created_at,order_locals(local_id,subtotal,status)")
+      .order("created_at",{ascending:false})
+      .limit(250)
+  ]);
+
+  if(productsRes.error)throw productsRes.error;
+  if(promotionsRes.error)throw promotionsRes.error;
+  if(ordersRes.error)throw ordersRes.error;
+
+  const products=productsRes.data||[];
+  const promotions=promotionsRes.data||[];
+  const localSet=new Set(localIds);
+  const localOrders=(ordersRes.data||[]).filter(order=>
+    (order.order_locals||[]).some(row=>localSet.has(row.local_id))
+  );
+
+  const todayStart=new Date(todayIso).getTime();
+  const ordersToday=localOrders.filter(order=>new Date(order.created_at).getTime()>=todayStart);
+  const openOrders=localOrders.filter(order=>openStatuses.includes(order.status));
+  const deliveredToday=ordersToday.filter(order=>order.status==="DELIVERED");
+  const deliveredValue=deliveredToday.reduce((sum,order)=>{
+    const localSubtotal=(order.order_locals||[])
+      .filter(row=>localSet.has(row.local_id))
+      .reduce((subtotal,row)=>subtotal+Number(row.subtotal||0),0);
+    return sum+localSubtotal;
+  },0);
+
+  const productsTotal=products.length;
+  const productsActive=products.filter(p=>p.active!==false).length;
+  const productsWithImage=products.filter(p=>String(p.image_url||"").trim()!=="").length;
+  const productsWithoutImage=Math.max(0,productsTotal-productsWithImage);
+  const inactiveProducts=Math.max(0,productsTotal-productsActive);
+  const activeLocals=(state.locals||[]).filter(l=>l.active!==false).length;
+  const activePromotions=promotions.filter(p=>p.active!==false).length;
+  const recentOrders=localOrders.slice(0,5);
+
+  const kpis=[
+    {
+      label:"Pedidos hoy",
+      value:ordersToday.length,
+      detail:openOrders.length+" abierto"+(openOrders.length===1?"":"s")+" ahora",
+      tone:openOrders.length>0?"attention":"neutral"
+    },
+    {
+      label:"Ventas entregadas hoy",
+      value:overviewMoney(deliveredValue),
+      detail:deliveredToday.length+" pedido"+(deliveredToday.length===1?"":"s")+" entregado"+(deliveredToday.length===1?"":"s"),
+      tone:"success"
+    },
+    {
+      label:"Productos publicados",
+      value:productsActive,
+      detail:"de "+productsTotal+" productos de tu LOCAL",
+      tone:inactiveProducts>0?"attention":"success"
+    },
+    {
+      label:"Productos con foto",
+      value:productsWithImage,
+      detail:productsTotal?Math.round((productsWithImage/productsTotal)*100)+"% de cobertura visual":"Sin productos cargados",
+      tone:productsWithoutImage>0?"attention":"success"
+    }
+  ];
+
+  if($("metrics")){
+    $("metrics").innerHTML=kpis.map(kpi=>`
+      <div class="overview-kpi overview-kpi-${esc(kpi.tone)}">
+        <span>${esc(kpi.label)}</span>
+        <strong>${esc(kpi.value)}</strong>
+        <small>${esc(kpi.detail)}</small>
+      </div>
+    `).join("");
+  }
+
+  renderOverviewAttention([
+    {
+      label:"Pedidos abiertos",
+      detail:"Pedidos de tu negocio que todavía requieren seguimiento.",
+      value:openOrders.length,
+      action:"orders"
+    },
+    {
+      label:"Productos sin foto",
+      detail:"Añade imágenes para mejorar la presentación y conversión del catálogo.",
+      value:productsWithoutImage,
+      action:"catalog"
+    },
+    {
+      label:"Productos inactivos",
+      detail:"Productos existentes que actualmente no se muestran al cliente.",
+      value:inactiveProducts,
+      action:"catalog"
+    }
+  ]);
+
+  renderOverviewHealth([
+    {
+      label:"Productos con foto",
+      value:productsWithImage,
+      total:productsTotal,
+      detail:"Cobertura visual del catálogo de tu negocio."
+    },
+    {
+      label:"Productos publicados",
+      value:productsActive,
+      total:productsTotal,
+      detail:"Productos disponibles actualmente para clientes."
+    },
+    {
+      label:"Sitio publicado",
+      value:activeLocals,
+      total:(state.locals||[]).length,
+      detail:activeLocals===localIds.length?"Tu sitio está visible para clientes.":"Revisa la publicación de tu LOCAL."
+    }
+  ]);
+
+  renderOverviewRecentOrders(recentOrders);
+  renderOverviewQuickActions();
+
+  if($("overviewUpdatedAt")){
+    $("overviewUpdatedAt").textContent=
+      "Actualizado "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+
+      " · "+activePromotions+" promoción"+(activePromotions===1?" activa":"es activas");
+  }
+
+  bindOverviewActions();
+}
+
+
 
 async function loadDeliveryAdminOverview(todayIso){
   overviewSetModeLabels();
@@ -1392,6 +1603,7 @@ async function loadDeliveryAdminOverview(todayIso){
   bindOverviewActions();
 }
 
+
 async function loadOverview() {
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -1399,6 +1611,10 @@ async function loadOverview() {
 
   if(state.role==="DELIVERY_ADMIN"){
     await loadDeliveryAdminOverview(todayIso);
+    return;
+  }
+  if(state.role==="LOCAL_ADMIN"){
+    await loadLocalAdminOverview(todayIso);
     return;
   }
 

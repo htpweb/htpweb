@@ -11,8 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="./zip-reader.js"></script>
 <script src="../config/supabase.js"></script>
-<script src="../config/auth.js?v=20261004-profiles1"></script>
-<link rel="stylesheet" href="../assets/admin.css?v=20261004-public-delivery1">
+<script src="../config/auth.js?v=20261007-cleanroutes1"></script>
+<link rel="stylesheet" href="../assets/admin.css?v=20261007-localpremium1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../assets/local-workspace.css?v=20261006-shared1">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-premium3">
@@ -59,17 +59,17 @@
       <button data-section="security">Seguridad</button>
       <button data-section="catalog">Catálogo</button>
       <button data-section="schedules">Horarios</button>
-      <button data-section="storage">Storage</button>
+      <button data-section="storage">Multimedia</button>
       <button data-section="marketing">Marketing</button>
       <button data-section="inventory">Inventario</button>
       <button data-section="advertising">Publicidad</button>
       <button data-section="menuimport">Importar menú</button>
-      <button data-section="analytics">Analytics</button>
+      <button data-section="analytics">Estadísticas</button>
       <a class="public-link master-only" href="./monetizacion.html">Planes y suscripciones</a>
     </nav>
 
     <div class="sidebar-footer">
-      <a class="public-link" id="deliveryPublicSiteLink" href="../index.html">Ir al sitio público</a>
+      <a class="public-link" id="deliveryPublicSiteLink" href="../index.html">Ver sitio publicado</a>
       <button class="logout" id="logoutBtn">Cerrar sesión</button>
     </div>
   </aside>
@@ -91,7 +91,7 @@
     <section id="section-overview" class="section active">
       <div class="overview-heading card">
         <div>
-          <h2 id="overviewHeadingTitle" style="margin:0">Estado de HTPWEB</h2>
+          <h2 id="overviewHeadingTitle" style="margin:0">Estado de la operación</h2>
           <p id="scopeInfo" class="muted" style="margin:.35rem 0 0">Cargando ámbito...</p>
         </div>
         <div id="overviewUpdatedAt" class="muted"></div>
@@ -163,7 +163,7 @@
         <div class="card">
           <div>
             <h3 id="overviewHealthTitle" style="margin:0">Salud de la plataforma</h3>
-            <p id="overviewHealthSubtitle" class="muted" style="margin:.35rem 0 0">Qué tan completo y publicado está HTPWEB.</p>
+            <p id="overviewHealthSubtitle" class="muted" style="margin:.35rem 0 0">Qué tan completo, actualizado y listo está tu espacio de trabajo.</p>
           </div>
           <div id="overviewHealth" class="overview-health"></div>
         </div>
@@ -184,7 +184,7 @@
         <div class="card">
           <div>
             <h3 style="margin:0">Acciones rápidas</h3>
-            <p id="overviewQuickActionsSubtitle" class="muted" style="margin:.35rem 0 0">Tareas frecuentes del MASTER.</p>
+            <p id="overviewQuickActionsSubtitle" class="muted" style="margin:.35rem 0 0">Accesos frecuentes del panel.</p>
           </div>
           <div id="overviewQuickActions" class="overview-quick-actions"></div>
         </div>
@@ -1738,7 +1738,7 @@
           </div>
           <div class="stack">
             <input id="catalogProductImageFile" type="file" accept="image/jpeg,image/png,image/webp">
-            <small class="muted">La imagen se comprime y se guarda automáticamente en Supabase Storage al guardar el producto.</small>
+            <small class="muted">La imagen se optimiza y se guarda automáticamente al guardar el producto.</small>
             <button class="btn-danger" type="button" id="catalogDeleteProductImageBtn" disabled>Eliminar imagen actual</button>
           </div>
         </div>
@@ -1897,7 +1897,7 @@
         <div class="row between">
           <div>
             <h2>Horarios del LOCAL</h2>
-            <p class="muted">Configura apertura y cierre para cada día. La numeración interna usa 0=Domingo hasta 6=Sábado.</p>
+            <p class="muted">Configura los horarios de apertura y cierre para cada día.</p>
           </div>
           <div class="row">
             <select id="scheduleLocal" style="max-width:340px"></select>
@@ -1915,8 +1915,8 @@
 
     <section id="section-storage" class="section">
       <div class="card">
-        <h2>Imágenes y Storage</h2>
-        <p class="muted">Bucket público: <code>htpweb-media</code>. Solo se sube una imagen cuando seleccionas un archivo nuevo.</p>
+        <h2>Imágenes y archivos</h2>
+        <p class="muted">Administra el logo, banner, galería y las imágenes de productos de tu negocio.</p>
       </div>
 
       <div class="card master-only" id="masterBrandingFolderCard">
@@ -1995,7 +1995,7 @@
           <div class="row between">
             <div>
               <h4 style="margin:0">Galería del LOCAL</h4>
-              <small class="muted">Fotos adicionales del establecimiento. Se almacenan en Supabase Storage.</small>
+              <small class="muted">Fotos adicionales del establecimiento para enriquecer la página pública.</small>
             </div>
             <input id="localGalleryFiles" type="file" multiple accept="image/jpeg,image/png,image/webp">
           </div>
@@ -2006,7 +2006,7 @@
         </div>
 
         <button class="btn-muted master-only" id="enableLocalMediaBtn">Habilitar gestión del LOCAL</button>
-        <small class="muted">LOCAL_ADMIN requiere las capabilities correspondientes para información, imágenes, productos, variantes y horarios.</small>
+        <small class="muted">Las herramientas disponibles dependen del acceso y del plan asignado a tu negocio.</small>
       </div>
 
       <div class="card" id="storageProductCard">
@@ -2022,7 +2022,7 @@
               <button class="btn-primary" id="uploadProductImageBtn">Subir / reemplazar imagen</button>
               <button class="btn-danger" id="deleteProductImageBtn">Eliminar imagen</button>
             </div>
-            <small class="muted">El PRODUCTO se actualiza por RPC; el navegador no obtiene UPDATE directo.</small>
+            <small class="muted">Los cambios de imagen se guardan de forma segura en el catálogo.</small>
           </div>
         </div>
       </div>
@@ -2302,7 +2302,7 @@
           <button class="btn-primary" id="startMenuImportBtn">Subir y analizar</button>
         </div>
         <div id="menuImportStatus" class="muted" style="margin-top:10px">
-          Las imágenes se guardan en Storage privado. La IA solo prepara un borrador para revisión.
+          Las imágenes se guardan de forma privada. La IA solo prepara un borrador para tu revisión.
         </div>
       </div>
 
@@ -2446,7 +2446,7 @@
 <script src="../config/imports.js"></script>
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
 <script src="../assets/storefront-architectures.js?v=20261007-premium3"></script>
-<script src="./admin.js?v=20261006-shared1"></script>
+<script src="./admin.js?v=20261007-localoverview1"></script>
 <script src="./zone-maps.js"></script>
 <script src="./locales-bulk.js?v=20260925-1300"></script>
 <script src="./locales-master.js?v=20261005-domain1"></script>

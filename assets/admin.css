@@ -1139,3 +1139,46 @@ body.delivery-qr-open{overflow:hidden}
 
 body.delivery-workspace-header .sidebar{top:64px;height:calc(100vh - 64px)}
 @media(max-width:860px){body.delivery-workspace-header .sidebar{top:0;height:auto}}
+
+
+/* ============================================================
+   PREMIUM LOCAL ADMIN WORKSPACE
+   Business-first language and navigation for LOCAL_ADMIN.
+   ============================================================ */
+.workspace-nav-group{display:grid;gap:7px}
+.workspace-nav-group-title{padding:13px 10px 4px;color:#8090a7;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}
+.workspace-nav-group+.workspace-nav-group{margin-top:8px}
+.workspace-nav-group button{width:100%}
+body.local-admin-workspace{background:#f3f6fb;color:#172033}
+body.local-admin-workspace .admin-shell{grid-template-columns:264px minmax(0,1fr)}
+body.local-admin-workspace .sidebar{
+  background:linear-gradient(180deg,#071522 0%,#0b1730 58%,#0a1220 100%);
+  border-right:1px solid rgba(255,255,255,.06);
+  padding:22px 18px;
+}
+body.local-admin-workspace .sidebar .brand{font-size:18px;line-height:1.15;letter-spacing:-.02em;margin-bottom:9px}
+body.local-admin-workspace .sidebar .role{display:inline-flex;width:max-content;max-width:100%;padding:6px 9px;border-radius:999px;background:#ffffff12;color:#cbd5e1;font-size:11px;font-weight:800;margin-bottom:18px}
+body.local-admin-workspace .nav{gap:0}
+body.local-admin-workspace .nav button{background:transparent;color:#cbd5e1;border:1px solid transparent;border-radius:10px;padding:10px 11px;font-weight:700;transition:.18s ease}
+body.local-admin-workspace .nav button:hover{background:#ffffff0c;color:#fff;border-color:#ffffff12;transform:translateX(2px)}
+body.local-admin-workspace .nav button.active{background:#1466e8;color:#fff;border-color:#3882f6;box-shadow:0 8px 20px rgba(20,102,232,.24)}
+body.local-admin-workspace .sidebar-footer{padding-top:14px;border-top:1px solid #ffffff12}
+body.local-admin-workspace .sidebar-footer .public-link{background:#eff6ff;color:#0b57d0}
+body.local-admin-workspace .content{background:#f3f6fb;padding:26px clamp(18px,3vw,38px)}
+body.local-admin-workspace .topbar{padding:4px 2px 12px;margin-bottom:18px}
+body.local-admin-workspace .topbar h1{font-size:clamp(1.8rem,3vw,2.35rem);letter-spacing:-.04em;color:#0b1730}
+body.local-admin-workspace .card{border:1px solid #e4eaf2;box-shadow:0 10px 30px rgba(15,23,42,.045);border-radius:18px}
+body.local-admin-workspace .overview-heading{background:linear-gradient(135deg,#fff 0%,#f7faff 100%);padding:22px 24px;border-color:#dfe8f5}
+body.local-admin-workspace .overview-heading h2{font-size:1.45rem;letter-spacing:-.025em;color:#0b1730}
+body.local-admin-workspace .overview-action-card{border-color:#dfe7f1;background:linear-gradient(180deg,#fff,#fbfdff)}
+body.local-admin-workspace .overview-action-card:hover{border-color:#9fc3ff;box-shadow:0 14px 30px rgba(20,102,232,.10)}
+body.local-admin-workspace .btn-primary{background:#1466e8}
+@media(max-width:860px){
+  body.local-admin-workspace .admin-shell{grid-template-columns:1fr}
+  body.local-admin-workspace .sidebar{height:auto;position:relative;padding:16px}
+  body.local-admin-workspace .nav{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  body.local-admin-workspace .nav::-webkit-scrollbar{display:none}
+  body.local-admin-workspace .workspace-nav-group{min-width:205px;flex:0 0 auto}
+  body.local-admin-workspace .workspace-nav-group-title{padding-top:6px}
+  body.local-admin-workspace .content{padding:16px}
+}

@@ -15,7 +15,7 @@
 <script type="application/ld+json" id="localBusinessSchema">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Santas Alitas","description":"Menú cargado desde imágenes locales HTPWEB.","url":"https://htpweb.github.io/santas-alitas-36/","image":"https://hwfloywzqlgqieonuswl.supabase.co/storage/v1/object/public/htpweb-media/local/d18fd370-1047-4a50-bfb2-c2536b764342/branding/banner-gallery-1790448486371.jpg","address":{"@type":"PostalAddress","streetAddress":"Luis Tello, sector Las Palmas, Esmeraldas, Ecuador"},"geo":{"@type":"GeoCoordinates","latitude":0.9898374796060881,"longitude":-79.65840302810386}}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config/supabase.js"></script>
-<script src="../config/auth.js?v=20261005-branded-shell1"></script>
+<script src="../config/auth.js?v=20261007-cleanroutes1"></script>
 <script src="../config/cart.js"></script>
 <script src="../config/ads.js?v=20261004-localshop1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
@@ -332,23 +332,23 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261006-shared1">
+<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-publicqa1">
 <link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-premium3">
 <script src="../assets/storefront-architectures.js?v=20261007-premium3"></script>
-<script src="../assets/storefront-chrome.js?v=20261006-shared1"></script>
+<script src="../assets/storefront-chrome.js?v=20261007-publicqa1"></script>
 <!-- HTPWEB_AUTO_SEO_LOCAL -->
 </head>
 <body class="local-store">
 <div id="localTopbar" class="local-topbar hidden"><div class="local-topbar-inner"><span id="topbarPhone"></span><span class="sep">•</span><a id="topbarCta" href="#">Contáctanos</a></div></div>
 <header class="local-store-header"><div class="local-store-header-inner">
-  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial · by HTPWEB</small></div></div>
+  <div class="local-brand"><img id="brandLogo" class="hidden" alt=""><div><strong id="brandName"></strong><small>Sitio oficial</small></div></div>
   <nav id="siteNav" class="local-site-nav">
     <a id="homeNav" data-site-section="home" href="#">Inicio</a>
     <a id="aboutNav" data-site-section="about" href="#">Quiénes somos</a>
     <a id="catalogNav" data-site-section="services" href="#">Nuestros servicios</a>
     <a id="shopNav" data-site-section="shop" href="#">Tienda virtual</a>
-    <a id="projectsNav" data-site-section="projects" href="#">Proyectos</a>
-    <a id="blogNav" data-site-section="blog" href="#">Blog</a>
+    <a id="projectsNav" data-site-section="projects" href="#">Proyectos y portafolio</a>
+    <a id="blogNav" data-site-section="blog" href="#">Novedades</a>
     <a id="contactNav" data-site-section="contact" href="#">Contacto</a>
   </nav>
   <button id="cartBtn" class="local-cart-btn hidden">🛒 <span id="cartCount">0</span></button>
@@ -426,10 +426,10 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 <footer id="siteFooter" class="local-site-footer">
   <div class="local-site-footer-inner">
     <div><h3 id="footerBrand"></h3><p id="footerAbout">Conoce nuestros productos, servicios y novedades.</p></div>
-    <div><h4>Explora</h4><a data-site-section="home" href="#">Inicio</a><a data-site-section="about" href="#">Quiénes somos</a><a data-site-section="services" href="#">Nuestros servicios</a><a data-site-section="shop" href="#">Tienda virtual</a><a data-site-section="projects" href="#">Proyectos</a></div>
+    <div><h4>Explora</h4><a data-site-section="home" href="#">Inicio</a><a data-site-section="about" href="#">Quiénes somos</a><a data-site-section="services" href="#">Nuestros servicios</a><a data-site-section="shop" href="#">Tienda virtual</a><a data-site-section="projects" href="#">Proyectos y portafolio</a><a data-site-section="blog" href="#">Novedades</a><a data-site-section="contact" href="#">Contacto</a></div>
     <div><h4>Contacto</h4><div id="footerContact"></div></div>
   </div>
-  <div class="local-site-footer-bottom"><span id="footerLegal">Todos los derechos reservados.</span><span>Creado con HTPWEB</span></div>
+  <div class="local-site-footer-bottom"><span id="footerLegal">Todos los derechos reservados.</span><span>Sitio oficial</span></div>
 </footer>
 <a id="waFloat" class="local-wa-float hidden" target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" title="Contactar por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M19.11 17.41c-.26-.13-1.54-.76-1.78-.85-.24-.09-.41-.13-.59.13-.17.26-.67.85-.82 1.02-.15.17-.3.2-.56.07-.26-.13-1.1-.4-2.09-1.29-.77-.69-1.29-1.54-1.44-1.8-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.46.13-.15.17-.26.26-.43.09-.17.04-.33-.02-.46-.07-.13-.59-1.41-.8-1.93-.21-.51-.43-.44-.59-.45h-.5c-.17 0-.46.07-.69.33-.24.26-.91.89-.91 2.17s.93 2.52 1.06 2.69c.13.17 1.83 2.8 4.43 3.93.62.27 1.1.43 1.48.55.62.2 1.18.17 1.63.1.5-.07 1.54-.63 1.76-1.24.22-.61.22-1.13.15-1.24-.06-.11-.23-.17-.49-.3zM16.03 4.8c-6.14 0-11.13 4.99-11.13 11.13 0 1.96.51 3.88 1.48 5.56L4.8 27.2l5.84-1.53a11.1 11.1 0 0 0 5.38 1.37h.01c6.14 0 11.13-4.99 11.13-11.13 0-2.97-1.16-5.77-3.26-7.87A11.05 11.05 0 0 0 16.03 4.8zm0 20.36h-.01a9.23 9.23 0 0 1-4.7-1.29l-.34-.2-3.47.91.93-3.38-.22-.35a9.24 9.24 0 1 1 7.81 4.31z"/></svg></a>
 <script>
@@ -507,6 +507,10 @@ function configureSiteNavigation(){
    a.onclick=e=>{
      e.preventDefault();
      e.stopPropagation();
+     if(pageSection===section){
+       location.reload();
+       return false;
+     }
      navigateSiteSection(section);
      return false;
    };
