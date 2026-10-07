@@ -802,7 +802,18 @@
     return total;
   }
 
+  function compactMenuIsActive() {
+    try {
+      const preview = new URLSearchParams(location.search).get("menu_preview");
+      return String(preview || "").toUpperCase() === "COMPACT" ||
+        (typeof localActual !== "undefined" && String(localActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT");
+    } catch {
+      return false;
+    }
+  }
+
   async function loadMenuPages() {
+    if (compactMenuIsActive()) return;
     if (loaded) return;
     if (
       typeof localId === "undefined" ||
