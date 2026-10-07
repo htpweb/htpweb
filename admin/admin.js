@@ -16,6 +16,7 @@ const state = {
   localProfileRecord: null,
   localStorePresets: [],
   localStoreThemes: [],
+  localPublishedPresetCode: null,
   localImportedDesign: null,
   localBlogPosts: [],
   users: [],
@@ -3324,9 +3325,24 @@ async function deleteLocalBlogPost(id){
   catch(e){message(e.message||"No se pudo eliminar la entrada.","error");}
 }
 
+function updateLocalStorePublishState(){
+  const el=$("localStorePublishState");
+  if(!el)return;
+  const current=$("localStorePreset")?.value||"";
+  const published=state.localPublishedPresetCode||"";
+  const currentName=(state.localStorePresets||[]).find(p=>p.code===current)?.name||current||"Sin seleccionar";
+  const publishedName=(state.localStorePresets||[]).find(p=>p.code===published)?.name||published||"Sin publicar";
+  const dirty=!!published&&!!current&&published!==current;
+  el.textContent=dirty
+    ? `Publicado: ${publishedName} · Vista previa: ${currentName} · Cambios sin guardar`
+    : `Publicado: ${publishedName} · Sin cambios pendientes`;
+  el.style.color=dirty?"#b45309":"#047857";
+}
+
 function syncLocalPresetHelp(){
   const option=$("localStorePreset")?.selectedOptions?.[0];
   if($("localStorePresetHelp"))$("localStorePresetHelp").textContent=option?.dataset?.help||"";
+  updateLocalStorePublishState();
   renderLocalStorePreview();
 }
 
@@ -3728,6 +3744,7 @@ async function loadLocalCommerce(){
   state.localStoreThemes=themes;
   $("localStorePreset").innerHTML=presets.map(p=>`<option value="${esc(p.code)}" data-help="${esc(p.business_fit+" · "+(p.description||""))}" data-family="${esc(p.layout_family||"GENERAL")}" data-catalog="${esc(p.config?.catalog_label||"Productos / Servicios")}">${esc(p.name)}</option>`).join("");
   const requestedPreset=settings.preset_code||"";
+  state.localPublishedPresetCode=requestedPreset;
   $("localStorePreset").value=presets.some(p=>p.code===requestedPreset)?requestedPreset:(presets[0]?.code||"GENERAL_MODERN");
   $("localStoreTheme").innerHTML=themes.map(t=>`<option value="${esc(t.code)}" data-primary="${esc(t.primary_color)}" data-secondary="${esc(t.secondary_color)}" data-background="${esc(t.background_color)}" data-surface="${esc(t.surface_color)}" data-text="${esc(t.text_color)}" data-help="${esc(t.business_fit||"")}">${esc(t.name)}</option>`).join("");
   $("localStoreTheme").value=settings.theme_code||"HTPWEB_BLUE";
