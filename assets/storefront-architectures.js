@@ -32,9 +32,56 @@ function m(f){return MEDIA[f]||MEDIA.GENERAL}
 function navHtml(items,links){
  return (items||[]).map((x,i)=>links?'<a href="'+e(x.href||"#")+'" data-site-section="'+e(x.section||"")+'">'+e(x.label||x)+'</a>':'<span>'+e(x.label||x)+'</span>').join("");
 }
+
+function renderApexHome(ctx,family,profile,media){
+ const name=e(ctx.name||"LOCAL"),hero=e(ctx.hero||ctx.name||"LOCAL"),subtitle=e(ctx.subtitle||""),
+  about=e(ctx.about||"Quiénes somos"),catalog=e(ctx.catalog||"Capacidades"),projects=e(ctx.projects||"Proyectos");
+ const nav=navHtml(ctx.nav||[],!!ctx.links),links=!!ctx.links;
+ const href=section=>{const item=(ctx.nav||[]).find(x=>String(x?.section||"").toLowerCase()===section);return item?.href||"#";};
+ const action=(label,section,cls="apex-btn")=>links?'<a class="'+cls+'" href="'+e(href(section))+'" data-site-section="'+section+'">'+e(label)+'</a>':'<span class="'+cls+'">'+e(label)+'</span>';
+ const heroImg=e(ctx.banner||media.hero);
+ const projectsArr=(ctx.projectItems?.length?ctx.projectItems:profile.projects.map((title,i)=>({title,image:media.projects[i%media.projects.length]}))).slice(0,3);
+ const projectCards=projectsArr.map((x,i)=>'<article class="apex-project '+(i===0?'featured':'')+'"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><div><small>'+e(["INFRAESTRUCTURA","ARQUITECTURA","PLANIFICACIÓN"][i]||"PROYECTO")+' / '+(2025-i)+'</small><h3>'+e(x.title||"Proyecto destacado")+'</h3></div></article>').join("");
+ const disciplines=(ctx.serviceItems?.length?ctx.serviceItems:profile.services.map((title,i)=>({title,copy:"Soluciones técnicas integradas con visión de largo plazo."}))).slice(0,5).map((x,i)=>'<article><b>0'+(i+1)+'</b><h3>'+e(x.title||"Capacidad")+'</h3><p>'+e(x.copy||"")+'</p></article>').join("");
+ const blog=(ctx.blogItems?.length?ctx.blogItems:[
+   {title:"La infraestructura del futuro empieza con mejores decisiones",date:"Actualidad"},
+   {title:"BIM: coordinar antes de construir",date:"Innovación"},
+   {title:"Diseñar para un territorio que cambia",date:"Sostenibilidad"}
+ ]).slice(0,3).map(x=>'<article><small>'+e(x.date||"PERSPECTIVAS")+'</small><h3>'+e(x.title||"Perspectiva")+'</h3><span>Leer perspectiva →</span></article>').join("");
+ const contactItems=(ctx.contactItems||[]).map(x=>'<div><small>'+e(x.label||"")+'</small><strong>'+e(x.value||"")+'</strong></div>').join("");
+ return '<div class="eng-architecture family-'+e(family)+' arch-APEX">'+
+  '<header class="apex-nav"><strong>'+name+'</strong><nav>'+nav+'</nav>'+action("Hablemos","contact","apex-nav-cta")+'</header>'+
+  '<section class="apex-hero" style="background-image:linear-gradient(90deg,rgba(3,7,18,.88),rgba(3,7,18,.22)),url('+heroImg+')"><div class="apex-hero-copy"><small>INGENIERÍA / ARQUITECTURA / INFRAESTRUCTURA</small><h1>'+hero+'</h1><p>'+subtitle+'</p><div>'+action("Explorar proyectos","projects")+action("Hablemos de tu proyecto","contact","apex-btn ghost")+'</div></div></section>'+
+  '<section class="apex-stats"><div><strong>28</strong><span>Años de experiencia</span></div><div><strong>180+</strong><span>Proyectos realizados</span></div><div><strong>5</strong><span>Disciplinas integradas</span></div><div><strong>98%</strong><span>Satisfacción de clientes</span></div></section>'+
+  '<section class="apex-section apex-capabilities"><div class="apex-section-head"><small>01 / EXPERIENCIA INTEGRADA</small><h2>Una visión integral. Cinco disciplinas.</h2></div><div class="apex-cap-grid">'+disciplines+'</div></section>'+
+  '<section class="apex-section apex-projects"><div class="apex-section-head"><small>02 / OBRAS QUE NOS DEFINEN</small><h2>Ideas que toman forma.</h2>'+action("Ver todos los proyectos","projects","apex-text-link")+'</div><div class="apex-project-grid">'+projectCards+'</div></section>'+
+  '<section class="apex-about"><div class="apex-about-image" style="background-image:url('+e(ctx.aboutImage||media.projects[2]||media.hero)+')"></div><div class="apex-about-copy"><small>03 / LA FIRMA</small><h2>El rigor nos une. El futuro nos mueve.</h2><p>'+e(ctx.aboutText||"")+'</p><p>Precisión técnica. Responsabilidad ambiental. Compromiso con las personas.</p>'+action("Conoce nuestra firma","about")+'</div></section>'+
+  '<section class="apex-trust"><small>COMPROMISO CON ESTÁNDARES INTERNACIONALES</small><strong>Calidad / Gestión ambiental / Seguridad y salud / Metodología BIM</strong><p>Una estructura preparada para incorporar certificaciones, clientes y alianzas verificadas de tu empresa.</p></section>'+
+  '<section class="apex-section apex-insights"><div class="apex-section-head"><small>04 / PERSPECTIVAS</small><h2>Pensar hoy. Construir mañana.</h2></div><div class="apex-insight-grid">'+blog+'</div></section>'+
+  '<section class="apex-contact"><div><small>05 / CONSTRUYAMOS ALGO IMPORTANTE</small><h2>Tu próximo proyecto empieza aquí.</h2><div class="apex-contact-meta">'+contactItems+'</div></div><div class="apex-contact-actions">'+(ctx.whatsappHtml||"")+(ctx.mapHtml||"")+'</div></section>'+
+  '<footer class="apex-footer"><strong>'+name+'</strong><p>Ingeniería con criterio. Infraestructura con propósito.</p><nav>'+nav+'</nav></footer>'+
+ '</div>';
+}
+function renderApexInternal(ctx,family,profile,media){
+ const section=String(ctx.section||"").toLowerCase(),name=e(ctx.name||"LOCAL"),nav=navHtml(ctx.nav||[],!!ctx.links);
+ const title=section==="about"?e(ctx.about||"Quiénes somos"):section==="services"?e(ctx.catalog||"Capacidades"):section==="projects"?e(ctx.projects||"Proyectos"):section==="blog"?e(ctx.blog||"Perspectivas"):e(ctx.contact||"Contacto");
+ const kicker={about:"01 / LA FIRMA",services:"02 / CAPACIDADES",projects:"03 / PROYECTOS",blog:"04 / PERSPECTIVAS",contact:"05 / CONTACTO"}[section]||"APEX";
+ const projects=(ctx.projectItems?.length?ctx.projectItems:profile.projects.map((title,i)=>({title,image:media.projects[i%media.projects.length]}))).slice(0,8).map((x,i)=>'<article class="apex-internal-project"><img src="'+e(x.image||media.projects[i%media.projects.length])+'" alt=""><small>'+e(["INFRAESTRUCTURA","ARQUITECTURA","INGENIERÍA"][i%3])+'</small><h3>'+e(x.title||"Proyecto")+'</h3></article>').join("");
+ const services=(ctx.serviceItems?.length?ctx.serviceItems:profile.services.map((title,i)=>({title,copy:"Solución técnica integrada."}))).slice(0,8).map((x,i)=>'<article><b>0'+(i+1)+'</b><h3>'+e(x.title||"Capacidad")+'</h3><p>'+e(x.copy||"")+'</p></article>').join("");
+ const blogs=(ctx.blogItems||[]).slice(0,8).map(x=>'<article><small>'+e(x.date||"Actualidad")+'</small><h3>'+e(x.title||"Perspectiva")+'</h3><p>'+e(x.excerpt||"")+'</p></article>').join("");
+ let body="";
+ if(section==="about") body='<div class="apex-internal-about"><div><p>'+e(ctx.aboutText||"")+'</p><div class="apex-mini-stats"><strong>28<small>Años</small></strong><strong>180+<small>Proyectos</small></strong><strong>5<small>Disciplinas</small></strong></div></div><div class="apex-internal-image" style="background-image:url('+e(ctx.aboutImage||media.hero)+')"></div></div>';
+ else if(section==="services") body='<div class="apex-internal-services">'+services+'</div>';
+ else if(section==="projects") body='<div class="apex-internal-projects">'+projects+'</div>';
+ else if(section==="blog") body='<div class="apex-internal-blog">'+(blogs||'<article><small>Actualidad</small><h3>Perspectivas de '+name+'</h3></article>')+'</div>';
+ else body='<div class="apex-internal-contact"><div class="apex-contact-meta">'+(ctx.contactItems||[]).map(x=>'<div><small>'+e(x.label||"")+'</small><strong>'+e(x.value||"")+'</strong></div>').join("")+'</div><div>'+(ctx.whatsappHtml||"")+(ctx.mapHtml||"")+(ctx.socialHtml||"")+'</div></div>';
+ return '<div class="eng-architecture arch-APEX apex-internal"><header class="apex-nav"><strong>'+name+'</strong><nav>'+nav+'</nav></header><main><div class="apex-internal-head"><small>'+kicker+'</small><h1>'+title+'</h1></div>'+body+'</main><footer class="apex-footer"><strong>'+name+'</strong><p>Ingeniería con criterio. Infraestructura con propósito.</p></footer></div>';
+}
+
 function renderInternalSection(ctx,design,family,profile,media){
  const section=String(ctx.section||"home").toLowerCase();
  if(section==="home")return "";
+ if(design==="APEX")return renderApexInternal(ctx,family,profile,media);
  const name=e(ctx.name||"LOCAL"),about=e(ctx.about||"Quiénes somos"),catalog=e(ctx.catalog||"Nuestros servicios"),projectsTitle=e(ctx.projects||"Proyectos y portafolio"),blogTitle=e(ctx.blog||"Blog"),contact=e(ctx.contact||"Contacto");
  const aboutText=e(ctx.aboutText||"");
  const primary=e(ctx.primary||"#1466e8"),secondary=e(ctx.secondary||"#0b1730"),background=e(ctx.background||"#f6f9ff"),surface=e(ctx.surface||"#fff"),text=e(ctx.text||"#0b1730");
@@ -75,6 +122,7 @@ function render(ctx){
  const design=String(ctx.design||"SIGNATURE").toUpperCase(),family=String(ctx.family||"GENERAL").toUpperCase();
  const profile=p(family),media=m(family),name=e(ctx.name||"LOCAL"),hero=e(ctx.hero||ctx.name||"LOCAL"),subtitle=e(ctx.subtitle||""),about=e(ctx.about||"Quiénes somos"),catalog=e(ctx.catalog||"Nuestros servicios"),projects=e(ctx.projects||"Proyectos y portafolio"),contact=e(ctx.contact||"Contacto"),aboutText=e(ctx.aboutText||"");
  const internal=renderInternalSection(ctx,design,family,profile,media); if(internal)return internal;
+ if(design==="APEX")return renderApexHome(ctx,family,profile,media);
  const image=ctx.banner||media.hero, img='url('+e(image)+')', nav=navHtml(ctx.nav||[],!!ctx.links);
  const sectionHref=section=>{const item=(ctx.nav||[]).find(x=>String(x?.section||"").toLowerCase()===String(section||"").toLowerCase());return item?.href||"#";};
  const action=(label,cls="arch-cta",section="contact")=>ctx.links?'<a class="'+e(cls)+'" href="'+e(sectionHref(section))+'" data-site-section="'+e(section)+'">'+e(label)+'</a>':'<span class="'+e(cls)+'">'+e(label)+'</span>';
@@ -96,5 +144,5 @@ function render(ctx){
  if(design==="IMMERSIVE")return wrap('<section class="arch-immersive-hero" style="background-image:linear-gradient(90deg,#030712aa,#03071222),'+img+'"><header>'+head+cta+'</header><div class="arch-immersive-copy"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Descubrir proyecto","arch-cta","projects")+'</div><div class="arch-immersive-scroll">SCROLL ↓</div></section><div class="arch-immersive-float">'+stats+'</div>'+(flags.projects?'<section class="arch-immersive-projects"><h3>'+projects+'</h3><div>'+projectCards+'</div></section>':''));
  return wrap('<header class="arch-tech-head">'+head+'<span>SYS 01</span></header><div class="arch-tech-grid"><section class="arch-tech-intro"><small>'+e(profile.kicker)+'</small><h2>'+hero+'</h2><p>'+subtitle+'</p>'+action("Solicitar cotización","arch-tech-cta")+'</section><section class="arch-tech-kpis">'+stats+'</section><section class="arch-tech-panel"><h3>Capacidades</h3><div>'+svc+'</div></section><section class="arch-tech-panel"><h3>Certificaciones</h3><div class="arch-tech-tags"><span>BIM</span><span>QA/QC</span><span>HSE</span><span>ESG</span></div></section><section class="arch-tech-panel wide"><h3>'+projects+'</h3><div class="arch-tech-projects">'+projectCards+'</div></section></div>');
 }
-window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,version:"20261007.3-rebuild"};
+window.HTPWEBStorefrontArchitectures={render,profiles:PROFILES,media:MEDIA,version:"20261007.4-apex"};
 })();
