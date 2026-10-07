@@ -448,7 +448,12 @@ body.chrome-MAGAZINE .local-store-header-inner{
 }
 body.chrome-MAGAZINE .chrome-magazine-kicker{
   grid-column:1/-1!important;grid-row:1!important;justify-self:center!important;
-  font-size:.64rem!important;letter-spacing:.22em!important;text-transform:uppercase!important;color:#6b7280!important
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:max-content!important;max-width:100%!important;padding:5px 10px!important;border-radius:999px!important;
+  font-size:.61rem!important;letter-spacing:.16em!important;text-transform:uppercase!important;
+  color:var(--local-accent)!important;background:color-mix(in srgb,var(--local-accent) 9%,white)!important;
+  border:1px solid color-mix(in srgb,var(--local-accent) 28%,white)!important;
+  font-weight:850!important
 }
 body.chrome-MAGAZINE .local-brand{
   grid-column:1/-1!important;grid-row:2!important;justify-self:center!important;text-align:center!important;margin:0!important
