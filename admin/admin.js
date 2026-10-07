@@ -345,7 +345,7 @@ function organizeLocalAdminNavigation(){
   });
 
   const layout=[
-    {label:"Principal",sections:["overview","mylocal"]},
+    {label:"Principal",sections:["overview","mylocal","localplan"]},
     {label:"Operación",sections:["orders","catalog","inventory","schedules"]},
     {label:"Contenido y marca",sections:["storage","marketing"]},
     {label:"Resultados",sections:["analytics"]}
