@@ -229,12 +229,12 @@ async function loadCustomer(){
  if(!customerId)return;
  const [delRes,ordRes]=await Promise.all([
    supabaseClient.from("customer_deliveries").select("delivery_id,active,allow_orders,relationship_source,created_at").eq("customer_id",customerId),
-   supabaseClient.from("orders").select("id,delivery_id,origin_local_id,order_channel,fulfillment_method,status,total,created_at").eq("customer_id",customerId).order("created_at",{ascending:false}).limit(100)
+   supabaseClient.from("business_orders").select("id,delivery_id,origin_business_id,order_channel,fulfillment_method,status,total,created_at").eq("customer_id",customerId).order("created_at",{ascending:false}).limit(100)
  ]);
  if(delRes.error)throw delRes.error;if(ordRes.error)throw ordRes.error;
  orders=ordRes.data||[];
  const ids=[...new Set([...(delRes.data||[]).map(x=>x.delivery_id),...orders.map(x=>x.delivery_id)].filter(Boolean))];
- const businessIds=[...new Set(orders.map(x=>x.origin_local_id).filter(Boolean))];
+ const businessIds=[...new Set(orders.map(x=>x.origin_business_id).filter(Boolean))];
  let deliveryRows=[],businessRows=[];
  if(ids.length){const d=await supabaseClient.from("deliveries").select("id,name,slug,logo_url,active").in("id",ids);if(d.error)throw d.error;deliveryRows=d.data||[]}
  // Lectura canónica BUSINESS; la vista public.businesses conserva RLS del esquema histórico.
@@ -407,7 +407,7 @@ function renderOrders(){
  const filter=$("deliveryFilter").value;
  const rows=filter==="__DIRECT__"?orders.filter(o=>o.order_channel==="DIRECT_LOCAL"):(filter?orders.filter(o=>o.delivery_id===filter):orders);
  $("ordersList").innerHTML=rows.length?rows.map(o=>{
-   const direct=o.order_channel==="DIRECT_LOCAL",d=deliveryById(o.delivery_id),business=directBusinessById(o.origin_local_id);
+   const direct=o.order_channel==="DIRECT_LOCAL",d=deliveryById(o.delivery_id),business=directBusinessById(o.origin_business_id);
    const source=direct?(business?.name||"Negocio"):(d?.name||"DELIVERY");
    const channel=direct?"Compra directa":"Mediante DELIVERY";
    const detail=direct?'<a class="btn btn-muted" href="pedido-directo.html?order='+encodeURIComponent(o.id)+'">Ver detalle</a>':(d?.slug?'<a class="btn btn-muted" href="'+esc(orderLink(o))+'">Ver detalle</a>':"");

@@ -10,7 +10,7 @@ function scripts(file){return [...read(file).matchAll(/<script(?:\s[^>]*)?>([\s\
 test("LOCAL claim flow originates from the LOCAL page and hides once claimed or pending",()=>{
  const html=read("app/local.html");
  assert.match(html,/public_local_claim_state/);
- assert.match(html,/Reclamar este LOCAL/);
+ assert.match(html,/Reclamar este negocio/);
  assert.match(html,/Información administrada por el negocio/);
  assert.match(html,/proceso de verificación/);
 });

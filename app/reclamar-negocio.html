@@ -87,10 +87,10 @@
 <script>
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-const params=new URLSearchParams(location.search),localId=params.get("local")||"",delivery=params.get("delivery")||"";
+const params=new URLSearchParams(location.search),businessId=params.get("business")||params.get("local")||"",delivery=params.get("delivery")||"";
 let context=null,currentUser=null,method="REGISTERED_WHATSAPP",otpVerified=false,challengeCode="",locationEvidence=null;
 let claimMap=null,registeredMarker=null,proposedMarker=null,mapEditMode=false;
-function backUrl(){return localId&&delivery?"local.html?delivery="+encodeURIComponent(delivery)+"&local="+encodeURIComponent(localId):"../index.html"}
+function backUrl(){return businessId&&delivery?"local.html?delivery="+encodeURIComponent(delivery)+"&business="+encodeURIComponent(businessId):"../index.html"}
 function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error";window.scrollTo({top:0,behavior:"smooth"})}
 function setMethod(next){
   method=next;
@@ -174,11 +174,11 @@ function fillExisting(p){
 }
 async function ensureChallenge(){
   if(challengeCode)return challengeCode;
-  const {data,error}=await supabaseClient.rpc("prepare_local_claim_challenge",{p_local_id:localId});if(error)throw error;
+  const {data,error}=await supabaseClient.rpc("prepare_local_claim_challenge",{p_local_id:businessId});if(error)throw error;
   challengeCode=data;$("challengeCode").textContent=data;return data;
 }
 async function invokeOtp(action,code=null){
-  const {data,error}=await supabaseClient.functions.invoke("local-claim-whatsapp-otp",{body:{action,local_id:localId,code}});
+  const {data,error}=await supabaseClient.functions.invoke("local-claim-whatsapp-otp",{body:{action,local_id:businessId,code}});
   if(error)throw new Error(data?.error||error.message||"No se pudo completar la verificación por WhatsApp.");
   if(!data?.ok)throw new Error(data?.error||"No se pudo completar la verificación.");
   return data;
@@ -231,7 +231,7 @@ async function uploadEvidence(file,kind,expected){
   if(expected==="pdf"&&file.type!=="application/pdf")throw new Error(kind+" debe estar en PDF.");
   if(expected==="image"&&!["image/jpeg","image/png","image/webp"].includes(file.type))throw new Error(kind+" debe ser JPG, PNG o WEBP.");
   const ext=extFor(file);if(!ext)throw new Error("Formato de archivo no permitido.");
-  const path=currentUser.id+"/"+localId+"/"+Date.now()+"-"+kind.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"."+ext;
+  const path=currentUser.id+"/"+businessId+"/"+Date.now()+"-"+kind.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"."+ext;
   const {error}=await supabaseClient.storage.from("local-claim-evidence").upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;return path;
 }
 function basePayload(){
@@ -262,7 +262,7 @@ async function submit(){
       const {error}=await supabaseClient.rpc("update_local_claim_evidence",{p_request_id:context.request.id,p_evidence:payload});if(error)throw error;
       show("Información adicional enviada. La revisión continuará y podrás seguirla desde Mis reclamaciones.","success");
     }else{
-      const {error}=await supabaseClient.rpc("submit_local_claim",{p_local_id:localId,p_evidence:payload});if(error)throw error;
+      const {error}=await supabaseClient.rpc("submit_local_claim",{p_local_id:businessId,p_evidence:payload});if(error)throw error;
       show(method==="DOCUMENT_LOCATION"?"Solicitud recibida. Revisaremos la información y te daremos respuesta en un plazo máximo de 3 días.":"WhatsApp validado. Tu reclamación fue enviada correctamente.","success");
     }
     await load();
@@ -270,9 +270,9 @@ async function submit(){
   finally{$("submitBtn").disabled=false}
 }
 async function load(){
-  if(!localId)throw new Error("La reclamación debe iniciarse desde la página de un LOCAL.");
+  if(!businessId)throw new Error("La reclamación debe iniciarse desde la página de un negocio.");
   currentUser=await obtenerUsuarioActual();if(!currentUser){irAAcceso(rutaActualRelativa());return}
-  const {data,error}=await supabaseClient.rpc("claim_local_context",{p_local_id:localId});if(error)throw error;if(!data)throw new Error("LOCAL no disponible.");
+  const {data,error}=await supabaseClient.rpc("claim_local_context",{p_local_id:businessId});if(error)throw error;if(!data)throw new Error("Negocio no disponible.");
   context=data;renderState();
 }
 $("backBtn").onclick=()=>location.href=backUrl();

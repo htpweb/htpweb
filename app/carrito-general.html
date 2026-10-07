@@ -59,9 +59,9 @@ function localInfo(id){return channels.get(id)||{local_id:id,name:locals.get(id)
 function show(text,type="error"){$("message").textContent=text;$("message").className=type==="success"?"success":"error"}
 async function loadReferenceData(){
  const productIds=[...new Set(items.filter(x=>x.product_id).map(x=>x.product_id))],variantIds=[...new Set(items.filter(x=>x.variant_id).map(x=>x.variant_id))],localIds=[...new Set(items.map(x=>x.local_id))];
- if(productIds.length){const r=await supabaseClient.from("products").select("id,local_id,name,price,image_url,active,catalog_visible").in("id",productIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>products.set(x.id,x))}
+ if(productIds.length){const r=await supabaseClient.from("business_products").select("id,business_id,local_id,name,price,image_url,active,catalog_visible").in("id",productIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>products.set(x.id,x))}
  if(variantIds.length){const r=await supabaseClient.from("product_variants").select("id,product_id,name,price,active").in("id",variantIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>variants.set(x.id,x))}
- if(localIds.length){const r=await supabaseClient.from("locals").select("id,name,slug,active").in("id",localIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>locals.set(x.id,x));const c=await supabaseClient.rpc("public_htpweb_cart_channels",{p_local_ids:localIds});if(c.error)throw c.error;(c.data?.locals||[]).forEach(x=>channels.set(x.local_id,x))}
+ if(localIds.length){const r=await supabaseClient.from("businesses").select("id,business_id,name,slug,active").in("id",localIds);if(r.error)throw r.error;(r.data||[]).forEach(x=>locals.set(x.id,x));const c=await supabaseClient.rpc("public_htpweb_cart_channels",{p_local_ids:localIds});if(c.error)throw c.error;(c.data?.locals||[]).forEach(x=>channels.set(x.local_id,x))}
 }
 function change(item,delta){const n=Math.max(0,Number(item.quantity||0)+delta);items=n?carritoCambiarCantidad(SCOPE,item,n):carritoEliminar(SCOPE,item);render()}
 function remove(item){items=carritoEliminar(SCOPE,item);render()}

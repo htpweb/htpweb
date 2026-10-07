@@ -198,7 +198,7 @@ test("móvil fija media pantalla del menú con navegación de hojas sincronizada
 test("LOCAL cerrado sigue permitiendo consultar pero explica por qué no se puede agregar",()=>{
   const local=fs.readFileSync("app/local.html","utf8");
   assert.match(local,/id="localOrderStatusNotice"/);
-  assert.match(local,/Este local está CERRADO en este momento/);
+  assert.match(local,/Este negocio está CERRADO en este momento/);
   assert.match(menu,/visualMenuClosedNotice/);
   assert.match(menu,/LOCAL CERRADO/);
 });

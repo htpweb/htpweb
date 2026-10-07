@@ -129,7 +129,7 @@ async function loadCart(){
  }
  const productIds=[...new Set(items.filter(x=>x.product_id).map(x=>x.product_id))];
  const variantIds=[...new Set(items.filter(x=>x.variant_id).map(x=>x.variant_id))];
- if(productIds.length){const {data,error}=await supabaseClient.from("products").select("id,name,price,image_url,active,catalog_visible").in("id",productIds);if(error)throw error;(data||[]).forEach(x=>products.set(x.id,x));}
+ if(productIds.length){const {data,error}=await supabaseClient.from("business_products").select("id,name,price,image_url,active,catalog_visible").in("id",productIds);if(error)throw error;(data||[]).forEach(x=>products.set(x.id,x));}
  if(variantIds.length){const {data,error}=await supabaseClient.from("product_variants").select("id,product_id,name,price,active").in("id",variantIds);if(error)throw error;(data||[]).forEach(x=>variants.set(x.id,x));}
  render();
 }

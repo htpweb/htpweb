@@ -60,12 +60,12 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
 }[ch]));
 
 const params = new URLSearchParams(location.search);
-const localId = params.get("local") || params.get("id");
+const businessId = params.get("business") || params.get("local") || params.get("id");
 const sharedProductId = params.get("product") || "";
 const menuPreview = (params.get("menu_preview") || "").toUpperCase();
 
 let negocioActual = null;
-let localActual = null;
+let businessActual = null;
 let viewerUser = null;
 let availability = null;
 let claimState = null;
@@ -77,7 +77,7 @@ let compactMenuController = null;
 
 async function init() {
   try {
-    if (!localId) throw new Error("No se especificó el local.");
+    if (!businessId) throw new Error("No se especificó el negocio.");
 
     negocioActual = await cargarNegocio();
     viewerUser = await obtenerUsuarioActual();
@@ -87,56 +87,56 @@ async function init() {
     updateCartCount();
 
     const { data: relation, error: relError } = await supabaseClient
-      .from("local_deliveries")
-      .select("local_id")
+      .from("business_deliveries")
+      .select("business_id")
       .eq("delivery_id", negocioActual.id)
-      .eq("local_id", localId)
+      .eq("business_id", businessId)
       .eq("active", true)
       .maybeSingle();
 
     if (relError) throw relError;
-    if (!relation) throw new Error("Este local no está disponible en el delivery seleccionado.");
+    if (!relation) throw new Error("Este negocio no está disponible en el delivery seleccionado.");
 
-    const localRes = await supabaseClient
-      .from("locals")
+    const businessRes = await supabaseClient
+      .from("businesses")
       .select("id,name,description,banner_url,logo_url,address,phone,whatsapp,active,menu_design")
-      .eq("id", localId)
+      .eq("id", businessId)
       .eq("active", true)
       .single();
 
-    if (localRes.error || !localRes.data) throw new Error("Local no encontrado.");
-    localActual = localRes.data;
-    document.title = localActual.name + " | " + negocioActual.name;
+    if (businessRes.error || !businessRes.data) throw new Error("Negocio no encontrado.");
+    businessActual = businessRes.data;
+    document.title = businessActual.name + " | " + negocioActual.name;
 
     try {
       const { data: claimData, error: claimError } = await supabaseClient.rpc(
         "public_local_claim_state",
-        { p_local_id: localId }
+        { p_local_id: businessId }
       );
       if (claimError) throw claimError;
       claimState = claimData || null;
     } catch (claimError) {
-      console.warn("No se pudo cargar el estado de reclamación del LOCAL:", claimError);
+      console.warn("No se pudo cargar el estado de reclamación del negocio:", claimError);
       claimState = null;
     }
 
     try {
       const { data: availabilityData, error: availabilityError } = await supabaseClient.rpc(
         "public_locals_order_availability",
-        { p_local_ids: [localId] }
+        { p_local_ids: [businessId] }
       );
 
       if (availabilityError) throw availabilityError;
       availability = Array.isArray(availabilityData) ? availabilityData[0] || null : null;
     } catch (availabilityError) {
-      console.warn("No se pudo cargar la disponibilidad del local:", availabilityError);
+      console.warn("No se pudo cargar la disponibilidad del negocio:", availabilityError);
       availability = null;
     }
 
     const productRes = await supabaseClient
-      .from("products")
-      .select("id,local_id,category_id,name,description,short_description,price,image_url,featured,display_order,active,catalog_visible")
-      .eq("local_id", localId)
+      .from("business_products")
+      .select("id,business_id,category_id,name,description,short_description,price,image_url,featured,display_order,active,catalog_visible")
+      .eq("business_id", businessId)
       .eq("active", true)
       .eq("catalog_visible", true)
       .order("display_order")
@@ -159,13 +159,13 @@ async function init() {
     }
 
     const [categoryRes, inventoryRes] = await Promise.all([
-      supabaseClient.from("categories")
-        .select("id,local_id,name,display_order,active")
-        .eq("local_id", localId)
+      supabaseClient.from("business_categories")
+        .select("id,business_id,name,display_order,active")
+        .eq("business_id", businessId)
         .eq("active", true)
         .order("display_order")
         .order("name"),
-      supabaseClient.rpc("public_local_inventory", { p_local_id: localId })
+      supabaseClient.rpc("public_local_inventory", { p_local_id: businessId })
     ]);
     if (categoryRes.error) throw categoryRes.error;
     categories = categoryRes.data || [];
@@ -183,21 +183,21 @@ async function init() {
           target.classList.add("shared-product-target");
           target.scrollIntoView({ behavior: "smooth", block: "center" });
         } else {
-          $("error").textContent = "El producto compartido ya no está disponible en este LOCAL.";
+          $("error").textContent = "El producto compartido ya no está disponible en este negocio.";
           $("error").classList.remove("hidden");
         }
       });
     }
   } catch (error) {
     console.error(error);
-    $("error").textContent = error.message || "No se pudo cargar el local.";
+    $("error").textContent = error.message || "No se pudo cargar el negocio.";
     $("error").classList.remove("hidden");
   }
 }
 
 function compactCartSummary() {
-  if (!negocioActual?.slug || !localActual?.id) return { count: 0, subtotal: 0 };
-  const rows = carritoObtener(negocioActual.slug).filter(item => String(item.local_id) === String(localActual.id) && !item.promotion_id);
+  if (!negocioActual?.slug || !businessActual?.id) return { count: 0, subtotal: 0 };
+  const rows = carritoObtener(negocioActual.slug).filter(item => String(item.local_id) === String(businessActual.id) && !item.promotion_id);
   let count = 0;
   let subtotal = 0;
   rows.forEach(item => {
@@ -213,7 +213,7 @@ function compactCartSummary() {
 
 function applyCompactMenuIfNeeded() {
   const previewCompact = menuPreview === "COMPACT";
-  const compactActive = previewCompact || String(localActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT";
+  const compactActive = previewCompact || String(businessActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT";
   const root = $("compactMenuMount");
   if (!root) return;
 
@@ -231,7 +231,7 @@ function applyCompactMenuIfNeeded() {
   if (compactMenuController?.destroy) compactMenuController.destroy();
   compactMenuController = window.HTPWEBCompactMenu?.mount({
     root,
-    local: localActual,
+    local: businessActual,
     products,
     variants,
     categories,
@@ -305,7 +305,7 @@ function availabilityMessage() {
 }
 
 function claimEntryUrl(){
-  const claimPath="/htpweb/app/reclamar-negocio.html?local="+encodeURIComponent(localActual?.id||"")+
+  const claimPath="/htpweb/app/reclamar-negocio.html?business="+encodeURIComponent(businessActual?.id||"")+
     "&delivery="+encodeURIComponent(negocioActual?.slug||"");
   return viewerUser
     ? claimPath
@@ -313,19 +313,19 @@ function claimEntryUrl(){
 }
 
 function render() {
-  document.title = `${localActual.name} | ${negocioActual.name}`;
-  $("localName").textContent = localActual.name;
+  document.title = `${businessActual.name} | ${negocioActual.name}`;
+  $("localName").textContent = businessActual.name;
 
   const currentAvailability = availabilityMessage();
 
   $("localCard").innerHTML = `
-    ${localActual.banner_url ? `<img src="${esc(localActual.banner_url)}" alt="${esc(localActual.name)}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">` : ""}
+    ${businessActual.banner_url ? `<img src="${esc(businessActual.banner_url)}" alt="${esc(businessActual.name)}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px">` : ""}
     <div class="row between" style="margin-top:12px">
-      <h1 style="margin:0">${esc(localActual.name)}</h1>
+      <h1 style="margin:0">${esc(businessActual.name)}</h1>
       ${currentAvailability ? `<span class="availability-badge ${currentAvailability.className}">${availability?.is_open === true ? "DISPONIBLE" : "CERRADO"}</span>` : ""}
     </div>
-    <p class="muted">${esc(localActual.description || "")}</p>
-    ${localActual.address ? `<p><strong>Dirección:</strong> ${esc(localActual.address)}</p>` : ""}
+    <p class="muted">${esc(businessActual.description || "")}</p>
+    ${businessActual.address ? `<p><strong>Dirección:</strong> ${esc(businessActual.address)}</p>` : ""}
     ${currentAvailability ? `<p class="local-availability-detail ${currentAvailability.className}">${esc(currentAvailability.text)}</p>` : ""}
     ${claimState?.claimed ? `
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
@@ -333,13 +333,13 @@ function render() {
       </div>
     ` : claimState?.pending ? `
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
-        <small class="muted">La propiedad de este LOCAL está actualmente en proceso de verificación.</small>
+        <small class="muted">La propiedad de este negocio está actualmente en proceso de verificación.</small>
       </div>
     ` : `
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb">
         <strong style="display:block;margin-bottom:4px">¿Administras este negocio?</strong>
         <span class="muted" style="display:block;margin-bottom:10px">Verifica tu propiedad para actualizar productos, promociones, horarios y administrar este negocio.</span>
-        <a class="btn btn-muted" href="${claimEntryUrl()}">Reclamar este LOCAL</a>
+        <a class="btn btn-muted" href="${claimEntryUrl()}">Reclamar este negocio</a>
       </div>
     `}
   `;
@@ -349,7 +349,7 @@ function render() {
     const closed = availability && availability.is_open !== true;
     orderNotice.classList.toggle("hidden", !closed);
     orderNotice.textContent = closed
-      ? "Este local está CERRADO en este momento. Puedes consultar el menú y los precios, pero no agregar productos hasta que vuelva a estar disponible."
+      ? "Este negocio está CERRADO en este momento. Puedes consultar el menú y los precios, pero no agregar productos hasta que vuelva a estar disponible."
       : "";
   }
 
@@ -403,7 +403,7 @@ function render() {
         </div>
       </div>
     `;
-  }).join("") : '<div class="empty">Este local todavía no tiene productos disponibles.</div>';
+  }).join("") : '<div class="empty">Este negocio todavía no tiene productos disponibles.</div>';
 }
 
 function productCartMatcher(productId, explicitVariantId = undefined) {
@@ -413,14 +413,14 @@ function productCartMatcher(productId, explicitVariantId = undefined) {
     : (select?.value || null);
 
   return {
-    local_id: localActual?.id || "",
+    local_id: businessActual?.id || "",
     product_id: productId,
     variant_id: variantId
   };
 }
 
 function cartQuantityForProduct(productId, variantId = undefined) {
-  if (!negocioActual?.slug || !localActual?.id || typeof carritoCantidadItem !== "function") return 0;
+  if (!negocioActual?.slug || !businessActual?.id || typeof carritoCantidadItem !== "function") return 0;
   return carritoCantidadItem(negocioActual.slug, productCartMatcher(productId, variantId));
 }
 
@@ -461,7 +461,7 @@ function addProductUnit(productId, explicitVariantId = undefined) {
 
   if (availability && availability.is_open !== true) {
     const info = availabilityMessage();
-    $("error").textContent = info?.text || "Este local no está disponible para pedidos en este momento.";
+    $("error").textContent = info?.text || "Este negocio no está disponible para pedidos en este momento.";
     $("error").classList.remove("hidden");
     return cartQuantityForProduct(productId, explicitVariantId ?? null);
   }
@@ -471,11 +471,11 @@ function addProductUnit(productId, explicitVariantId = undefined) {
   const variant = resolveProductVariant(productId, explicitVariantId);
 
   carritoAgregar(negocioActual.slug, {
-    local_id: localActual.id,
+    local_id: businessActual.id,
     product_id: product.id,
     variant_id: variant?.id || null,
     snapshot: {
-      local_name: localActual.name,
+      local_name: businessActual.name,
       product_name: product.name,
       variant_name: variant?.name || null
     }
@@ -536,11 +536,11 @@ function setProductQuantity(productId, quantity, explicitVariantId = undefined) 
     carritoEliminar(negocioActual.slug, matcher);
   } else if (current <= 0) {
     carritoAgregar(negocioActual.slug, {
-      local_id: localActual.id,
+      local_id: businessActual.id,
       product_id: product.id,
       variant_id: variant?.id || null,
       snapshot: {
-        local_name: localActual.name,
+        local_name: businessActual.name,
         product_name: product.name,
         variant_name: variant?.name || null
       }

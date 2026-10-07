@@ -23,7 +23,7 @@ test("CLIENT has a dedicated Mi cuenta center",()=>{
 
 test("Mi cuenta aggregates orders across DELIVERY and preserves detail links",()=>{
  const page=read("app/mi-cuenta.html");
- assert.match(page,/from\("orders"\)/);
+ assert.match(page,/from\("business_orders"\)/);
  assert.match(page,/from\("customer_deliveries"\)/);
  assert.match(page,/Todos los DELIVERY/);
  assert.match(page,/pedidos\.html\?delivery=/);

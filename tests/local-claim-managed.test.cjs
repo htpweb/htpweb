@@ -33,9 +33,9 @@ test("claim onboarding starts inside each unclaimed DELIVERY-visible business",(
  const landing=read("index.html");
  const business=read("app/local.html");
  assert.doesNotMatch(landing,/Reclamar mi LOCAL/);
- assert.match(business,/Reclamar este LOCAL/);
+ assert.match(business,/Reclamar este negocio/);
  assert.match(business,/public_local_claim_state/);
- assert.match(business,/reclamar-negocio\.html\?local=/);
+ assert.match(business,/reclamar-negocio\.html\?business=/);
 });
 
 test("legacy claim route redirects to canonical business route",()=>{
