@@ -111,7 +111,8 @@
       const value=clean(el.innerText);
       $id(fieldId).value=value;
       if(el.dataset.editorTextKey){overrides().text[el.dataset.editorTextKey]=value;persistOverrides(false);}
-      $id(fieldId).dispatchEvent(new Event("input",{bubbles:true}));
+      // No re-render here: keeping the selected element alive lets the user
+      // move directly from the canvas to the Format panel without losing selection.
     });
     el.addEventListener("keydown",e=>{
       if(kind==="text"&&e.key==="Enter"){e.preventDefault();el.blur();}
@@ -129,11 +130,11 @@
       const p=card.querySelector("p");
       if(h){
         h.setAttribute("contenteditable","true");h.classList.add("local-canvas-inline-edit");
-        h.onblur=async()=>{service.title=clean(h.innerText);renderServicesInspector();await persistServices(false);};
+        h.onblur=async()=>{service.title=clean(h.innerText);renderServicesInspector();await persistServices(false,false);};
       }
       if(p){
         p.setAttribute("contenteditable","true");p.classList.add("local-canvas-inline-edit");
-        p.onblur=async()=>{service.description=clean(p.innerText);renderServicesInspector();await persistServices(false);};
+        p.onblur=async()=>{service.description=clean(p.innerText);renderServicesInspector();await persistServices(false,false);};
       }
       const tools=document.createElement("div");
       tools.className="local-canvas-card-tools";
@@ -203,6 +204,64 @@
   }
 
   let selectedVisualTarget=null;
+
+  let editorBaseline=null;
+  const baselineFieldIds=[
+    "localHeroTitle","localHeroSubtitle","localAboutTitle","localAboutText",
+    "localCatalogTitle","localProjectsTitle","localProjectsText","localBlogTitle",
+    "localContactTitle","localStoreAccent","localStorePreset","localStoreTheme",
+    "localShowAbout","localShowCatalog","localShowProjects","localShowBlog",
+    "localShowContact","localShowPromotions"
+  ];
+
+  function cloneData(value){
+    try{return JSON.parse(JSON.stringify(value??null));}catch{return value;}
+  }
+
+  function captureEditorBaseline(){
+    const lid=localId();if(!lid)return;
+    const fields={};
+    baselineFieldIds.forEach(id=>{
+      const el=$id(id);if(!el)return;
+      fields[id]=el.type==="checkbox"?{checked:!!el.checked}:{value:el.value};
+    });
+    editorBaseline={
+      localId:lid,
+      overrides:cloneData(state.localEditorOverrides||{}),
+      services:cloneData(state.localServices||[]),
+      fields
+    };
+  }
+
+  async function cancelEditorChanges(){
+    if(!editorBaseline||editorBaseline.localId!==localId()){
+      message("No hay una versión anterior disponible para restaurar.","error");return;
+    }
+    if(!confirm("¿Cancelar los cambios realizados desde que abriste este editor?"))return;
+    state.localEditorOverrides=cloneData(editorBaseline.overrides||{});
+    state.localServices=cloneData(editorBaseline.services||[]);
+    Object.entries(editorBaseline.fields||{}).forEach(([id,snap])=>{
+      const el=$id(id);if(!el)return;
+      if(Object.prototype.hasOwnProperty.call(snap,"checked"))el.checked=!!snap.checked;
+      else el.value=snap.value??"";
+    });
+    try{
+      await rpc("save_my_local_editor_overrides",{p_local_id:localId(),p_editor_overrides:state.localEditorOverrides||{}});
+      await rpc("save_my_local_services",{p_local_id:localId(),p_services:servicePayload()});
+      renderServicesInspector();
+      renderCanvas();
+      message("Cambios cancelados. Volviste al estado con el que abriste el editor.");
+    }catch(e){message(e.message||"No se pudieron cancelar todos los cambios.","error");}
+  }
+
+  async function saveEditorChanges(){
+    try{
+      await persistOverrides(false);
+      if(typeof saveLocalCommerce==="function")await saveLocalCommerce();
+      captureEditorBaseline();
+      message("Cambios guardados.");
+    }catch(e){message(e.message||"No se pudieron guardar los cambios.","error");}
+  }
 
   function overrides(){
     if(!state.localEditorOverrides||typeof state.localEditorOverrides!=="object")state.localEditorOverrides={};
@@ -316,9 +375,9 @@
   function bindFormatPanel(){
     const clear=$id("localFormatClearSelection");if(clear&&!clear.dataset.bound){clear.dataset.bound="1";clear.onclick=clearVisualSelection;}
     const font=$id("localFormatFontFamily");if(font&&!font.dataset.bound){font.dataset.bound="1";font.onchange=()=>applySelectedTextStyle("fontFamily",font.value);}
-    const size=$id("localFormatFontSize");if(size&&!size.dataset.bound){size.dataset.bound="1";size.onchange=()=>applySelectedTextStyle("fontSize",size.value?Math.max(8,Math.min(160,Number(size.value)))+"px":"");}
+    const size=$id("localFormatFontSize");if(size&&!size.dataset.bound){size.dataset.bound="1";size.oninput=()=>applySelectedTextStyle("fontSize",size.value?Math.max(8,Math.min(160,Number(size.value)))+"px":"");}
     const color=$id("localFormatColor");if(color&&!color.dataset.bound){color.dataset.bound="1";color.oninput=()=>applySelectedTextStyle("color",color.value);}
-    const lh=$id("localFormatLineHeight");if(lh&&!lh.dataset.bound){lh.dataset.bound="1";lh.onchange=()=>applySelectedTextStyle("lineHeight",lh.value?String(Math.max(.8,Math.min(3,Number(lh.value)))):"");}
+    const lh=$id("localFormatLineHeight");if(lh&&!lh.dataset.bound){lh.dataset.bound="1";lh.oninput=()=>applySelectedTextStyle("lineHeight",lh.value?String(Math.max(.8,Math.min(3,Number(lh.value)))):"");}
     const bold=$id("localFormatBold");if(bold&&!bold.dataset.bound){bold.dataset.bound="1";bold.onclick=()=>{const active=!bold.classList.contains("active");bold.classList.toggle("active",active);applySelectedTextStyle("fontWeight",active?"700":"400");};}
     const italic=$id("localFormatItalic");if(italic&&!italic.dataset.bound){italic.dataset.bound="1";italic.onclick=()=>{const active=!italic.classList.contains("active");italic.classList.toggle("active",active);applySelectedTextStyle("fontStyle",active?"italic":"normal");};}
     document.querySelectorAll("[data-local-align]").forEach(btn=>{if(btn.dataset.bound)return;btn.dataset.bound="1";btn.onclick=()=>applySelectedTextStyle("textAlign",btn.dataset.localAlign);});
@@ -392,6 +451,13 @@
         renderCanvas();
       };
     });
+    const backBtn=$id("localEditorBackBtn");
+    if(backBtn&&!backBtn.dataset.bound){backBtn.dataset.bound="1";backBtn.onclick=()=>showSection("overview");}
+    const cancelBtn=$id("localEditorCancelBtn");
+    if(cancelBtn&&!cancelBtn.dataset.bound){cancelBtn.dataset.bound="1";cancelBtn.onclick=cancelEditorChanges;}
+    const saveBtn=$id("localEditorSaveBtn");
+    if(saveBtn&&!saveBtn.dataset.bound){saveBtn.dataset.bound="1";saveBtn.onclick=saveEditorChanges;}
+
     const goBanner=$id("localEditorGoBanner");
     if(goBanner&&!goBanner.dataset.bound){goBanner.dataset.bound="1";goBanner.onclick=()=>showSection("storage");}
     const goCatalog=$id("localEditorGoCatalog");
@@ -432,14 +498,14 @@
     }
   }
 
-  async function persistServices(showMessage=true){
+  async function persistServices(showMessage=true,rerender=true){
     const id=localId();
     if(!id)return;
     try{
       const saved=await rpc("save_my_local_services",{p_local_id:id,p_services:servicePayload()});
       state.localServices=Array.isArray(saved)?saved:servicePayload();
       renderServicesInspector();
-      renderCanvas();
+      if(rerender)renderCanvas();
       if(typeof renderLocalStorePreview==="function")renderLocalStorePreview();
       if(showMessage)message("Servicios actualizados.");
     }catch(e){message(e.message||"No se pudieron guardar los servicios.","error");}
@@ -614,15 +680,16 @@
   async function saveProjectInline(id,title,description){
     const project=(state.localProjects||[]).find(x=>x.id===id);if(!project)return;
     project.title=title;project.description=description;
-    await saveProjectRecord(project,false);
+    await saveProjectRecord(project,false,false);
   }
 
-  async function saveProjectRecord(project,showMessage){
+  async function saveProjectRecord(project,showMessage,rerender=true){
     const lid=localId();if(!lid||!project?.id)return;
     try{
       await rpc("update_local_gallery_project",{p_local_id:lid,p_image_id:project.id,p_title:project.title||null,p_description:project.description||null,p_display_order:Number(project.display_order)||0});
       if(showMessage)message("Proyecto actualizado.");
-      await loadProjects();
+      if(rerender)await loadProjects();
+      else renderProjects();
     }catch(e){message(e.message||"No se pudo guardar el proyecto.","error");}
   }
 
@@ -668,6 +735,6 @@
   init();
   setTimeout(init,600);
   window.openLocalPageEditorTab=openTab;
-  window.loadLocalProjectEditor=async()=>{renderServicesInspector();await loadProjects();renderCanvas();};
+  window.loadLocalProjectEditor=async()=>{renderServicesInspector();await loadProjects();captureEditorBaseline();renderCanvas();};
   window.renderLocalVisualPageEditor=renderCanvas;
 })();

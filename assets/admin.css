@@ -1296,3 +1296,8 @@ body.local-admin-workspace .btn-primary{background:#1466e8}
 @media(max-width:1080px){.local-visual-editor-layout{grid-template-columns:1fr}.local-format-panel{border-left:0;border-top:1px solid #dbe4f0}.local-format-panel-tip{margin-top:0}}
 
 .local-editor-bg-target{position:relative!important}.local-editor-bg-button{position:absolute;z-index:60;top:10px;right:10px;border:0;border-radius:999px;background:#6d28d9;color:#fff;padding:7px 10px;font:800 .7rem/1 system-ui;box-shadow:0 5px 18px rgba(76,29,149,.28);cursor:pointer;opacity:0;transform:translateY(-3px);transition:.15s ease}.local-editor-bg-target:hover>.local-editor-bg-button,.local-editor-bg-button:focus{opacity:1;transform:none}@media(max-width:820px){.local-editor-bg-button{opacity:1;transform:none}}
+
+.local-editor-toolbar-separator{width:1px;height:28px;background:#dbe4f0;display:inline-block;margin:0 2px}
+#localEditorCancelBtn{border-color:#fca5a5;color:#991b1b;background:#fff}
+#localEditorCancelBtn:hover{background:#fff1f2}
+@media(max-width:820px){.local-editor-toolbar-separator{display:none}.local-visual-editor-actions{width:100%}.local-visual-editor-actions>button{flex:1 1 auto}}
