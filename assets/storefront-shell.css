@@ -781,3 +781,325 @@ body.design-COMPACT[data-page-section="projects"] #projectsSection .local-projec
   body.design-MINIMAL[data-page-section="projects"] #projectsSection .local-project-card span{grid-column:2!important}
   body[data-page-section="projects"] #projectsSection .local-project-card{margin-bottom:12px!important;min-height:260px!important}
 }
+
+
+/* ==========================================================================
+   HTPWEB INTERNAL PAGE ARCHITECTURES — ABOUT / SERVICES / BLOG / CONTACT
+   These rules make internal pages inherit each preset's actual composition.
+   ========================================================================== */
+
+/* Shared internal-page reset */
+body[data-page-section="about"] #aboutSection,
+body[data-page-section="services"] #servicesSection,
+body[data-page-section="blog"] #blogSection,
+body[data-page-section="contact"] #contactSection{
+  width:100%;max-width:none;margin:0;
+}
+body[data-page-section="about"] #aboutSection .local-page-card,
+body[data-page-section="services"] #servicesSection .local-page-card,
+body[data-page-section="blog"] #blogSection .local-page-card,
+body[data-page-section="contact"] #contactSection .local-page-card{
+  max-width:1280px;margin:0 auto;
+}
+
+/* SIGNATURE — wide corporate */
+body.design-SIGNATURE[data-page-section="about"] #aboutSection,
+body.design-SIGNATURE[data-page-section="services"] #servicesSection,
+body.design-SIGNATURE[data-page-section="blog"] #blogSection,
+body.design-SIGNATURE[data-page-section="contact"] #contactSection{
+  background:linear-gradient(180deg,#f8fafc 0,#fff 100%)!important;color:#0f172a!important;padding:96px clamp(24px,7vw,110px)!important
+}
+body.design-SIGNATURE[data-page-section="about"] #aboutSection h2,
+body.design-SIGNATURE[data-page-section="services"] #servicesSection h2,
+body.design-SIGNATURE[data-page-section="blog"] #blogSection h2,
+body.design-SIGNATURE[data-page-section="contact"] #contactSection h2{
+  font-size:clamp(3.5rem,6vw,6rem)!important;line-height:.92!important;letter-spacing:-.065em!important;max-width:10ch!important
+}
+body.design-SIGNATURE #servicesSection .local-service-placeholders{grid-template-columns:repeat(4,1fr)!important;gap:18px!important}
+body.design-SIGNATURE #servicesSection .local-service-placeholder{min-height:250px!important;padding:28px!important;border-radius:18px!important}
+body.design-SIGNATURE #blogSection .local-blog-grid{grid-template-columns:1.4fr .8fr .8fr!important;gap:18px!important}
+body.design-SIGNATURE #contactSection .local-contact-layout{display:grid!important;grid-template-columns:.9fr 1.1fr!important;gap:28px!important}
+
+/* MINIMAL — text-first, narrow measure, hairlines */
+body.design-MINIMAL[data-page-section="about"] #aboutSection,
+body.design-MINIMAL[data-page-section="services"] #servicesSection,
+body.design-MINIMAL[data-page-section="blog"] #blogSection,
+body.design-MINIMAL[data-page-section="contact"] #contactSection{
+  background:#fff!important;color:#111!important;padding:88px clamp(28px,10vw,160px)!important
+}
+body.design-MINIMAL[data-page-section="about"] #aboutSection .local-page-card,
+body.design-MINIMAL[data-page-section="services"] #servicesSection .local-page-card,
+body.design-MINIMAL[data-page-section="blog"] #blogSection .local-page-card,
+body.design-MINIMAL[data-page-section="contact"] #contactSection .local-page-card{max-width:1050px!important}
+body.design-MINIMAL[data-page-section="about"] #aboutSection h2,
+body.design-MINIMAL[data-page-section="services"] #servicesSection h2,
+body.design-MINIMAL[data-page-section="blog"] #blogSection h2,
+body.design-MINIMAL[data-page-section="contact"] #contactSection h2{
+  font-weight:500!important;font-size:clamp(3.4rem,7vw,6.4rem)!important;line-height:.9!important;max-width:8ch!important
+}
+body.design-MINIMAL #aboutSection p{max-width:54ch!important;font-size:1.2rem!important;color:#555!important}
+body.design-MINIMAL #servicesSection .local-service-placeholders{display:block!important;border-top:1px solid #111!important;margin-top:52px!important}
+body.design-MINIMAL #servicesSection .local-service-placeholder{border:0!important;border-bottom:1px solid #d1d5db!important;border-radius:0!important;box-shadow:none!important;padding:22px 0!important;background:#fff!important}
+body.design-MINIMAL #blogSection .local-blog-grid{display:block!important;border-top:1px solid #111!important;margin-top:52px!important}
+body.design-MINIMAL #blogSection .local-blog-card{display:grid!important;grid-template-columns:180px 1fr!important;border:0!important;border-bottom:1px solid #d1d5db!important;border-radius:0!important;box-shadow:none!important}
+body.design-MINIMAL #contactSection .local-contact-layout{display:block!important}
+body.design-MINIMAL #contactSection .local-contact-map-card{margin-top:36px!important;border-radius:0!important;box-shadow:none!important}
+
+/* SPLIT — sectional 40/60 composition */
+body.design-SPLIT[data-page-section="about"] #aboutSection,
+body.design-SPLIT[data-page-section="services"] #servicesSection,
+body.design-SPLIT[data-page-section="blog"] #blogSection,
+body.design-SPLIT[data-page-section="contact"] #contactSection{
+  background:linear-gradient(90deg,#f8fafc 0 40%,#111827 40% 100%)!important;padding:0!important;min-height:700px!important
+}
+body.design-SPLIT[data-page-section="about"] #aboutSection .local-page-card,
+body.design-SPLIT[data-page-section="services"] #servicesSection .local-page-card,
+body.design-SPLIT[data-page-section="blog"] #blogSection .local-page-card,
+body.design-SPLIT[data-page-section="contact"] #contactSection .local-page-card{
+  max-width:none!important;min-height:700px!important;padding:72px clamp(24px,5vw,72px)!important
+}
+body.design-SPLIT #aboutSection h2,
+body.design-SPLIT #servicesSection h2,
+body.design-SPLIT #blogSection h2,
+body.design-SPLIT #contactSection h2{width:34%!important;color:#111827!important;font-size:clamp(3rem,5vw,5rem)!important}
+body.design-SPLIT #aboutSection p{width:34%!important;color:#475569!important;font-size:1.1rem!important}
+body.design-SPLIT #servicesSection .local-service-placeholders,
+body.design-SPLIT #blogSection .local-blog-grid{width:55%!important;margin-left:auto!important;display:grid!important;grid-template-columns:1fr 1fr!important}
+body.design-SPLIT #servicesSection .local-service-placeholder,
+body.design-SPLIT #blogSection .local-blog-card{background:#fff!important;border-radius:8px!important}
+body.design-SPLIT #contactSection .local-contact-layout{margin-left:40%!important;display:grid!important;grid-template-columns:1fr!important;color:#fff!important}
+body.design-SPLIT #contactSection .local-contact-head{width:34%!important;position:absolute!important;color:#111827!important}
+
+/* SIDEBAR — blueprint navigation language */
+body.design-SIDEBAR[data-page-section="about"] #aboutSection,
+body.design-SIDEBAR[data-page-section="services"] #servicesSection,
+body.design-SIDEBAR[data-page-section="blog"] #blogSection,
+body.design-SIDEBAR[data-page-section="contact"] #contactSection{
+  background:#eef5f9!important;color:#0b2942!important;padding:0 0 0 210px!important;position:relative!important
+}
+body.design-SIDEBAR[data-page-section="about"] #aboutSection:before,
+body.design-SIDEBAR[data-page-section="services"] #servicesSection:before,
+body.design-SIDEBAR[data-page-section="blog"] #blogSection:before,
+body.design-SIDEBAR[data-page-section="contact"] #contactSection:before{
+  content:"SITE INDEX\A01  OVERVIEW\A02  CAPABILITIES\A03  PROJECTS\A04  CONTACT";
+  white-space:pre;position:absolute;left:0;top:0;bottom:0;width:210px;background:#061522;color:#dbeafe;
+  padding:48px 24px;font:700 .72rem/2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em
+}
+body.design-SIDEBAR[data-page-section="about"] #aboutSection .local-page-card,
+body.design-SIDEBAR[data-page-section="services"] #servicesSection .local-page-card,
+body.design-SIDEBAR[data-page-section="blog"] #blogSection .local-page-card,
+body.design-SIDEBAR[data-page-section="contact"] #contactSection .local-page-card{max-width:none!important;padding:72px clamp(24px,5vw,70px)!important}
+body.design-SIDEBAR #aboutSection h2,
+body.design-SIDEBAR #servicesSection h2,
+body.design-SIDEBAR #blogSection h2,
+body.design-SIDEBAR #contactSection h2{font:800 clamp(2.7rem,5vw,4.6rem)/.95 ui-monospace,SFMono-Regular,Menlo,monospace!important}
+body.design-SIDEBAR #servicesSection .local-service-placeholders{grid-template-columns:repeat(4,1fr)!important;gap:1px!important;background:#8da1b1!important}
+body.design-SIDEBAR #servicesSection .local-service-placeholder{border-radius:0!important;box-shadow:none!important}
+body.design-SIDEBAR #blogSection .local-blog-grid{gap:1px!important;background:#8da1b1!important}
+body.design-SIDEBAR #blogSection .local-blog-card{border-radius:0!important;box-shadow:none!important}
+body.design-SIDEBAR #contactSection .local-contact-map-card{border-radius:0!important}
+
+/* EDITORIAL — numbered art-book layout */
+body.design-EDITORIAL[data-page-section="about"] #aboutSection,
+body.design-EDITORIAL[data-page-section="services"] #servicesSection,
+body.design-EDITORIAL[data-page-section="blog"] #blogSection,
+body.design-EDITORIAL[data-page-section="contact"] #contactSection{
+  background:#f7f5f0!important;color:#171717!important;padding:90px clamp(22px,7vw,100px)!important
+}
+body.design-EDITORIAL[data-page-section="about"] #aboutSection .local-page-card,
+body.design-EDITORIAL[data-page-section="services"] #servicesSection .local-page-card,
+body.design-EDITORIAL[data-page-section="blog"] #blogSection .local-page-card,
+body.design-EDITORIAL[data-page-section="contact"] #contactSection .local-page-card{max-width:1240px!important;position:relative!important;padding-left:150px!important}
+body.design-EDITORIAL[data-page-section="about"] #aboutSection .local-page-card:before{content:"01"}
+body.design-EDITORIAL[data-page-section="services"] #servicesSection .local-page-card:before{content:"02"}
+body.design-EDITORIAL[data-page-section="blog"] #blogSection .local-page-card:before{content:"03"}
+body.design-EDITORIAL[data-page-section="contact"] #contactSection .local-page-card:before{content:"04"}
+body.design-EDITORIAL[data-page-section="about"] #aboutSection .local-page-card:before,
+body.design-EDITORIAL[data-page-section="services"] #servicesSection .local-page-card:before,
+body.design-EDITORIAL[data-page-section="blog"] #blogSection .local-page-card:before,
+body.design-EDITORIAL[data-page-section="contact"] #contactSection .local-page-card:before{
+  position:absolute;left:0;top:0;font:500 7rem/1 Georgia,serif;color:#c8c1b7
+}
+body.design-EDITORIAL #aboutSection h2,
+body.design-EDITORIAL #servicesSection h2,
+body.design-EDITORIAL #blogSection h2,
+body.design-EDITORIAL #contactSection h2{font:500 clamp(3.2rem,6vw,5.8rem)/.94 Georgia,serif!important;max-width:9ch!important}
+body.design-EDITORIAL #servicesSection .local-service-placeholders{grid-template-columns:repeat(2,1fr)!important}
+body.design-EDITORIAL #servicesSection .local-service-placeholder{border-radius:0!important;background:transparent!important;box-shadow:none!important;border-color:#c8c1b7!important}
+body.design-EDITORIAL #blogSection .local-blog-grid{grid-template-columns:1.4fr .8fr .8fr!important}
+body.design-EDITORIAL #blogSection .local-blog-card{border-radius:0!important;box-shadow:none!important}
+body.design-EDITORIAL #contactSection .local-contact-layout{grid-template-columns:1fr 1fr!important}
+
+/* LUXE — dark cinematic */
+body.design-LUXE[data-page-section="about"] #aboutSection,
+body.design-LUXE[data-page-section="services"] #servicesSection,
+body.design-LUXE[data-page-section="blog"] #blogSection,
+body.design-LUXE[data-page-section="contact"] #contactSection{
+  background:radial-gradient(circle at 75% 10%,#1c2b46 0,#080d16 42%,#05070b 100%)!important;color:#f8fafc!important;padding:105px clamp(26px,7vw,110px)!important
+}
+body.design-LUXE #aboutSection h2,
+body.design-LUXE #servicesSection h2,
+body.design-LUXE #blogSection h2,
+body.design-LUXE #contactSection h2{font:500 clamp(3.5rem,6vw,6rem)/.95 Georgia,serif!important;color:#fff!important}
+body.design-LUXE #aboutSection p,
+body.design-LUXE #servicesSection p,
+body.design-LUXE #contactSection p{color:#aab7c8!important}
+body.design-LUXE #servicesSection .local-service-placeholder,
+body.design-LUXE #blogSection .local-blog-card,
+body.design-LUXE #contactSection .local-contact-info-card,
+body.design-LUXE #contactSection .local-contact-map-card{
+  background:#ffffff08!important;color:#fff!important;border:1px solid #ffffff1a!important;border-radius:2px!important;box-shadow:none!important
+}
+body.design-LUXE #servicesSection .local-service-placeholders{grid-template-columns:repeat(4,1fr)!important}
+body.design-LUXE #blogSection .local-blog-grid{grid-template-columns:repeat(3,1fr)!important}
+body.design-LUXE #blogSection .local-blog-card h3{color:#fff!important}
+
+/* BOLD — industrial poster */
+body.design-BOLD[data-page-section="about"] #aboutSection,
+body.design-BOLD[data-page-section="services"] #servicesSection,
+body.design-BOLD[data-page-section="blog"] #blogSection,
+body.design-BOLD[data-page-section="contact"] #contactSection{
+  background:#f4f4ef!important;color:#111!important;padding:0!important;border-top:10px solid #111!important
+}
+body.design-BOLD[data-page-section="about"] #aboutSection .local-page-card,
+body.design-BOLD[data-page-section="services"] #servicesSection .local-page-card,
+body.design-BOLD[data-page-section="blog"] #blogSection .local-page-card,
+body.design-BOLD[data-page-section="contact"] #contactSection .local-page-card{max-width:none!important}
+body.design-BOLD #aboutSection h2,
+body.design-BOLD #servicesSection h2,
+body.design-BOLD #blogSection h2,
+body.design-BOLD #contactSection h2{
+  margin:0!important;padding:54px clamp(22px,6vw,86px)!important;font-size:clamp(4rem,9vw,8rem)!important;line-height:.82!important;text-transform:uppercase!important
+}
+body.design-BOLD #aboutSection p{padding:0 clamp(22px,6vw,86px) 60px!important;max-width:60ch!important;font-weight:700!important}
+body.design-BOLD #servicesSection .local-service-placeholders,
+body.design-BOLD #blogSection .local-blog-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:0!important;border-top:4px solid #111!important}
+body.design-BOLD #servicesSection .local-service-placeholder,
+body.design-BOLD #blogSection .local-blog-card{border-radius:0!important;border:0!important;border-right:4px solid #111!important;box-shadow:none!important}
+body.design-BOLD #contactSection .local-contact-layout{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0!important;border-top:4px solid #111!important}
+body.design-BOLD #contactSection .local-contact-left,
+body.design-BOLD #contactSection .local-contact-map-card{border-radius:0!important;box-shadow:none!important}
+
+/* MAGAZINE — newspaper / issue pages */
+body.design-MAGAZINE[data-page-section="about"] #aboutSection,
+body.design-MAGAZINE[data-page-section="services"] #servicesSection,
+body.design-MAGAZINE[data-page-section="blog"] #blogSection,
+body.design-MAGAZINE[data-page-section="contact"] #contactSection{
+  background:#fff!important;color:#111!important;padding:62px clamp(22px,5vw,74px)!important;border-top:4px solid #111!important
+}
+body.design-MAGAZINE #aboutSection h2,
+body.design-MAGAZINE #servicesSection h2,
+body.design-MAGAZINE #blogSection h2,
+body.design-MAGAZINE #contactSection h2{
+  font:500 clamp(3.2rem,6vw,6rem)/.9 Georgia,"Times New Roman",serif!important;border-bottom:1px solid #111!important;padding-bottom:22px!important
+}
+body.design-MAGAZINE #aboutSection p{font:400 1.2rem/1.8 Georgia,"Times New Roman",serif!important;max-width:62ch!important}
+body.design-MAGAZINE #servicesSection .local-service-placeholders{grid-template-columns:repeat(2,1fr)!important;gap:1px!important;background:#111!important;border:1px solid #111!important}
+body.design-MAGAZINE #servicesSection .local-service-placeholder{border-radius:0!important;border:0!important;box-shadow:none!important}
+body.design-MAGAZINE #blogSection .local-blog-grid{grid-template-columns:1.5fr .75fr .75fr!important;gap:1px!important;background:#111!important}
+body.design-MAGAZINE #blogSection .local-blog-card{border-radius:0!important;border:0!important;box-shadow:none!important}
+body.design-MAGAZINE #contactSection .local-contact-layout{grid-template-columns:.85fr 1.15fr!important;gap:1px!important;background:#111!important;border:1px solid #111!important}
+body.design-MAGAZINE #contactSection .local-contact-left,
+body.design-MAGAZINE #contactSection .local-contact-map-card{background:#fff!important;border-radius:0!important;box-shadow:none!important}
+
+/* IMMERSIVE — dramatic dark field */
+body.design-IMMERSIVE[data-page-section="about"] #aboutSection,
+body.design-IMMERSIVE[data-page-section="services"] #servicesSection,
+body.design-IMMERSIVE[data-page-section="blog"] #blogSection,
+body.design-IMMERSIVE[data-page-section="contact"] #contactSection{
+  background:#030712!important;color:#fff!important;padding:100px 7vw!important
+}
+body.design-IMMERSIVE #aboutSection h2,
+body.design-IMMERSIVE #servicesSection h2,
+body.design-IMMERSIVE #blogSection h2,
+body.design-IMMERSIVE #contactSection h2{font-size:clamp(4rem,8vw,7rem)!important;line-height:.88!important;max-width:8ch!important;color:#fff!important}
+body.design-IMMERSIVE #aboutSection p,
+body.design-IMMERSIVE #servicesSection p,
+body.design-IMMERSIVE #contactSection p{color:#cbd5e1!important;max-width:54ch!important}
+body.design-IMMERSIVE #servicesSection .local-service-placeholders{grid-template-columns:1.5fr repeat(3,.7fr)!important}
+body.design-IMMERSIVE #servicesSection .local-service-placeholder,
+body.design-IMMERSIVE #blogSection .local-blog-card,
+body.design-IMMERSIVE #contactSection .local-contact-info-card,
+body.design-IMMERSIVE #contactSection .local-contact-map-card{background:#111827!important;color:#fff!important;border:1px solid #ffffff1a!important;border-radius:0!important;box-shadow:none!important}
+body.design-IMMERSIVE #blogSection .local-blog-grid{grid-template-columns:1.5fr .75fr .75fr!important}
+body.design-IMMERSIVE #contactSection .local-contact-layout{grid-template-columns:1fr 1.2fr!important}
+
+/* COMPACT — technical dashboard */
+body.design-COMPACT[data-page-section="about"] #aboutSection,
+body.design-COMPACT[data-page-section="services"] #servicesSection,
+body.design-COMPACT[data-page-section="blog"] #blogSection,
+body.design-COMPACT[data-page-section="contact"] #contactSection{
+  background:#e8edf3!important;color:#07111f!important;padding:24px!important
+}
+body.design-COMPACT[data-page-section="about"] #aboutSection .local-page-card,
+body.design-COMPACT[data-page-section="services"] #servicesSection .local-page-card,
+body.design-COMPACT[data-page-section="blog"] #blogSection .local-page-card,
+body.design-COMPACT[data-page-section="contact"] #contactSection .local-page-card{
+  max-width:1380px!important;background:#fff!important;border:1px solid #cbd5e1!important;padding:20px!important
+}
+body.design-COMPACT #aboutSection h2,
+body.design-COMPACT #servicesSection h2,
+body.design-COMPACT #blogSection h2,
+body.design-COMPACT #contactSection h2{
+  font:800 clamp(2rem,4vw,3rem)/1 ui-monospace,SFMono-Regular,Menlo,monospace!important;color:#07111f!important
+}
+body.design-COMPACT #servicesSection .local-service-placeholders{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+body.design-COMPACT #servicesSection .local-service-placeholder,
+body.design-COMPACT #blogSection .local-blog-card,
+body.design-COMPACT #contactSection .local-contact-info-card,
+body.design-COMPACT #contactSection .local-contact-map-card{border-radius:5px!important;border:1px solid #cbd5e1!important;box-shadow:none!important}
+body.design-COMPACT #blogSection .local-blog-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+body.design-COMPACT #contactSection .local-contact-layout{grid-template-columns:.8fr 1.2fr!important;gap:8px!important}
+
+/* Internal-page mobile normalization */
+@media(max-width:820px){
+  body.design-SPLIT[data-page-section="about"] #aboutSection,
+  body.design-SPLIT[data-page-section="services"] #servicesSection,
+  body.design-SPLIT[data-page-section="blog"] #blogSection,
+  body.design-SPLIT[data-page-section="contact"] #contactSection{background:#fff!important;padding:48px 18px!important}
+  body.design-SPLIT #aboutSection h2,body.design-SPLIT #servicesSection h2,body.design-SPLIT #blogSection h2,body.design-SPLIT #contactSection h2,
+  body.design-SPLIT #aboutSection p,body.design-SPLIT #servicesSection .local-service-placeholders,body.design-SPLIT #blogSection .local-blog-grid,
+  body.design-SPLIT #contactSection .local-contact-layout,body.design-SPLIT #contactSection .local-contact-head{width:auto!important;margin-left:0!important;position:static!important;color:inherit!important}
+  body.design-SIDEBAR[data-page-section="about"] #aboutSection,
+  body.design-SIDEBAR[data-page-section="services"] #servicesSection,
+  body.design-SIDEBAR[data-page-section="blog"] #blogSection,
+  body.design-SIDEBAR[data-page-section="contact"] #contactSection{padding-left:0!important}
+  body.design-SIDEBAR[data-page-section="about"] #aboutSection:before,
+  body.design-SIDEBAR[data-page-section="services"] #servicesSection:before,
+  body.design-SIDEBAR[data-page-section="blog"] #blogSection:before,
+  body.design-SIDEBAR[data-page-section="contact"] #contactSection:before{display:none!important}
+  body.design-EDITORIAL[data-page-section="about"] #aboutSection .local-page-card,
+  body.design-EDITORIAL[data-page-section="services"] #servicesSection .local-page-card,
+  body.design-EDITORIAL[data-page-section="blog"] #blogSection .local-page-card,
+  body.design-EDITORIAL[data-page-section="contact"] #contactSection .local-page-card{padding-left:0!important}
+  body.design-EDITORIAL[data-page-section="about"] #aboutSection .local-page-card:before,
+  body.design-EDITORIAL[data-page-section="services"] #servicesSection .local-page-card:before,
+  body.design-EDITORIAL[data-page-section="blog"] #blogSection .local-page-card:before,
+  body.design-EDITORIAL[data-page-section="contact"] #contactSection .local-page-card:before{position:static!important;display:block!important;font-size:3rem!important;margin-bottom:12px!important}
+  body.design-SIGNATURE #servicesSection .local-service-placeholders,
+  body.design-SPLIT #servicesSection .local-service-placeholders,
+  body.design-SIDEBAR #servicesSection .local-service-placeholders,
+  body.design-EDITORIAL #servicesSection .local-service-placeholders,
+  body.design-LUXE #servicesSection .local-service-placeholders,
+  body.design-BOLD #servicesSection .local-service-placeholders,
+  body.design-MAGAZINE #servicesSection .local-service-placeholders,
+  body.design-IMMERSIVE #servicesSection .local-service-placeholders,
+  body.design-COMPACT #servicesSection .local-service-placeholders,
+  body.design-SIGNATURE #blogSection .local-blog-grid,
+  body.design-SPLIT #blogSection .local-blog-grid,
+  body.design-SIDEBAR #blogSection .local-blog-grid,
+  body.design-EDITORIAL #blogSection .local-blog-grid,
+  body.design-LUXE #blogSection .local-blog-grid,
+  body.design-BOLD #blogSection .local-blog-grid,
+  body.design-MAGAZINE #blogSection .local-blog-grid,
+  body.design-IMMERSIVE #blogSection .local-blog-grid,
+  body.design-COMPACT #blogSection .local-blog-grid,
+  body.design-SIGNATURE #contactSection .local-contact-layout,
+  body.design-EDITORIAL #contactSection .local-contact-layout,
+  body.design-BOLD #contactSection .local-contact-layout,
+  body.design-MAGAZINE #contactSection .local-contact-layout,
+  body.design-IMMERSIVE #contactSection .local-contact-layout,
+  body.design-COMPACT #contactSection .local-contact-layout{display:block!important}
+  body.design-BOLD #servicesSection .local-service-placeholder,
+  body.design-BOLD #blogSection .local-blog-card{border-right:0!important;border-bottom:4px solid #111!important}
+}
