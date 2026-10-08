@@ -898,3 +898,11 @@ body.architecture-home .local-site-footer{margin-top:0!important}
   .eng-architecture .internal-blueprint-shell aside nav,
   .eng-architecture .internal-tech-shell aside {display:flex!important;flex-direction:row!important;overflow-x:auto!important;white-space:nowrap;gap:14px}
 }
+/* HTPWEB navigation integrity: internal pages must not overlap the lateral rail */
+.internal-architecture .internal-blueprint-shell{display:grid;grid-template-columns:minmax(190px,235px) minmax(0,1fr);min-width:0}
+.internal-architecture .internal-blueprint-shell>aside{min-width:0;display:flex;flex-direction:column;gap:12px;overflow-wrap:anywhere}
+.internal-architecture .internal-blueprint-shell>aside nav{display:flex;flex-direction:column;gap:12px;min-width:0}
+.internal-architecture .internal-blueprint-shell>aside nav a{display:block;white-space:normal;overflow-wrap:anywhere;color:#fff}
+.internal-architecture .internal-blueprint-shell>main{min-width:0;overflow-wrap:anywhere}
+.internal-architecture .internal-blueprint-shell .local-page-card{min-width:0}
+@media(max-width:760px){.internal-architecture .internal-blueprint-shell{display:block}.internal-architecture .internal-blueprint-shell>aside{width:100%;position:static}.internal-architecture .internal-blueprint-shell>aside nav{display:flex;flex-direction:row;flex-wrap:wrap;gap:10px}.internal-architecture .internal-blueprint-shell>main{width:100%}}

@@ -650,7 +650,7 @@ body.design-SIDEBAR[data-page-section="projects"] #projectsSection{
 }
 body.design-SIDEBAR[data-page-section="projects"] #projectsSection:before{
   content:"PROJECT INDEX\A01  PORTFOLIO\A02  CAPACITIES\A03  CONTACT";
-  white-space:pre;position:absolute;left:0;top:0;bottom:0;width:210px;background:#061522;color:#dbeafe;
+  box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;position:absolute;left:0;top:0;bottom:0;width:210px;background:#061522;color:#dbeafe;
   padding:48px 24px;font:700 .72rem/2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em
 }
 body.design-SIDEBAR[data-page-section="projects"] #projectsSection .local-page-card{max-width:none!important;padding:70px clamp(24px,5vw,70px)!important}
@@ -881,8 +881,8 @@ body.design-SIDEBAR[data-page-section="about"] #aboutSection:before,
 body.design-SIDEBAR[data-page-section="services"] #servicesSection:before,
 body.design-SIDEBAR[data-page-section="blog"] #blogSection:before,
 body.design-SIDEBAR[data-page-section="contact"] #contactSection:before{
-  content:"SITE INDEX\A01  OVERVIEW\A02  CAPABILITIES\A03  PROJECTS\A04  CONTACT";
-  white-space:pre;position:absolute;left:0;top:0;bottom:0;width:210px;background:#061522;color:#dbeafe;
+  content:"SECCIONES";
+  box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;position:absolute;left:0;top:0;bottom:0;width:210px;background:#061522;color:#dbeafe;
   padding:48px 24px;font:700 .72rem/2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em
 }
 body.design-SIDEBAR[data-page-section="about"] #aboutSection .local-page-card,

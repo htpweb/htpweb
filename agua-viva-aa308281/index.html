@@ -335,8 +335,8 @@ body[data-page-section="shop"] #catalogSection{padding-top:18px}
 
 </style>
 <link rel="stylesheet" href="../assets/storefront-design-systems.css?v=20261006-shared1">
-<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261007-internalarch4">
-<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261007-powerpoint1">
+<link rel="stylesheet" href="../assets/storefront-shell.css?v=20261008-navfix1">
+<link rel="stylesheet" href="../assets/storefront-architectures.css?v=20261008-navfix1">
 <script src="../assets/storefront-architectures.js?v=20261007-restaurant1"></script>
 <script src="../assets/storefront-chrome.js?v=20261007-restaurant1"></script>
 <script src="../config/business-domain.js?v=20261007-business1"></script>
@@ -515,10 +515,7 @@ function configureSiteNavigation(){
    a.onclick=e=>{
      e.preventDefault();
      e.stopPropagation();
-     if(pageSection===section){
-       location.reload();
-       return false;
-     }
+     if(pageSection===section){return false;}
      navigateSiteSection(section);
      return false;
    };
