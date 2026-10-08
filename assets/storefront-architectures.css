@@ -883,3 +883,18 @@ body.architecture-home .local-site-footer{margin-top:0!important}
 .arch-MINIMAL .local-service-placeholder .local-service-card-image{height:120px;border-radius:0}
 .arch-SIDEBAR .local-service-placeholder .local-service-card-image,.arch-EDITORIAL .local-service-placeholder .local-service-card-image,.arch-BOLD .local-service-placeholder .local-service-card-image,.arch-MAGAZINE .local-service-placeholder .local-service-card-image{border-radius:0}
 @media(max-width:820px){.internal-services .local-service-placeholder .local-service-card-image,.apex-internal-services article .local-service-card-image{height:160px}}
+
+/* HTPWEB 2026-10-08: template navigation in header or upper left rail, never footer. */
+.eng-architecture .apex-footer nav,
+.eng-architecture .arch-footer nav {display:none!important}
+.eng-architecture header nav,
+.eng-architecture .arch-side-nav,
+.eng-architecture .internal-split-index nav,
+.eng-architecture .internal-blueprint-shell aside nav,
+.eng-architecture .internal-tech-shell aside {visibility:visible!important;opacity:1!important}
+@media(max-width:820px) {
+  .eng-architecture header nav {display:flex!important;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+  .eng-architecture .internal-split-index nav,
+  .eng-architecture .internal-blueprint-shell aside nav,
+  .eng-architecture .internal-tech-shell aside {display:flex!important;flex-direction:row!important;overflow-x:auto!important;white-space:nowrap;gap:14px}
+}
