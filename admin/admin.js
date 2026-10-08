@@ -3240,7 +3240,7 @@ function renderLocalStorePreview(){
     box.innerHTML=importedReferencePreviewMarkup({design,family:layout,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,blog,contact,nav,bannerCss},state.localImportedDesign);
     return;
   }
-  if(["FOOD","RETAIL","FASHION","BOOKS","FLOWERS","HEALTH","HARDWARE","SERVICES","PROFESSIONAL","BEAUTY","GENERAL"].includes(layout)){
+  if(["FOOD","RESTAURANT","RETAIL","FASHION","BOOKS","FLOWERS","HEALTH","HARDWARE","SERVICES","PROFESSIONAL","BEAUTY","GENERAL"].includes(layout)){
     box.innerHTML=professionalStorefrontPreviewMarkup({design,family:layout,primary,secondary,background,surface,text,hero,subtitle,catalog,about,projects,contact,nav,bannerCss});
     return;
   }
