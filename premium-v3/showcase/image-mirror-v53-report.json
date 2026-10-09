@@ -1,0 +1,11 @@
+{
+  "total": 43,
+  "success": 42,
+  "failed": [
+    {
+      "url": "https://images.unsplash.com/photo-1581093458791-9d42e3c26c65?auto=format&fit=crop&w=1400&q=82",
+      "error": "HTTP 404"
+    }
+  ],
+  "referencesUpdated": 296
+}

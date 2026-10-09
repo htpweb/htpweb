@@ -1,0 +1,20 @@
+.premium-product-card .shop-stepper[hidden]{display:none!important}.pv-open{display:block;width:100%;margin-top:12px;border:0;border-radius:10px;padding:10px 12px;background:var(--accent,#6b9386);color:#fff;font-weight:800;font:inherit;cursor:pointer}.premium-variants-modal{width:min(94vw,520px);max-height:89vh;overflow:auto;border:0;border-radius:18px;background:#fff;padding:22px;color:#20342e;box-shadow:0 25px 90px #0006}.premium-variants-modal::backdrop{background:#091d1aba}.pv-top{display:flex;justify-content:space-between;gap:12px}.pv-top h3{margin:4px 0;font-size:25px}.pv-top p,.pv-note{font-size:13px;color:#64756f}.pv-top small{color:var(--accent,#619285);font-weight:800;font-size:10px;letter-spacing:.08em}.pv-close,.pv-remove{background:transparent;border:0;font-size:25px;cursor:pointer}.pv-line{border-top:1px solid #e4ebe7;padding:13px 0}.pv-line-head{display:flex;align-items:center;gap:8px}.pv-line-head>select{flex:1;min-width:0;font-weight:700}.pv-line select{border:1px solid #ccdcd3;border-radius:9px;padding:9px;background:#fff;font-size:13px}.pv-line label{display:block;font-size:12px;margin:8px 0 5px;color:#667b70}.pv-side{width:100%}.pv-step{display:flex;align-items:center;gap:9px;font-size:14px}.pv-step button{border:1px solid #ccdcd3;background:#f7faf8;border-radius:50%;width:27px;height:27px;cursor:pointer}.pv-new{border:1px dashed #91b2a4;color:#396a59;background:#f5faf7;border-radius:9px;width:100%;padding:9px;cursor:pointer}.pv-bottom{position:sticky;bottom:-22px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid #e4ebe7;padding:14px 0;margin-top:10px}.pv-bottom>div{display:grid;gap:3px}.pv-quantity{font-size:12px;color:#667b70}.pv-total{font-size:21px}.pv-save{background:var(--accent,#497e6e);border:0;border-radius:10px;color:white;padding:12px 16px;font-weight:800;cursor:pointer}.pv-save:disabled{opacity:.5}@media(max-width:430px){.premium-variants-modal{padding:16px}.pv-line-head{gap:5px}.pv-line select{padding:7px;font-size:12px}.pv-step{gap:4px}}
+
+/* V42: use each template accent on card and dialog, no independent color */
+.v3-site .premium-product-card .pv-open{background:var(--accent,#176f74)!important;border:1px solid transparent!important;box-shadow:none!important;color:#fff!important;font-weight:700!important;outline-color:var(--accent,#176f74)!important}
+.v3-site .premium-product-card .pv-open:hover{filter:brightness(.93)}
+.premium-variants-modal{--pv-accent:#176f74}
+.premium-variants-modal .pv-save{background:var(--pv-accent)!important;color:#fff!important}
+.premium-variants-modal .pv-new{color:var(--pv-accent);border-color:var(--pv-accent);background:#f7faf8}
+.premium-variants-modal .pv-top small{color:var(--pv-accent)}
+.premium-variants-modal .pv-step button:focus-visible,.premium-variants-modal select:focus-visible{outline:2px solid var(--pv-accent)}
+.premium-product-card .pv-open{background:var(--accent,#176f74)!important;border:0!important;outline-offset:2px;box-shadow:none!important;color:white!important;font-weight:700!important;font-family:inherit!important}.premium-product-card .pv-open:focus-visible{outline:2px solid var(--accent,#176f74)}
+
+/* V43: exact active shop category button color; overrides unrelated site accent */
+.premium-product-card .pv-open{background:var(--pv-accent,#1c625e)!important;border:0!important;color:white!important}
+.premium-variants-modal .pv-save{background:var(--pv-accent,#1c625e)!important}
+
+/* V44: acción de personalizar con jerarquía secundaria, mismo verde del tema atenuado. */
+.premium-product-card .pv-open{background:color-mix(in srgb,var(--pv-accent,#1c625e) 70%,white)!important;color:white!important;box-shadow:none!important;border:0!important;transition:background .18s ease}
+.premium-product-card .pv-open:hover{background:color-mix(in srgb,var(--pv-accent,#1c625e) 82%,white)!important}
+.premium-product-card .pv-open:focus-visible{outline:2px solid var(--pv-accent,#1c625e);outline-offset:2px}
