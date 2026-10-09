@@ -1,0 +1,6 @@
+/* V35: pequeño icono favorito; el corazon seleccionado se rellena por completo. */
+.premium-product-card .premium-heart{width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#fff;box-shadow:0 3px 12px #0002;transition:transform .16s ease}
+.premium-product-card .premium-heart svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.9}
+.premium-product-card .premium-heart.is-liked svg,.premium-product-card .premium-heart[aria-pressed="true"] svg{fill:#d94b55;stroke:#d94b55}
+.premium-product-card .premium-heart:active{transform:scale(.94)}
+@media(max-width:570px){.premium-product-card .premium-heart{width:34px;height:34px}.premium-product-card .premium-heart svg{width:19px;height:19px}}

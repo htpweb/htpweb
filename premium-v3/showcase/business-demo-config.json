@@ -1,0 +1,1025 @@
+{
+  "category-1": {
+    "name": "ACADEMIA HORIZONTE",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1900&q=85",
+        "title": "ACADEMIA HORIZONTE",
+        "description": "Aprender transforma posibilidades"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Cursos y formación",
+        "description": "Formación flexible"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-2": {
+    "name": "SABORES DE CASA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1900&q=85",
+        "title": "SABORES DE CASA",
+        "description": "La tradición se disfruta en cada plato"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Almuerzos y especialidades",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-3": {
+    "name": "BODEGA SELECTA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1900&q=85",
+        "title": "BODEGA SELECTA",
+        "description": "Selección y experiencias para compartir"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Bebidas seleccionadas",
+        "description": "Colección destacada"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-4": {
+    "name": "FRESCA BAR",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1900&q=85",
+        "title": "FRESCA BAR",
+        "description": "Bebidas que refrescan tus momentos"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Jugos y bebidas",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-5": {
+    "name": "LA BOTICA DE SABORES",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1900&q=85",
+        "title": "LA BOTICA DE SABORES",
+        "description": "Descubre una selección diferente"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Productos especializados",
+        "description": "Colección destacada"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-6": {
+    "name": "LUMINA BEAUTY",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1900&q=85",
+        "title": "LUMINA BEAUTY",
+        "description": "Belleza que expresa tu estilo"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Cosmética y cuidado",
+        "description": "Estilo personalizado"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-7": {
+    "name": "VITALIA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1900&q=85",
+        "title": "VITALIA",
+        "description": "Bienestar para todos los días"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Nutrición y bienestar",
+        "description": "Atención profesional"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-8": {
+    "name": "NEXO MOBILE",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1900&q=85",
+        "title": "NEXO MOBILE",
+        "description": "Conecta con lo que te mueve"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Tecnología móvil",
+        "description": "Equipos y accesorios"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-9": {
+    "name": "CLÍNICA VITAL",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1900&q=85",
+        "title": "CLÍNICA VITAL",
+        "description": "Atención cercana y profesional"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Especialidades médicas",
+        "description": "Atención profesional"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-10": {
+    "name": "URBAN BURGER",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1900&q=85",
+        "title": "URBAN BURGER",
+        "description": "El sabor protagonista de cada encuentro"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Hamburguesas y combos",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-11": {
+    "name": "CONSULTA UNO",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1900&q=85",
+        "title": "CONSULTA UNO",
+        "description": "Ideas claras, decisiones informadas"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Consultoría y estrategia",
+        "description": "Consultoría estratégica"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-12": {
+    "name": "ESTUDIO LEGALIS",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1900&q=85",
+        "title": "ESTUDIO LEGALIS",
+        "description": "Confianza para cada decisión"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Asesoría contable y legal",
+        "description": "Consultoría estratégica"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-13": {
+    "name": "CAFÉ ORIGEN",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1900&q=85",
+        "title": "CAFÉ ORIGEN",
+        "description": "Cada mañana tiene su mejor momento"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Desayunos y café",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-14": {
+    "name": "SOLUCIONES TÉCNICAS",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1900&q=85",
+        "title": "SOLUCIONES TÉCNICAS",
+        "description": "Instalaciones cuidadas de principio a fin"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Servicios técnicos",
+        "description": "Herramientas y materiales"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-15": {
+    "name": "FARMACIA BIENESTAR",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1900&q=85",
+        "title": "FARMACIA BIENESTAR",
+        "description": "Cuidado cerca de ti"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Productos de farmacia",
+        "description": "Atención profesional"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-16": {
+    "name": "FERRETERÍA PRO",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=1900&q=85",
+        "title": "FERRETERÍA PRO",
+        "description": "Herramientas para construir tus ideas"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Herramientas y materiales",
+        "description": "Herramientas y materiales"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-17": {
+    "name": "FLOR Y VIDA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1900&q=85",
+        "title": "FLOR Y VIDA",
+        "description": "Detalles que hacen especiales los momentos"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Flores y regalos",
+        "description": "Arreglos especiales"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-18": {
+    "name": "ESTUDIO PRISMA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=1900&q=85",
+        "title": "ESTUDIO PRISMA",
+        "description": "Ideas técnicas, espacios extraordinarios"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Arquitectura e ingeniería",
+        "description": "Diseño y planificación"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-19": {
+    "name": "LABORATORIO NOVA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1900&q=85",
+        "title": "LABORATORIO NOVA",
+        "description": "Información y confianza para tu salud"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Análisis clínicos",
+        "description": "Atención profesional"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-20": {
+    "name": "LIBRERÍA PUNTO",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1900&q=85",
+        "title": "LIBRERÍA PUNTO",
+        "description": "Historias e ideas para descubrir"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Libros y papelería",
+        "description": "Novedades literarias"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-21": {
+    "name": "MAR Y SAZÓN",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1559737558-2f5a35f4523b?auto=format&fit=crop&w=1900&q=85",
+        "title": "MAR Y SAZÓN",
+        "description": "La frescura del mar en tu mesa"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1559737558-2f5a35f4523b?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Ceviches y mariscos",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-22": {
+    "name": "CONSTRUYE MÁS",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1900&q=85",
+        "title": "CONSTRUYE MÁS",
+        "description": "Materiales para proyectos que duran"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Materiales de construcción",
+        "description": "Herramientas y materiales"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-23": {
+    "name": "MERCADO CERCA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1900&q=85",
+        "title": "MERCADO CERCA",
+        "description": "Todo lo que buscas a un paso"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Abarrotes y básicos",
+        "description": "Colección destacada"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-24": {
+    "name": "SONRISA CLARA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=1900&q=85",
+        "title": "SONRISA CLARA",
+        "description": "Sonrisas cuidadas con confianza"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Cuidado dental",
+        "description": "Atención profesional"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-25": {
+    "name": "FOGÓN GRILL",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1900&q=85",
+        "title": "FOGÓN GRILL",
+        "description": "El fuego reúne los mejores sabores"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Parrilladas y asados",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-26": {
+    "name": "ATELIER ESTILO",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1900&q=85",
+        "title": "ATELIER ESTILO",
+        "description": "Un espacio para renovar tu imagen"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Belleza y estilo",
+        "description": "Estilo personalizado"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-27": {
+    "name": "PIZZA MAESTRA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1900&q=85",
+        "title": "PIZZA MAESTRA",
+        "description": "Momentos que saben a pizza"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Pizzas y complementos",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-28": {
+    "name": "DULCE ESTACIÓN",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=1900&q=85",
+        "title": "DULCE ESTACIÓN",
+        "description": "Endulzamos cada ocasión"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Helados y postres",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-29": {
+    "name": "AUTOPARTES UNO",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1486496572940-2bb2341fdbdf?auto=format&fit=crop&w=1900&q=85",
+        "title": "AUTOPARTES UNO",
+        "description": "Todo para seguir avanzando"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1486496572940-2bb2341fdbdf?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Repuestos y accesorios",
+        "description": "Servicios de taller"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-30": {
+    "name": "CASA BRUMA",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1900&q=85",
+        "title": "CASA BRUMA",
+        "description": "Sabores que cuentan historias"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Restaurante y menú",
+        "description": "Especialidades de la casa"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-31": {
+    "name": "MODA NORTE",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1900&q=85",
+        "title": "MODA NORTE",
+        "description": "Encuentra el estilo que te representa"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Colecciones y accesorios",
+        "description": "Nuevas colecciones"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-32": {
+    "name": "MOTOR LAB",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=1900&q=85",
+        "title": "MOTOR LAB",
+        "description": "Cuidado técnico para tu vehículo"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Servicio automotriz",
+        "description": "Servicios de taller"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  },
+  "category-33": {
+    "name": "TECH LAB",
+    "slides": [
+      {
+        "image": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1900&q=85",
+        "title": "TECH LAB",
+        "description": "Soluciones digitales para cada día"
+      },
+      {
+        "image": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1500&q=85&sat=-20",
+        "title": "Equipos y tecnología",
+        "description": "Equipos y accesorios"
+      }
+    ],
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "whatsapp": "",
+      "website": ""
+    },
+    "contact": {
+      "phone": "",
+      "email": "",
+      "address": "",
+      "city": "",
+      "province": "",
+      "coordinates": null,
+      "mapEmbedUrl": ""
+    }
+  }
+}

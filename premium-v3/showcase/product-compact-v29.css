@@ -1,0 +1,13 @@
+/* V29: compact, legible cards preserving business-selected colors */
+.premium-product-card .shop-card-details{padding:11px 13px 13px;display:flex;flex-direction:column;gap:0}
+.premium-product-card h3{font-size:18px;line-height:1.24;margin:3px 0 7px;min-height:0;letter-spacing:-.015em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.premium-product-card .premium-social-proof{gap:6px;margin:0 0 7px;font-size:13px;line-height:1.15;align-items:center;flex-wrap:wrap}
+.premium-product-card .premium-stars-five{font-size:20px;line-height:1;letter-spacing:0}
+.premium-product-card .premium-social-proof strong{font-size:14px}
+.premium-product-card .premium-likes{font-size:14px;padding-left:9px;margin-left:4px;color:#d95460}
+.premium-product-card .shop-card-details p{font-size:14px;line-height:1.4;margin:0 0 8px;min-height:0;max-height:2.8em;-webkit-line-clamp:2}
+.premium-product-card .premium-price{font-size:24px;line-height:1.05;margin:5px 0 3px;letter-spacing:-.02em}
+.premium-product-card .premium-old-price{font-size:13px;margin:0 0 5px;line-height:1.2}
+.premium-product-card .shop-stepper{margin-top:6px}
+.premium-product-card .premium-heart{width:45px;height:45px;font-size:28px}
+@media(max-width:570px){.premium-product-card .shop-card-details{padding:10px 11px 12px}.premium-product-card h3{font-size:16px;margin:2px 0 6px}.premium-product-card .premium-social-proof{gap:4px;margin-bottom:6px;font-size:12px}.premium-product-card .premium-stars-five{font-size:17px}.premium-product-card .premium-social-proof strong{font-size:12px}.premium-product-card .premium-likes{font-size:14px;padding-left:6px;margin-left:2px}.premium-product-card .shop-card-details p{font-size:13px;line-height:1.4;margin-bottom:6px}.premium-product-card .premium-price{font-size:22px;margin:4px 0 2px}.premium-product-card .premium-old-price{font-size:12px;margin-bottom:4px}.premium-product-card .shop-stepper{margin-top:5px}.premium-product-card .premium-heart{width:41px;height:41px;font-size:25px}}

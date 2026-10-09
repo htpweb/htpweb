@@ -151,7 +151,10 @@
     if(title) title.textContent = p.name;
     if(meta) meta.textContent = (familyLabels[familyOf(p)] || familyOf(p)) + " · " + designOf(p) + " · " + p.code;
     const iframe=document.getElementById("masterSitePreviewIframe");
-    if(iframe) iframe.srcdoc=previewDocument(p);
+    if(iframe){
+      if(p.preview_href){iframe.removeAttribute("srcdoc");iframe.src=new URL(p.preview_href,location.href).href;}
+      else {iframe.removeAttribute("src");iframe.srcdoc=previewDocument(p);}
+    }
     setMasterPreviewDevice("desktop");
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden","false");
@@ -230,7 +233,13 @@
         .order("layout_family",{ascending:true})
         .order("display_order",{ascending:true});
       if(error) throw error;
-      all = data || [];
+      // Premium V3 static collection: catalog only, NEVER assigns storefronts to existing businesses.
+      const v3Response = await fetch(new URL("../premium-v3/showcase/catalog-manifest.json",location.href),{cache:"no-cache"});
+      if(!v3Response.ok) throw new Error("No se pudo cargar el catálogo Premium V3");
+      const v3 = await v3Response.json();
+      if(!Array.isArray(v3) || v3.length !== 330) throw new Error("Catálogo Premium V3 incompleto");
+      v3.forEach(p => {familyLabels[p.layout_family]=p.category_name;});
+      all = [...(data || []),...v3];
       loaded = true;
       renderFilters();
       render();

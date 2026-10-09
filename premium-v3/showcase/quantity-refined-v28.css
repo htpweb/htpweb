@@ -1,0 +1,6 @@
+/* Quantity control: preserve original three-part visual design, configurable colors. */
+.premium-product-card{--qty-minus-bg:var(--quantity-minus-bg,#e8f2ee);--qty-minus-fg:var(--quantity-minus-fg,#638d83);--qty-plus-bg:var(--quantity-plus-bg,#6f978b);--qty-plus-fg:var(--quantity-plus-fg,#ffffff);--qty-middle-bg:var(--quantity-middle-bg,#ffffff)}
+.premium-product-card .shop-stepper{border:1px solid var(--quantity-border,#c6dbd3);border-radius:15px;overflow:hidden}
+.premium-product-card .shop-stepper button:first-child{background:var(--qty-minus-bg);color:var(--qty-minus-fg)}
+.premium-product-card .shop-stepper button:last-child{background:var(--qty-plus-bg);color:var(--qty-plus-fg)}
+.premium-product-card .shop-stepper span{background:var(--qty-middle-bg)}

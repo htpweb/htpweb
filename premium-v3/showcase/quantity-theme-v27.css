@@ -1,0 +1,3 @@
+/* Control de cantidad: ambos botones respetan la paleta elegida para la plantilla. */
+.premium-product-card .shop-stepper button:first-child,.premium-product-card .shop-stepper button:last-child{background:var(--card-accent,var(--accent,#5f897d));color:#fff}
+.premium-product-card .shop-stepper button:disabled{opacity:.38}

@@ -1,0 +1,3 @@
+/* Corrige el fill="none" escrito directamente en el PATH SVG. */
+.premium-product-card .premium-heart svg path{fill:none;stroke:currentColor}
+.premium-product-card .premium-heart.is-liked svg path,.premium-product-card .premium-heart[aria-pressed="true"] svg path{fill:#d94b55;stroke:#d94b55}

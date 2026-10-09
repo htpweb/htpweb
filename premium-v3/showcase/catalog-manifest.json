@@ -1,0 +1,4622 @@
+[
+  {
+    "code": "V3-001",
+    "name": "Premium V3 01",
+    "description": "Academias y cursos · Una sola página · Navegación lateral",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-01/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-01"
+  },
+  {
+    "code": "V3-002",
+    "name": "Premium V3 02",
+    "description": "Academias y cursos · Una sola página · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-02/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-02"
+  },
+  {
+    "code": "V3-003",
+    "name": "Premium V3 03",
+    "description": "Academias y cursos · Una sola página · Navegación lateral",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-03/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-03"
+  },
+  {
+    "code": "V3-004",
+    "name": "Premium V3 04",
+    "description": "Academias y cursos · Una sola página · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-04/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-04"
+  },
+  {
+    "code": "V3-005",
+    "name": "Premium V3 05",
+    "description": "Academias y cursos · Una sola página · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-05/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-05"
+  },
+  {
+    "code": "V3-006",
+    "name": "Premium V3 06",
+    "description": "Academias y cursos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-06/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-06"
+  },
+  {
+    "code": "V3-007",
+    "name": "Premium V3 07",
+    "description": "Academias y cursos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-07/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-07"
+  },
+  {
+    "code": "V3-008",
+    "name": "Premium V3 08",
+    "description": "Academias y cursos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-08/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-08"
+  },
+  {
+    "code": "V3-009",
+    "name": "Premium V3 09",
+    "description": "Academias y cursos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-09/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-09"
+  },
+  {
+    "code": "V3-010",
+    "name": "Premium V3 10",
+    "description": "Academias y cursos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Academias y cursos",
+    "layout_family": "V3-CAT-1",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-1-architecture-10/",
+    "category_name": "Academias y cursos",
+    "template_id": "category-1-architecture-10"
+  },
+  {
+    "code": "V3-011",
+    "name": "Premium V3 01",
+    "description": "Almuerzos y comida típica · Una sola página · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-01/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-01"
+  },
+  {
+    "code": "V3-012",
+    "name": "Premium V3 02",
+    "description": "Almuerzos y comida típica · Una sola página · Navegación lateral",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-02/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-02"
+  },
+  {
+    "code": "V3-013",
+    "name": "Premium V3 03",
+    "description": "Almuerzos y comida típica · Una sola página · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-03/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-03"
+  },
+  {
+    "code": "V3-014",
+    "name": "Premium V3 04",
+    "description": "Almuerzos y comida típica · Una sola página · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-04/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-04"
+  },
+  {
+    "code": "V3-015",
+    "name": "Premium V3 05",
+    "description": "Almuerzos y comida típica · Una sola página · Navegación lateral",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-05/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-05"
+  },
+  {
+    "code": "V3-016",
+    "name": "Premium V3 06",
+    "description": "Almuerzos y comida típica · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-06/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-06"
+  },
+  {
+    "code": "V3-017",
+    "name": "Premium V3 07",
+    "description": "Almuerzos y comida típica · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-07/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-07"
+  },
+  {
+    "code": "V3-018",
+    "name": "Premium V3 08",
+    "description": "Almuerzos y comida típica · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-08/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-08"
+  },
+  {
+    "code": "V3-019",
+    "name": "Premium V3 09",
+    "description": "Almuerzos y comida típica · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-09/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-09"
+  },
+  {
+    "code": "V3-020",
+    "name": "Premium V3 10",
+    "description": "Almuerzos y comida típica · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Almuerzos y comida típica",
+    "layout_family": "V3-CAT-2",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-2-architecture-10/",
+    "category_name": "Almuerzos y comida típica",
+    "template_id": "category-2-architecture-10"
+  },
+  {
+    "code": "V3-021",
+    "name": "Premium V3 01",
+    "description": "Bebidas alcohólicas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-01/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-01"
+  },
+  {
+    "code": "V3-022",
+    "name": "Premium V3 02",
+    "description": "Bebidas alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-02/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-02"
+  },
+  {
+    "code": "V3-023",
+    "name": "Premium V3 03",
+    "description": "Bebidas alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-03/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-03"
+  },
+  {
+    "code": "V3-024",
+    "name": "Premium V3 04",
+    "description": "Bebidas alcohólicas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-04/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-04"
+  },
+  {
+    "code": "V3-025",
+    "name": "Premium V3 05",
+    "description": "Bebidas alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-05/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-05"
+  },
+  {
+    "code": "V3-026",
+    "name": "Premium V3 06",
+    "description": "Bebidas alcohólicas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-06/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-06"
+  },
+  {
+    "code": "V3-027",
+    "name": "Premium V3 07",
+    "description": "Bebidas alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-07/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-07"
+  },
+  {
+    "code": "V3-028",
+    "name": "Premium V3 08",
+    "description": "Bebidas alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-08/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-08"
+  },
+  {
+    "code": "V3-029",
+    "name": "Premium V3 09",
+    "description": "Bebidas alcohólicas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-09/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-09"
+  },
+  {
+    "code": "V3-030",
+    "name": "Premium V3 10",
+    "description": "Bebidas alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas alcohólicas",
+    "layout_family": "V3-CAT-3",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-3-architecture-10/",
+    "category_name": "Bebidas alcohólicas",
+    "template_id": "category-3-architecture-10"
+  },
+  {
+    "code": "V3-031",
+    "name": "Premium V3 01",
+    "description": "Bebidas no alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-01/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-01"
+  },
+  {
+    "code": "V3-032",
+    "name": "Premium V3 02",
+    "description": "Bebidas no alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-02/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-02"
+  },
+  {
+    "code": "V3-033",
+    "name": "Premium V3 03",
+    "description": "Bebidas no alcohólicas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-03/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-03"
+  },
+  {
+    "code": "V3-034",
+    "name": "Premium V3 04",
+    "description": "Bebidas no alcohólicas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-04/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-04"
+  },
+  {
+    "code": "V3-035",
+    "name": "Premium V3 05",
+    "description": "Bebidas no alcohólicas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-05/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-05"
+  },
+  {
+    "code": "V3-036",
+    "name": "Premium V3 06",
+    "description": "Bebidas no alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-06/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-06"
+  },
+  {
+    "code": "V3-037",
+    "name": "Premium V3 07",
+    "description": "Bebidas no alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-07/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-07"
+  },
+  {
+    "code": "V3-038",
+    "name": "Premium V3 08",
+    "description": "Bebidas no alcohólicas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-08/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-08"
+  },
+  {
+    "code": "V3-039",
+    "name": "Premium V3 09",
+    "description": "Bebidas no alcohólicas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-09/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-09"
+  },
+  {
+    "code": "V3-040",
+    "name": "Premium V3 10",
+    "description": "Bebidas no alcohólicas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas no alcohólicas",
+    "layout_family": "V3-CAT-4",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-4-architecture-10/",
+    "category_name": "Bebidas no alcohólicas",
+    "template_id": "category-4-architecture-10"
+  },
+  {
+    "code": "V3-041",
+    "name": "Premium V3 01",
+    "description": "Bebidas y tiendas especializadas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-01/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-01"
+  },
+  {
+    "code": "V3-042",
+    "name": "Premium V3 02",
+    "description": "Bebidas y tiendas especializadas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-02/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-02"
+  },
+  {
+    "code": "V3-043",
+    "name": "Premium V3 03",
+    "description": "Bebidas y tiendas especializadas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-03/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-03"
+  },
+  {
+    "code": "V3-044",
+    "name": "Premium V3 04",
+    "description": "Bebidas y tiendas especializadas · Una sola página · Navegación lateral",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-04/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-04"
+  },
+  {
+    "code": "V3-045",
+    "name": "Premium V3 05",
+    "description": "Bebidas y tiendas especializadas · Una sola página · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-05/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-05"
+  },
+  {
+    "code": "V3-046",
+    "name": "Premium V3 06",
+    "description": "Bebidas y tiendas especializadas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-06/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-06"
+  },
+  {
+    "code": "V3-047",
+    "name": "Premium V3 07",
+    "description": "Bebidas y tiendas especializadas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-07/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-07"
+  },
+  {
+    "code": "V3-048",
+    "name": "Premium V3 08",
+    "description": "Bebidas y tiendas especializadas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-08/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-08"
+  },
+  {
+    "code": "V3-049",
+    "name": "Premium V3 09",
+    "description": "Bebidas y tiendas especializadas · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-09/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-09"
+  },
+  {
+    "code": "V3-050",
+    "name": "Premium V3 10",
+    "description": "Bebidas y tiendas especializadas · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bebidas y tiendas especializadas",
+    "layout_family": "V3-CAT-5",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-5-architecture-10/",
+    "category_name": "Bebidas y tiendas especializadas",
+    "template_id": "category-5-architecture-10"
+  },
+  {
+    "code": "V3-051",
+    "name": "Premium V3 01",
+    "description": "Belleza y cosmética · Una sola página · Navegación lateral",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-01/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-01"
+  },
+  {
+    "code": "V3-052",
+    "name": "Premium V3 02",
+    "description": "Belleza y cosmética · Una sola página · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-02/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-02"
+  },
+  {
+    "code": "V3-053",
+    "name": "Premium V3 03",
+    "description": "Belleza y cosmética · Una sola página · Navegación lateral",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-03/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-03"
+  },
+  {
+    "code": "V3-054",
+    "name": "Premium V3 04",
+    "description": "Belleza y cosmética · Una sola página · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-04/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-04"
+  },
+  {
+    "code": "V3-055",
+    "name": "Premium V3 05",
+    "description": "Belleza y cosmética · Una sola página · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-05/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-05"
+  },
+  {
+    "code": "V3-056",
+    "name": "Premium V3 06",
+    "description": "Belleza y cosmética · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-06/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-06"
+  },
+  {
+    "code": "V3-057",
+    "name": "Premium V3 07",
+    "description": "Belleza y cosmética · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-07/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-07"
+  },
+  {
+    "code": "V3-058",
+    "name": "Premium V3 08",
+    "description": "Belleza y cosmética · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-08/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-08"
+  },
+  {
+    "code": "V3-059",
+    "name": "Premium V3 09",
+    "description": "Belleza y cosmética · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-09/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-09"
+  },
+  {
+    "code": "V3-060",
+    "name": "Premium V3 10",
+    "description": "Belleza y cosmética · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Belleza y cosmética",
+    "layout_family": "V3-CAT-6",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-6-architecture-10/",
+    "category_name": "Belleza y cosmética",
+    "template_id": "category-6-architecture-10"
+  },
+  {
+    "code": "V3-061",
+    "name": "Premium V3 01",
+    "description": "Bienestar y nutrición · Una sola página · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-01/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-01"
+  },
+  {
+    "code": "V3-062",
+    "name": "Premium V3 02",
+    "description": "Bienestar y nutrición · Una sola página · Navegación lateral",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-02/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-02"
+  },
+  {
+    "code": "V3-063",
+    "name": "Premium V3 03",
+    "description": "Bienestar y nutrición · Una sola página · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-03/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-03"
+  },
+  {
+    "code": "V3-064",
+    "name": "Premium V3 04",
+    "description": "Bienestar y nutrición · Una sola página · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-04/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-04"
+  },
+  {
+    "code": "V3-065",
+    "name": "Premium V3 05",
+    "description": "Bienestar y nutrición · Una sola página · Navegación lateral",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-05/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-05"
+  },
+  {
+    "code": "V3-066",
+    "name": "Premium V3 06",
+    "description": "Bienestar y nutrición · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-06/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-06"
+  },
+  {
+    "code": "V3-067",
+    "name": "Premium V3 07",
+    "description": "Bienestar y nutrición · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-07/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-07"
+  },
+  {
+    "code": "V3-068",
+    "name": "Premium V3 08",
+    "description": "Bienestar y nutrición · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-08/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-08"
+  },
+  {
+    "code": "V3-069",
+    "name": "Premium V3 09",
+    "description": "Bienestar y nutrición · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-09/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-09"
+  },
+  {
+    "code": "V3-070",
+    "name": "Premium V3 10",
+    "description": "Bienestar y nutrición · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Bienestar y nutrición",
+    "layout_family": "V3-CAT-7",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-7-architecture-10/",
+    "category_name": "Bienestar y nutrición",
+    "template_id": "category-7-architecture-10"
+  },
+  {
+    "code": "V3-071",
+    "name": "Premium V3 01",
+    "description": "Celulares y accesorios · Una sola página · Navegación lateral",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-01/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-01"
+  },
+  {
+    "code": "V3-072",
+    "name": "Premium V3 02",
+    "description": "Celulares y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-02/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-02"
+  },
+  {
+    "code": "V3-073",
+    "name": "Premium V3 03",
+    "description": "Celulares y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-03/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-03"
+  },
+  {
+    "code": "V3-074",
+    "name": "Premium V3 04",
+    "description": "Celulares y accesorios · Una sola página · Navegación lateral",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-04/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-04"
+  },
+  {
+    "code": "V3-075",
+    "name": "Premium V3 05",
+    "description": "Celulares y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-05/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-05"
+  },
+  {
+    "code": "V3-076",
+    "name": "Premium V3 06",
+    "description": "Celulares y accesorios · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-06/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-06"
+  },
+  {
+    "code": "V3-077",
+    "name": "Premium V3 07",
+    "description": "Celulares y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-07/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-07"
+  },
+  {
+    "code": "V3-078",
+    "name": "Premium V3 08",
+    "description": "Celulares y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-08/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-08"
+  },
+  {
+    "code": "V3-079",
+    "name": "Premium V3 09",
+    "description": "Celulares y accesorios · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-09/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-09"
+  },
+  {
+    "code": "V3-080",
+    "name": "Premium V3 10",
+    "description": "Celulares y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Celulares y accesorios",
+    "layout_family": "V3-CAT-8",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-8-architecture-10/",
+    "category_name": "Celulares y accesorios",
+    "template_id": "category-8-architecture-10"
+  },
+  {
+    "code": "V3-081",
+    "name": "Premium V3 01",
+    "description": "Clínicas y centros médicos · Una sola página · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-01/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-01"
+  },
+  {
+    "code": "V3-082",
+    "name": "Premium V3 02",
+    "description": "Clínicas y centros médicos · Una sola página · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-02/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-02"
+  },
+  {
+    "code": "V3-083",
+    "name": "Premium V3 03",
+    "description": "Clínicas y centros médicos · Una sola página · Navegación lateral",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-03/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-03"
+  },
+  {
+    "code": "V3-084",
+    "name": "Premium V3 04",
+    "description": "Clínicas y centros médicos · Una sola página · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-04/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-04"
+  },
+  {
+    "code": "V3-085",
+    "name": "Premium V3 05",
+    "description": "Clínicas y centros médicos · Una sola página · Navegación lateral",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-05/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-05"
+  },
+  {
+    "code": "V3-086",
+    "name": "Premium V3 06",
+    "description": "Clínicas y centros médicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-06/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-06"
+  },
+  {
+    "code": "V3-087",
+    "name": "Premium V3 07",
+    "description": "Clínicas y centros médicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-07/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-07"
+  },
+  {
+    "code": "V3-088",
+    "name": "Premium V3 08",
+    "description": "Clínicas y centros médicos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-08/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-08"
+  },
+  {
+    "code": "V3-089",
+    "name": "Premium V3 09",
+    "description": "Clínicas y centros médicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-09/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-09"
+  },
+  {
+    "code": "V3-090",
+    "name": "Premium V3 10",
+    "description": "Clínicas y centros médicos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Clínicas y centros médicos",
+    "layout_family": "V3-CAT-9",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-9-architecture-10/",
+    "category_name": "Clínicas y centros médicos",
+    "template_id": "category-9-architecture-10"
+  },
+  {
+    "code": "V3-091",
+    "name": "Premium V3 01",
+    "description": "Comida rápida · Una sola página · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-01/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-01"
+  },
+  {
+    "code": "V3-092",
+    "name": "Premium V3 02",
+    "description": "Comida rápida · Una sola página · Navegación lateral",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-02/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-02"
+  },
+  {
+    "code": "V3-093",
+    "name": "Premium V3 03",
+    "description": "Comida rápida · Una sola página · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-03/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-03"
+  },
+  {
+    "code": "V3-094",
+    "name": "Premium V3 04",
+    "description": "Comida rápida · Una sola página · Navegación lateral",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-04/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-04"
+  },
+  {
+    "code": "V3-095",
+    "name": "Premium V3 05",
+    "description": "Comida rápida · Una sola página · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-05/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-05"
+  },
+  {
+    "code": "V3-096",
+    "name": "Premium V3 06",
+    "description": "Comida rápida · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-06/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-06"
+  },
+  {
+    "code": "V3-097",
+    "name": "Premium V3 07",
+    "description": "Comida rápida · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-07/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-07"
+  },
+  {
+    "code": "V3-098",
+    "name": "Premium V3 08",
+    "description": "Comida rápida · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-08/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-08"
+  },
+  {
+    "code": "V3-099",
+    "name": "Premium V3 09",
+    "description": "Comida rápida · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-09/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-09"
+  },
+  {
+    "code": "V3-100",
+    "name": "Premium V3 10",
+    "description": "Comida rápida · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Comida rápida",
+    "layout_family": "V3-CAT-10",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-10-architecture-10/",
+    "category_name": "Comida rápida",
+    "template_id": "category-10-architecture-10"
+  },
+  {
+    "code": "V3-101",
+    "name": "Premium V3 01",
+    "description": "Consultoría profesional · Una sola página · Navegación lateral",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-01/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-01"
+  },
+  {
+    "code": "V3-102",
+    "name": "Premium V3 02",
+    "description": "Consultoría profesional · Una sola página · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-02/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-02"
+  },
+  {
+    "code": "V3-103",
+    "name": "Premium V3 03",
+    "description": "Consultoría profesional · Una sola página · Navegación lateral",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-03/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-03"
+  },
+  {
+    "code": "V3-104",
+    "name": "Premium V3 04",
+    "description": "Consultoría profesional · Una sola página · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-04/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-04"
+  },
+  {
+    "code": "V3-105",
+    "name": "Premium V3 05",
+    "description": "Consultoría profesional · Una sola página · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-05/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-05"
+  },
+  {
+    "code": "V3-106",
+    "name": "Premium V3 06",
+    "description": "Consultoría profesional · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-06/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-06"
+  },
+  {
+    "code": "V3-107",
+    "name": "Premium V3 07",
+    "description": "Consultoría profesional · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-07/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-07"
+  },
+  {
+    "code": "V3-108",
+    "name": "Premium V3 08",
+    "description": "Consultoría profesional · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-08/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-08"
+  },
+  {
+    "code": "V3-109",
+    "name": "Premium V3 09",
+    "description": "Consultoría profesional · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-09/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-09"
+  },
+  {
+    "code": "V3-110",
+    "name": "Premium V3 10",
+    "description": "Consultoría profesional · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Consultoría profesional",
+    "layout_family": "V3-CAT-11",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-11-architecture-10/",
+    "category_name": "Consultoría profesional",
+    "template_id": "category-11-architecture-10"
+  },
+  {
+    "code": "V3-111",
+    "name": "Premium V3 01",
+    "description": "Contabilidad y servicios legales · Una sola página · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-01/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-01"
+  },
+  {
+    "code": "V3-112",
+    "name": "Premium V3 02",
+    "description": "Contabilidad y servicios legales · Una sola página · Navegación lateral",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-02/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-02"
+  },
+  {
+    "code": "V3-113",
+    "name": "Premium V3 03",
+    "description": "Contabilidad y servicios legales · Una sola página · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-03/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-03"
+  },
+  {
+    "code": "V3-114",
+    "name": "Premium V3 04",
+    "description": "Contabilidad y servicios legales · Una sola página · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-04/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-04"
+  },
+  {
+    "code": "V3-115",
+    "name": "Premium V3 05",
+    "description": "Contabilidad y servicios legales · Una sola página · Navegación lateral",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-05/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-05"
+  },
+  {
+    "code": "V3-116",
+    "name": "Premium V3 06",
+    "description": "Contabilidad y servicios legales · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-06/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-06"
+  },
+  {
+    "code": "V3-117",
+    "name": "Premium V3 07",
+    "description": "Contabilidad y servicios legales · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-07/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-07"
+  },
+  {
+    "code": "V3-118",
+    "name": "Premium V3 08",
+    "description": "Contabilidad y servicios legales · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-08/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-08"
+  },
+  {
+    "code": "V3-119",
+    "name": "Premium V3 09",
+    "description": "Contabilidad y servicios legales · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-09/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-09"
+  },
+  {
+    "code": "V3-120",
+    "name": "Premium V3 10",
+    "description": "Contabilidad y servicios legales · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Contabilidad y servicios legales",
+    "layout_family": "V3-CAT-12",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-12-architecture-10/",
+    "category_name": "Contabilidad y servicios legales",
+    "template_id": "category-12-architecture-10"
+  },
+  {
+    "code": "V3-121",
+    "name": "Premium V3 01",
+    "description": "Desayunos y Cafeterías · Una sola página · Navegación lateral",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-01/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-01"
+  },
+  {
+    "code": "V3-122",
+    "name": "Premium V3 02",
+    "description": "Desayunos y Cafeterías · Una sola página · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-02/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-02"
+  },
+  {
+    "code": "V3-123",
+    "name": "Premium V3 03",
+    "description": "Desayunos y Cafeterías · Una sola página · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-03/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-03"
+  },
+  {
+    "code": "V3-124",
+    "name": "Premium V3 04",
+    "description": "Desayunos y Cafeterías · Una sola página · Navegación lateral",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-04/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-04"
+  },
+  {
+    "code": "V3-125",
+    "name": "Premium V3 05",
+    "description": "Desayunos y Cafeterías · Una sola página · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-05/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-05"
+  },
+  {
+    "code": "V3-126",
+    "name": "Premium V3 06",
+    "description": "Desayunos y Cafeterías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-06/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-06"
+  },
+  {
+    "code": "V3-127",
+    "name": "Premium V3 07",
+    "description": "Desayunos y Cafeterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-07/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-07"
+  },
+  {
+    "code": "V3-128",
+    "name": "Premium V3 08",
+    "description": "Desayunos y Cafeterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-08/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-08"
+  },
+  {
+    "code": "V3-129",
+    "name": "Premium V3 09",
+    "description": "Desayunos y Cafeterías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-09/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-09"
+  },
+  {
+    "code": "V3-130",
+    "name": "Premium V3 10",
+    "description": "Desayunos y Cafeterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Desayunos y Cafeterías",
+    "layout_family": "V3-CAT-13",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-13-architecture-10/",
+    "category_name": "Desayunos y Cafeterías",
+    "template_id": "category-13-architecture-10"
+  },
+  {
+    "code": "V3-131",
+    "name": "Premium V3 01",
+    "description": "Electricidad y plomería · Una sola página · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-01/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-01"
+  },
+  {
+    "code": "V3-132",
+    "name": "Premium V3 02",
+    "description": "Electricidad y plomería · Una sola página · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-02/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-02"
+  },
+  {
+    "code": "V3-133",
+    "name": "Premium V3 03",
+    "description": "Electricidad y plomería · Una sola página · Navegación lateral",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-03/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-03"
+  },
+  {
+    "code": "V3-134",
+    "name": "Premium V3 04",
+    "description": "Electricidad y plomería · Una sola página · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-04/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-04"
+  },
+  {
+    "code": "V3-135",
+    "name": "Premium V3 05",
+    "description": "Electricidad y plomería · Una sola página · Navegación lateral",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-05/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-05"
+  },
+  {
+    "code": "V3-136",
+    "name": "Premium V3 06",
+    "description": "Electricidad y plomería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-06/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-06"
+  },
+  {
+    "code": "V3-137",
+    "name": "Premium V3 07",
+    "description": "Electricidad y plomería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-07/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-07"
+  },
+  {
+    "code": "V3-138",
+    "name": "Premium V3 08",
+    "description": "Electricidad y plomería · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-08/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-08"
+  },
+  {
+    "code": "V3-139",
+    "name": "Premium V3 09",
+    "description": "Electricidad y plomería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-09/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-09"
+  },
+  {
+    "code": "V3-140",
+    "name": "Premium V3 10",
+    "description": "Electricidad y plomería · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Electricidad y plomería",
+    "layout_family": "V3-CAT-14",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-14-architecture-10/",
+    "category_name": "Electricidad y plomería",
+    "template_id": "category-14-architecture-10"
+  },
+  {
+    "code": "V3-141",
+    "name": "Premium V3 01",
+    "description": "Farmacias · Una sola página · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-01/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-01"
+  },
+  {
+    "code": "V3-142",
+    "name": "Premium V3 02",
+    "description": "Farmacias · Una sola página · Navegación lateral",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-02/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-02"
+  },
+  {
+    "code": "V3-143",
+    "name": "Premium V3 03",
+    "description": "Farmacias · Una sola página · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-03/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-03"
+  },
+  {
+    "code": "V3-144",
+    "name": "Premium V3 04",
+    "description": "Farmacias · Una sola página · Navegación lateral",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-04/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-04"
+  },
+  {
+    "code": "V3-145",
+    "name": "Premium V3 05",
+    "description": "Farmacias · Una sola página · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-05/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-05"
+  },
+  {
+    "code": "V3-146",
+    "name": "Premium V3 06",
+    "description": "Farmacias · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-06/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-06"
+  },
+  {
+    "code": "V3-147",
+    "name": "Premium V3 07",
+    "description": "Farmacias · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-07/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-07"
+  },
+  {
+    "code": "V3-148",
+    "name": "Premium V3 08",
+    "description": "Farmacias · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-08/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-08"
+  },
+  {
+    "code": "V3-149",
+    "name": "Premium V3 09",
+    "description": "Farmacias · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-09/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-09"
+  },
+  {
+    "code": "V3-150",
+    "name": "Premium V3 10",
+    "description": "Farmacias · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Farmacias",
+    "layout_family": "V3-CAT-15",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-15-architecture-10/",
+    "category_name": "Farmacias",
+    "template_id": "category-15-architecture-10"
+  },
+  {
+    "code": "V3-151",
+    "name": "Premium V3 01",
+    "description": "Ferreterías · Una sola página · Navegación lateral",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-01/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-01"
+  },
+  {
+    "code": "V3-152",
+    "name": "Premium V3 02",
+    "description": "Ferreterías · Una sola página · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-02/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-02"
+  },
+  {
+    "code": "V3-153",
+    "name": "Premium V3 03",
+    "description": "Ferreterías · Una sola página · Navegación lateral",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-03/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-03"
+  },
+  {
+    "code": "V3-154",
+    "name": "Premium V3 04",
+    "description": "Ferreterías · Una sola página · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-04/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-04"
+  },
+  {
+    "code": "V3-155",
+    "name": "Premium V3 05",
+    "description": "Ferreterías · Una sola página · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-05/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-05"
+  },
+  {
+    "code": "V3-156",
+    "name": "Premium V3 06",
+    "description": "Ferreterías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-06/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-06"
+  },
+  {
+    "code": "V3-157",
+    "name": "Premium V3 07",
+    "description": "Ferreterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-07/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-07"
+  },
+  {
+    "code": "V3-158",
+    "name": "Premium V3 08",
+    "description": "Ferreterías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-08/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-08"
+  },
+  {
+    "code": "V3-159",
+    "name": "Premium V3 09",
+    "description": "Ferreterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-09/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-09"
+  },
+  {
+    "code": "V3-160",
+    "name": "Premium V3 10",
+    "description": "Ferreterías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ferreterías",
+    "layout_family": "V3-CAT-16",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-16-architecture-10/",
+    "category_name": "Ferreterías",
+    "template_id": "category-16-architecture-10"
+  },
+  {
+    "code": "V3-161",
+    "name": "Premium V3 01",
+    "description": "Florerías y regalos · Una sola página · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-01/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-01"
+  },
+  {
+    "code": "V3-162",
+    "name": "Premium V3 02",
+    "description": "Florerías y regalos · Una sola página · Navegación lateral",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-02/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-02"
+  },
+  {
+    "code": "V3-163",
+    "name": "Premium V3 03",
+    "description": "Florerías y regalos · Una sola página · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-03/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-03"
+  },
+  {
+    "code": "V3-164",
+    "name": "Premium V3 04",
+    "description": "Florerías y regalos · Una sola página · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-04/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-04"
+  },
+  {
+    "code": "V3-165",
+    "name": "Premium V3 05",
+    "description": "Florerías y regalos · Una sola página · Navegación lateral",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-05/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-05"
+  },
+  {
+    "code": "V3-166",
+    "name": "Premium V3 06",
+    "description": "Florerías y regalos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-06/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-06"
+  },
+  {
+    "code": "V3-167",
+    "name": "Premium V3 07",
+    "description": "Florerías y regalos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-07/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-07"
+  },
+  {
+    "code": "V3-168",
+    "name": "Premium V3 08",
+    "description": "Florerías y regalos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-08/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-08"
+  },
+  {
+    "code": "V3-169",
+    "name": "Premium V3 09",
+    "description": "Florerías y regalos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-09/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-09"
+  },
+  {
+    "code": "V3-170",
+    "name": "Premium V3 10",
+    "description": "Florerías y regalos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Florerías y regalos",
+    "layout_family": "V3-CAT-17",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-17-architecture-10/",
+    "category_name": "Florerías y regalos",
+    "template_id": "category-17-architecture-10"
+  },
+  {
+    "code": "V3-171",
+    "name": "Premium V3 01",
+    "description": "Ingeniería y arquitectura · Una sola página · Navegación lateral",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-01/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-01"
+  },
+  {
+    "code": "V3-172",
+    "name": "Premium V3 02",
+    "description": "Ingeniería y arquitectura · Una sola página · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-02/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-02"
+  },
+  {
+    "code": "V3-173",
+    "name": "Premium V3 03",
+    "description": "Ingeniería y arquitectura · Una sola página · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-03/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-03"
+  },
+  {
+    "code": "V3-174",
+    "name": "Premium V3 04",
+    "description": "Ingeniería y arquitectura · Una sola página · Navegación lateral",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-04/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-04"
+  },
+  {
+    "code": "V3-175",
+    "name": "Premium V3 05",
+    "description": "Ingeniería y arquitectura · Una sola página · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-05/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-05"
+  },
+  {
+    "code": "V3-176",
+    "name": "Premium V3 06",
+    "description": "Ingeniería y arquitectura · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-06/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-06"
+  },
+  {
+    "code": "V3-177",
+    "name": "Premium V3 07",
+    "description": "Ingeniería y arquitectura · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-07/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-07"
+  },
+  {
+    "code": "V3-178",
+    "name": "Premium V3 08",
+    "description": "Ingeniería y arquitectura · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-08/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-08"
+  },
+  {
+    "code": "V3-179",
+    "name": "Premium V3 09",
+    "description": "Ingeniería y arquitectura · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-09/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-09"
+  },
+  {
+    "code": "V3-180",
+    "name": "Premium V3 10",
+    "description": "Ingeniería y arquitectura · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ingeniería y arquitectura",
+    "layout_family": "V3-CAT-18",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-18-architecture-10/",
+    "category_name": "Ingeniería y arquitectura",
+    "template_id": "category-18-architecture-10"
+  },
+  {
+    "code": "V3-181",
+    "name": "Premium V3 01",
+    "description": "Laboratorios clínicos · Una sola página · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-01/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-01"
+  },
+  {
+    "code": "V3-182",
+    "name": "Premium V3 02",
+    "description": "Laboratorios clínicos · Una sola página · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-02/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-02"
+  },
+  {
+    "code": "V3-183",
+    "name": "Premium V3 03",
+    "description": "Laboratorios clínicos · Una sola página · Navegación lateral",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-03/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-03"
+  },
+  {
+    "code": "V3-184",
+    "name": "Premium V3 04",
+    "description": "Laboratorios clínicos · Una sola página · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-04/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-04"
+  },
+  {
+    "code": "V3-185",
+    "name": "Premium V3 05",
+    "description": "Laboratorios clínicos · Una sola página · Navegación lateral",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-05/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-05"
+  },
+  {
+    "code": "V3-186",
+    "name": "Premium V3 06",
+    "description": "Laboratorios clínicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-06/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-06"
+  },
+  {
+    "code": "V3-187",
+    "name": "Premium V3 07",
+    "description": "Laboratorios clínicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-07/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-07"
+  },
+  {
+    "code": "V3-188",
+    "name": "Premium V3 08",
+    "description": "Laboratorios clínicos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-08/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-08"
+  },
+  {
+    "code": "V3-189",
+    "name": "Premium V3 09",
+    "description": "Laboratorios clínicos · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-09/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-09"
+  },
+  {
+    "code": "V3-190",
+    "name": "Premium V3 10",
+    "description": "Laboratorios clínicos · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Laboratorios clínicos",
+    "layout_family": "V3-CAT-19",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-19-architecture-10/",
+    "category_name": "Laboratorios clínicos",
+    "template_id": "category-19-architecture-10"
+  },
+  {
+    "code": "V3-191",
+    "name": "Premium V3 01",
+    "description": "Librerías y papelerías · Una sola página · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-01/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-01"
+  },
+  {
+    "code": "V3-192",
+    "name": "Premium V3 02",
+    "description": "Librerías y papelerías · Una sola página · Navegación lateral",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-02/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-02"
+  },
+  {
+    "code": "V3-193",
+    "name": "Premium V3 03",
+    "description": "Librerías y papelerías · Una sola página · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-03/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-03"
+  },
+  {
+    "code": "V3-194",
+    "name": "Premium V3 04",
+    "description": "Librerías y papelerías · Una sola página · Navegación lateral",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-04/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-04"
+  },
+  {
+    "code": "V3-195",
+    "name": "Premium V3 05",
+    "description": "Librerías y papelerías · Una sola página · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-05/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-05"
+  },
+  {
+    "code": "V3-196",
+    "name": "Premium V3 06",
+    "description": "Librerías y papelerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-06/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-06"
+  },
+  {
+    "code": "V3-197",
+    "name": "Premium V3 07",
+    "description": "Librerías y papelerías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-07/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-07"
+  },
+  {
+    "code": "V3-198",
+    "name": "Premium V3 08",
+    "description": "Librerías y papelerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-08/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-08"
+  },
+  {
+    "code": "V3-199",
+    "name": "Premium V3 09",
+    "description": "Librerías y papelerías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-09/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-09"
+  },
+  {
+    "code": "V3-200",
+    "name": "Premium V3 10",
+    "description": "Librerías y papelerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Librerías y papelerías",
+    "layout_family": "V3-CAT-20",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-20-architecture-10/",
+    "category_name": "Librerías y papelerías",
+    "template_id": "category-20-architecture-10"
+  },
+  {
+    "code": "V3-201",
+    "name": "Premium V3 01",
+    "description": "Mariscos y ceviche · Una sola página · Navegación lateral",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-01/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-01"
+  },
+  {
+    "code": "V3-202",
+    "name": "Premium V3 02",
+    "description": "Mariscos y ceviche · Una sola página · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-02/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-02"
+  },
+  {
+    "code": "V3-203",
+    "name": "Premium V3 03",
+    "description": "Mariscos y ceviche · Una sola página · Navegación lateral",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-03/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-03"
+  },
+  {
+    "code": "V3-204",
+    "name": "Premium V3 04",
+    "description": "Mariscos y ceviche · Una sola página · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-04/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-04"
+  },
+  {
+    "code": "V3-205",
+    "name": "Premium V3 05",
+    "description": "Mariscos y ceviche · Una sola página · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-05/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-05"
+  },
+  {
+    "code": "V3-206",
+    "name": "Premium V3 06",
+    "description": "Mariscos y ceviche · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-06/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-06"
+  },
+  {
+    "code": "V3-207",
+    "name": "Premium V3 07",
+    "description": "Mariscos y ceviche · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-07/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-07"
+  },
+  {
+    "code": "V3-208",
+    "name": "Premium V3 08",
+    "description": "Mariscos y ceviche · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-08/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-08"
+  },
+  {
+    "code": "V3-209",
+    "name": "Premium V3 09",
+    "description": "Mariscos y ceviche · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-09/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-09"
+  },
+  {
+    "code": "V3-210",
+    "name": "Premium V3 10",
+    "description": "Mariscos y ceviche · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Mariscos y ceviche",
+    "layout_family": "V3-CAT-21",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-21-architecture-10/",
+    "category_name": "Mariscos y ceviche",
+    "template_id": "category-21-architecture-10"
+  },
+  {
+    "code": "V3-211",
+    "name": "Premium V3 01",
+    "description": "Materiales de construcción · Una sola página · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-01/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-01"
+  },
+  {
+    "code": "V3-212",
+    "name": "Premium V3 02",
+    "description": "Materiales de construcción · Una sola página · Navegación lateral",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-02/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-02"
+  },
+  {
+    "code": "V3-213",
+    "name": "Premium V3 03",
+    "description": "Materiales de construcción · Una sola página · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-03/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-03"
+  },
+  {
+    "code": "V3-214",
+    "name": "Premium V3 04",
+    "description": "Materiales de construcción · Una sola página · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-04/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-04"
+  },
+  {
+    "code": "V3-215",
+    "name": "Premium V3 05",
+    "description": "Materiales de construcción · Una sola página · Navegación lateral",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-05/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-05"
+  },
+  {
+    "code": "V3-216",
+    "name": "Premium V3 06",
+    "description": "Materiales de construcción · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-06/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-06"
+  },
+  {
+    "code": "V3-217",
+    "name": "Premium V3 07",
+    "description": "Materiales de construcción · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-07/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-07"
+  },
+  {
+    "code": "V3-218",
+    "name": "Premium V3 08",
+    "description": "Materiales de construcción · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-08/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-08"
+  },
+  {
+    "code": "V3-219",
+    "name": "Premium V3 09",
+    "description": "Materiales de construcción · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-09/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-09"
+  },
+  {
+    "code": "V3-220",
+    "name": "Premium V3 10",
+    "description": "Materiales de construcción · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Materiales de construcción",
+    "layout_family": "V3-CAT-22",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-22-architecture-10/",
+    "category_name": "Materiales de construcción",
+    "template_id": "category-22-architecture-10"
+  },
+  {
+    "code": "V3-221",
+    "name": "Premium V3 01",
+    "description": "Minimarkets y abarrotes · Una sola página · Navegación lateral",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-01/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-01"
+  },
+  {
+    "code": "V3-222",
+    "name": "Premium V3 02",
+    "description": "Minimarkets y abarrotes · Una sola página · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-02/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-02"
+  },
+  {
+    "code": "V3-223",
+    "name": "Premium V3 03",
+    "description": "Minimarkets y abarrotes · Una sola página · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-03/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-03"
+  },
+  {
+    "code": "V3-224",
+    "name": "Premium V3 04",
+    "description": "Minimarkets y abarrotes · Una sola página · Navegación lateral",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-04/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-04"
+  },
+  {
+    "code": "V3-225",
+    "name": "Premium V3 05",
+    "description": "Minimarkets y abarrotes · Una sola página · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-05/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-05"
+  },
+  {
+    "code": "V3-226",
+    "name": "Premium V3 06",
+    "description": "Minimarkets y abarrotes · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-06/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-06"
+  },
+  {
+    "code": "V3-227",
+    "name": "Premium V3 07",
+    "description": "Minimarkets y abarrotes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-07/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-07"
+  },
+  {
+    "code": "V3-228",
+    "name": "Premium V3 08",
+    "description": "Minimarkets y abarrotes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-08/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-08"
+  },
+  {
+    "code": "V3-229",
+    "name": "Premium V3 09",
+    "description": "Minimarkets y abarrotes · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-09/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-09"
+  },
+  {
+    "code": "V3-230",
+    "name": "Premium V3 10",
+    "description": "Minimarkets y abarrotes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Minimarkets y abarrotes",
+    "layout_family": "V3-CAT-23",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-23-architecture-10/",
+    "category_name": "Minimarkets y abarrotes",
+    "template_id": "category-23-architecture-10"
+  },
+  {
+    "code": "V3-231",
+    "name": "Premium V3 01",
+    "description": "Odontología · Una sola página · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-01/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-01"
+  },
+  {
+    "code": "V3-232",
+    "name": "Premium V3 02",
+    "description": "Odontología · Una sola página · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-02/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-02"
+  },
+  {
+    "code": "V3-233",
+    "name": "Premium V3 03",
+    "description": "Odontología · Una sola página · Navegación lateral",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-03/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-03"
+  },
+  {
+    "code": "V3-234",
+    "name": "Premium V3 04",
+    "description": "Odontología · Una sola página · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-04/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-04"
+  },
+  {
+    "code": "V3-235",
+    "name": "Premium V3 05",
+    "description": "Odontología · Una sola página · Navegación lateral",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-05/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-05"
+  },
+  {
+    "code": "V3-236",
+    "name": "Premium V3 06",
+    "description": "Odontología · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-06/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-06"
+  },
+  {
+    "code": "V3-237",
+    "name": "Premium V3 07",
+    "description": "Odontología · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-07/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-07"
+  },
+  {
+    "code": "V3-238",
+    "name": "Premium V3 08",
+    "description": "Odontología · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-08/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-08"
+  },
+  {
+    "code": "V3-239",
+    "name": "Premium V3 09",
+    "description": "Odontología · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-09/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-09"
+  },
+  {
+    "code": "V3-240",
+    "name": "Premium V3 10",
+    "description": "Odontología · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Odontología",
+    "layout_family": "V3-CAT-24",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-24-architecture-10/",
+    "category_name": "Odontología",
+    "template_id": "category-24-architecture-10"
+  },
+  {
+    "code": "V3-241",
+    "name": "Premium V3 01",
+    "description": "Parrilladas y asados · Una sola página · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-01/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-01"
+  },
+  {
+    "code": "V3-242",
+    "name": "Premium V3 02",
+    "description": "Parrilladas y asados · Una sola página · Navegación lateral",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-02/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-02"
+  },
+  {
+    "code": "V3-243",
+    "name": "Premium V3 03",
+    "description": "Parrilladas y asados · Una sola página · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-03/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-03"
+  },
+  {
+    "code": "V3-244",
+    "name": "Premium V3 04",
+    "description": "Parrilladas y asados · Una sola página · Navegación lateral",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-04/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-04"
+  },
+  {
+    "code": "V3-245",
+    "name": "Premium V3 05",
+    "description": "Parrilladas y asados · Una sola página · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-05/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-05"
+  },
+  {
+    "code": "V3-246",
+    "name": "Premium V3 06",
+    "description": "Parrilladas y asados · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-06/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-06"
+  },
+  {
+    "code": "V3-247",
+    "name": "Premium V3 07",
+    "description": "Parrilladas y asados · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-07/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-07"
+  },
+  {
+    "code": "V3-248",
+    "name": "Premium V3 08",
+    "description": "Parrilladas y asados · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-08/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-08"
+  },
+  {
+    "code": "V3-249",
+    "name": "Premium V3 09",
+    "description": "Parrilladas y asados · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-09/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-09"
+  },
+  {
+    "code": "V3-250",
+    "name": "Premium V3 10",
+    "description": "Parrilladas y asados · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Parrilladas y asados",
+    "layout_family": "V3-CAT-25",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-25-architecture-10/",
+    "category_name": "Parrilladas y asados",
+    "template_id": "category-25-architecture-10"
+  },
+  {
+    "code": "V3-251",
+    "name": "Premium V3 01",
+    "description": "Peluquerías, barberías y spa · Una sola página · Navegación lateral",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-01/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-01"
+  },
+  {
+    "code": "V3-252",
+    "name": "Premium V3 02",
+    "description": "Peluquerías, barberías y spa · Una sola página · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-02/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-02"
+  },
+  {
+    "code": "V3-253",
+    "name": "Premium V3 03",
+    "description": "Peluquerías, barberías y spa · Una sola página · Navegación lateral",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-03/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-03"
+  },
+  {
+    "code": "V3-254",
+    "name": "Premium V3 04",
+    "description": "Peluquerías, barberías y spa · Una sola página · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-04/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-04"
+  },
+  {
+    "code": "V3-255",
+    "name": "Premium V3 05",
+    "description": "Peluquerías, barberías y spa · Una sola página · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-05/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-05"
+  },
+  {
+    "code": "V3-256",
+    "name": "Premium V3 06",
+    "description": "Peluquerías, barberías y spa · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-06/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-06"
+  },
+  {
+    "code": "V3-257",
+    "name": "Premium V3 07",
+    "description": "Peluquerías, barberías y spa · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-07/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-07"
+  },
+  {
+    "code": "V3-258",
+    "name": "Premium V3 08",
+    "description": "Peluquerías, barberías y spa · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-08/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-08"
+  },
+  {
+    "code": "V3-259",
+    "name": "Premium V3 09",
+    "description": "Peluquerías, barberías y spa · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-09/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-09"
+  },
+  {
+    "code": "V3-260",
+    "name": "Premium V3 10",
+    "description": "Peluquerías, barberías y spa · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Peluquerías, barberías y spa",
+    "layout_family": "V3-CAT-26",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-26-architecture-10/",
+    "category_name": "Peluquerías, barberías y spa",
+    "template_id": "category-26-architecture-10"
+  },
+  {
+    "code": "V3-261",
+    "name": "Premium V3 01",
+    "description": "Pizzerías · Una sola página · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-01/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-01"
+  },
+  {
+    "code": "V3-262",
+    "name": "Premium V3 02",
+    "description": "Pizzerías · Una sola página · Navegación lateral",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-02/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-02"
+  },
+  {
+    "code": "V3-263",
+    "name": "Premium V3 03",
+    "description": "Pizzerías · Una sola página · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-03/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-03"
+  },
+  {
+    "code": "V3-264",
+    "name": "Premium V3 04",
+    "description": "Pizzerías · Una sola página · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-04/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-04"
+  },
+  {
+    "code": "V3-265",
+    "name": "Premium V3 05",
+    "description": "Pizzerías · Una sola página · Navegación lateral",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-05/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-05"
+  },
+  {
+    "code": "V3-266",
+    "name": "Premium V3 06",
+    "description": "Pizzerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-06/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-06"
+  },
+  {
+    "code": "V3-267",
+    "name": "Premium V3 07",
+    "description": "Pizzerías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-07/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-07"
+  },
+  {
+    "code": "V3-268",
+    "name": "Premium V3 08",
+    "description": "Pizzerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-08/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-08"
+  },
+  {
+    "code": "V3-269",
+    "name": "Premium V3 09",
+    "description": "Pizzerías · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-09/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-09"
+  },
+  {
+    "code": "V3-270",
+    "name": "Premium V3 10",
+    "description": "Pizzerías · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Pizzerías",
+    "layout_family": "V3-CAT-27",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-27-architecture-10/",
+    "category_name": "Pizzerías",
+    "template_id": "category-27-architecture-10"
+  },
+  {
+    "code": "V3-271",
+    "name": "Premium V3 01",
+    "description": "Postres y heladería · Una sola página · Navegación lateral",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-01/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-01"
+  },
+  {
+    "code": "V3-272",
+    "name": "Premium V3 02",
+    "description": "Postres y heladería · Una sola página · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-02/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-02"
+  },
+  {
+    "code": "V3-273",
+    "name": "Premium V3 03",
+    "description": "Postres y heladería · Una sola página · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-03/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-03"
+  },
+  {
+    "code": "V3-274",
+    "name": "Premium V3 04",
+    "description": "Postres y heladería · Una sola página · Navegación lateral",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-04/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-04"
+  },
+  {
+    "code": "V3-275",
+    "name": "Premium V3 05",
+    "description": "Postres y heladería · Una sola página · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-05/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-05"
+  },
+  {
+    "code": "V3-276",
+    "name": "Premium V3 06",
+    "description": "Postres y heladería · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-06/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-06"
+  },
+  {
+    "code": "V3-277",
+    "name": "Premium V3 07",
+    "description": "Postres y heladería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-07/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-07"
+  },
+  {
+    "code": "V3-278",
+    "name": "Premium V3 08",
+    "description": "Postres y heladería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-08/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-08"
+  },
+  {
+    "code": "V3-279",
+    "name": "Premium V3 09",
+    "description": "Postres y heladería · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-09/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-09"
+  },
+  {
+    "code": "V3-280",
+    "name": "Premium V3 10",
+    "description": "Postres y heladería · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Postres y heladería",
+    "layout_family": "V3-CAT-28",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-28-architecture-10/",
+    "category_name": "Postres y heladería",
+    "template_id": "category-28-architecture-10"
+  },
+  {
+    "code": "V3-281",
+    "name": "Premium V3 01",
+    "description": "Repuestos y accesorios automotrices · Una sola página · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-01/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-01"
+  },
+  {
+    "code": "V3-282",
+    "name": "Premium V3 02",
+    "description": "Repuestos y accesorios automotrices · Una sola página · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-02/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-02"
+  },
+  {
+    "code": "V3-283",
+    "name": "Premium V3 03",
+    "description": "Repuestos y accesorios automotrices · Una sola página · Navegación lateral",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-03/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-03"
+  },
+  {
+    "code": "V3-284",
+    "name": "Premium V3 04",
+    "description": "Repuestos y accesorios automotrices · Una sola página · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-04/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-04"
+  },
+  {
+    "code": "V3-285",
+    "name": "Premium V3 05",
+    "description": "Repuestos y accesorios automotrices · Una sola página · Navegación lateral",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-05/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-05"
+  },
+  {
+    "code": "V3-286",
+    "name": "Premium V3 06",
+    "description": "Repuestos y accesorios automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-06/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-06"
+  },
+  {
+    "code": "V3-287",
+    "name": "Premium V3 07",
+    "description": "Repuestos y accesorios automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-07/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-07"
+  },
+  {
+    "code": "V3-288",
+    "name": "Premium V3 08",
+    "description": "Repuestos y accesorios automotrices · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-08/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-08"
+  },
+  {
+    "code": "V3-289",
+    "name": "Premium V3 09",
+    "description": "Repuestos y accesorios automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-09/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-09"
+  },
+  {
+    "code": "V3-290",
+    "name": "Premium V3 10",
+    "description": "Repuestos y accesorios automotrices · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Repuestos y accesorios automotrices",
+    "layout_family": "V3-CAT-29",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-29-architecture-10/",
+    "category_name": "Repuestos y accesorios automotrices",
+    "template_id": "category-29-architecture-10"
+  },
+  {
+    "code": "V3-291",
+    "name": "Premium V3 01",
+    "description": "Restaurantes · Una sola página · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-01/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-01"
+  },
+  {
+    "code": "V3-292",
+    "name": "Premium V3 02",
+    "description": "Restaurantes · Una sola página · Navegación lateral",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-02/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-02"
+  },
+  {
+    "code": "V3-293",
+    "name": "Premium V3 03",
+    "description": "Restaurantes · Una sola página · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-03/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-03"
+  },
+  {
+    "code": "V3-294",
+    "name": "Premium V3 04",
+    "description": "Restaurantes · Una sola página · Navegación lateral",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-04/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-04"
+  },
+  {
+    "code": "V3-295",
+    "name": "Premium V3 05",
+    "description": "Restaurantes · Una sola página · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-05/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-05"
+  },
+  {
+    "code": "V3-296",
+    "name": "Premium V3 06",
+    "description": "Restaurantes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-06/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-06"
+  },
+  {
+    "code": "V3-297",
+    "name": "Premium V3 07",
+    "description": "Restaurantes · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-07/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-07"
+  },
+  {
+    "code": "V3-298",
+    "name": "Premium V3 08",
+    "description": "Restaurantes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-08/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-08"
+  },
+  {
+    "code": "V3-299",
+    "name": "Premium V3 09",
+    "description": "Restaurantes · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-09/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-09"
+  },
+  {
+    "code": "V3-300",
+    "name": "Premium V3 10",
+    "description": "Restaurantes · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Restaurantes",
+    "layout_family": "V3-CAT-30",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-30-architecture-10/",
+    "category_name": "Restaurantes",
+    "template_id": "category-30-architecture-10"
+  },
+  {
+    "code": "V3-301",
+    "name": "Premium V3 01",
+    "description": "Ropa, calzado y accesorios · Una sola página · Navegación lateral",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-01/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-01"
+  },
+  {
+    "code": "V3-302",
+    "name": "Premium V3 02",
+    "description": "Ropa, calzado y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-02/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-02"
+  },
+  {
+    "code": "V3-303",
+    "name": "Premium V3 03",
+    "description": "Ropa, calzado y accesorios · Una sola página · Navegación lateral",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-03/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-03"
+  },
+  {
+    "code": "V3-304",
+    "name": "Premium V3 04",
+    "description": "Ropa, calzado y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-04/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-04"
+  },
+  {
+    "code": "V3-305",
+    "name": "Premium V3 05",
+    "description": "Ropa, calzado y accesorios · Una sola página · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-05/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-05"
+  },
+  {
+    "code": "V3-306",
+    "name": "Premium V3 06",
+    "description": "Ropa, calzado y accesorios · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-06/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-06"
+  },
+  {
+    "code": "V3-307",
+    "name": "Premium V3 07",
+    "description": "Ropa, calzado y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-07/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-07"
+  },
+  {
+    "code": "V3-308",
+    "name": "Premium V3 08",
+    "description": "Ropa, calzado y accesorios · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-08/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-08"
+  },
+  {
+    "code": "V3-309",
+    "name": "Premium V3 09",
+    "description": "Ropa, calzado y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-09/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-09"
+  },
+  {
+    "code": "V3-310",
+    "name": "Premium V3 10",
+    "description": "Ropa, calzado y accesorios · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Ropa, calzado y accesorios",
+    "layout_family": "V3-CAT-31",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-31-architecture-10/",
+    "category_name": "Ropa, calzado y accesorios",
+    "template_id": "category-31-architecture-10"
+  },
+  {
+    "code": "V3-311",
+    "name": "Premium V3 01",
+    "description": "Talleres automotrices · Una sola página · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-01/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-01"
+  },
+  {
+    "code": "V3-312",
+    "name": "Premium V3 02",
+    "description": "Talleres automotrices · Una sola página · Navegación lateral",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-02/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-02"
+  },
+  {
+    "code": "V3-313",
+    "name": "Premium V3 03",
+    "description": "Talleres automotrices · Una sola página · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-03/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-03"
+  },
+  {
+    "code": "V3-314",
+    "name": "Premium V3 04",
+    "description": "Talleres automotrices · Una sola página · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-04/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-04"
+  },
+  {
+    "code": "V3-315",
+    "name": "Premium V3 05",
+    "description": "Talleres automotrices · Una sola página · Navegación lateral",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-05/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-05"
+  },
+  {
+    "code": "V3-316",
+    "name": "Premium V3 06",
+    "description": "Talleres automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-06/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-06"
+  },
+  {
+    "code": "V3-317",
+    "name": "Premium V3 07",
+    "description": "Talleres automotrices · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-07/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-07"
+  },
+  {
+    "code": "V3-318",
+    "name": "Premium V3 08",
+    "description": "Talleres automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-08/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-08"
+  },
+  {
+    "code": "V3-319",
+    "name": "Premium V3 09",
+    "description": "Talleres automotrices · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-09/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-09"
+  },
+  {
+    "code": "V3-320",
+    "name": "Premium V3 10",
+    "description": "Talleres automotrices · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Talleres automotrices",
+    "layout_family": "V3-CAT-32",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-32-architecture-10/",
+    "category_name": "Talleres automotrices",
+    "template_id": "category-32-architecture-10"
+  },
+  {
+    "code": "V3-321",
+    "name": "Premium V3 01",
+    "description": "Tecnología y computación · Una sola página · Navegación lateral",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-01/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-01"
+  },
+  {
+    "code": "V3-322",
+    "name": "Premium V3 02",
+    "description": "Tecnología y computación · Una sola página · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-02/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-02"
+  },
+  {
+    "code": "V3-323",
+    "name": "Premium V3 03",
+    "description": "Tecnología y computación · Una sola página · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-03/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-03"
+  },
+  {
+    "code": "V3-324",
+    "name": "Premium V3 04",
+    "description": "Tecnología y computación · Una sola página · Navegación lateral",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-04/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-04"
+  },
+  {
+    "code": "V3-325",
+    "name": "Premium V3 05",
+    "description": "Tecnología y computación · Una sola página · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "SCROLL"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-05/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-05"
+  },
+  {
+    "code": "V3-326",
+    "name": "Premium V3 06",
+    "description": "Tecnología y computación · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-06/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-06"
+  },
+  {
+    "code": "V3-327",
+    "name": "Premium V3 07",
+    "description": "Tecnología y computación · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-07/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-07"
+  },
+  {
+    "code": "V3-328",
+    "name": "Premium V3 08",
+    "description": "Tecnología y computación · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-08/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-08"
+  },
+  {
+    "code": "V3-329",
+    "name": "Premium V3 09",
+    "description": "Tecnología y computación · Sitio con páginas interiores · Navegación lateral",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-09/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-09"
+  },
+  {
+    "code": "V3-330",
+    "name": "Premium V3 10",
+    "description": "Tecnología y computación · Sitio con páginas interiores · Navegación superior",
+    "business_fit": "Tecnología y computación",
+    "layout_family": "V3-CAT-33",
+    "config": {
+      "design_system": "MULTIPAGE"
+    },
+    "active": true,
+    "preview_href": "../premium-v3/showcase/category-33-architecture-10/",
+    "category_name": "Tecnología y computación",
+    "template_id": "category-33-architecture-10"
+  }
+]

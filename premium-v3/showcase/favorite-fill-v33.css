@@ -1,0 +1,3 @@
+/* Un favorito seleccionado rellena el corazón; sin seleccionar permanece hueco. */
+.premium-product-card .premium-heart svg{width:27px;height:27px;display:block;fill:none;stroke:currentColor}
+.premium-product-card .premium-heart.is-liked svg,.premium-product-card .premium-heart[aria-pressed="true"] svg{fill:#d94b55;stroke:#d94b55}
