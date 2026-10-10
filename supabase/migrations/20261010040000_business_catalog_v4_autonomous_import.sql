@@ -105,7 +105,7 @@ begin
         case when p_publish then v_active else (select active from public.products where id=v_product_id) end);
       v_updated:=v_updated+1;
     end if;
-    if v_variant is not null and (p_publish or v_new_product) then
+    if v_variant is not null and (p_publish or v_new_product or exists(select 1 from public.products where id=v_product_id and active=false)) then
       select id into v_variant_id from public.product_variants
        where product_id=v_product_id and lower(btrim(name))=lower(v_variant)
        order by id limit 1;
