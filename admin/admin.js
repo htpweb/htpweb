@@ -404,7 +404,7 @@ function organizeLocalAdminNavigation(){
 
 function configureNavigation() {
   const allowed = new Set(roleSections[state.role]);
-  const masterLocalWorkspaceSections = new Set(["catalog","schedules","menuimport"]);
+  const masterLocalWorkspaceSections = new Set(["schedules","menuimport"]);
   const masterDeliveryWorkspaceSections = new Set(["coverage"]);
 
   document.querySelectorAll("#nav button").forEach(btn => {
