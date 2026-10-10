@@ -59,6 +59,13 @@ begin
     if v_image is not null and v_image !~* '^https://[^[:space:]]+$' then
       raise exception 'La imagen de % debe ser una URL HTTPS cargada en Storage',v_sku;
     end if;
+    if coalesce(p_publish,false) and (
+       nullif(btrim(row_item->>'option_group'),'') is not null
+       or nullif(btrim(row_item->>'options'),'') is not null
+       or lower(coalesce(row_item->>'import_status','')) ~ 'revisar|pendiente|confirmar'
+    ) then
+      raise exception 'SKU % necesita opciones o validación comercial antes de publicarse',v_sku;
+    end if;
     v_active:=coalesce(p_publish,false) and v_image is not null;
     select count(*) into v_matches
       from public.products where business_id=p_business_id and lower(btrim(sku))=lower(v_sku);
