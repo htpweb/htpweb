@@ -100,14 +100,15 @@ begin
     elsif not (v_sku=any(v_seen)) then
       perform public.save_business_product(p_business_id,v_product_id,v_category_id,v_name,v_description,v_price,
         coalesce(v_image,(select image_url from public.products where id=v_product_id)),0,
-        v_active and coalesce(v_image,(select image_url from public.products where id=v_product_id)) is not null);
+        case when p_publish then v_active else (select active from public.products where id=v_product_id) end);
       v_updated:=v_updated+1;
     end if;
     if v_variant is not null then
       select id into v_variant_id from public.product_variants
        where product_id=v_product_id and lower(btrim(name))=lower(v_variant)
        order by id limit 1;
-      perform public.save_product_variant(v_product_id,v_variant_id,v_variant,v_price,0,v_active);
+      perform public.save_product_variant(v_product_id,v_variant_id,v_variant,v_price,0,
+        case when p_publish then v_active else coalesce((select active from public.product_variants where id=v_variant_id),false) end);
       v_variants:=v_variants+1;
     end if;
     if not (v_sku=any(v_seen)) then v_seen:=array_append(v_seen,v_sku); end if;
