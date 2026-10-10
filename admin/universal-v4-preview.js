@@ -60,8 +60,8 @@
       save.disabled=true;
       output.textContent="Guardando los productos como borradores, sin publicarlos...";
       try{
-        if(!window.supabaseClient)throw new Error("No hay conexión a Supabase.");
-        const res=await window.supabaseClient.rpc("import_business_catalog_v4_rows",{
+        if(!supabaseClient)throw new Error("No hay conexión a Supabase.");
+        const res=await supabaseClient.rpc("import_business_catalog_v4_rows",{
           p_business_id:target.value,p_rows:mapped,p_publish:false
         });
         if(res.error)throw res.error;
