@@ -1899,6 +1899,16 @@
           <input id="universalV4BatchConfirm" autocomplete="off" placeholder="IMPORTAR BORRADORES">
           <button id="universalV4BatchImport" class="btn-primary" type="button">Importar negocios vinculados como borradores</button>
           <div id="universalV4BatchReport" aria-live="polite" class="muted"></div>
+          <details style="margin-top:14px"><summary><strong>Conciliar un producto antiguo sin SKU</strong></summary>
+            <p class="muted">Para evitar duplicados, asocia manualmente el SKU V4 a un producto existente del negocio seleccionado. No cambia el precio, la fotografía ni el estado publicado.</p>
+            <button id="v4LoadLegacyProducts" type="button" class="btn-muted">Buscar productos antiguos sin SKU</button>
+            <label for="v4ExistingProduct">Producto existente</label>
+            <select id="v4ExistingProduct"><option value="">Selecciona negocio y pulsa buscar</option></select>
+            <label for="v4ExistingSku">SKU de la matriz V4</label>
+            <input id="v4ExistingSku" autocomplete="off" placeholder="Código SKU exacto">
+            <button id="v4AssignExistingSku" type="button" class="btn-muted">Vincular SKU al producto existente</button>
+            <div id="v4LegacyStatus" role="status" class="muted"></div>
+          </details>
         </div>
       </div>
       
