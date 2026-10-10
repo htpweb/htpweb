@@ -24,6 +24,9 @@ declare
   v_updated integer := 0;
   v_variants integer := 0;
   v_seen text[] := '{}';
+  v_seen_variants text[] := '{}';
+  v_row_key text;
+  v_existing_image text;
   v_active boolean;
 begin
   if p_business_id is null or not exists (select 1 from public.businesses where id=p_business_id) then
@@ -45,9 +48,11 @@ begin
     if v_sku is null or length(v_sku)>80 or v_name is null or length(v_name)>180 then
       raise exception 'SKU o nombre inválido';
     end if;
-    if v_sku=any(v_seen) and v_variant is null then
-      raise exception 'SKU duplicado sin variante: %',v_sku;
+    v_row_key:=lower(v_sku)||'|'||lower(coalesce(v_variant,''));
+    if v_row_key=any(v_seen_variants) then
+      raise exception 'Fila SKU + variante duplicada: % / %',v_sku,coalesce(v_variant,'(base)');
     end if;
+    v_seen_variants:=array_append(v_seen_variants,v_row_key);
     begin
       v_price:=(row_item->>'price')::numeric;
     exception when others then
@@ -66,7 +71,9 @@ begin
     ) then
       raise exception 'SKU % necesita opciones o validación comercial antes de publicarse',v_sku;
     end if;
-    v_active:=coalesce(p_publish,false) and v_image is not null;
+    if v_sku=any(v_seen) and v_variant is null then
+      raise exception 'Fila base repetida para SKU: %',v_sku;
+    end if;
     select count(*) into v_matches
       from public.products where business_id=p_business_id and lower(btrim(sku))=lower(v_sku);
     select id into v_product_id from public.products
@@ -84,6 +91,8 @@ begin
         v_category_id:=public.save_local_category(p_business_id,null,v_category,null,null,0,false);
       end if;
     end if;
+    select image_url into v_existing_image from public.products where id=v_product_id;
+    v_active:=coalesce(p_publish,false) and coalesce(v_image,v_existing_image) is not null;
     if v_product_id is null then
       v_product_id:=public.save_business_product(p_business_id,null,v_category_id,v_name,v_description,v_price,v_image,0,v_active);
       update public.products set sku=v_sku where id=v_product_id and business_id=p_business_id;
@@ -101,7 +110,7 @@ begin
       perform public.save_product_variant(v_product_id,v_variant_id,v_variant,v_price,0,v_active);
       v_variants:=v_variants+1;
     end if;
-    v_seen:=array_append(v_seen,v_sku);
+    if not (v_sku=any(v_seen)) then v_seen:=array_append(v_seen,v_sku); end if;
   end loop;
   return jsonb_build_object('business_id',p_business_id,'created',v_created,'updated',v_updated,'variants_touched',v_variants,'rows',jsonb_array_length(p_rows),'requested_publish',p_publish);
 end
