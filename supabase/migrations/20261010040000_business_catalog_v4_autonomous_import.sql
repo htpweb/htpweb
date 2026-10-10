@@ -61,64 +61,8 @@ begin
     if v_price is null or v_price<0 or v_price>1000000 then
       raise exception 'Precio ausente o fuera de rango: %',v_sku;
     end if;
-    if v_image is not null and v_image !~* '^https://[^[:space:]]+
-      raise exception 'La imagen de % debe ser una URL HTTPS cargada en Storage',v_sku;
-    end if;
-    if coalesce(p_publish,false) and (
-       nullif(btrim(row_item->>'option_group'),'') is not null
-       or nullif(btrim(row_item->>'options'),'') is not null
-       or lower(coalesce(row_item->>'import_status','')) ~ 'revisar|pendiente|confirmar'
-    ) then
-      raise exception 'SKU % necesita opciones o validación comercial antes de publicarse',v_sku;
-    end if;
-    if v_sku=any(v_seen) and v_variant is null then
-      raise exception 'Fila base repetida para SKU: %',v_sku;
-    end if;
-    select count(*) into v_matches
-      from public.products where business_id=p_business_id and lower(btrim(sku))=lower(v_sku);
-    select id into v_product_id from public.products
-      where business_id=p_business_id and lower(btrim(sku))=lower(v_sku)
-      order by created_at,id limit 1;
-    if v_matches>1 then
-      raise exception 'SKU existente duplicado en negocio: %',v_sku;
-    end if;
-    v_category_id:=null;
-    if v_category is not null then
-      select id into v_category_id from public.categories
-        where local_id=p_business_id and lower(btrim(name))=lower(v_category)
-        order by id limit 1;
-      if v_category_id is null then
-        v_category_id:=public.save_local_category(p_business_id,null,v_category,null,null,0,coalesce(p_publish,false));
-      end if;
-    end if;
-    select image_url into v_existing_image from public.products where id=v_product_id;
-    v_active:=coalesce(p_publish,false) and coalesce(v_image,v_existing_image) is not null;
-    if v_product_id is null then
-      v_product_id:=public.save_business_product(p_business_id,null,v_category_id,v_name,v_description,v_price,v_image,0,v_active);
-      update public.products set sku=v_sku where id=v_product_id and business_id=p_business_id;
-      v_created:=v_created+1;
-    elsif not (v_sku=any(v_seen)) then
-      perform public.save_business_product(p_business_id,v_product_id,v_category_id,v_name,v_description,v_price,
-        coalesce(v_image,(select image_url from public.products where id=v_product_id)),0,
-        v_active and coalesce(v_image,(select image_url from public.products where id=v_product_id)) is not null);
-      v_updated:=v_updated+1;
-    end if;
-    if v_variant is not null then
-      select id into v_variant_id from public.product_variants
-       where product_id=v_product_id and lower(btrim(name))=lower(v_variant)
-       order by id limit 1;
-      perform public.save_product_variant(v_product_id,v_variant_id,v_variant,v_price,0,v_active);
-      v_variants:=v_variants+1;
-    end if;
-    if not (v_sku=any(v_seen)) then v_seen:=array_append(v_seen,v_sku); end if;
-  end loop;
-  return jsonb_build_object('business_id',p_business_id,'created',v_created,'updated',v_updated,'variants_touched',v_variants,'rows',jsonb_array_length(p_rows),'requested_publish',p_publish);
-end
-$fn$;
-revoke all on function public.import_business_catalog_v4_rows(uuid,jsonb,boolean) from public;
-grant execute on function public.import_business_catalog_v4_rows(uuid,jsonb,boolean) to authenticated;
- then
-      raise exception 'La imagen de % debe ser una URL HTTPS cargada en Storage',v_sku;
+    if v_image is not null and v_image !~* '^https://[^[:space:]]+$' then
+      raise exception 'Imagen HTTPS requerida para %',v_sku;
     end if;
     if coalesce(p_publish,false) and (
        nullif(btrim(row_item->>'option_group'),'') is not null
