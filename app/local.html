@@ -10,10 +10,10 @@
 <script src="../config/auth.js?v=20261004-profiles2"></script>
 <script src="../config/delivery-context.js?v=20261002-theme3"></script>
 <script src="../config/cart.js"></script>
-<script src="../config/compact-menu.js?v=20261007-compact1"></script>
+
 <script src="../config/ads.js?v=20261002-mobile1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-stickyanchor1">
-<link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
+
 <script src="../config/business-domain.js?v=20261007-business1"></script>
 <script src="../assets/business-terminology.js?v=20261007-business1"></script>
 </head>
@@ -212,51 +212,11 @@ function compactCartSummary() {
   return { count, subtotal };
 }
 
+// La ficha de DELIVERY reutiliza el catálogo de tarjetas, sin visores paralelos.
 function applyCompactMenuIfNeeded() {
-  const previewCompact = menuPreview === "COMPACT";
-  const compactActive = previewCompact || String(businessActual?.menu_design || "CURRENT").toUpperCase() === "COMPACT";
-  const root = $("compactMenuMount");
-  if (!root) return;
-
-  if (!compactActive) {
-    root.classList.add("hidden");
-    return;
-  }
-
-  $("localCard")?.classList.add("hidden");
-  $("localOrderStatusNotice")?.classList.add("hidden");
-  $("promotionsCard")?.classList.add("hidden");
-  $("productsCard")?.classList.add("hidden");
-  root.classList.remove("hidden");
-
-  if (compactMenuController?.destroy) compactMenuController.destroy();
-  compactMenuController = window.HTPWEBCompactMenu?.mount({
-    root,
-    business: businessActual,
-    products,
-    variants,
-    categories,
-    inventory,
-    availability,
-    preview: previewCompact,
-    cart: {
-      canOrder: availability?.is_open !== false,
-      getQuantity(product, variant) {
-        return cartQuantityForProduct(product.id, variant?.id || null);
-      },
-      changeQuantity(product, variant, delta) {
-        return changeProductQuantity(product.id, delta, variant?.id || null);
-      },
-      getSummary: compactCartSummary,
-      onViewCart() {
-        location.href = urlDelivery("carrito.html");
-      }
-    },
-    onError(messageText) {
-      $("error").textContent = messageText || "No se pudo actualizar el pedido.";
-      $("error").classList.remove("hidden");
-    }
-  }) || null;
+  const root=$("compactMenuMount");
+  if(root)root.classList.add("hidden");
+  $("productsCard")?.classList.remove("hidden");
 }
 
 function availabilityMessage() {
@@ -577,7 +537,7 @@ window.addEventListener("htpweb:cart", () => {
 init();
 </script>
 <script src="../config/media-viewer.js?v=202609271312"></script>
-<script src="../config/menu-viewer.js?v=20261002-closed1"></script>
+
 <script src="../config/promotions.js?v=20261002-promo-filter1"></script>
 </body>
 </html>
