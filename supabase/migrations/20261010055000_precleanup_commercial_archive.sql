@@ -1,0 +1,11 @@
+create schema if not exists htpweb_backup_20261010; create table if not exists htpweb_backup_20261010.analytics_events as select * from public.analytics_events;
+create table if not exists htpweb_backup_20261010.local_menu_page_products as select * from public.local_menu_page_products;
+create table if not exists htpweb_backup_20261010.local_promotion_items as select * from public.local_promotion_items;
+create table if not exists htpweb_backup_20261010.local_promotions as select * from public.local_promotions;
+create table if not exists htpweb_backup_20261010.order_driver_assignments as select * from public.order_driver_assignments;
+create table if not exists htpweb_backup_20261010.order_items as select * from public.order_items;
+create table if not exists htpweb_backup_20261010.order_locals as select * from public.order_locals;
+create table if not exists htpweb_backup_20261010.order_status_history as select * from public.order_status_history;
+create table if not exists htpweb_backup_20261010.orders as select * from public.orders;
+create table if not exists htpweb_backup_20261010.product_variants as select * from public.product_variants;
+create table if not exists htpweb_backup_20261010.products as select * from public.products; revoke all on schema htpweb_backup_20261010 from public,anon,authenticated;
