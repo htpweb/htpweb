@@ -1891,6 +1891,15 @@
         <div class="form-grid"><div><label>Matriz universal V4 (.xlsx)</label><input id="universalV4File" type="file" accept=".xlsx,.xls"></div><div><label>Negocio dentro del Excel</label><select id="universalV4Business"><option value="">Primero selecciona la matriz</option></select></div></div>
         <div class="form-grid"><div><label>Carpeta de fotografías del negocio</label><input id="universalV4Photos" type="file" webkitdirectory directory multiple accept=".png,.jpg,.jpeg,.webp"><small class="muted">Selecciona la carpeta productos; la comparación usa los nombres reales, no el orden de los archivos.</small></div></div><div class="row" style="margin-top:12px"><button class="btn-muted" id="universalV4Check" type="button">Validar matriz</button><button class="btn-primary" id="universalV4ImportDraft" type="button" disabled>Guardar borradores V4</button><div style="width:100%;margin-top:8px"><label for="universalV4ConfirmBusiness">Para confirmar el destino, escribe el nombre exacto del negocio seleccionado en el Catálogo</label><input id="universalV4ConfirmBusiness" type="text" autocomplete="off" placeholder="Nombre del negocio de destino"></div></div>
         <div id="universalV4Result" class="muted" aria-live="polite" style="margin-top:12px">Sin validar. Las fotos se asociarán por nombre exacto de archivo y código de negocio.</div>
+        <div id="universalV4BatchPanel" style="margin-top:16px" hidden>
+          <h3>Importación masiva de negocios V4 (borradores)</h3>
+          <p class="muted">Verifica cada correspondencia de negocio Excel → negocio Supabase. Solo las asociaciones exactas se sugieren; los demás destinos se seleccionan manualmente. Ningún producto se publica automáticamente.</p>
+          <div id="universalV4Mappings" class="table-wrap"></div>
+          <label for="universalV4BatchConfirm">Confirmación: escribe IMPORTAR BORRADORES</label>
+          <input id="universalV4BatchConfirm" autocomplete="off" placeholder="IMPORTAR BORRADORES">
+          <button id="universalV4BatchImport" class="btn-primary" type="button">Importar negocios vinculados como borradores</button>
+          <div id="universalV4BatchReport" aria-live="polite" class="muted"></div>
+        </div>
       </div>
       
       <div class="card">
