@@ -2,7 +2,7 @@
   "use strict";
   function $(id){return document.getElementById(id);}
   function boot(){
-    const file=$("universalV4File"),btn=$("universalV4Check"),business=$("universalV4Business"),output=$("universalV4Result");
+    const file=$("universalV4File"),photos=$("universalV4Photos"),btn=$("universalV4Check"),business=$("universalV4Business"),output=$("universalV4Result");
     if(!file||!btn||!business||!output)return;
     let result=null;
     const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;":"&quot;","'":"&#39;"}[c]));
@@ -10,9 +10,25 @@
       if(!result)return;
       const chosen=result.businesses.find(b=>b.name===business.value);
       const issues=chosen?result.issues.filter(x=>x.business===chosen.name):result.issues;
-      const sample=issues.slice(0,10);
+      const index=new Map();
+      for(const f of (photos?.files||[])){
+        const name=f.name.toLocaleLowerCase("es");
+        if(!index.has(name))index.set(name,[]);
+        index.get(name).push(f.webkitRelativePath||f.name);
+      }
+      let matched=0,missing=0,ambiguous=0;
+      if(chosen&&photos?.files.length){
+        for(const product of chosen.products){
+          if(!product.imageFile)continue;
+          const found=index.get(product.imageFile.toLocaleLowerCase("es"))||[];
+          if(found.length===1)matched++;
+          else if(found.length>1){ambiguous++;issues.push({line:product.line,message:"Imagen ambigua: "+product.imageFile});}
+          else {missing++;issues.push({line:product.line,message:"Foto no encontrada: "+product.imageFile});}
+        }
+      }
+      const sample=issues.slice(0,12);
       output.innerHTML='<strong>'+result.businesses.length+' negocios · '+result.totalRows+' filas · '+result.issues.length+' observaciones</strong>'+
-        (chosen?'<p>'+escape(chosen.name)+': '+chosen.uniqueProducts+' SKU distintos y '+chosen.rows+' filas.</p>':'')+
+        (chosen?'<p>'+escape(chosen.name)+': '+chosen.uniqueProducts+' SKU distintos y '+chosen.rows+' filas.</p><p>Imágenes coincidentes: '+matched+' · faltantes: '+missing+' · ambiguas: '+ambiguous+'</p>':'')+
         '<p>Vista previa: no se han cargado fotografías ni guardado productos.</p>'+
         (sample.length?'<ul>'+sample.map(x=>'<li>Fila '+x.line+': '+escape(x.message)+'</li>').join("")+'</ul>':'<p>No se detectaron incidencias en esta vista.</p>');
     }
@@ -27,6 +43,7 @@
       finally{btn.disabled=false;}
     };
     business.onchange=show;
+    if(photos)photos.onchange=show;
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
