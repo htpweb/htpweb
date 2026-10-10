@@ -60,8 +60,11 @@ begin
       raise exception 'La imagen de % debe ser una URL HTTPS cargada en Storage',v_sku;
     end if;
     v_active:=coalesce(p_publish,false) and v_image is not null;
-    select count(*),min(id) into v_matches,v_product_id
+    select count(*) into v_matches
       from public.products where business_id=p_business_id and lower(btrim(sku))=lower(v_sku);
+    select id into v_product_id from public.products
+      where business_id=p_business_id and lower(btrim(sku))=lower(v_sku)
+      order by created_at,id limit 1;
     if v_matches>1 then
       raise exception 'SKU existente duplicado en negocio: %',v_sku;
     end if;
