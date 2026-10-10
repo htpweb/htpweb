@@ -2,12 +2,13 @@
   "use strict";
   function $(id){return document.getElementById(id);}
   function boot(){
-    const file=$("universalV4File"),photos=$("universalV4Photos"),btn=$("universalV4Check"),business=$("universalV4Business"),output=$("universalV4Result");
+    const file=$("universalV4File"),photos=$("universalV4Photos"),btn=$("universalV4Check"),business=$("universalV4Business"),output=$("universalV4Result"),save=$("universalV4ImportDraft"),confirm=$("universalV4ConfirmBusiness"),target=$("catalogLocal");
     if(!file||!btn||!business||!output)return;
     let result=null;
     const escape=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
     function show(){
       if(!result)return;
+      if(save)save.disabled=!business.value;
       const chosen=result.businesses.find(b=>b.name===business.value);
       const issues=chosen?result.issues.filter(x=>x.business===chosen.name):result.issues;
       const index=new Map();
@@ -41,6 +42,33 @@
         show();
       }catch(e){output.textContent="Error de validación: "+(e?.message||String(e));}
       finally{btn.disabled=false;}
+    };
+    if(save)save.onclick=async()=>{
+      if(!result||!business.value||!target?.value||!confirm) {output.textContent="Selecciona negocio de origen y destino.";return;}
+      const selectedName=target.options[target.selectedIndex]?.textContent?.trim()||"";
+      if(confirm.value.trim()!==selectedName){output.textContent="Escribe exactamente el nombre del negocio de destino para confirmar el ID.";return;}
+      const chosen=result.businesses.find(x=>x.name===business.value);
+      if(!chosen||!chosen.products.length)return;
+      const errors=result.issues.filter(x=>x.business===chosen.name&&x.type==="ERROR");
+      if(errors.length){output.textContent="No se importó: resuelve primero "+errors.length+" errores de la matriz.";return;}
+      const mapped=chosen.products.map(item=>({
+        sku:item.sku,name:item.name,category:item.category,variant:item.variant||null,
+        description:item.description||null,price:item.price,image_url:null,
+        option_group:item.optionGroup||null,options:item.optionValues||null,
+        import_status:item.importStatus||null
+      }));
+      save.disabled=true;
+      output.textContent="Guardando los productos como borradores, sin publicarlos...";
+      try{
+        if(!window.supabaseClient)throw new Error("No hay conexión a Supabase.");
+        const res=await window.supabaseClient.rpc("import_business_catalog_v4_rows",{
+          p_business_id:target.value,p_rows:mapped,p_publish:false
+        });
+        if(res.error)throw res.error;
+        output.textContent="Borradores guardados para "+selectedName+": "+JSON.stringify(res.data)+". No se publicaron productos nuevos ni fotografías.";
+      }catch(error){
+        output.textContent="No se guardaron borradores: "+(error.message||String(error));
+      }finally{save.disabled=false;}
     };
     business.onchange=show;
     if(photos)photos.onchange=show;
