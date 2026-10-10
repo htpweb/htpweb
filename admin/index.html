@@ -1385,6 +1385,18 @@
     <section id="section-categoriesmaster" class="section"></section>
     <section id="section-zonesmaster" class="section"></section>
     <section id="section-localsmaster" class="section">
+      <div class="card master-only" id="v4CorporateMasterPanel">
+        <h2>Empresas y sucursales — MASTER</h2>
+        <p class="muted">Configura una empresa que agrupa negocios ya existentes sin duplicarlos. Sus pedidos, teléfonos y productos siguen asociados a cada sucursal.</p>
+        <div class="form-grid">
+          <div><label>Nombre de la empresa</label><input id="v4CompanyName" placeholder="Abracadabra"></div>
+          <div><label>Identificador corporativo</label><input id="v4CompanySlug" placeholder="abracadabra"></div>
+        </div>
+        <div><label>Sucursales existentes (selección múltiple)</label><select id="v4BranchIds" multiple size="6" style="width:100%"></select></div>
+        <button type="button" id="v4LoadBranches" class="btn-muted">Actualizar negocios</button>
+        <button type="button" id="v4SaveCorporate" class="btn-primary">Guardar empresa y vincular sucursales</button>
+        <div id="v4CorporateMessage" class="muted" role="status"></div>
+      </div>
       <div class="card">
         <div class="row between">
           <div>
@@ -2758,6 +2770,7 @@
 <script src="../config/compact-menu.js?v=20261007-compact1"></script>
 <script src="../config/universal-v4-import.js"></script>
 <script src="./universal-v4-preview.js?v=20261010-bulk2"></script>
+<script src="./business-groups-master.js?v=20261010-1"></script>
 <script src="./admin.js?v=20261010-v4master1"></script>
 <script src="./business-page-editor.js?v=20261007-business4"></script>
 <script src="./business-subscriptions.js?v=20261007-business4"></script>
