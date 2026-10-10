@@ -18,7 +18,7 @@ create or replace function public.my_business_group_branches()
 returns table(group_id uuid,company_name text,business_id uuid,branch_name text,branch_label text)
 language sql security definer set search_path='' stable
 as $fn$
- select g.id,g.name,b.id,l.name,b.branch_label
+ select g.id,g.name,b.business_id,l.name,b.branch_label
  from public.business_groups g
  join public.business_group_branches b on b.group_id=g.id
  join public.locals l on l.id=b.business_id
