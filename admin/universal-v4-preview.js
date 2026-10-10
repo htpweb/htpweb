@@ -76,8 +76,19 @@
       try {
         for(const pair of pairs){
           batchReport.textContent="Procesando "+(done+failed+1)+"/"+pairs.length+": "+pair.source.name;
+          const rows=toRows(pair.source);
+          const preflight=await supabaseClient.rpc("preflight_business_catalog_v4",{
+            p_business_id:pair.id,p_rows:rows
+          });
+          if(preflight.error){failed++;failures.push(pair.source.name+": prevalidación: "+preflight.error.message);continue;}
+          if(!preflight.data?.can_import){
+            failed++;
+            const issues=(preflight.data?.issues||[]).slice(0,3).map(x=>x.reason+" fila "+x.row).join(", ");
+            failures.push(pair.source.name+": revisar registros "+issues);
+            continue;
+          }
           const {data,error}=await supabaseClient.rpc("import_business_catalog_v4_rows",{
-            p_business_id:pair.id,p_rows:toRows(pair.source),p_publish:false
+            p_business_id:pair.id,p_rows:rows,p_publish:false
           });
           if(error){failed++;failures.push(pair.source.name+": "+error.message);}
           else done++;
@@ -150,6 +161,13 @@
       output.textContent="Guardando los productos como borradores, sin publicarlos...";
       try{
         if(!supabaseClient)throw new Error("No hay conexión a Supabase.");
+        const check=await supabaseClient.rpc("preflight_business_catalog_v4",{
+          p_business_id:target.value,p_rows:mapped
+        });
+        if(check.error)throw check.error;
+        if(!check.data?.can_import)throw new Error(
+          "Prevalidación detectó conflictos: "+JSON.stringify((check.data?.issues||[]).slice(0,8))
+        );
         const res=await supabaseClient.rpc("import_business_catalog_v4_rows",{
           p_business_id:target.value,p_rows:mapped,p_publish:false
         });
