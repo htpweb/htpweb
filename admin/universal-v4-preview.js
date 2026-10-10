@@ -87,6 +87,40 @@
         batchReport.textContent="Proceso interrumpido: "+(error.message||String(error))+". Completados: "+done+". Confirma el estado antes de reintentar.";
       }finally{batchButton.disabled=false;}
     };
+
+    const legacyLoad=$("v4LoadLegacyProducts"),legacySelect=$("v4ExistingProduct"),
+      legacySku=$("v4ExistingSku"),legacyAssign=$("v4AssignExistingSku"),legacyStatus=$("v4LegacyStatus");
+    if(legacyLoad)legacyLoad.onclick=async()=>{
+      if(!target?.value){legacyStatus.textContent="Selecciona primero el negocio del catálogo.";return;}
+      legacyLoad.disabled=true;legacyStatus.textContent="Consultando productos antiguos...";
+      try{
+        const {data,error}=await supabaseClient.from("business_products")
+          .select("id,name,sku,business_id").eq("business_id",target.value).order("name").limit(2000);
+        if(error)throw error;
+        const older=(data||[]).filter(x=>!String(x.sku||"").trim());
+        legacySelect.innerHTML='<option value="">Selecciona producto antiguo</option>'+
+          older.map(x=>'<option value="'+escape(x.id)+'">'+escape(x.name)+'</option>').join("");
+        legacyStatus.textContent=older.length+" productos de este negocio sin SKU. Selecciona la ficha real que corresponda al código V4.";
+      }catch(e){legacyStatus.textContent="No se pudo consultar: "+(e.message||String(e));}
+      finally{legacyLoad.disabled=false;}
+    };
+    if(legacyAssign)legacyAssign.onclick=async()=>{
+      if(!target?.value||!legacySelect?.value||!legacySku?.value.trim()){
+        legacyStatus.textContent="Selecciona el negocio, el producto existente y el SKU.";return;
+      }
+      const productName=legacySelect.options[legacySelect.selectedIndex]?.textContent||"";
+      if(!window.confirm("Confirmar SKU "+legacySku.value.trim()+" para producto existente «"+productName+"» del negocio elegido. ¿Continuar?"))return;
+      legacyAssign.disabled=true;
+      try{
+        const {data,error}=await supabaseClient.rpc("assign_existing_business_product_sku",{
+          p_business_id:target.value,p_product_id:legacySelect.value,p_sku:legacySku.value.trim()
+        });
+        if(error)throw error;
+        legacyStatus.textContent="SKU vinculado: "+data.sku+" → "+data.name+". No se creó otro producto.";
+        await legacyLoad.click();
+      }catch(e){legacyStatus.textContent="No se vinculó el SKU: "+(e.message||String(e));}
+      finally{legacyAssign.disabled=false;}
+    };
     btn.onclick=async()=>{
       if(!file.files.length){output.textContent="Selecciona un Excel V4.";return;}
       btn.disabled=true;output.textContent="Leyendo la matriz...";
