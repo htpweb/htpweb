@@ -1,0 +1,51 @@
+/* HTPWEB: lector seguro de la matriz universal V4.
+ * Solo previsualiza; no publica ni escribe en Supabase.
+ * Los nombres de imágenes se conservan literalmente para conciliación por negocio + SKU.
+ */
+(function(global){
+  "use strict";
+  const HEADERS=["Negocio","SKU producto","Categoría","Producto","Variante","Precio USD","Grupo de opciones","Cantidad a elegir","Opciones (|)","Permitir repetición","Es promoción","Días promo","Inicio promo","Fin promo","Código imagen","Archivo imagen","Estado imagen","Descripción","Fuente original","Observaciones","Estado importación","Código variante","Mínimo","Máximo","Máximo sabores distintos","Tiene acompañamientos","Tipo de selección","Mostrar selector de acompañamientos"];
+  const clean=x=>String(x??"").trim();
+  const parsePrice=v=>{
+    if(v===null||v===undefined||clean(v)==="")return null;
+    const n=typeof v==="number"?v:Number(clean(v).replace(/\s/g,"").replace(",","."));
+    return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null;
+  };
+  const isYes=v=>/^(s[ií]|yes|true|1)$/i.test(clean(v));
+  function parse(workbook){
+    if(!global.XLSX)throw new Error("No se cargó el lector Excel.");
+    const sheet=workbook.Sheets["MATRIZ V4"];
+    if(!sheet)throw new Error("Se requiere la hoja MATRIZ V4.");
+    const raw=global.XLSX.utils.sheet_to_json(sheet,{defval:null,raw:true});
+    const first=global.XLSX.utils.sheet_to_json(sheet,{header:1,range:0})[0]||[];
+    const absent=HEADERS.filter(h=>!first.includes(h));
+    if(absent.length)throw new Error("Faltan columnas V4: "+absent.join(", "));
+    const issues=[],groups=new Map(),keys=new Set();
+    raw.forEach((row,i)=>{
+      const line=i+2,business=clean(row["Negocio"]),sku=clean(row["SKU producto"]),name=clean(row["Producto"]);
+      if(!business||!sku||!name){issues.push({line,business,sku,type:"ERROR",message:"Falta negocio, SKU o nombre"});return;}
+      const key=business.toLocaleLowerCase("es")+"::"+sku;
+      // Una matriz puede tener varias filas para un SKU por variante: no fusionarlas ni eliminarlas.
+      if(!groups.has(business))groups.set(business,[]);
+      const price=parsePrice(row["Precio USD"]),file=clean(row["Archivo imagen"]),variant=clean(row["Variante"]);
+      const record={line,business,sku,name,variant,variantCode:clean(row["Código variante"]),category:clean(row["Categoría"]),price,imageFile:file,imageCode:clean(row["Código imagen"]),description:clean(row["Descripción"]),optionGroup:clean(row["Grupo de opciones"]),optionValues:clean(row["Opciones (|)"]),quantity:row["Cantidad a elegir"],minimum:row["Mínimo"],maximum:row["Máximo"],repeat:isYes(row["Permitir repetición"]),promotion:isYes(row["Es promoción"]),source:clean(row["Fuente original"]),notes:clean(row["Observaciones"]),importStatus:clean(row["Estado importación"]),raw:row};
+      groups.get(business).push(record);
+      if(price===null)issues.push({line,business,sku,type:"REVIEW",message:"Precio ausente o inválido: comprobar variantes antes de permitir compra"});
+      if(!file)issues.push({line,business,sku,type:"REVIEW",message:"Sin archivo de imagen declarado"});
+      if(!/^([^\\/]+)\.(png|jpe?g|webp)$/i.test(file)&&file)issues.push({line,business,sku,type:"REVIEW",message:"Archivo no es un nombre de foto válido"});
+      if(record.optionGroup&&!record.optionValues)issues.push({line,business,sku,type:"REVIEW",message:"Grupo de opciones sin valores; revisar hoja OPCIONES NO PRODUCTOS"});
+      if(keys.has(key+"::"+record.variantCode+"::"+variant)&&!record.optionGroup)issues.push({line,business,sku,type:"REVIEW",message:"Posible fila repetida, revisar antes de importar"});
+      keys.add(key+"::"+record.variantCode+"::"+variant);
+    });
+    const sheetNames=workbook.SheetNames;
+    const required=["MATRIZ V4","RESUMEN 40","REVISION","IMAGENES","PROMOCIONES","OPCIONES NO PRODUCTOS","CONTROL DE EXCLUSIONES","COMPONENTES ALMUERZO SAMBA"];
+    for(const name of required)if(!sheetNames.includes(name))issues.push({line:0,type:"REVIEW",message:"Hoja auxiliar ausente: "+name});
+    return {version:"V4",businesses:[...groups].map(([name,products])=>({name,rows:products.length,uniqueProducts:new Set(products.map(p=>p.sku)).size,products})),totalRows:raw.length,issues,sheets:sheetNames};
+  }
+  async function read(file){
+    if(!/\.xlsx?$/i.test(file.name))throw new Error("Selecciona una matriz Excel .xlsx");
+    const buffer=await file.arrayBuffer();
+    return parse(global.XLSX.read(buffer,{type:"array"}));
+  }
+  global.HTPWEBUniversalV4={parse,read,parsePrice};
+})(window);
