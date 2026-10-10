@@ -33,6 +33,60 @@
         '<p>Vista previa: no se han cargado fotografías ni guardado productos.</p>'+
         (sample.length?'<ul>'+sample.map(x=>'<li>Fila '+x.line+': '+escape(x.message)+'</li>').join("")+'</ul>':'<p>No se detectaron incidencias en esta vista.</p>');
     }
+
+    const batchPanel=$("universalV4BatchPanel"),batchTable=$("universalV4Mappings"),batchButton=$("universalV4BatchImport"),batchConfirm=$("universalV4BatchConfirm"),batchReport=$("universalV4BatchReport");
+    function catalogDestinations(){
+      return [...(target?.options||[])].filter(o=>/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(o.value))
+        .map(o=>({id:o.value,name:o.textContent.trim()}));
+    }
+    function toRows(chosen){
+      return chosen.products.map(item=>({
+        sku:item.sku,name:item.name,category:item.category,variant:item.variant||null,
+        description:item.description||null,price:item.price,image_url:null,
+        option_group:item.optionGroup||null,options:item.optionValues||null,
+        import_status:item.importStatus||null
+      }));
+    }
+    function renderBatch(){
+      if(!batchPanel||!batchTable||!result)return;
+      batchPanel.hidden=false;
+      const destinations=catalogDestinations();
+      batchTable.innerHTML='<table><thead><tr><th>Negocio del Excel</th><th>Productos</th><th>Negocio real en Supabase</th></tr></thead><tbody>'+
+        result.businesses.map((source,i)=>{
+          const exact=destinations.filter(d=>d.name.toLocaleLowerCase("es")===source.name.toLocaleLowerCase("es"));
+          const auto=exact.length===1?exact[0].id:"";
+          const options=destinations.map(d=>'<option value="'+escape(d.id)+'"'+(d.id===auto?' selected':'')+'>'+escape(d.name)+'</option>').join("");
+          return '<tr><td>'+escape(source.name)+'</td><td>'+source.uniqueProducts+' SKU · '+source.rows+' filas</td><td><select class="v4-destination" data-index="'+i+'"><option value="">Sin asociar</option>'+options+'</select></td></tr>';
+        }).join("")+'</tbody></table>';
+      batchReport.textContent="Asocia los negocios y verifica las coincidencias antes de importar. Los registros no se publicarán.";
+    }
+    if(batchButton)batchButton.onclick=async()=>{
+      if(!result||!batchTable||!batchConfirm||!batchReport)return;
+      if(batchConfirm.value.trim()!=="IMPORTAR BORRADORES"){batchReport.textContent="Escribe IMPORTAR BORRADORES para confirmar.";return;}
+      const pairs=[...batchTable.querySelectorAll("select.v4-destination")].filter(x=>x.value).map(x=>({
+        source:result.businesses[Number(x.dataset.index)],id:x.value
+      }));
+      if(!pairs.length){batchReport.textContent="No hay negocios asociados.";return;}
+      if(new Set(pairs.map(p=>p.id)).size!==pairs.length){batchReport.textContent="Hay negocios de destino repetidos. Corrige las asociaciones.";return;}
+      if(pairs.some(p=>result.issues.some(x=>x.business===p.source.name&&x.type==="ERROR"))){batchReport.textContent="Los negocios seleccionados tienen errores de Excel. Corrígelos antes de importar.";return;}
+      if(pairs.some(p=>p.source.products.some(x=>x.price===null))){batchReport.textContent="Existen precios pendientes de validar. No se importará ese conjunto.";return;}
+      batchButton.disabled=true;
+      let done=0,failed=0;
+      const failures=[];
+      try {
+        for(const pair of pairs){
+          batchReport.textContent="Procesando "+(done+failed+1)+"/"+pairs.length+": "+pair.source.name;
+          const {data,error}=await supabaseClient.rpc("import_business_catalog_v4_rows",{
+            p_business_id:pair.id,p_rows:toRows(pair.source),p_publish:false
+          });
+          if(error){failed++;failures.push(pair.source.name+": "+error.message);}
+          else done++;
+        }
+        batchReport.textContent="Importación finalizada: "+done+" negocios guardados como borrador; "+failed+" con errores. "+failures.join(" | ")+". Ningún nuevo producto fue publicado automáticamente.";
+      }catch(error){
+        batchReport.textContent="Proceso interrumpido: "+(error.message||String(error))+". Completados: "+done+". Confirma el estado antes de reintentar.";
+      }finally{batchButton.disabled=false;}
+    };
     btn.onclick=async()=>{
       if(!file.files.length){output.textContent="Selecciona un Excel V4.";return;}
       btn.disabled=true;output.textContent="Leyendo la matriz...";
@@ -40,6 +94,7 @@
         result=await window.HTPWEBUniversalV4.read(file.files[0]);
         business.innerHTML='<option value="">Todos los negocios</option>'+result.businesses.map(x=>'<option value="'+escape(x.name)+'">'+escape(x.name)+'</option>').join("");
         show();
+        renderBatch();
       }catch(e){output.textContent="Error de validación: "+(e?.message||String(e));}
       finally{btn.disabled=false;}
     };
