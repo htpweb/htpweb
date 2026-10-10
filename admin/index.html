@@ -1885,6 +1885,13 @@
     </section>
 
     <section id="section-catalog" class="section">
+      <div class="card" id="universalV4Card">
+        <h2>Importación universal V4 — validación previa</h2>
+        <p class="muted">MASTER y administradores del negocio pueden revisar la matriz antes de publicar. Esta validación no modifica el catálogo ni los pedidos.</p>
+        <div class="form-grid"><div><label>Matriz universal V4 (.xlsx)</label><input id="universalV4File" type="file" accept=".xlsx,.xls"></div><div><label>Negocio dentro del Excel</label><select id="universalV4Business"><option value="">Primero selecciona la matriz</option></select></div></div>
+        <div class="row" style="margin-top:12px"><button class="btn-muted" id="universalV4Check" type="button">Validar matriz</button></div>
+        <div id="universalV4Result" class="muted" aria-live="polite" style="margin-top:12px">Sin validar. Las fotos se asociarán por nombre exacto de archivo y código de negocio.</div>
+      </div>
       <div class="card">
         <div class="row between">
           <div>
@@ -2729,6 +2736,8 @@
 <script src="../config/whatsapp.js?v=20260927-1955"></script>
 <script src="../assets/storefront-architectures.js?v=20261007-restaurant1"></script>
 <script src="../config/compact-menu.js?v=20261007-compact1"></script>
+<script src="../config/universal-v4-import.js"></script>
+<script src="./universal-v4-preview.js"></script>
 <script src="./admin.js?v=20261007-localplans2"></script>
 <script src="./business-page-editor.js?v=20261007-business4"></script>
 <script src="./business-subscriptions.js?v=20261007-business4"></script>
