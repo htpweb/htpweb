@@ -8,10 +8,10 @@
 <script src="../config/supabase.js"></script>
 <script src="../config/auth.js?v=20261007-cleanroutes1"></script>
 <script src="../config/cart.js"></script>
-<script src="../config/compact-menu.js?v=20261007-compact1"></script>
+
 <script src="../config/ads.js?v=20261004-localshop1"></script>
 <link rel="stylesheet" href="../assets/app.css?v=20261002-localstore1">
-<link rel="stylesheet" href="../assets/compact-menu.css?v=20261007-compact1">
+
 <style>
 :root{--local-accent:#111827;--local-secondary:#475467;--local-bg:#f6f7f9;--local-surface:#fff;--local-text:#111827;--local-radius:18px;--local-gap:18px}
 html{scroll-behavior:smooth;scrollbar-gutter:stable}
@@ -1219,36 +1219,16 @@ function openStoreCart(){
  next.searchParams.set("local",key);if(source!=="direct")next.searchParams.set("src",source);if(campaign)next.searchParams.set("campaign",campaign);
  location.href=next.toString();
 }
+// V4: tienda universal de tarjetas. Los menús visual y compacto quedan fuera de este storefront.
+// Los productos se obtienen exclusivamente de business_products (vista de products).
 function applyCompactStorefrontMenu(){
- const previewCompact=menuPreview==="COMPACT";
- const compactActive=previewCompact||String(store?.settings?.menu_design||"CURRENT").toUpperCase()==="COMPACT";
- const root=$("compactMenuMount");if(!root)return;
- if(!compactActive){root.classList.add("hidden");return;}
- document.querySelectorAll("[data-current-menu-ui]").forEach(el=>el.classList.add("hidden"));
- root.classList.remove("hidden");
- if(menuPreviewEmbed)document.body.classList.add("cm-preview-embed");
- if(compactMenuController?.destroy)compactMenuController.destroy();
- compactMenuController=window.HTPWEBCompactMenu?.mount({
-  root,business:store.business,products,variants,categories,inventory,availability,preview:previewCompact,
-  cart:{
-   canOrder:availability?.is_open!==false,
-   getQuantity:(p,v)=>carritoCantidadItem(scope(),itemMatcher(p,v)),
-   changeQuantity:compactStoreChangeQuantity,
-   getSummary:compactStoreCartSummary,
-   onViewCart:openStoreCart
-  },
-  onError(messageText){$("error").textContent=messageText||"No se pudo actualizar el pedido.";$("error").classList.remove("hidden");}
- })||null;
+  const compact=$("compactMenuMount");if(compact)compact.classList.add("hidden");
+  const cards=$("productsSection");if(cards)cards.classList.remove("hidden");
+  const visual=$("menuSection");if(visual)visual.classList.add("hidden");
 }
 async function loadMenu(){
- const mode=store.settings.catalog_mode;
- $("menuSection").classList.toggle("hidden",mode==="CARDS");
- $("productsSection").classList.toggle("hidden",mode==="VISUAL_MENU");
- if(mode==="CARDS")return;
- const {data,error}=await supabaseClient.rpc("public_business_menu_pages",{p_business_id:store.business.id});
- if(error){console.warn(error);return;}
- const rows=Array.isArray(data)?data:[];
- $("menuPages").innerHTML=rows.length?rows.map(x=>'<article class="menu-page"><strong>'+esc(x.title||"Menú")+'</strong><img src="'+esc(x.image_url||"")+'" alt=""></article>').join(""):'<div class="empty">Este LOCAL todavía no tiene hojas de menú visual.</div>';
+  // Se conserva como puente para llamadas heredadas, sin recuperar hojas visuales.
+  applyCompactStorefrontMenu();
 }
 // Resuelve la sección antes de cualquier llamada remota para evitar flashes de contenido incorrecto.
 pageSection=sectionFromLocation();
