@@ -35,6 +35,8 @@
       if(!productRows.has(key))productRows.set(key,[]);
       productRows.get(key).push(record);
       if(!file)issues.push({line,business,sku,type:"REVIEW",message:"Sin archivo de imagen declarado"});
+      if(/REVISAR|PENDIENTE|POR CONFIRMAR|VALIDACI[ÓO]N/i.test(record.importStatus))issues.push({line,business,sku,type:"BLOCK",message:"Fila no publicable por su estado: "+record.importStatus});
+      if(/REVISAR|PENDIENTE|POR CONFIRMAR/i.test(record.notes))issues.push({line,business,sku,type:"REVIEW",message:"Observaciones con datos por confirmar"});
       if(!/^([^\\/]+)\.(png|jpe?g|webp)$/i.test(file)&&file)issues.push({line,business,sku,type:"REVIEW",message:"Archivo no es un nombre de foto válido"});
       if(record.optionGroup&&!record.optionValues)issues.push({line,business,sku,type:"REVIEW",message:"Grupo de opciones sin valores; revisar hoja OPCIONES NO PRODUCTOS"});
       if(keys.has(key+"::"+record.variantCode+"::"+variant)&&!record.optionGroup)issues.push({line,business,sku,type:"REVIEW",message:"Posible fila repetida, revisar antes de importar"});
