@@ -40,12 +40,39 @@
         .map(o=>({id:o.value,name:o.textContent.trim()}));
     }
     function toRows(chosen){
-      return chosen.products.map(item=>({
-        sku:item.sku,name:item.name,category:item.category,variant:item.variant||null,
-        description:item.description||null,price:item.price,image_url:null,
-        option_group:item.optionGroup||null,options:item.optionValues||null,
-        import_status:item.importStatus||null
-      }));
+      const unique=new Map();
+      for(const item of chosen.products){
+        const key=item.sku.trim().toLocaleLowerCase("es")+"::"+(item.variant||"").trim().toLocaleLowerCase("es");
+        if(!unique.has(key))unique.set(key,{
+          sku:item.sku,name:item.name,category:item.category,variant:item.variant||null,
+          description:item.description||null,price:item.price,image_url:null,
+          option_group:null,options:null,import_status:item.importStatus||null
+        });
+      }
+      return [...unique.values()];
+    }
+    async function saveOptionGroups(chosen,businessId){
+      let imported=0,skipped=0;
+      for(const item of chosen.products){
+        if(!item.optionGroup||!item.optionValues){continue;}
+        const values=item.optionValues.split("|").map(x=>x.trim()).filter(Boolean);
+        const numeric=v=>v===null||v===undefined||String(v).trim()===""?null:Number(v);
+        const quantity=numeric(item.quantity),minimum=numeric(item.minimum),maximum=numeric(item.maximum);
+        const min=Number.isInteger(minimum)?minimum:Number.isInteger(quantity)?quantity:null;
+        const max=Number.isInteger(maximum)?maximum:Number.isInteger(quantity)?quantity:null;
+        if(!values.length||values.some(x=>x.startsWith("{")||x.length>160)||
+          min===null||max===null||min<0||max<min||max>100){skipped++;continue;}
+        const maxDistinct=numeric(item.raw?.["Máximo sabores distintos"]);
+        const resp=await supabaseClient.rpc("upsert_product_option_group_v4",{
+          p_business_id:businessId,p_sku:item.sku,p_variant:item.variant||"",
+          p_group_name:item.optionGroup,p_min:min,p_max:max,p_repeat:Boolean(item.repeat),
+          p_max_distinct:Number.isInteger(maxDistinct)&&maxDistinct>0?maxDistinct:null,
+          p_values:values.map(name=>({name,price_delta:0})),p_activate:false
+        });
+        if(resp.error)throw new Error(item.sku+" / "+item.optionGroup+": "+resp.error.message);
+        imported++;
+      }
+      return {imported,skipped};
     }
     function renderBatch(){
       if(!batchPanel||!batchTable||!result)return;
@@ -91,7 +118,13 @@
             p_business_id:pair.id,p_rows:rows,p_publish:false
           });
           if(error){failed++;failures.push(pair.source.name+": "+error.message);}
-          else done++;
+          else {
+            try{
+              const options=await saveOptionGroups(pair.source,pair.id);
+              done++;
+              if(options.skipped)failures.push(pair.source.name+": "+options.skipped+" grupos requieren reglas comerciales antes de activarse");
+            }catch(err){failed++;failures.push(pair.source.name+": productos borrador guardados, opciones parciales: "+err.message);}
+          }
         }
         batchReport.textContent="Importación finalizada: "+done+" negocios guardados como borrador; "+failed+" con errores. "+failures.join(" | ")+". Ningún nuevo producto fue publicado automáticamente.";
       }catch(error){
@@ -172,7 +205,8 @@
           p_business_id:target.value,p_rows:mapped,p_publish:false
         });
         if(res.error)throw res.error;
-        output.textContent="Borradores guardados para "+selectedName+": "+JSON.stringify(res.data)+". No se publicaron productos nuevos ni fotografías.";
+        const groups=await saveOptionGroups(chosen,target.value);
+        output.textContent="Borradores guardados para "+selectedName+": "+JSON.stringify(res.data)+"; opciones guardadas: "+groups.imported+"; opciones pendientes: "+groups.skipped+". No se publicaron productos nuevos ni fotografías.";
       }catch(error){
         output.textContent="No se guardaron borradores: "+(error.message||String(error));
       }finally{save.disabled=false;}
