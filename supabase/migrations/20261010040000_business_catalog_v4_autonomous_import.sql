@@ -28,6 +28,7 @@ declare
   v_row_key text;
   v_existing_image text;
   v_active boolean;
+  v_new_product boolean;
 begin
   if p_business_id is null or not exists (select 1 from public.businesses where id=p_business_id) then
     raise exception 'Negocio no encontrado';
@@ -93,17 +94,18 @@ begin
     end if;
     select image_url into v_existing_image from public.products where id=v_product_id;
     v_active:=coalesce(p_publish,false) and coalesce(v_image,v_existing_image) is not null;
+    v_new_product:=v_product_id is null;
     if v_product_id is null then
       v_product_id:=public.save_business_product(p_business_id,null,v_category_id,v_name,v_description,v_price,v_image,0,v_active);
       update public.products set sku=v_sku where id=v_product_id and business_id=p_business_id;
       v_created:=v_created+1;
-    elsif not (v_sku=any(v_seen)) then
+    elsif p_publish and not (v_sku=any(v_seen)) then
       perform public.save_business_product(p_business_id,v_product_id,v_category_id,v_name,v_description,v_price,
         coalesce(v_image,(select image_url from public.products where id=v_product_id)),0,
         case when p_publish then v_active else (select active from public.products where id=v_product_id) end);
       v_updated:=v_updated+1;
     end if;
-    if v_variant is not null then
+    if v_variant is not null and (p_publish or v_new_product) then
       select id into v_variant_id from public.product_variants
        where product_id=v_product_id and lower(btrim(name))=lower(v_variant)
        order by id limit 1;
