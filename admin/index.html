@@ -42,14 +42,12 @@
       <button data-section="overview">Resumen</button>
       <button data-section="mydelivery">Mi Delivery</button>
       <button data-section="myplan">Mi Plan</button>
-      <button data-section="share">Compartir</button>
       <button data-section="promotions">Promociones</button>
       <button data-section="mylocal">Mi negocio</button>
       <button data-section="localplan">Mi Plan</button>
       <button data-section="orders">Pedidos</button>
       <button data-section="drivers">Repartidores</button>
       <button data-section="driverorders">Mis entregas</button>
-      <button data-section="requests">Solicitudes</button>
       <button data-section="deliveries">Deliveries</button>
       <button data-section="expressdemo">Express Demo</button>
       <button data-section="localsmaster">Negocios</button>
@@ -437,64 +435,7 @@
       </div>
     </section>
 
-    <section id="section-share" class="section">
-      <div class="card">
-        <div class="row between" style="gap:14px;flex-wrap:wrap">
-          <div>
-            <h2 style="margin-bottom:6px">Compartir</h2>
-            <p class="muted" style="margin:0">Elige un LOCAL y comparte directamente las fotos que ya tiene cargadas en su Galería.</p>
-          </div>
-          <select id="shareDelivery" style="max-width:340px"></select>
-        </div>
-      </div>
-
-      <div id="shareBrowseView">
-        <div class="card">
-          <div class="share-toolbar">
-            <div>
-              <label>Buscar LOCAL</label>
-              <input id="shareSearch" type="search" placeholder="Buscar por nombre...">
-            </div>
-            <div>
-              <label>Categoría</label>
-              <div id="shareCategoryFilters" class="share-filter-row"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="row between" style="gap:12px;flex-wrap:wrap">
-            <div>
-              <h3 style="margin:0">LOCAL disponibles</h3>
-              <p id="shareLocalCount" class="muted" style="margin:5px 0 0"></p>
-            </div>
-          </div>
-          <div id="shareLocalsGrid" class="share-local-grid" style="margin-top:14px"></div>
-        </div>
-      </div>
-
-      <div id="shareGalleryView" class="hidden">
-        <div class="card">
-          <div class="row between" style="gap:12px;flex-wrap:wrap">
-            <div class="row" style="gap:10px">
-              <button id="shareBackToLocalsBtn" class="btn-muted" type="button">← Volver a LOCAL</button>
-              <div>
-                <h3 id="shareGalleryLocalName" style="margin:0"></h3>
-                <p id="shareGalleryLocalMeta" class="muted" style="margin:5px 0 0"></p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div>
-            <h3 style="margin:0">Galería del LOCAL</h3>
-            <p class="muted" style="margin:5px 0 0">Estas son las mismas fotos cargadas en la Galería del LOCAL. No se modifican ni se generan imágenes nuevas.</p>
-          </div>
-          <div id="shareGalleryGrid" class="share-gallery-grid" style="margin-top:14px"></div>
-        </div>
-      </div>
-    </section>
+    
 
     <section id="section-mylocal" class="section">
       <div class="card">
@@ -1247,98 +1188,7 @@
       </div>
     </section>
 
-    <section id="section-requests" class="section">
-      <div class="card" id="requestCreateCard">
-        <h2>Gestión de LOCAL</h2>
-        <p class="muted">Solicita un LOCAL nuevo, vincula uno que ya existe o propone cambios. HTPWEB conserva la aprobación final.</p>
-
-        <div class="form-grid">
-          <div>
-            <label>Delivery</label>
-            <select id="requestDelivery"></select>
-          </div>
-          <div>
-            <label>Acción</label>
-            <select id="requestType">
-              <option value="CREATE_LOCAL">Solicitar un LOCAL nuevo</option>
-              <option value="LINK_EXISTING">Vincular un LOCAL existente</option>
-              <option value="SUGGEST_CHANGE">Sugerir cambios de un LOCAL vinculado</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="requestCreateFields" class="stack" style="margin-top:14px">
-          <div class="form-grid">
-            <div>
-              <label>Nombre del LOCAL *</label>
-              <input id="requestName" maxlength="160" placeholder="Ej. Restaurante Central">
-            </div>
-            <div>
-              <label>Dirección</label>
-              <input id="requestAddress" maxlength="240" placeholder="Dirección del negocio">
-            </div>
-            <div>
-              <label>Teléfono</label>
-              <input id="requestPhone" maxlength="40" placeholder="Teléfono">
-            </div>
-            <div>
-              <label>WhatsApp</label>
-              <input id="requestWhatsapp" maxlength="40" placeholder="WhatsApp">
-            </div>
-          </div>
-          <div>
-            <label>Descripción</label>
-            <textarea id="requestDescription" rows="3" maxlength="1000" placeholder="Breve descripción del negocio"></textarea>
-          </div>
-        </div>
-
-        <div id="requestExistingFields" class="stack hidden" style="margin-top:14px">
-          <div>
-            <label id="requestLocalSelectLabel">LOCAL</label>
-            <select id="requestLocalSelect"></select>
-            <small class="muted" id="requestLocalHelp"></small>
-          </div>
-        </div>
-
-        <div id="requestSuggestFields" class="stack hidden" style="margin-top:14px">
-          <p class="muted">Completa únicamente los datos que deseas sugerir. Debe existir al menos un cambio.</p>
-          <div class="form-grid">
-            <div>
-              <label>Nombre propuesto</label>
-              <input id="requestSuggestName" maxlength="160" placeholder="Dejar vacío si no cambia">
-            </div>
-            <div>
-              <label>Dirección propuesta</label>
-              <input id="requestSuggestAddress" maxlength="240" placeholder="Dejar vacío si no cambia">
-            </div>
-            <div>
-              <label>Teléfono propuesto</label>
-              <input id="requestSuggestPhone" maxlength="40" placeholder="Dejar vacío si no cambia">
-            </div>
-            <div>
-              <label>WhatsApp propuesto</label>
-              <input id="requestSuggestWhatsapp" maxlength="40" placeholder="Dejar vacío si no cambia">
-            </div>
-          </div>
-          <div>
-            <label>Descripción propuesta</label>
-            <textarea id="requestSuggestDescription" rows="3" maxlength="1000" placeholder="Dejar vacío si no cambia"></textarea>
-          </div>
-        </div>
-
-        <button class="btn-primary" id="submitRequestBtn" style="margin-top:14px">Enviar solicitud</button>
-      </div>
-
-      <div class="card">
-        <h2>Solicitudes</h2>
-        <div id="requestsList"></div>
-      </div>
-      <div class="card" id="localPartnershipRequestsCard">
-        <h2>Solicitudes de LOCAL para trabajar contigo</h2>
-        <p class="muted">Un LOCAL propietario puede solicitar vincularse a un DELIVERY que cubra su ubicación.</p>
-        <div id="localPartnershipRequests"></div>
-      </div>
-    </section>
+    
 
     <section id="section-deliveries" class="section">
       <div class="card">
