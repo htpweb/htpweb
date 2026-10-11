@@ -159,7 +159,7 @@ function renderMasterLocalList(){
  '</div>'+
  '<div class="table-wrap"><table><thead><tr>'+
  '<th><input id="selectAllVisibleLocals" type="checkbox" aria-label="Seleccionar todos los negocios visibles"></th>'+
- '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Diseño menú</th><th>Estado</th><th>Gestión</th><th>Acciones</th></tr></thead><tbody>'+
+ '<th>Provincia</th><th>Cantón</th><th>Zona</th><th>Categoría</th><th>Nombre</th><th>Estado</th><th>Gestión</th><th>Acciones</th></tr></thead><tbody>'+
  items.map(l=>'<tr>'+
    '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'" '+(l.owner_managed?'disabled':'')+'></td>'+
    '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
