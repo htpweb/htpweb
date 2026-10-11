@@ -164,7 +164,6 @@ function renderMasterLocalList(){
    '<td><input class="local-bulk-check" type="checkbox" value="'+esc(l.id)+'" aria-label="Seleccionar '+esc(l.name)+'" '+(l.owner_managed?'disabled':'')+'></td>'+
    '<td>'+esc(l.province||"Pendiente")+'</td><td>'+esc(l.canton||"Pendiente")+'</td><td>'+esc(l.zone_code||"Sin zona")+'</td>'+
    '<td>'+esc(Array.isArray(l.business_category_names)&&l.business_category_names.length?l.business_category_names.join(" · "):(l.business_category_name||"Sin categoría"))+'</td><td>'+esc(l.name)+'</td>'+
-   '<td>'+(l.is_restaurant?esc((l.menu_design||"CURRENT")==="COMPACT"?"Menú compacto":"Menú actual"):"—")+'</td>'+
    '<td>'+esc(l.active?"Activo":"Inactivo / borrador")+'</td>'+
    '<td>'+(l.owner_managed?'<strong>Propietario</strong><small class="muted" style="display:block">'+esc(l.local_plan?.name||"Plan NEGOCIO vigente")+'</small>':(l.claimed?'Reclamado · sin plan vigente':'HTPWEB'))+'</td>'+
    '<td>'+(l.owner_managed?'<button disabled title="El propietario controla este NEGOCIO mientras su plan esté vigente">Bloqueado</button>':'<button data-edit-local="'+esc(l.id)+'">Editar</button>')+
