@@ -248,7 +248,11 @@
         throw new Error("No se pudieron cargar las plantillas. Comprueba la conexión e inténtalo de nuevo.");
       }
       v3.forEach(p => {familyLabels[p.layout_family]=p.category_name;});
-      all = [...presets,...v3];
+      // MASTER: mostrar únicamente categorías oficiales de negocios Premium V3.
+      // Los presets comerciales antiguos siguen guardados en Supabase para auditoría;
+      // no se mezclan con las 33 categorías oficiales porque carecen de URL de vista real.
+      all = v3;
+      if(!all.length) throw new Error("La biblioteca oficial Premium V3 no está disponible; no se mostrarán plantillas heredadas incompletas.");
       loaded = true;
       renderFilters();
       render();
