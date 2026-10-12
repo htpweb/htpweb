@@ -51,7 +51,7 @@ const state = {
 };
 
 const roleSections = {
-  MASTER: ["overview","share","orders","requests","deliveries","expressdemo","localsmaster","categoriesmaster","websites","zonesmaster","users","coverage","catalog","schedules","advertising","menuimport","analytics"],
+  MASTER: ["overview","websites","categoriesmaster","zonesmaster"],
   DELIVERY_ADMIN: ["overview","mydelivery","myplan","share","promotions","orders","drivers","requests","fees","coverage","network","security","storage","advertising","analytics"],
   DELIVERY_OPERATOR: ["overview","promotions","orders","drivers"],
   DELIVERY_DRIVER: ["driverorders"],
@@ -623,7 +623,7 @@ async function refreshAll() {
   await Promise.all([
     loadOverview(),
     ordersActive ? loadOrders() : Promise.resolve(),
-    loadRequests(),
+    state.role === "MASTER" ? Promise.resolve() : loadRequests(),
     state.role === "DELIVERY_ADMIN" && $("section-myplan")?.classList.contains("active")
       ? loadMyPlan()
       : Promise.resolve()
