@@ -1,2 +1,0 @@
-// LEGACY COMPATIBILITY SHIM — código nuevo debe cargar business-subscriptions.js.
-(()=>{const current=document.currentScript?.src||"";const target=current?new URL("business-subscriptions.js",current).href:"./business-subscriptions.js";if(document.readyState==="loading"){document.write('<script src="'+target+'"><\\/script>');return;}const script=document.createElement("script");script.src=target;script.async=false;document.head.appendChild(script);})();
