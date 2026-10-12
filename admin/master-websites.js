@@ -226,25 +226,34 @@
     if(loaded && !force){ render(); return; }
     if(status) status.textContent = "Cargando biblioteca completa de plantillas…";
     try{
-      const {data,error}=await supabaseClient
-        .from("local_storefront_presets")
-        .select("code,name,business_fit,description,layout_family,config,active,display_order")
-        .eq("active",true)
-        .order("layout_family",{ascending:true})
-        .order("display_order",{ascending:true});
-      if(error) throw error;
-      // Premium V3 static collection: catalog only, NEVER assigns storefronts to existing businesses.
-      const v3Response = await fetch(new URL("../premium-v3/showcase/catalog-manifest.json",location.href),{cache:"no-cache"});
-      if(!v3Response.ok) throw new Error("No se pudo cargar el catálogo Premium V3");
-      const v3 = await v3Response.json();
-      if(!Array.isArray(v3) || v3.length !== 330) throw new Error("Catálogo Premium V3 incompleto");
+      // Premium V3 is a protected static library: a commercial SQL error must never hide it.
+      const catalogUrl = new URL("../premium-v3/showcase/catalog-manifest.json",location.href);
+      const results = await Promise.allSettled([
+        fetch(catalogUrl,{cache:"no-cache"}).then(async response => {
+          if(!response.ok) throw new Error("No se pudo cargar el catálogo Premium V3 ("+response.status+")");
+          const manifest=await response.json();
+          if(!Array.isArray(manifest)||manifest.length!==330) throw new Error("Catálogo Premium V3 incompleto");
+          return manifest;
+        }),
+        supabaseClient.from("local_storefront_presets")
+          .select("code,name,business_fit,description,layout_family,config,active,display_order")
+          .eq("active",true)
+          .order("layout_family",{ascending:true})
+          .order("display_order",{ascending:true})
+          .then(({data,error}) => {if(error)throw error;return data||[];})
+      ]);
+      const v3 = results[0].status==="fulfilled" ? results[0].value : [];
+      const presets = results[1].status==="fulfilled" ? results[1].value : [];
+      if(!v3.length && !presets.length){
+        throw new Error("No se pudieron cargar las plantillas. Comprueba la conexión e inténtalo de nuevo.");
+      }
       v3.forEach(p => {familyLabels[p.layout_family]=p.category_name;});
-      all = [...(data || []),...v3];
+      all = [...presets,...v3];
       loaded = true;
       renderFilters();
       render();
       const families = new Set(all.map(familyOf));
-      if(status) status.textContent = all.length+" plantillas activas · "+families.size+" categorías visuales";
+      if(status) status.textContent = all.length+" plantillas activas · "+families.size+" categorías visuales"+(results.some(r=>r.status==="rejected")?" · Una fuente no responde; se muestra la biblioteca disponible.":"");
     }catch(e){
       if(status) status.textContent = "No se pudo cargar la biblioteca.";
       const grid=document.getElementById("masterSitesGrid");
