@@ -103,7 +103,7 @@ async function loadMasterZones(){
     $("section-zonesmaster").innerHTML=`
       <div class="card">
         <h2>Zonas — MASTER</h2>
-        <p>Cada local pertenece a una zona. Los DELIVERY solicitan operar en una o varias zonas de su cantón.</p>
+        <p>Administra provincias, cantones y zonas de cobertura para HTPWEB.</p>
         <p class="workspace-note">Provincia y cantón se administran aquí: si escribes uno nuevo, HTPWEB lo crea automáticamente al guardar la primera zona. Los límites cantonales oficiales no están cargados; confirma visualmente el área.</p>
       </div>
       <div class="card">
@@ -142,7 +142,7 @@ async function loadMasterZones(){
         <input id="zoneSearch" type="search" placeholder="Buscar provincia, cantón, código o nombre" aria-label="Buscar zonas">
         <div id="zoneRows"></div>
       </div>
-      <div class="card"><h3>Solicitudes de cobertura</h3><div id="zoneRequests"></div></div>`;
+      `;
 
     refreshZoneLocationLists();
     $("zoneProvince").oninput=refreshZoneLocationLists;
@@ -180,7 +180,6 @@ async function loadMasterZones(){
     }
     zonesMaster.map.resize();
     drawZoneEditor();
-    await loadZoneRequests();
   }catch(e){
     zoneMessage(e.message,true);
   }
@@ -233,16 +232,7 @@ async function saveMasterZone(){
       throw new Error("No cambies el cantón de una zona que ya tiene locales o DELIVERY asociados. Crea una zona nueva y reclasifica primero.");
     }
 
-    const affected=masterLocalsState.items.filter(l=>
-      l.zone_id===$("zoneId").value&&
-      l.latitude!=null&&
-      !ZoneMaps.contains(zonesMaster.points,Number(l.latitude),Number(l.longitude))
-    );
-    if(affected.length){
-      throw new Error("El nuevo límite deja fuera: "+affected.map(l=>l.name).join(", ")+". Reclasifica esos locales primero.");
-    }
-
-    if($("zoneId").value&&!confirm("¿Guardar cambios de zona? El servidor impedirá superposiciones y locales fuera del nuevo límite."))return;
+    if($("zoneId").value&&!confirm("¿Guardar cambios de zona?"))return;
 
     const cityId=await resolveZoneCityId();
 
@@ -260,7 +250,6 @@ async function saveMasterZone(){
     zonesMaster.dirty=false;
     zoneMessage("Zona guardada. Provincia y cantón quedaron vinculados automáticamente.");
     zonesMaster.items=await rpc("master_list_zones");
-    masterLocalsState.zones=zonesMaster.items;
     refreshZoneLocationLists();
     renderMasterZones();
     drawZoneEditor();
@@ -272,36 +261,3 @@ async function saveMasterZone(){
   }
 }
 
-async function loadZoneRequests(){
-  const {data,error}=await supabaseClient
-    .from("delivery_zone_requests")
-    .select("delivery_id,zone_id,status")
-    .eq("status","PENDING");
-  if(error)throw error;
-
-  $("zoneRequests").innerHTML=data?.length
-    ? data.map((r,i)=>{
-        const z=zonesMaster.items.find(item=>item.id===r.zone_id);
-        const d=state.deliveries.find(item=>item.id===r.delivery_id);
-        return '<p>'+esc(d?.name||r.delivery_id)+' — '+esc(z?z.code+" "+z.name:r.zone_id)+' <button data-approve-request="'+i+'">Aprobar</button> <button data-reject-request="'+i+'">Rechazar</button></p>';
-      }).join("")
-    : "Sin solicitudes pendientes.";
-
-  for(const action of ["approve","reject"]){
-    $("zoneRequests").querySelectorAll("[data-"+action+"-request]").forEach(b=>b.onclick=async()=>{
-      const r=data[Number(b.dataset[action+"Request"])];
-      b.disabled=true;
-      try{
-        await rpc(action==="approve"?"set_delivery_zone":"reject_delivery_zone_request",{
-          p_delivery_id:r.delivery_id,
-          p_zone_id:r.zone_id,
-          ...(action==="approve"?{p_active:true}:{})
-        });
-        await loadZoneRequests();
-      }catch(e){
-        message(e.message,"error");
-        b.disabled=false;
-      }
-    });
-  }
-}
