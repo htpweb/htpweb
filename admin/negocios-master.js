@@ -65,7 +65,7 @@ function bindMasterLocals(){
    </div>
    <div id="masterLocalDomainRows" style="margin-top:14px"><div class="muted">Cargando solicitudes...</div></div>
  </div>
-;
+ </div>`;
  $("masterLocalNewBtn").onclick=()=>{if(discardLocalChanges()){clearMasterLocalForm();showLocalMode("editor");}};
  $("masterLocalListBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("list");}};
  $("masterLocalBulkBtn").onclick=()=>{if(discardLocalChanges()){restoreLocalPanels();showLocalMode("bulk");renderBulkLocalPreview();}};
