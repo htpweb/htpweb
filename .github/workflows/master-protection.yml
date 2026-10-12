@@ -1,0 +1,58 @@
+name: Protect HTPWEB MASTER
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  master-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify protected modules and all 330 previews
+        shell: python
+        run: |
+          import json, pathlib, collections, sys
+          root=pathlib.Path('.')
+          protected=[
+            'index.html', 'admin/index.html', 'admin/admin.js',
+            'admin/master-websites.js', 'admin/business-categories-master.js',
+            'admin/zones-master.js', 'admin/zone-maps.js',
+            'assets/admin.css', 'config/supabase.js',
+            'premium-v3/showcase/catalog-manifest.json'
+          ]
+          missing=[p for p in protected if not (root/p).is_file()]
+          manifest=json.loads((root/'premium-v3/showcase/catalog-manifest.json').read_text(encoding='utf-8'))
+          errors=[]
+          if len(manifest)!=330: errors.append(f'Expected 330 Premium V3 templates, got {len(manifest)}')
+          codes=[entry.get('code') for entry in manifest]
+          if len(set(codes))!=len(codes): errors.append('Duplicated template codes')
+          categories=collections.Counter(entry.get('category_name') for entry in manifest)
+          if len(categories)!=33 or any(n!=10 for n in categories.values()):
+            errors.append(f'Expected 33 categories with 10 previews each: {dict(categories)}')
+          for entry in manifest:
+            href=entry.get('preview_href','')
+            if not href.startswith('../premium-v3/showcase/') or not href.endswith('/'):
+              errors.append(f'Unsafe or invalid preview URL: {href}')
+              continue
+            rel=href.removeprefix('../')
+            if '..' in pathlib.PurePosixPath(rel).parts:
+              errors.append(f'Path traversal: {href}')
+              continue
+            if not (root/rel/'index.html').is_file():
+              errors.append(f'Missing preview: {href}')
+          errors.extend('Missing protected module: '+p for p in missing)
+          if errors:
+            print('\n'.join(errors[:40]),file=sys.stderr)
+            sys.exit(1)
+          print('HTPWEB MASTER OK: 330 previews / 33 categories / all protected files')
+      - name: Validate MASTER JavaScript syntax
+        run: |
+          node --check admin/admin.js
+          node --check admin/master-websites.js
+          node --check admin/business-categories-master.js
+          node --check admin/zones-master.js
+          node --check admin/zone-maps.js
