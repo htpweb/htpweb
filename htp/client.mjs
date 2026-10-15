@@ -1,0 +1,33 @@
+export const PROJECT='https://ihfvmszyuveodxluxagb.supabase.co';
+const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+export function validateConfig(c){if(!c||Object.keys(c).sort().join(',')!=='projectUrl,publishableKey'||c.projectUrl!==PROJECT||!/^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(c.publishableKey))throw Error('Configuracion publica no valida para el proyecto HTP nuevo');return Object.freeze({...c});}
+export function createPortalClient(config,{transport=fetch,now=Date.now}={}){const c=validateConfig(config);let session=null,epoch=0;
+ const clear=()=>{session=null;epoch++;};const authenticated=()=>Boolean(session&&session.expires>now());
+ async function request(route,{method='GET',body,token=null}={}){const response=await transport(c.projectUrl+route,{method,headers:{apikey:c.publishableKey,...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(10000)});if(!response.ok){if((response.status===401||response.status===403)&&token&&session?.token===token)clear();throw Error(response.status===400&&route.startsWith('/auth/v1/token')?'Correo o contrasena incorrectos':response.status===401?'Sesion expirada o acceso incorrecto':response.status===403?'Acceso no autorizado por servidor':'Servicio no disponible; intenta de nuevo');}if(response.status===204)return null;return response.json();}
+ const requireSession=()=>{if(!authenticated()){clear();throw Error('Inicia sesion para consultar tus organizaciones');}return session;};
+ return Object.freeze({authenticated,
+ async signIn(email,password){clear();const attempt=epoch;if(typeof email!=='string'||!email.includes('@')||typeof password!=='string'||password.length<1)throw Error('Introduce tu correo y contrasena');const value=await request('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password}});if(typeof value?.access_token!=='string'||value.access_token.split('.').length!==3||!Number.isFinite(value.expires_in)||value.expires_in<=0||value.expires_in>86400)throw Error('Respuesta de identidad no valida');if(attempt!==epoch)throw Error('Intento de acceso sustituido');const user=await request('/auth/v1/user',{token:value.access_token});if(attempt!==epoch)throw Error('Intento de acceso sustituido');if(!uuid.test(user?.id))throw Error('Identidad no valida');session={token:value.access_token,expires:now()+value.expires_in*1000,id:user.id};return {id:user.id,email:typeof user.email==='string'?user.email:email};},
+ async signOut(){const token=session?.token;clear();if(token)await request('/auth/v1/logout',{method:'POST',token});},
+ async moduleRegistry(){
+ const current=requireSession();const token=current.token;
+ const [rows,links]=await Promise.all([
+ request('/rest/v1/htp_module_versions?select=module_id,version,owner_module,api_contract,event_contract&limit=100',{token}),
+ request('/rest/v1/htp_module_dependencies?select=module_id,version,dependency_id,dependency_version&limit=200',{token})
+ ]);
+ if(!Array.isArray(rows)||rows.length>100||!Array.isArray(links)||links.length>200)throw Error('Registro remoto fuera de limites');
+ const key=(id,version)=>id+'@'+version,seen=new Set();
+ for(const row of rows){
+  if(typeof row.module_id!=='string'||!/^htp-[a-z0-9-]{1,50}$/.test(row.module_id)||typeof row.version!=='string'||!/^\d+\.\d+\.\d+$/.test(row.version)||typeof row.owner_module!=='string'||row.api_contract?.version!==row.version||row.event_contract?.version!==row.version||row.api_contract?.declaredOnly!==true||row.event_contract?.declaredOnly!==true)throw Error('Contrato remoto no validado');
+  const k=key(row.module_id,row.version);if(seen.has(k))throw Error('Modulo remoto duplicado');seen.add(k);
+ }
+ for(const link of links)if(!seen.has(key(link.module_id,link.version))||!seen.has(key(link.dependency_id,link.dependency_version)))throw Error('Dependencia remota invalida');
+ if(session!==current||!authenticated())throw Error('Sesion modificada durante lectura remota');
+ return {modules:rows.length,dependencies:links.length,source:'supabase-rls',operational:false,health:'unknown',contracts:rows,links};
+},
+ async workspace(){const s=requireSession();const identity=await request('/auth/v1/user',{token:s.token});if(identity?.id!==s.id||session!==s){if(session===s)clear();throw Error('Sesion cambiada o identidad incorrecta');}const [organizations,memberships,records]=await Promise.all([
+ request('/rest/v1/htp_organizations?select=id,name,slug,status&limit=500',{token:s.token}),
+ request('/rest/v1/htp_memberships?select=id,organization_id,user_id,role,active&limit=500',{token:s.token}),
+ request('/rest/v1/htp_tenant_records?select=id,organization_id,label,created_at&limit=500',{token:s.token})]);
+ for(const list of [organizations,memberships,records])if(!Array.isArray(list)||list.length>500)throw Error('Contrato de datos no valido');const ids=new Set();for(const o of organizations){if(!uuid.test(o.id)||typeof o.name!=='string'||o.name.length>200||o.status!=='active'||ids.has(o.id))throw Error('Organizaciones no validas');ids.add(o.id);}
+ const active=memberships.filter(m=>m.active);for(const m of memberships)if(!uuid.test(m.id)||!uuid.test(m.organization_id)||m.user_id!==s.id||typeof m.active!=='boolean'||!['owner','admin','operator','reader'].includes(m.role))throw Error('Membresia no valida');const permitted=new Set(active.map(m=>m.organization_id));for(const id of ids)if(!permitted.has(id))throw Error('Organizacion sin membresia activa');for(const r of records)if(!uuid.test(r.id)||!ids.has(r.organization_id)||typeof r.label!=='string'||r.label.length>200||!Number.isFinite(Date.parse(r.created_at)))throw Error('Registro fuera del contrato o de tu organizacion');if(!authenticated()||session!==s)throw Error('Sesion expirada o cambiada');return {organizations,memberships:active.filter(m=>ids.has(m.organization_id)),records,bounded:true};}
+ });}

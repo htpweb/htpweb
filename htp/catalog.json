@@ -1,0 +1,1506 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": "1.0.0",
+  "demo": false,
+  "modules": [
+    {
+      "id": "htp-core",
+      "name": "HTP Core",
+      "version": "1.0.0",
+      "state": "implemented-local",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-core",
+      "scope": "Identidad y contratos tenant; adaptador externo opt-in",
+      "critical": true,
+      "demo": false,
+      "permissions": [
+        "htp-core.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-core.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-core.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        },
+        {
+          "id": "tenant.organizations.read",
+          "version": "1.0.0",
+          "description": "GET /api/v1/organizations; Auth remoto; opt-in; solo lectura",
+          "interface": {
+            "transport": "declarative",
+            "input": "Bearer; organizationId UUID salvo organizations",
+            "output": "organizations tenant; version 1.0.0",
+            "errors": [
+              "401",
+              "403",
+              "422",
+              "503"
+            ],
+            "sideEffects": "none"
+          }
+        },
+        {
+          "id": "tenant.memberships.read",
+          "version": "1.0.0",
+          "description": "GET /api/v1/memberships; Auth remoto; opt-in; solo lectura",
+          "interface": {
+            "transport": "declarative",
+            "input": "Bearer; organizationId UUID salvo organizations",
+            "output": "memberships tenant; version 1.0.0",
+            "errors": [
+              "401",
+              "403",
+              "422",
+              "503"
+            ],
+            "sideEffects": "none"
+          }
+        },
+        {
+          "id": "tenant.records.read",
+          "version": "1.0.0",
+          "description": "GET /api/v1/records; Auth remoto; opt-in; solo lectura",
+          "interface": {
+            "transport": "declarative",
+            "input": "Bearer; organizationId UUID salvo organizations",
+            "output": "records tenant; version 1.0.0",
+            "errors": [
+              "401",
+              "403",
+              "422",
+              "503"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-control",
+      "name": "HTP Control",
+      "version": "1.0.0",
+      "state": "implemented-local",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-control",
+      "scope": "Gobierno, seguimiento y simulaciones; sin operaciones comerciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-control.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-control.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-control.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-business",
+      "name": "HTP Business",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-business",
+      "scope": "Negocios, sucursales, turnos y escaparates",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-business.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-business.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-business.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-market",
+      "name": "HTP Market",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-market",
+      "scope": "Descubrimiento y pedidos",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-market.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-market.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-market.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-business",
+          "contractId": "htp-business.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-connect",
+      "name": "HTP Connect",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-connect",
+      "scope": "Relaciones consentidas y proveedores B2B",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-connect.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-connect.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-connect.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-business",
+          "contractId": "htp-business.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-identity",
+      "name": "HTP identity",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-identity",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-identity.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-identity.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-identity.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-audit",
+      "name": "HTP audit",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-audit",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-audit.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-audit.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-audit.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-events",
+      "name": "HTP events",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-events",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-events.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-events.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-events.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-geography",
+      "name": "HTP geography",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-geography",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-geography.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-geography.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-geography.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-catalogs",
+      "name": "HTP catalogs",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-catalogs",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-catalogs.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-catalogs.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-catalogs.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-websites",
+      "name": "HTP websites",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-websites",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-websites.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-websites.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-websites.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-orders",
+      "name": "HTP orders",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-orders",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-orders.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-orders.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-orders.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-delivery",
+      "name": "HTP delivery",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-delivery",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-delivery.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-delivery.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-delivery.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-communications",
+      "name": "HTP communications",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-communications",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-communications.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-communications.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-communications.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-payments",
+      "name": "HTP payments",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-payments",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-payments.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-payments.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-payments.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-b2b-services",
+      "name": "HTP b2b-services",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-b2b-services",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-b2b-services.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-b2b-services.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-b2b-services.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-promotions",
+      "name": "HTP promotions",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-promotions",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-promotions.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-promotions.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-promotions.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-advertising",
+      "name": "HTP advertising",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-advertising",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-advertising.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-advertising.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-advertising.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-plans",
+      "name": "HTP plans",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-plans",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-plans.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-plans.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-plans.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-analytics",
+      "name": "HTP analytics",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-analytics",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-analytics.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-analytics.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-analytics.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-external-api",
+      "name": "HTP external-api",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-external-api",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-external-api.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-external-api.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-external-api.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-automation",
+      "name": "HTP automation",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-automation",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-automation.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-automation.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-automation.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-reputation",
+      "name": "HTP reputation",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-reputation",
+      "scope": "Expansion declarada; implementacion pendiente",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-reputation.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-reputation.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-reputation.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-whatsapp-meta",
+      "name": "WhatsApp / Meta",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-whatsapp-meta",
+      "scope": "Adaptador externo aislado planificado; sin conexion ni credenciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-whatsapp-meta.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-whatsapp-meta.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-whatsapp-meta.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-openrouteservice",
+      "name": "OpenRouteService",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-openrouteservice",
+      "scope": "Adaptador externo aislado planificado; sin conexion ni credenciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-openrouteservice.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-openrouteservice.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-openrouteservice.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-google-maps",
+      "name": "Google Maps",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-google-maps",
+      "scope": "Adaptador externo aislado planificado; sin conexion ni credenciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-google-maps.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-google-maps.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-google-maps.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-openai-menus",
+      "name": "OpenAI menus",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-openai-menus",
+      "scope": "Adaptador externo aislado planificado; sin conexion ni credenciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-openai-menus.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-openai-menus.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-openai-menus.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    },
+    {
+      "id": "htp-payphone",
+      "name": "PayPhone",
+      "version": "1.0.0",
+      "state": "planned",
+      "operational": false,
+      "owner": "Direccion HTP; responsable tecnico por asignar",
+      "dataOwner": "htp-payphone",
+      "scope": "Adaptador externo aislado planificado; sin conexion ni credenciales",
+      "critical": false,
+      "demo": false,
+      "permissions": [
+        "htp-payphone.read"
+      ],
+      "roles": [
+        "reader",
+        "operator",
+        "owner"
+      ],
+      "capabilities": [
+        "htp-payphone.read"
+      ],
+      "contracts": [
+        {
+          "id": "htp-payphone.metadata",
+          "version": "1.0.0",
+          "description": "Contrato declarativo; no implica endpoint comercial disponible",
+          "interface": {
+            "transport": "declarative",
+            "input": "Identificador tenant validado por servidor",
+            "output": "Metadatos propios del modulo",
+            "errors": [
+              "unauthorized",
+              "forbidden",
+              "unavailable"
+            ],
+            "sideEffects": "none"
+          }
+        }
+      ],
+      "dependencies": [
+        {
+          "moduleId": "htp-core",
+          "contractId": "htp-core.metadata",
+          "version": "1.0.0",
+          "kind": "required",
+          "failurePolicy": "Denegar nuevas operaciones dependientes; conservar datos propios"
+        }
+      ],
+      "continuity": "No borrar datos; aislar el modulo. MASTER no participa en transacciones comerciales.",
+      "recovery": "Validar contrato, permisos y salud antes de reactivar; rollback por version."
+    }
+  ]
+}
